@@ -1,8 +1,0 @@
-{
-  "upgrade": [
-    "ALTER TABLE `client_users` DROP COLUMN `username2`"
-  ],
-  "downgrade": [
-    "ALTER TABLE `client_users` ADD `username2` VARCHAR(100)"
-  ]
-}

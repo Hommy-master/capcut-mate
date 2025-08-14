@@ -1,5 +1,0 @@
-{
-  "upgrade": [
-    "CREATE TABLE IF NOT EXISTS `aerich` (\n    `id` INT NOT NULL PRIMARY KEY AUTO_INCREMENT,\n    `version` VARCHAR(50) NOT NULL,\n    `app` VARCHAR(20) NOT NULL\n) CHARACTER SET utf8;\nCREATE TABLE IF NOT EXISTS `client_users` (\n    `id` INT NOT NULL PRIMARY KEY AUTO_INCREMENT,\n    `created_at` DATETIME(6)   DEFAULT CURRENT_TIMESTAMP(6),\n    `modified_at` DATETIME(6)   DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),\n    `is_del` INT NOT NULL  DEFAULT 0,\n    `auth_user_id` VARCHAR(255) NOT NULL UNIQUE,\n    `username` VARCHAR(100),\n    `username2` VARCHAR(100),\n    `mobile` VARCHAR(100),\n    `real_name` VARCHAR(100),\n    `email` VARCHAR(100),\n    `avatar` VARCHAR(100)   DEFAULT '98d2d0f6-6851-49a8-8d31-8603204cc7311591066453.png',\n    `status` INT,\n    `tencent_user_id` VARCHAR(100)  UNIQUE,\n    `tencent_auth_status` INT\n) CHARACTER SET utf8 COMMENT='save ik user info';"
-  ]
-}
