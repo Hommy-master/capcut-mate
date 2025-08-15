@@ -1,0 +1,16 @@
+[project]
+name = "capcut-mate"
+version = "0.1.0"
+description = "CapCut Mate API Service"
+authors = [{"name": "Your Name", "email": "your.email@example.com"}]
+requires-python = ">=3.9"
+
+[project.dependencies]
+fastapi = ">=0.100.0"
+uvicorn = ">=0.23.0"
+pydantic = ">=2.0.0"
+passlib = {extras = ["bcrypt"], version = ">=1.7.4"}
+
+[tool.uv.scripts]
+dev = "uvicorn main:app --host 0.0.0.0 --port 60000 --reload"
+start = "uvicorn main:app --host 0.0.0.0 --port 60000"
