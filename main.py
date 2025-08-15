@@ -1,35 +1,11 @@
-﻿import uvicorn
+from fastapi import FastAPI
+from src.router import user as user_router
 
-from app import create_app
+app = FastAPI(title="CapCut Mate API", version="1.0")
 
+# 注册路由
+app.include_router(user_router.router, prefix="/users", tags=["users"])
 
-app = create_app()
-
-
-if __name__ == '__main__':
-    uvicorn.run(
-        app='main:app',
-        host='0.0.0.0',
-        port=8001,
-        debug=False,
-        reload=True,
-    )
-
-    # import typer
-    #
-    # app = typer.Typer()
-    #
-    #
-    # @app.command()
-    # def hello(name: str):
-    #     typer.echo(f"Hello {name}")
-    #
-    #
-    # @app.command()
-    # def goodbye(name: str, formal: bool = False):
-    #     if formal:
-    #         typer.echo(f"Goodbye Ms. {name}. Have a good day.")
-    #     else:
-    #         typer.echo(f"Bye {name}!")
-
-
+@app.get("/")
+async def root():
+    return {"message": "Welcome to CapCut Mate API"}
