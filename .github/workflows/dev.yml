@@ -15,7 +15,10 @@ jobs:
     steps:
       - name: 准备代码
         uses: actions/checkout@v4
-
+        
+      - name: 查看文件和目录结构
+        run: ls -lh -R .  
+        
       - name: 准备python环境
         uses: actions/setup-python@v5
         with:
