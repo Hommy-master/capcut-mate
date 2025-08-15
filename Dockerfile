@@ -1,16 +1,22 @@
-FROM tiangolo/uvicorn-gunicorn-fastapi:python3.7
+FROM python:3.9-slim
 
-EXPOSE 8001/tcp
-
-RUN mkdir -p /root/.pip/ &&\
-    mkdir -p /ikglobal/logs
-    
 WORKDIR /app
 
-COPY . /app
-COPY ./pip.conf /root/.pip/
+# 安装uv
+RUN pip install --no-cache-dir uv
 
-RUN pip install gunicorn && pip install --no-cache-dir -r requirements.txt
+# 复制项目文件
+COPY pyproject.toml .
+COPY README.md .
+COPY main.py .
+COPY src/ src/
+COPY tests/ tests/
 
+# 安装依赖
+RUN uv sync
 
+# 暴露端口
+EXPOSE 60000
 
+# 启动命令
+CMD ["uv", "run", "start"]
