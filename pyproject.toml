@@ -1,16 +1,14 @@
 [project]
 name = "capcut-mate"
-version = "0.1.0"
+version = "1.0.0"
 description = "CapCut Mate API Service"
-authors = [{"name": "Your Name", "email": "your.email@example.com"}]
+authors = [
+    { name = "Hommy", email = "taohongmin@sina.cn" }
+]
 requires-python = ">=3.9"
 
-[project.dependencies]
-fastapi = ">=0.100.0"
-uvicorn = ">=0.23.0"
-pydantic = ">=2.0.0"
-passlib = {extras = ["bcrypt"], version = ">=1.7.4"}
-
-[tool.uv.scripts]
-dev = "uvicorn main:app --host 0.0.0.0 --port 60000 --reload"
-start = "uvicorn main:app --host 0.0.0.0 --port 60000"
+dependencies = [
+    "email-validator>=2.2.0",
+    "fastapi>=0.100.0",
+    "passlib[bcrypt]>=1.7.4",
+]

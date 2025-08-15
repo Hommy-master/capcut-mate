@@ -1,105 +1,53 @@
-# CDN用户模块
+# CapCut Mate API
 
+## 项目简介
+CapCut Mate API 是一个基于 FastAPI 构建的剪映小助手
 
-## 简介
-使用FastAPT框架构架的一个web工程，集成了数据orm工具，支持异步，拿来开箱即用的工程demo
-
+## 功能特点
+- 用户管理：创建、查询、更新和删除用户
+- 数据验证：使用 Pydantic 进行请求数据验证
+- 安全认证：密码加密存储
+- RESTful API 设计：符合标准的 API 设计规范
+- 自动生成文档：FastAPI 自动生成交互式 API 文档
 
 ## 技术栈
+- Python 3.11+
+- FastAPI：高性能的 Web 框架
+- Pydantic：数据验证和模型定义
+- Passlib：密码加密
+- Uvicorn：ASGI 服务器
+- uv：Python 包管理器和项目管理工具
 
+## 快速开始
+
+### 前提条件
+- Python 3.11 或更高版本
+- uv：Python 包管理器和项目管理工具
+  安装方法: `pip install uv` 或访问 [uv 官方网站](https://github.com/astral-sh/uv) 获取最新安装指南
+
+### 安装步骤
+1. 克隆项目
 ```bash
-Python3.7 + FastAPI + MySQL + Redis + Tortoise-orm + aerich
+git clone git@github.com:Hommy-master/capcut-mate.git
+cd capcut-mate
 ```
 
-## API接口文档地址
-
+2. 安装依赖
 ```bash
-
-# host 服务器地址
-http://host:8001/docs#/
-http://host:8001/redoc
-
+uv sync
+uv add passlib[bcrypt]
+uv add email-validator
 ```
 
-## 数据库版本管理 
-
+3. 启动服务器
 ```bash
-# 初始化配置, 创建一个migrates文件夹和aerich.ini配置文件
-aerich init -t app.mydbs.database.TORTOISE_ORM
-
-# 数据库生成表, 并创建migrations/models迁移文件
-aerich init-db 
-
-# 新增迁移文件 *_update.json
-aerich migrate
-
-# 执行迁移文件更新数据库
-aerich upgrade
-
-# 回到上一个版本
-aerich downgrade
-
-# 查看历史迁移记录
-aerich history
-
-# 查看当前版本的迁移记录
-aerich heads
+uvicorn main:app --reload
 ```
 
-## 目录结构说明
+4. 访问 API 文档
+启动服务器后，访问以下地址查看自动生成的交互式 API 文档：
+- Swagger UI: http://localhost:8000/docs
+- ReDoc: http://localhost:8000/redoc
 
-```bash
-.
-├── aerich.ini
-├── app                                                       # 代码主目录
-│   ├── commons                                               # 一些逻辑
-│   │   ├── __init__.py 
-│   │   └── tencent_cdn.py
-│   ├── __init__.py
-│   ├── logs                                                  # 日志配置目录
-│   │   ├── __init__.py
-│   ├── middleware                                            # 中间件配置目录
-│   │   ├── __init__.py
-│   ├── models                                                # 数据模型目录
-│   │   ├── __init__.py
-│   │   ├── model.py
-│   ├── mydbs                                                 # 数据库相关目录
-│   │   ├── database.py
-│   │   ├── __init__.py
-│   │   └── tencen_cdn.py
-│   ├── __pycache__
-│   │   └── __init__.cpython-37.pyc
-│   ├── routers                                               # 路由视图目录
-│   │   ├── cdn_views.py
-│   │   ├── __init__.py
-│   ├── schemas                                               # 参数校验模型
-│   │   ├── __init__.py
-│   │   └── tencten_cdn.py
-│   └── utils                                                 # 工具目录
-│       ├── common_util.py
-│       ├── constant.py
-│       ├── fake_data.py
-│       ├── __init__.py
-│       ├── phone_code.py
-│       ├── qiniu_sdk_python.py
-│       └── tencentcloud_sdk_python.py
-├── config.py                                                    # 配置文件，包含生产，测试，开发三套配置
-├── create_table.sql                                             # 建表sql
-├── deploy.sh                                                    # docker镜像构建
-├── docker-compose.yaml                                          # docker容器编排管理
-├── Dockerfile                                                   # 构建镜像配置文件
-├── ik_cnd_user_app_logs.log                                     # app日志
-├── log.log                                                      # 日志
-├── main.py                                                      # 程序启动文件
-├── migrations                                                   # 数据库管理文件
-│   └── models
-│       ├── 0_202056062220145621_init.json
-│       └── old_models.py
-├── pip.conf                                                     # pip配置
-├── prestart.sh                                                  # docker启动时自动执行数据库迁移脚本
-├── README.md                                                    # 程序文档
-├── requirements.txt                                             # 依赖环境
-└── run.sh                                                       # 启动docker容器
-
-
-```
+## 许可证
+本项目采用 MIT 许可证，详情请见 LICENSE 文件。
