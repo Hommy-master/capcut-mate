@@ -30,7 +30,7 @@ jobs:
         run: uv sync
 
       - name: 查看文件和目录结构
-        run: ls -lh  
+        run: ls -lha  
 
       - name: 执行代码混淆
         run: |
