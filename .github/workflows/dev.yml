@@ -7,49 +7,43 @@ on:
     branches: [ "master" ]
 
 jobs:
-
   build:
-
     runs-on: ubuntu-latest
 
     steps:
       - name: 准备代码
         uses: actions/checkout@v4
         
-      - name: 查看文件和目录结构
-        run: ls -lh -R .  
-        
+      # 安装uv环境
+      - name: 安装uv
+        uses: astral-sh/setup-uv@v2
+        with:
+          version: "0.8.11"
+
       - name: 准备python环境
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
-          cache: "pip"
+          python-version: "3.9"
+          cache: "uv"
 
       - name: 安装依赖
-        run: |
-          python -m pip install --upgrade pip
-          pip install pyminifier  # 安装混淆工具
-          pip install -r <(uv export)  # 安装项目依赖（如需测试）
+        run: uv sync
 
-      - name: 准备目录
-        run: mkdir -p obfuscated
+      - name: 查看文件和目录结构
+        run: ls -lh  
 
       - name: 执行代码混淆
         run: |
-          # 混淆主程序
-          pyminifier --obfuscate --destdir obfuscated main.py
-          
-          # 混淆src目录（保持目录结构）
-          find src -name "*.py" -exec sh -c '
-            for file do
-              mkdir -p obfuscated/$(dirname "$file")
-              pyminifier --obfuscate --destdir obfuscated/$(dirname "$file") "$file"
-            done
-          ' sh {} +
+          . .venv/bin/activate
+          # 创建输出目录
+          mkdir -p dist
+          # 混淆代码
+          pyarmor obfuscate --output dist/main.py main.py
+          # 复制必要的运行时文件
+          pyarmor runtime --output dist/
+          # 复制依赖
+          cp -r .venv dist/
 
-      - name: 查看文件和目录结构
-        run: ls -lh -R obfuscated      
-        
       - name: 准备打包Docker镜像的环境
         uses: docker/setup-buildx-action@v3
 

@@ -1,30 +1,27 @@
+# 使用轻量级Python镜像作为基础
 FROM python:3.9-slim
 
+# 设置工作目录
 WORKDIR /app
 
-# 接收CI传递的混淆代码目录（默认obfuscated）
-ARG OBFUSCATED_CODE=obfuscated
+# 创建非root用户并切换
+RUN addgroup --system --gid 1001 appgroup && \
+    adduser --system --uid 1001 --gid 1001 appuser
 
-# 安装依赖
-COPY pyproject.toml .
-RUN pip install --no-cache-dir uv && \
-    uv sync --no-dev
+# 复制CI处理后的依赖和混淆代码
+COPY --chown=appuser:appgroup dist/ /app/
 
-# 仅复制CI中混淆后的代码（关键：不处理源码，直接用CI的混淆结果）
-COPY $OBFUSCATED_CODE/main.py ./bin/
-COPY $OBFUSCATED_CODE/src/ ./bin/src/
+# 设置环境变量
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PATH="/app/.venv/bin:$PATH"
 
-# 创建配置和日志目录
-RUN mkdir -p /app/etc /app/logs && \
-    echo "LOG_LEVEL=info" > /app/etc/config.env && \
-    echo "LOG_DIR=/app/logs" >> /app/etc/config.env
+# 暴露端口
+EXPOSE 60000
 
-# 权限设置
-RUN addgroup --system appgroup && \
-    adduser --system --group appuser && \
-    chown -R appuser:appgroup /app
-
+# 切换到非root用户
 USER appuser
 
-EXPOSE 60000
-CMD ["uv", "run", "/app/bin/main.py"]
+# 启动命令
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "60000", "--workers", "4"]
+    
