@@ -56,25 +56,26 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       # 提取标签信息
-      - name: 提取镜像标签信息
+      - name: 提取镜像标签
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: |
-            ${{ secrets.DOCKER_HUB_USERNAME }}/capcut-mate
+            ${{ secrets.DOCKER_HUB_USERNAME }}/capcut-mate  # 确保包含Docker Hub用户名
           tags: |
             type=ref,event=branch
             type=ref,event=tag
             type=sha,format=short
             type=raw,value=latest,enable={{is_default_branch}}
 
-      # 构建并推送镜像
+      # 构建并推送Docker镜像
       - name: 构建并推送Docker镜像
         uses: docker/build-push-action@v5
         with:
           context: .
           file: ./Dockerfile
-          push: ${{ github.event_name != 'pull_request' }}  # PR时只构建不推送
-          tags: ${{ steps.meta.outputs.tags }}
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}  # 使用正确生成的标签
           cache-from: type=gha
           cache-to: type=gha,mode=max
+    
