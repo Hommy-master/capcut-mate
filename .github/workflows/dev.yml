@@ -24,7 +24,7 @@ jobs:
       - name: 准备python环境
         uses: actions/setup-python@v5
         with:
-          python-version: "3.9"
+          python-version: "3.11"
 
       - name: 安装依赖（含开发工具）
         run: uv sync --all-extras  # 安装生产+开发依赖
