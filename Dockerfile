@@ -42,4 +42,4 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     UV_CACHE_DIR="/home/appuser/.cache/uv"
 
 # 启动命令
-CMD ["uv", "run", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "60000", "--workers", "4"]
+CMD ["uv", "run", "main.py", "--workers", "4"]

@@ -3,7 +3,7 @@ name = "capcut-mate"
 version = "1.0.0"
 description = "CapCut Mate API Service"
 authors = [
-    { name = "Hommy", email = "taohongmin@sina.cn" }
+    { name = "Hommy", email = "taohongmin51@gmail.com" }
 ]
 requires-python = ">=3.9"
 
@@ -12,5 +12,4 @@ dependencies = [
     "fastapi>=0.100.0",
     "passlib[bcrypt]>=1.7.4",
     "uvicorn[standard]>=0.35.0",
-    "pyarmor>=7.0.0"
 ]
