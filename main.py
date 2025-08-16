@@ -15,6 +15,16 @@ mcp = FastApiMCP(app)
 mcp.mount_http()   # 👈 推荐
 mcp.mount_sse()  # 如果客户端只支持 SSE
 
+# ---------- 打印所有路由 ----------
+for r in app.routes:
+    # 1. 取 HTTP 方法列表
+    methods = getattr(r, "methods", None) or [getattr(r, "method", "WS")]
+    # 2. 取路径
+    path = r.path
+    # 3. 取函数名
+    name = r.name
+    logger.info("Route: %s %s -> %s", ",".join(sorted(methods)), path, name)
+
 logger.info("CapCut Mate API & MCP mounted")
 
 # 4. 启动
