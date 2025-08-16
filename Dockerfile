@@ -1,45 +1,37 @@
-FROM python:3.9-slim
+FROM python:3.11-slim
 
-# 在构建阶段安装必要工具
+# 安装基础工具
 RUN apt-get update && \
     apt-get install -y --no-install-recommends curl ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 
-# 使用pip安装uv
-RUN pip install --no-cache-dir uv
-
-# 验证uv安装
-RUN uv --version
-
-# 设置工作目录
-WORKDIR /app
-
-# 创建非root用户并提前配置缓存目录
+# 提前创建非特权用户和缓存目录
 RUN addgroup --system --gid 1001 appgroup && \
     adduser --system --uid 1001 --gid 1001 --home /home/appuser appuser && \
-    # 创建uv缓存目录并设置权限
     mkdir -p /home/appuser/.cache/uv && \
-    chown -R appuser:appgroup /home/appuser/.cache
+    chown -R appuser:appgroup /home/appuser
 
-# 从CI构建的dist目录复制所有文件
-COPY dist/ .
+# 把 uv 装到全局（root 即可）
+RUN pip install --no-cache-dir uv
 
-# 安装依赖（仍使用root用户确保权限）
-RUN uv sync && \
-    chown -R appuser:appgroup /app
+WORKDIR /app
 
-# 切换到非root用户
+# 先复制锁文件，用 --link-mode=copy 避免软链到 /root
+COPY --chown=appuser:appgroup pyproject.toml uv.lock ./
 USER appuser
+ENV UV_CACHE_DIR=/home/appuser/.cache/uv
+RUN uv venv --link-mode=copy .venv && \
+    uv sync --frozen
 
-# 暴露应用端口
+# 再复制剩余源码
+USER root          # root 有权限 COPY
+COPY --chown=appuser:appgroup dist/ ./
+USER appuser       # 最后切回非 root
+
 EXPOSE 60000
-
-# 设置环境变量，指定uv缓存目录和用户主目录
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PATH="/app/.venv/bin:$PATH" \
-    HOME="/home/appuser" \
-    UV_CACHE_DIR="/home/appuser/.cache/uv"
+    PATH="/app/.venv/bin:$PATH"
 
 # 启动命令
 CMD ["uv", "run", "main.py", "--workers", "4"]
