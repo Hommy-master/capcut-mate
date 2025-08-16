@@ -1,11 +1,10 @@
 from fastapi import FastAPI
-from src.router import user as user_router
+from src.router import router
 
-app = FastAPI(title="CapCut Mate API", version="1.0")
+app = FastAPI(
+    title="CapCut Mate API", 
+    version="1.0"
+)
 
 # 注册路由
-app.include_router(user_router.router, prefix="/users", tags=["users"])
-
-@app.get("/")
-async def root():
-    return {"message": "Welcome to CapCut Mate API"}
+app.include_router(router.router, prefix="/openapi", tags=["capcut-mate"])

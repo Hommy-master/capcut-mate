@@ -35,19 +35,13 @@ cd capcut-mate
 2. 安装依赖
 ```bash
 uv sync
-uv add passlib[bcrypt]
-uv add email-validator
 ```
 
 3. 启动服务器
 ```bash
-uvicorn main:app --reload
+uv run uvicorn main:app --reload --host 0.0.0.0 --port 60000
 ```
 
 4. 访问 API 文档
-启动服务器后，访问以下地址查看自动生成的交互式 API 文档：
-- Swagger UI: http://localhost:8000/docs
-- ReDoc: http://localhost:8000/redoc
-
 ## 许可证
 本项目采用 MIT 许可证，详情请见 LICENSE 文件。
