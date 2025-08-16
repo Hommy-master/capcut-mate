@@ -26,23 +26,24 @@ jobs:
         with:
           python-version: "3.9"
 
-      - name: 安装依赖
-        run: uv sync
+      - name: 安装依赖（含开发工具）
+        run: uv sync --all-extras  # 安装生产+开发依赖
+
+      - name: 运行测试（确保代码可用）
+        run: uv run pytest tests/
 
       - name: 查看文件和目录结构
         run: ls -lha  
 
-      - name: 执行代码混淆
+      - name: 准备生产环境文件
         run: |
-          . .venv/bin/activate
-          # 创建输出目录
           mkdir -p dist
-          # 混淆代码
-          pyarmor obfuscate --output dist/main.py main.py
-          # 复制必要的运行时文件
-          pyarmor runtime --output dist/
-          # 复制依赖
-          cp -r .venv dist/
+          # 复制源代码
+          cp -r src dist/
+          # 复制依赖配置文件
+          cp pyproject.toml dist/
+          cp main.py dist/
+          cp uv.lock dist/
 
       - name: 查看文件和目录结构
         run: ls -lha  dist -R

@@ -34,6 +34,9 @@ cd capcut-mate
 
 2. 安装依赖
 ```bash
+# 安装uv
+curl -LsSf https://astral.sh/uv/install.sh | sh
+# 安装依赖
 uv sync
 ```
 

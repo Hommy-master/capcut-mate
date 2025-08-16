@@ -1,6 +1,14 @@
 # 使用轻量级Python镜像作为基础
 FROM python:3.9-slim
 
+# 在构建阶段安装curl
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends curl && \
+    rm -rf /var/lib/apt/lists/*  # 清理缓存，减小镜像体积
+
+# 安装UV
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+
 # 设置工作目录
 WORKDIR /app
 
@@ -8,8 +16,11 @@ WORKDIR /app
 RUN addgroup --system --gid 1001 appgroup && \
     adduser --system --uid 1001 --gid 1001 appuser
 
-# 从CI构建的dist目录复制所有文件（混淆后的代码、依赖和运行时）
+# 从CI构建的dist目录复制所有文件
 COPY dist/ .
+
+# 安装依赖
+RUN uv sync
 
 # 设置适当的权限
 RUN chown -R appuser:appgroup /app
@@ -26,4 +37,5 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PATH="/app/.venv/bin:$PATH"
 
 # 启动命令 - 使用uvicorn运行FastAPI应用
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "60000", "--workers", "4"]
+# uv run uvicorn main:app --reload --host 0.0.0.0 --port 60000 --workers 4
+CMD ["uv", "run", "uvicorn", "main:app", "--reload", "--host", "0.0.0.0", "--port", "60000", "--workers", "4"]
