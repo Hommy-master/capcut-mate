@@ -12,15 +12,15 @@ RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 # 设置工作目录
 WORKDIR /app
 
-# 创建非root用户并切换
-RUN addgroup --system --gid 1001 appgroup && \
-    adduser --system --uid 1001 --gid 1001 appuser
-
 # 从CI构建的dist目录复制所有文件
 COPY dist/ .
 
 # 安装依赖
 RUN uv sync
+
+# 创建非root用户并切换
+RUN addgroup --system --gid 1001 appgroup && \
+    adduser --system --uid 1001 --gid 1001 appuser
 
 # 设置适当的权限
 RUN chown -R appuser:appgroup /app
