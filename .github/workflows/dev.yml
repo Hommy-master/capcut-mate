@@ -68,6 +68,15 @@ jobs:
             type=sha,format=short
             type=raw,value=latest,enable={{is_default_branch}}
 
+      # 调试步骤：检查生成的标签
+      - name: 显示生成的镜像标签
+        run: |
+          echo "生成的标签: ${{ steps.meta.outputs.tags }}"
+          if [[ "${{ steps.meta.outputs.tags }}" == *"/capcut-mate:"* && ! "${{ steps.meta.outputs.tags }}" == *"/*/capcut-mate:"* ]]; then
+            echo "错误：标签仍然缺少用户名"
+            exit 1
+          fi
+
       # 构建并推送Docker镜像
       - name: 构建并推送Docker镜像
         uses: docker/build-push-action@v5
