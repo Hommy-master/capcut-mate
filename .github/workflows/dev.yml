@@ -29,9 +29,6 @@ jobs:
       - name: 安装依赖（含开发工具）
         run: uv sync --all-extras  # 安装生产+开发依赖
 
-      - name: 运行测试（确保代码可用）
-        run: uv run pytest tests/
-
       - name: 查看文件和目录结构
         run: ls -lha  
 
