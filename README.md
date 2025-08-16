@@ -42,6 +42,7 @@ uv sync
 uv run uvicorn main:app --reload --host 0.0.0.0 --port 60000
 ```
 
-4. 访问 API 文档
-## 许可证
-本项目采用 MIT 许可证，详情请见 LICENSE 文件。
+4. 容器部署
+```bash
+docker pull gogoshine/capcut-mate:latest
+```
