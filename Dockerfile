@@ -16,17 +16,14 @@ RUN pip install --no-cache-dir uv
 
 WORKDIR /app
 
-# 先复制锁文件，用 --link-mode=copy 避免软链到 /root
-COPY --chown=appuser:appgroup pyproject.toml uv.lock ./
-USER appuser
-ENV UV_CACHE_DIR=/home/appuser/.cache/uv
-RUN uv venv --link-mode=copy .venv && \
-    uv sync --frozen
-
 # 再复制剩余源码
 USER root          # root 有权限 COPY
 COPY --chown=appuser:appgroup dist/ ./
-USER appuser       # 最后切回非 root
+
+USER appuser
+ENV UV_CACHE_DIR=/home/appuser/.cache/uv
+RUN uv venv --link-mode=copy .venv && \
+    uv sync --frozen --verbose
 
 EXPOSE 60000
 ENV PYTHONDONTWRITEBYTECODE=1 \
