@@ -19,12 +19,12 @@ jobs:
         uses: astral-sh/setup-uv@v2
         with:
           version: "0.8.11"
+          enable-cache: true
 
       - name: 准备python环境
         uses: actions/setup-python@v5
         with:
           python-version: "3.9"
-          cache: "uv"
 
       - name: 安装依赖
         run: uv sync
