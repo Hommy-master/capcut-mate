@@ -8,20 +8,22 @@ WORKDIR /app
 RUN addgroup --system --gid 1001 appgroup && \
     adduser --system --uid 1001 --gid 1001 appuser
 
-# 复制CI处理后的依赖和混淆代码
-COPY --chown=appuser:appgroup dist/ /app/
+# 从CI构建的dist目录复制所有文件（混淆后的代码、依赖和运行时）
+COPY dist/ .
 
-# 设置环境变量
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    PATH="/app/.venv/bin:$PATH"
-
-# 暴露端口
-EXPOSE 60000
+# 设置适当的权限
+RUN chown -R appuser:appgroup /app
 
 # 切换到非root用户
 USER appuser
 
-# 启动命令
+# 暴露应用监听的端口
+EXPOSE 60000
+
+# 设置环境变量，优化Python运行
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PATH="/app/.venv/bin:$PATH"
+
+# 启动命令 - 使用uvicorn运行FastAPI应用
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "60000", "--workers", "4"]
-    

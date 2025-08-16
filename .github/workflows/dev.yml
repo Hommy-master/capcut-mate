@@ -47,6 +47,34 @@ jobs:
       - name: 准备打包Docker镜像的环境
         uses: docker/setup-buildx-action@v3
 
-      - name: 打包Docker镜像
-        run: |
-          docker build . --file Dockerfile --tag capcut-mate:latest
+      # 登录到Docker Hub
+      - name: 登录Docker Hub
+        if: github.event_name != 'pull_request'  # PR时不登录
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+
+      # 提取标签信息
+      - name: 提取镜像标签信息
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ${{ secrets.DOCKER_HUB_USERNAME }}/capcut-mate
+          tags: |
+            type=ref,event=branch
+            type=ref,event=tag
+            type=sha,format=short
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      # 构建并推送镜像
+      - name: 构建并推送Docker镜像
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: ${{ github.event_name != 'pull_request' }}  # PR时只构建不推送
+          tags: ${{ steps.meta.outputs.tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
