@@ -44,6 +44,9 @@ jobs:
           # 复制依赖
           cp -r .venv dist/
 
+      - name: 查看文件和目录结构
+        run: ls -lha  
+
       - name: 准备打包Docker镜像的环境
         uses: docker/setup-buildx-action@v3
 
