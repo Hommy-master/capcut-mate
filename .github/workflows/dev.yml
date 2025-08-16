@@ -61,7 +61,7 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: |
-            ${{ secrets.DOCKER_HUB_USERNAME }}/capcut-mate  # 确保包含Docker Hub用户名
+            ${{ secrets.DOCKERHUB_USERNAME }}/capcut-mate  # 确保包含Docker Hub用户名
           tags: |
             type=ref,event=branch
             type=ref,event=tag
