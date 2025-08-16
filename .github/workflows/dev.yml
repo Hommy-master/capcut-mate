@@ -55,13 +55,13 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # 提取标签信息
+      # 提取标签信息 - 使用与登录相同的Secret变量名
       - name: 提取镜像标签
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/capcut-mate  # 确保包含Docker Hub用户名
+            ${{ secrets.DOCKERHUB_USERNAME }}/capcut-mate  # 统一使用DOCKERHUB_USERNAME（无下划线）
           tags: |
             type=ref,event=branch
             type=ref,event=tag
@@ -72,8 +72,9 @@ jobs:
       - name: 显示生成的镜像标签
         run: |
           echo "生成的标签: ${{ steps.meta.outputs.tags }}"
-          if [[ "${{ steps.meta.outputs.tags }}" == *"/capcut-mate:"* && ! "${{ steps.meta.outputs.tags }}" == *"/*/capcut-mate:"* ]]; then
-            echo "错误：标签仍然缺少用户名"
+          # 检查标签是否包含正确的用户名格式
+          if [[ ! "${{ steps.meta.outputs.tags }}" == *"${{ secrets.DOCKERHUB_USERNAME }}/capcut-mate:"* ]]; then
+            echo "错误：标签格式不正确，应为 ${secrets.DOCKERHUB_USERNAME}/capcut-mate:标签"
             exit 1
           fi
 
@@ -84,7 +85,7 @@ jobs:
           context: .
           file: ./Dockerfile
           push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta.outputs.tags }}  # 使用正确生成的标签
+          tags: ${{ steps.meta.outputs.tags }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
     
