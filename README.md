@@ -42,7 +42,7 @@ uv sync
 
 3. 启动服务器
 ```bash
-uv run uvicorn main:app --reload --host 0.0.0.0 --port 60000
+uv run uvicorn main:app --host 0.0.0.0 --port 60000
 ```
 
 4. 容器部署
