@@ -6,8 +6,15 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends curl && \
     rm -rf /var/lib/apt/lists/*  # 清理缓存，减小镜像体积
 
-# 安装UV
-RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+# 安装UV并添加到系统路径
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh && \
+    # 将uv的安装路径添加到PATH
+    echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> /root/.bashrc && \
+    # 立即生效路径配置
+    . /root/.bashrc
+
+# 验证uv安装
+RUN uv --version
 
 # 设置工作目录
 WORKDIR /app
@@ -34,8 +41,7 @@ EXPOSE 60000
 # 设置环境变量，优化Python运行
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PATH="/app/.venv/bin:$PATH"
+    PATH="/app/.venv/bin:/home/appuser/.cargo/bin:$PATH"
 
 # 启动命令 - 使用uvicorn运行FastAPI应用
-# uv run uvicorn main:app --reload --host 0.0.0.0 --port 60000 --workers 4
-CMD ["uv", "run", "uvicorn", "main:app", "--reload", "--host", "0.0.0.0", "--port", "60000", "--workers", "4"]
+CMD ["uv", "run", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "60000", "--workers", "4"]
