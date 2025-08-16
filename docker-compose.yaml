@@ -1,7 +1,5 @@
 services:
   capcut-mate:
-    # docker login --username=taohongmin@sina.cn crpi-70qzhn1dtv3eo91r.cn-hangzhou.personal.cr.aliyuncs.com
-    # 需要先登录，密码为：大写字母 + 小写字母 + 6位数字
     image: gogoshine/capcut-mate:latest
     #image: gogoshine/capcut-mate:sha-190a61f
     ports:
