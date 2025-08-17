@@ -29,5 +29,18 @@ logger.info("CapCut Mate API & MCP mounted")
 
 # 4. 启动
 if __name__ == "__main__":
+    """
+    参数：
+    proxy_headers=True,
+    forwarded_allow_ips="*",
+    作用：解决反向代理后，后端在 http⇄https 之间死循环
+    """
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=60000, log_config=None)
+    uvicorn.run(
+        app,
+        host="0.0.0.0",
+        port=60000,
+        proxy_headers=True,
+        forwarded_allow_ips="*",
+        log_config=None
+    )
