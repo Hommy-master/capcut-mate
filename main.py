@@ -40,7 +40,5 @@ if __name__ == "__main__":
         app,
         host="0.0.0.0",
         port=60000,
-        proxy_headers=True,
-        forwarded_allow_ips="*",
         log_config=None
     )
