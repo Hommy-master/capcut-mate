@@ -12,7 +12,7 @@ app.include_router(router.router, prefix="/openapi", tags=["capcut-mate"])
 mcp = FastApiMCP(app)
 
 # 3. 同时暴露两种端点（可选其一，也可两个都要）
-mcp.mount_http()   # 👈 推荐
+mcp.mount_http() # 👈 推荐
 mcp.mount_sse()  # 如果客户端只支持 SSE
 
 # ---------- 打印所有路由 ----------
