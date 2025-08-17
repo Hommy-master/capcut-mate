@@ -1,19 +1,20 @@
 from fastapi import APIRouter
+import pyJianYingDraft as draft
+from src import constants
 
 router = APIRouter()
 
-@router.get("/hello", operation_id="say_hello")
-def hello():
+@router.get("/create_draft")
+def create_draft(height: int = 1080, width: int = 1920):
     """
-    打招呼
+    创建剪映草稿
     """
+    # 初始化草稿文件夹
+    draft_folder = draft.DraftFolder(constants.DRAFT_DIR)
+    # 创建新草稿
+    script = draft_folder.create_draft("我的草稿", width, height)
+    # 保存草稿
+    script.save()
 
-    return {"message": "Hello, CapCut Mate!"}
-
-
-@router.get("/", operation_id="capcut_mate")
-async def root():
-    """
-    产品介绍，返回欢迎信息
-    """
-    return {"message": "Welcome to CapCut Mate API"}
+    # 添加音频轨道
+    return {"message": "草稿创建成功"}
