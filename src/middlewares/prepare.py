@@ -5,8 +5,8 @@ import os
 from datetime import datetime
 
 
-# 初始化环境变量中间件
-async def init_env_middleware(request: Request, call_next):
+# 请求前的准备工作，如：创建草稿目录
+async def prepare_middleware(request: Request, call_next):
     # 递归创建目录
     draft_dir = os.path.join(DRAFT_DIR, datetime.now().strftime("%Y-%m-%d"))
     os.makedirs(draft_dir, exist_ok=True)

@@ -10,7 +10,7 @@ app = FastAPI(title="CapCut Mate API", version="1.0")
 app.include_router(v1_router, prefix="/openapi", tags=["capcut-mate"])
 
 # 2. 添加中间件
-app.middleware("http")(middlewares.init_env_middleware)
+app.middleware("http")(middlewares.prepare_middleware)
 
 # ---------- 打印所有路由 ----------
 for r in app.routes:
