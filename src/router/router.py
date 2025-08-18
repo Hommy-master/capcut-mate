@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Request
 import pyJianYingDraft as draft
-from src.utils import logger
+from src.utils.logger import logger
+import uuid
 
 
 router = APIRouter()
