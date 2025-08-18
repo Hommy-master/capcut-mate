@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from src.router import router
+from src.router import v1_router
 from src.utils.logger import logger
 from src import middlewares
 
@@ -7,7 +7,7 @@ from src import middlewares
 app = FastAPI(title="CapCut Mate API", version="1.0")
 
 # 1. 注册路由
-app.include_router(router.router, prefix="/openapi", tags=["capcut-mate"])
+app.include_router(v1_router, prefix="/openapi", tags=["capcut-mate"])
 
 # 2. 添加中间件
 app.middleware("http")(middlewares.init_env_middleware)

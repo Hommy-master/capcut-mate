@@ -3,13 +3,12 @@ import pyJianYingDraft as draft
 from src.utils.logger import logger
 import uuid
 
-
-router = APIRouter()
+router = APIRouter(prefix="/v1", tags=["v1"])
 
 @router.post("/create_draft")
 def create_draft(request: Request, height: int = 1080, width: int = 1920):
     """
-    创建剪映草稿
+    创建剪映草稿 (v1版本)
     """
     # 从请求状态中获取草稿目录
     draft_dir = request.state.draft_dir
@@ -26,6 +25,4 @@ def create_draft(request: Request, height: int = 1080, width: int = 1920):
     # 保存草稿
     script.save()
 
-    # 添加音频轨道
     return {"message": "草稿创建成功", "draft_id": str(draft_id)}
-
