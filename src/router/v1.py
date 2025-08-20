@@ -5,7 +5,7 @@ from src.service.draft_service import create_draft_service
 router = APIRouter(prefix="/v1", tags=["v1"])
 
 @router.post("/create_draft", response_model=CreateDraftResponse)
-def create_draft(request: Request, draft_request: CreateDraftRequest = Depends()):
+def create_draft(request: Request, draft_request: CreateDraftRequest):
     """
     创建剪映草稿 (v1版本)
     """
