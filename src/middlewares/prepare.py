@@ -1,5 +1,5 @@
 # 环境初始化中间件
-from fastapi import Request, Response
+from fastapi import Request
 from src.constants.base import DRAFT_DIR
 import os
 from datetime import datetime

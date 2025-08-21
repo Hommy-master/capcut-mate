@@ -1,6 +1,6 @@
-from fastapi import APIRouter, Request, Depends
+from fastapi import APIRouter, Request
 from src.schemas.draft import CreateDraftRequest, CreateDraftResponse
-from src.service.draft_service import create_draft_service
+from src.service.create_draft_service import create_draft_service
 
 router = APIRouter(prefix="/v1", tags=["v1"])
 
