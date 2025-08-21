@@ -8,12 +8,9 @@ class ErrCode(Enum):
     RESOURCE_NOT_FOUND = (1002, "资源不存在")
     PERMISSION_DENIED = (1003, "权限不足")
     AUTHENTICATION_FAILED = (1004, "认证失败")
-    RATE_LIMIT_EXCEEDED = (1005, "请求频率超限")
     
     # ===== 业务错误码 (2000-2999) =====
     DRAFT_CREATE_FAILED = (2001, "草稿创建失败")
-    MEDIA_PROCESS_ERROR = (2002, "媒体处理异常")
-    PROJECT_SAVE_FAILED = (2003, "项目保存失败")
     
     # ===== 系统错误码 (9000-9999) =====
     INTERNAL_SERVER_ERROR = (9998, "系统内部错误")
@@ -23,7 +20,6 @@ class ErrCode(Enum):
         self.code = code
         self.message = message
 
-    @property
-    def as_dict(self) -> dict:
+    def as_dict(self, detail: str = None) -> dict:
         """转换为API响应格式"""
-        return {"code": self.code, "message": self.message}
+        return {"code": self.code, "message": self.message + f"({detail})"} if detail else {"code": self.code, "message": self.message}

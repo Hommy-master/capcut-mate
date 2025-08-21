@@ -5,6 +5,7 @@ from src import middlewares
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi import Request, status
+from src.constants.errcode import ErrCode
 
 
 # 0. 创建 FastAPI 应用
@@ -33,10 +34,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     full_message = "; ".join(error_messages)  # 用分号分隔多个错误
     return JSONResponse(
         status_code=status.HTTP_200_OK,
-        content={
-            "code": 1001,  # 参数错误
-            "message": f"参数校验失败: {full_message}"  # 包含完整错误链
-        }
+        content=ErrCode.PARAM_VALIDATION_FAILED.as_dict(full_message)
     )
 
 # 异常处理：其它异常
@@ -44,10 +42,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 async def handle_errors(request, exc):
     return JSONResponse(
         status_code=status.HTTP_200_OK,
-        content={
-            "code": 1002,  # 操作失败
-            "message": f"操作失败"  # 包含完整错误链
-        }
+        content=ErrCode.INTERNAL_SERVER_ERROR.as_dict()
     )
 
 # 4. 打印所有路由
