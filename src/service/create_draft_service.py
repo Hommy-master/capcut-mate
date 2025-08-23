@@ -3,7 +3,7 @@ from src.utils.logger import logger
 import pyJianYingDraft as draft
 
 
-def create_draft_service(draft_dir: str, width: int, height: int) -> str:
+def create_draft_service(width: int, height: int) -> str:
     """
     创建剪映草稿的业务逻辑
     
@@ -17,7 +17,7 @@ def create_draft_service(draft_dir: str, width: int, height: int) -> str:
     """
     # 生成一个UUID作为草稿ID
     draft_id = uuid.uuid4()
-    logger.info(f"draft_id: {draft_id}, draft_dir: {draft_dir}, width: {width}, height: {height}")
+    logger.info(f"draft_id: {draft_id}, width: {width}, height: {height}")
 
     try:
         # 初始化草稿文件夹
