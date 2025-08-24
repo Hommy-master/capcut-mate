@@ -1,8 +1,8 @@
 import pytest
 from fastapi.testclient import TestClient
 from main import app
-from src.service.draft_service import create_draft_service
-from src.schemas.draft import CreateDraftRequest
+from src.service.create_draft_service import create_draft_service
+from src.schemas.create_draft import CreateDraftRequest
 
 client = TestClient(app)
 

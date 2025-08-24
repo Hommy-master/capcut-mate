@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from src.router import v1_router
 from src.utils.logger import logger
+from src.utils.download import download
 from src import middlewares
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse

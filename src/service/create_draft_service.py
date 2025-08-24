@@ -15,7 +15,7 @@ def create_draft_service(width: int, height: int) -> str:
     Returns:
         生成的草稿URL
     """
-    # 生成一个UUID作为草稿ID
+    # 生成一个草稿ID
     draft_id = UniqueIDGenerator().generate()
     logger.info(f"draft_id: {draft_id}, width: {width}, height: {height}")
 
@@ -27,7 +27,7 @@ def create_draft_service(width: int, height: int) -> str:
         # 保存草稿
         script.save()
         logger.info(f"create draft success: {draft_id}")
-        return base.DRAFT_URL.format(draft_id=draft_id)
+        return base.DRAFT_URL + "?draft_id=" + draft_id
     except Exception as e:
         error_msg = str(e)
         logger.error(f"create draft failed: {error_msg}")
