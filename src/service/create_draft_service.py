@@ -2,6 +2,7 @@ from src.utils.logger import logger
 from src.utils.unique_id import UniqueIDGenerator
 from src.constants import base
 from pyJianYingDraft import DraftFolder
+import pyJianYingDraft as draft
 
 
 def create_draft_service(width: int, height: int) -> str:
@@ -24,6 +25,8 @@ def create_draft_service(width: int, height: int) -> str:
         draft_folder = DraftFolder(base.DRAFT_DIR)
         # 创建新草稿
         script = draft_folder.create_draft(draft_id, width, height)
+        # 添加音频、视频和文本轨道
+        script.add_track(draft.TrackType.audio).add_track(draft.TrackType.video).add_track(draft.TrackType.text)
         # 保存草稿
         script.save()
         logger.info(f"create draft success: {draft_id}")

@@ -21,8 +21,6 @@ def create_draft(request: Request, cdr: CreateDraftRequest):
 
     return CreateDraftResponse(message="草稿创建成功", draft_url=draft_url)
 
-
-
 @router.post("/add_videos", response_model=AddVideosResponse)
 def add_videos(request: Request, avr: AddVideosRequest):
     """

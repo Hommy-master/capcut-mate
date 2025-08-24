@@ -3,7 +3,7 @@ import requests
 import mimetypes
 
 
-def download(url, save_dir, filename, limit=30*1024*1024, timeout=300):
+def download(url, save_dir, filename, limit=30*1024*1024, timeout=300) -> str:
     """
     下载文件并根据Content-Type判断文件类型
     

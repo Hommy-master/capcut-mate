@@ -1,9 +1,10 @@
 from src.utils.logger import logger
 from src.constants.base import DRAFT_DIR
-from pyJianYingDraft import trange, DraftFolder, Track_type
+from pyJianYingDraft import trange, IntroType, trange
+import pyJianYingDraft as draft
 from urllib.parse import urlparse, parse_qs
 import os
-import pyJianYingDraft as draft
+from src.utils.download import download
 
 
 def extract_draft_id(url):
@@ -41,45 +42,39 @@ def add_video_to_draft(draft_folder, draft_id, video_path):
         
         # 2. 初始化草稿文件夹对象
         draft_folder_obj = draft.Draft_folder(draft_folder)
+
+        logger.info("2. init draft")
         
         # 3. 加载指定草稿
         script = draft_folder_obj.load_template(draft_id)
+        # 添加音频、视频和文本轨道
+        script.add_track(draft.TrackType.audio).add_track(draft.TrackType.video).add_track(draft.TrackType.text)
+
+        logger.info(f"3. load draft: {draft_id}")
         
-        # 4. 添加视频轨道（如果不存在）
-        video_tracks = script.get_tracks(Track_type.video)
-        if not video_tracks:
-            video_track = script.add_track(Track_type.video)
-        else:
-            video_track = video_tracks[0]  # 使用第一个视频轨道
+        # 4. 添加视频轨道
+        video_track = script.get_imported_track(draft.TrackType.video)
+        logger.info(f"4. add video track: {video_track}")
         
         # 5. 创建视频素材并添加到草稿
-        video_material = draft.Video_material(video_path)
-        script.add_material(video_material)
+        video_segment = draft.VideoSegment(video_path, trange("0s", "4.2s"))
+        video_segment.add_animation(IntroType.斜切)               # 添加一个入场动画"斜切"
+        logger.info(f"5. add video segment: {video_segment}")
         
-        # 6. 计算轨道当前总时长（用于确定新视频位置）
-        current_duration = script.duration if hasattr(script, 'duration') else 0
+        # 6. 添加视频片段到轨道
+        script.add_segment(video_segment)
         
-        # 7. 创建视频片段（添加到轨道末尾）
-        video_segment = draft.Video_segment(
-            material=video_material,
-            target_timerange=trange(current_duration, video_material.duration),
-            source_timerange=trange(0, video_material.duration),
-            speed=1.0,
-            clip_settings=draft.Clip_settings(
-                scale=1.0,          # 缩放比例（1.0为原始大小）
-                alpha=1.0           # 透明度（1.0为完全不透明）
-            )
-        )
-        
-        # 8. 添加视频片段到轨道
-        script.add_segment(video_segment, track=video_track)
-        
-        # 9. 保存草稿
+        logger.info(f"6. add video segment to track: {video_segment}")
+
+        # 7. 保存草稿
         script.save()
+
+        logger.info(f"7. save draft: {draft_id}")
         
         return f"视频 '{os.path.basename(video_path)}' 成功添加到草稿 '{draft_id}' 的轨道末尾"
     
     except Exception as e:
+        logger.error(f"10. error: {str(e)}")
         return f"操作失败: {str(e)}"
 
 def add_videos_service(
@@ -139,27 +134,10 @@ def add_videos_service(
     if not draft_id:
         raise ValueError("URL中未包含有效draft_id参数")
 
-    # 初始化草稿文件夹
-    draft_folder = DraftFolder(DRAFT_DIR)
-    try:
-        if draft_folder.has_draft(draft_id):
-            script = draft_folder.load_template(draft_id)
-            logger.info(f"成功加载草稿: {draft_url}")
-        else:
-            raise ValueError(f"草稿不存在: {draft_url}")
-    except Exception as e:
-        logger.error(f"初始化草稿失败: {str(e)}")
-        raise
+    # 下载视频
+    video_path = download("https://assets.jcaigc.cn/min.mp4", ".", "test")
 
     # 添加视频
-    try:
-        # 添加视频轨道
-        video_track = script.add_track(Track_type.Video)
+    add_video_to_draft(DRAFT_DIR, draft_id, video_path)
 
-
-        script.add_material(video_infos, track_id)
-    except Exception as e:
-        logger.error(f"添加视频失败: {str(e)}")
-        raise
-    
     return draft_url
