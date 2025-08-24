@@ -1,6 +1,3 @@
-from ast import Str
-from numbers import Number
-import uuid
 from src.utils.logger import logger
 from src.constants.base import DRAFT_DIR
 from pyJianYingDraft import DraftFolder, VideoMaterial, VideoSegment, Track_type
@@ -8,7 +5,7 @@ from pyJianYingDraft import trange, Clip_settings, Transition_type, KeyframeProp
 
 def add_videos_service(
     draft_url: str, 
-    video_infos: list,
+    video_infos: str,
     alpha: float = 1.0, 
     scale_x: float = 1.0, 
     scale_y: float = 1.0, 
