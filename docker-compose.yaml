@@ -1,0 +1,26 @@
+services:
+  capcut-mate:
+    image: gogoshine/capcut-mate:latest
+    #image: gogoshine/capcut-mate:sha-190a61f
+    ports:
+      - "60000:60000"  # 将主机的 60000 端口映射到容器内部的 60000 端口
+    volumes:
+      - /opt/1panel/apps/openresty/openresty/www/sites/cm.jcaigc.cn/index/output:/app/output  # 挂载配置文件目录
+      - /etc/localtime:/etc/localtime:ro  # 挂载主机时区
+      - /etc/timezone:/etc/timezone:ro    # 挂载时区名称（可选）
+    extra_hosts: # 用于容器内访问主机的服务
+      - "host.docker.internal:10.0.16.6"
+    dns:
+      - 8.8.8.8     # Google 主 DNS
+      - 8.8.4.4     # Google 备用 DNS
+      # - 1.1.1.1   # Cloudflare DNS (备选)
+    environment:
+      # 生成资源的下载地址
+      - URL=https://assets.jcaigc.cn
+    mem_limit: 1G     # 内存限制
+    memswap_limit: 2G # 总内存（物理内存 + Swap）限制
+    cpus: '1.6'       # CPU使用率限制为150%，即容器最多可以使用1.5个完整的CPU核心
+    oom_score_adj: -500  # 调整 OOM 杀手优先级
+    restart: unless-stopped  # 除非手动停止，否则总是重启容器
+    container_name: capcut-mate # 这里指容器名称，非必需，不指定时，名称为：<项目名称>-<服务名称>-<序号>
+    #entrypoint: ["/bin/sh", "-c", "sleep 10000"]

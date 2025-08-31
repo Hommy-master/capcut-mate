@@ -1,0 +1,1191 @@
+<!DOCTYPE html>
+<!-- saved from url=(0049)https://jy-api.fyshark.com/docs/API_ADD_VIDEOS.md -->
+<html lang="zh-CN"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+        
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>ADD_VIDEOS API 接口文档 - JY API 文档</title>
+        <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { 
+                font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif; 
+                line-height: 1.8; 
+                color: #2d3748;
+                background: #f7fafc;
+            }
+            .container { 
+                max-width: 1000px; 
+                margin: 0 auto; 
+                padding: 20px;
+            }
+            .header {
+                background: white;
+                padding: 30px;
+                border-radius: 15px;
+                box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+                margin-bottom: 30px;
+                border-left: 5px solid #667eea;
+            }
+            .header h1 {
+                color: #2d3748;
+                margin-bottom: 10px;
+                font-size: 2.5rem;
+            }
+            .header .meta {
+                color: #718096;
+                font-size: 0.9rem;
+                display: flex;
+                gap: 20px;
+                align-items: center;
+                flex-wrap: wrap;
+            }
+            .content {
+                background: white;
+                padding: 40px;
+                border-radius: 15px;
+                box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+                margin-bottom: 30px;
+            }
+            .content h1 { 
+                color: #2d3748; 
+                border-bottom: 3px solid #667eea; 
+                padding-bottom: 10px; 
+                margin: 30px 0 20px 0;
+                font-size: 2rem;
+            }
+            .content h2 { 
+                color: #4a5568; 
+                margin: 25px 0 15px 0; 
+                font-size: 1.5rem;
+                border-left: 4px solid #667eea;
+                padding-left: 15px;
+            }
+            .content h3 { 
+                color: #718096; 
+                margin: 20px 0 10px 0; 
+                font-size: 1.2rem;
+            }
+            .content h4 { 
+                color: #a0aec0; 
+                margin: 15px 0 10px 0; 
+                font-size: 1.1rem;
+            }
+            .content p { 
+                margin-bottom: 15px; 
+                text-align: justify;
+            }
+            .content pre {
+                background: #2d3748;
+                color: #e2e8f0;
+                padding: 20px;
+                border-radius: 10px;
+                overflow-x: auto;
+                margin: 20px 0;
+                border-left: 4px solid #667eea;
+            }
+            .content code {
+                background: #edf2f7;
+                color: #e53e3e;
+                padding: 2px 6px;
+                border-radius: 4px;
+                font-family: 'Monaco', 'Consolas', monospace;
+                font-size: 0.9em;
+            }
+            .content pre code {
+                background: transparent;
+                color: inherit;
+                padding: 0;
+            }
+            .content blockquote {
+                border-left: 4px solid #e2e8f0;
+                padding-left: 20px;
+                margin: 20px 0;
+                font-style: italic;
+                color: #718096;
+                background: #f8fafc;
+                padding: 15px 20px;
+                border-radius: 0 8px 8px 0;
+            }
+            .content table {
+                width: 100%;
+                border-collapse: collapse;
+                margin: 20px 0;
+                background: white;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                border-radius: 8px;
+                overflow: hidden;
+            }
+            .content th {
+                background: #667eea;
+                color: white;
+                padding: 15px;
+                text-align: left;
+                font-weight: 600;
+            }
+            .content td {
+                padding: 12px 15px;
+                border-bottom: 1px solid #e2e8f0;
+            }
+            .content tr:hover {
+                background: #f8fafc;
+            }
+            .content ul, .content ol {
+                padding-left: 30px;
+                margin-bottom: 15px;
+            }
+            .content li {
+                margin-bottom: 8px;
+            }
+            .content a {
+                color: #667eea;
+                text-decoration: none;
+                border-bottom: 1px dotted #667eea;
+            }
+            .content a:hover {
+                color: #5a67d8;
+                border-bottom-style: solid;
+            }
+            .navigation {
+                background: white;
+                padding: 20px 30px;
+                border-radius: 10px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                flex-wrap: wrap;
+                gap: 15px;
+            }
+            .nav-link {
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                padding: 10px 20px;
+                background: linear-gradient(45deg, #667eea, #764ba2);
+                color: white;
+                text-decoration: none;
+                border-radius: 25px;
+                transition: transform 0.3s ease, box-shadow 0.3s ease;
+                font-weight: 500;
+            }
+            .nav-link:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+            }
+            .back-to-top {
+                position: fixed;
+                bottom: 30px;
+                right: 30px;
+                background: #667eea;
+                color: white;
+                width: 50px;
+                height: 50px;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                text-decoration: none;
+                box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+                transition: all 0.3s ease;
+            }
+            .back-to-top:hover {
+                background: #5a67d8;
+                transform: translateY(-3px);
+                box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+            }
+            @media (max-width: 768px) {
+                .container { padding: 10px; }
+                .content { padding: 20px; }
+                .header { padding: 20px; }
+                .header h1 { font-size: 1.8rem; }
+                .navigation { padding: 15px 20px; }
+                .back-to-top { bottom: 15px; right: 15px; }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>ADD_VIDEOS API 接口文档</h1>
+                <div class="meta">
+                    <span>📄 API_ADD_VIDEOS.md</span>
+                    <span>🕒 8/21/2025, 3:09:17 PM</span>
+                    <span>📏 20KB</span>
+                </div>
+            </div>
+
+            <div class="content">
+                <h1>ADD_VIDEOS API 接口文档</h1>
+<h2>接口信息</h2>
+<pre><code>POST /api/drafts/add_videos
+</code></pre>
+<h2>功能描述</h2>
+<p>批量向现有草稿中添加视频素材。该接口是一个功能强大的视频添加工具，支持多个视频的批量处理，包括时间范围控制、透明度调整、遮罩效果、转场动画、音量控制、缩放变换等高级功能。特别适合创建复杂的多视频组合场景，如画中画效果、视频拼接、过渡动画等。</p>
+<h2>请求参数</h2>
+<pre><code class="language-json">{
+  "draft_url": "https://ts.fyshark.com/#/cozeToJianyin?drafId=https://video-snot-12220.oss-cn-shanghai.aliyuncs.com/2025-05-28/draft/2f52a63b-8c6a-4417-8b01-1b2a569ccb6c.json",
+  "video_infos": "[{\"video_url\":\"https://fy-oss-docker.oss-cn-shenzhen.aliyuncs.com/c7228c81-1fb1-480d-b356-5dcbf3c40fc8.mp4\",\"width\":1024,\"height\":1024,\"start\":0,\"end\":5000000,\"duration\":5000000,\"mask\":\"圆形\",\"transition\":\"淡入淡出\",\"transition_duration\":500000,\"volume\":0.8}]",
+  "alpha": 0.5,
+  "scale_x": 1.0,
+  "scale_y": 1.0,
+  "transform_x": 100,
+  "transform_y": 200
+}
+</code></pre>
+<h3>主要参数</h3>
+<table>
+<thead>
+<tr>
+<th>参数名</th>
+<th>类型</th>
+<th>必填</th>
+<th>默认值</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>draft_url</td>
+<td>string</td>
+<td>✅</td>
+<td>-</td>
+<td>目标草稿的完整URL</td>
+</tr>
+<tr>
+<td>video_infos</td>
+<td>string</td>
+<td>✅</td>
+<td>-</td>
+<td>视频信息数组的JSON字符串</td>
+</tr>
+<tr>
+<td>alpha</td>
+<td>number</td>
+<td>❌</td>
+<td>1.0</td>
+<td>全局透明度(0-1)</td>
+</tr>
+<tr>
+<td>scale_x</td>
+<td>number</td>
+<td>❌</td>
+<td>1.0</td>
+<td>X轴缩放比例</td>
+</tr>
+<tr>
+<td>scale_y</td>
+<td>number</td>
+<td>❌</td>
+<td>1.0</td>
+<td>Y轴缩放比例</td>
+</tr>
+<tr>
+<td>transform_x</td>
+<td>number</td>
+<td>❌</td>
+<td>0</td>
+<td>X轴位置偏移(像素)</td>
+</tr>
+<tr>
+<td>transform_y</td>
+<td>number</td>
+<td>❌</td>
+<td>0</td>
+<td>Y轴位置偏移(像素)</td>
+</tr>
+</tbody></table>
+<h3>video_infos 数组结构</h3>
+<p>video_infos是一个JSON字符串，解析后为数组，每个元素包含以下字段：</p>
+<table>
+<thead>
+<tr>
+<th>字段名</th>
+<th>类型</th>
+<th>必填</th>
+<th>默认值</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>video_url</td>
+<td>string</td>
+<td>✅</td>
+<td>-</td>
+<td>视频文件的URL地址</td>
+</tr>
+<tr>
+<td>width</td>
+<td>number</td>
+<td>✅</td>
+<td>-</td>
+<td>视频宽度(像素)</td>
+</tr>
+<tr>
+<td>height</td>
+<td>number</td>
+<td>✅</td>
+<td>-</td>
+<td>视频高度(像素)</td>
+</tr>
+<tr>
+<td>start</td>
+<td>number</td>
+<td>✅</td>
+<td>-</td>
+<td>视频开始播放时间(微秒)</td>
+</tr>
+<tr>
+<td>end</td>
+<td>number</td>
+<td>✅</td>
+<td>-</td>
+<td>视频结束播放时间(微秒)</td>
+</tr>
+<tr>
+<td>duration</td>
+<td>number</td>
+<td>✅</td>
+<td>-</td>
+<td>视频总时长(微秒)</td>
+</tr>
+<tr>
+<td>mask</td>
+<td>string</td>
+<td>❌</td>
+<td>-</td>
+<td>遮罩类型</td>
+</tr>
+<tr>
+<td>transition</td>
+<td>string</td>
+<td>❌</td>
+<td>-</td>
+<td>转场效果名称</td>
+</tr>
+<tr>
+<td>transition_duration</td>
+<td>number</td>
+<td>❌</td>
+<td>500000</td>
+<td>转场持续时间(微秒)</td>
+</tr>
+<tr>
+<td>volume</td>
+<td>number</td>
+<td>❌</td>
+<td>1.0</td>
+<td>音量大小(0-1)</td>
+</tr>
+</tbody></table>
+<h3>参数详解</h3>
+<h4>时间参数</h4>
+<ul>
+<li><strong>start</strong>: 视频在时间轴上的开始时间，单位为微秒（1秒 = 1,000,000微秒）</li>
+<li><strong>end</strong>: 视频在时间轴上的结束时间，单位为微秒</li>
+<li><strong>duration</strong>: 视频文件的总时长，用于素材创建，单位为微秒</li>
+<li><strong>播放时长</strong>: 实际播放时长 = end - start</li>
+</ul>
+<h4>透明度参数</h4>
+<ul>
+<li><strong>alpha</strong>: 全局透明度，应用于所有添加的视频<ul>
+<li>1.0 = 完全不透明</li>
+<li>0.5 = 半透明</li>
+<li>0.0 = 完全透明</li>
+<li>范围：0.0 - 1.0</li>
+</ul>
+</li>
+</ul>
+<h4>缩放参数</h4>
+<ul>
+<li><strong>scale_x</strong>: X轴方向的缩放比例</li>
+<li><strong>scale_y</strong>: Y轴方向的缩放比例</li>
+<li>1.0 = 原始大小，0.5 = 缩小一半，2.0 = 放大两倍</li>
+<li>建议范围：0.1 - 5.0</li>
+</ul>
+<h4>位置参数</h4>
+<ul>
+<li><strong>transform_x</strong>: X轴方向的位置偏移，单位为像素</li>
+<li><strong>transform_y</strong>: Y轴方向的位置偏移，单位为像素</li>
+<li>正值向右/下移动，负值向左/上移动</li>
+<li>以画布中心为原点</li>
+</ul>
+<h4>遮罩类型</h4>
+<p>支持的遮罩类型：</p>
+<ul>
+<li><code>圆形</code> - 圆形遮罩效果</li>
+<li><code>爱心</code> - 爱心形状遮罩</li>
+<li><code>星形</code> - 星形遮罩</li>
+<li><code>矩形</code> - 矩形遮罩</li>
+<li><code>线性</code> - 线性渐变遮罩</li>
+<li><code>镜面</code> - 镜面反射遮罩</li>
+</ul>
+<h4>转场效果</h4>
+<ul>
+<li><strong>transition</strong>: 转场效果名称（具体支持的转场类型需要参考jy_draft文档）</li>
+<li><strong>transition_duration</strong>: 转场持续时间<ul>
+<li>最小值：100,000微秒（0.1秒）</li>
+<li>最大值：2,500,000微秒（2.5秒）</li>
+<li>推荐值：500,000微秒（0.5秒）</li>
+<li>超出范围将自动设置为默认值</li>
+</ul>
+</li>
+</ul>
+<h4>音量控制</h4>
+<ul>
+<li><strong>volume</strong>: 视频音量大小<ul>
+<li>1.0 = 原始音量</li>
+<li>0.5 = 一半音量</li>
+<li>0.0 = 静音</li>
+<li>范围：0.0 - 1.0</li>
+</ul>
+</li>
+</ul>
+<h2>响应格式</h2>
+<h3>成功响应 (200)</h3>
+<pre><code class="language-json">{
+  "status": "success",
+  "message": "视频批量添加成功",
+  "data": {
+    "draft_url": "https://ts.fyshark.com/#/cozeToJianyin?drafId=...",
+    "track_id": "video-track-uuid",
+    "video_ids": ["video1-uuid", "video2-uuid", "video3-uuid"],
+    "segment_ids": ["segment1-uuid", "segment2-uuid", "segment3-uuid"],
+    "videos_count": 3,
+    "total_duration": 15000000
+  }
+}
+</code></pre>
+<h3>错误响应 (4xx/5xx)</h3>
+<pre><code class="language-json">{
+  "status": "error",
+  "message": "错误信息",
+  "error": "详细错误描述"
+}
+</code></pre>
+<h2>使用示例</h2>
+<h3>cURL 示例</h3>
+<h4>1. 基本视频添加</h4>
+<pre><code class="language-bash">curl -X POST https://jy-api.fyshark.com/api/drafts/add_videos \
+  -H "Content-Type: application/json" \
+  -d '{
+    "draft_url": "YOUR_DRAFT_URL",
+    "video_infos": "[{\"video_url\":\"https://example.com/video1.mp4\",\"width\":1920,\"height\":1080,\"start\":0,\"end\":5000000,\"duration\":10000000}]"
+  }'
+</code></pre>
+<h4>2. 多视频批量添加</h4>
+<pre><code class="language-bash">curl -X POST https://jy-api.fyshark.com/api/drafts/add_videos \
+  -H "Content-Type: application/json" \
+  -d '{
+    "draft_url": "YOUR_DRAFT_URL",
+    "video_infos": "[{\"video_url\":\"https://example.com/video1.mp4\",\"width\":1920,\"height\":1080,\"start\":0,\"end\":5000000,\"duration\":10000000},{\"video_url\":\"https://example.com/video2.mp4\",\"width\":1280,\"height\":720,\"start\":5000000,\"end\":10000000,\"duration\":8000000}]",
+    "alpha": 0.8
+  }'
+</code></pre>
+<h4>3. 带遮罩和转场的视频</h4>
+<pre><code class="language-bash">curl -X POST https://jy-api.fyshark.com/api/drafts/add_videos \
+  -H "Content-Type: application/json" \
+  -d '{
+    "draft_url": "YOUR_DRAFT_URL",
+    "video_infos": "[{\"video_url\":\"https://example.com/video1.mp4\",\"width\":1024,\"height\":1024,\"start\":0,\"end\":5000000,\"duration\":10000000,\"mask\":\"圆形\",\"transition\":\"淡入淡出\",\"transition_duration\":500000,\"volume\":0.8}]",
+    "alpha": 1.0,
+    "scale_x": 1.2,
+    "scale_y": 1.2
+  }'
+</code></pre>
+<h4>4. 画中画效果</h4>
+<pre><code class="language-bash">curl -X POST https://jy-api.fyshark.com/api/drafts/add_videos \
+  -H "Content-Type: application/json" \
+  -d '{
+    "draft_url": "YOUR_DRAFT_URL",
+    "video_infos": "[{\"video_url\":\"https://example.com/main.mp4\",\"width\":1920,\"height\":1080,\"start\":0,\"end\":10000000,\"duration\":15000000},{\"video_url\":\"https://example.com/pip.mp4\",\"width\":640,\"height\":360,\"start\":2000000,\"end\":8000000,\"duration\":10000000}]",
+    "alpha": 1.0,
+    "transform_x": 300,
+    "transform_y": -200,
+    "scale_x": 0.3,
+    "scale_y": 0.3
+  }'
+</code></pre>
+<h3>JavaScript 示例</h3>
+<pre><code class="language-javascript">const addVideos = async (draftUrl, videoConfig) =&gt; {
+  const response = await fetch('/api/drafts/add_videos', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      draft_url: draftUrl,
+      ...videoConfig
+    })
+  });
+  return response.json();
+};
+
+// 基本视频添加
+const basicVideos = {
+  video_infos: JSON.stringify([
+    {
+      video_url: "https://example.com/video1.mp4",
+      width: 1920,
+      height: 1080,
+      start: 0,
+      end: 5000000,
+      duration: 10000000
+    }
+  ])
+};
+
+// 多视频序列
+const videoSequence = {
+  video_infos: JSON.stringify([
+    {
+      video_url: "https://example.com/intro.mp4",
+      width: 1920,
+      height: 1080,
+      start: 0,
+      end: 3000000,
+      duration: 5000000,
+      transition: "淡入淡出",
+      transition_duration: 500000
+    },
+    {
+      video_url: "https://example.com/main.mp4",
+      width: 1920,
+      height: 1080,
+      start: 3000000,
+      end: 15000000,
+      duration: 20000000,
+      volume: 0.8
+    },
+    {
+      video_url: "https://example.com/outro.mp4",
+      width: 1920,
+      height: 1080,
+      start: 15000000,
+      end: 18000000,
+      duration: 5000000,
+      mask: "圆形"
+    }
+  ]),
+  alpha: 1.0
+};
+
+// 画中画效果
+const pipEffect = {
+  video_infos: JSON.stringify([
+    {
+      video_url: "https://example.com/background.mp4",
+      width: 1920,
+      height: 1080,
+      start: 0,
+      end: 10000000,
+      duration: 15000000
+    },
+    {
+      video_url: "https://example.com/overlay.mp4",
+      width: 640,
+      height: 360,
+      start: 2000000,
+      end: 8000000,
+      duration: 10000000,
+      mask: "圆形"
+    }
+  ]),
+  scale_x: 0.8,
+  scale_y: 0.8,
+  transform_x: 200,
+  transform_y: -150,
+  alpha: 0.9
+};
+
+try {
+  const result1 = await addVideos(draftUrl, basicVideos);
+  const result2 = await addVideos(draftUrl, videoSequence);
+  const result3 = await addVideos(draftUrl, pipEffect);
+  
+  console.log('视频添加成功:', {
+    basic: result1.data,
+    sequence: result2.data,
+    pip: result3.data
+  });
+} catch (error) {
+  console.error('添加失败:', error);
+}
+</code></pre>
+<h3>高级JavaScript示例</h3>
+<pre><code class="language-javascript">class VideoManager {
+  constructor(baseUrl = 'https://jy-api.fyshark.com') {
+    this.baseUrl = baseUrl;
+  }
+
+  async addVideos(draftUrl, videoConfig) {
+    const response = await fetch(`${this.baseUrl}/api/drafts/add_videos`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        draft_url: draftUrl,
+        ...videoConfig
+      })
+    });
+    return response.json();
+  }
+
+  // 创建视频序列
+  createVideoSequence(videos, transitionType = "淡入淡出", transitionDuration = 500000) {
+    let currentTime = 0;
+    const videoInfos = videos.map((video, index) =&gt; {
+      const videoInfo = {
+        video_url: video.url,
+        width: video.width,
+        height: video.height,
+        start: currentTime,
+        end: currentTime + video.playDuration,
+        duration: video.totalDuration,
+        volume: video.volume || 1.0
+      };
+
+      // 添加转场效果（除了最后一个视频）
+      if (index &lt; videos.length - 1) {
+        videoInfo.transition = transitionType;
+        videoInfo.transition_duration = transitionDuration;
+      }
+
+      // 添加遮罩效果
+      if (video.mask) {
+        videoInfo.mask = video.mask;
+      }
+
+      currentTime += video.playDuration;
+      return videoInfo;
+    });
+
+    return {
+      video_infos: JSON.stringify(videoInfos)
+    };
+  }
+
+  // 创建画中画效果
+  createPictureInPicture(mainVideo, overlayVideo, position = { x: 300, y: -200 }, scale = 0.3) {
+    const videoInfos = [
+      {
+        video_url: mainVideo.url,
+        width: mainVideo.width,
+        height: mainVideo.height,
+        start: 0,
+        end: mainVideo.duration,
+        duration: mainVideo.duration
+      },
+      {
+        video_url: overlayVideo.url,
+        width: overlayVideo.width,
+        height: overlayVideo.height,
+        start: overlayVideo.start || 0,
+        end: overlayVideo.end || overlayVideo.duration,
+        duration: overlayVideo.duration,
+        mask: overlayVideo.mask || "圆形"
+      }
+    ];
+
+    return {
+      video_infos: JSON.stringify(videoInfos),
+      transform_x: position.x,
+      transform_y: position.y,
+      scale_x: scale,
+      scale_y: scale
+    };
+  }
+
+  // 创建分屏效果
+  createSplitScreen(videos, layout = "horizontal") {
+    const videoInfos = videos.map((video, index) =&gt; {
+      let transform_x = 0, transform_y = 0, scale_x = 1, scale_y = 1;
+
+      if (layout === "horizontal") {
+        // 水平分屏
+        const sectionWidth = 1 / videos.length;
+        transform_x = (index - (videos.length - 1) / 2) * sectionWidth * video.width;
+        scale_x = sectionWidth;
+      } else if (layout === "vertical") {
+        // 垂直分屏
+        const sectionHeight = 1 / videos.length;
+        transform_y = (index - (videos.length - 1) / 2) * sectionHeight * video.height;
+        scale_y = sectionHeight;
+      }
+
+      return {
+        video_url: video.url,
+        width: video.width,
+        height: video.height,
+        start: video.start || 0,
+        end: video.end || video.duration,
+        duration: video.duration
+      };
+    });
+
+    return {
+      video_infos: JSON.stringify(videoInfos)
+    };
+  }
+
+  // 批量处理视频
+  async batchProcessVideos(draftUrl, videoConfigs) {
+    const results = [];
+    
+    for (const config of videoConfigs) {
+      try {
+        const result = await this.addVideos(draftUrl, config);
+        results.push(result);
+        
+        // 添加延迟避免请求过快
+        await new Promise(resolve =&gt; setTimeout(resolve, 100));
+      } catch (error) {
+        console.error('视频处理失败:', error);
+        results.push({ error: error.message });
+      }
+    }
+    
+    return results;
+  }
+}
+
+// 使用示例
+const videoManager = new VideoManager();
+
+// 创建视频序列
+const sequence = videoManager.createVideoSequence([
+  {
+    url: "https://example.com/intro.mp4",
+    width: 1920,
+    height: 1080,
+    playDuration: 3000000,
+    totalDuration: 5000000
+  },
+  {
+    url: "https://example.com/main.mp4",
+    width: 1920,
+    height: 1080,
+    playDuration: 10000000,
+    totalDuration: 15000000,
+    volume: 0.8
+  }
+]);
+
+// 创建画中画
+const pip = videoManager.createPictureInPicture(
+  {
+    url: "https://example.com/background.mp4",
+    width: 1920,
+    height: 1080,
+    duration: 10000000
+  },
+  {
+    url: "https://example.com/overlay.mp4",
+    width: 640,
+    height: 360,
+    duration: 6000000,
+    start: 2000000,
+    end: 8000000,
+    mask: "圆形"
+  }
+);
+
+// 批量处理
+await videoManager.batchProcessVideos(draftUrl, [sequence, pip]);
+</code></pre>
+<h3>Python 示例 (可选)</h3>
+<pre><code class="language-python">import requests
+import json
+from typing import List, Dict, Optional
+
+class VideoProcessor:
+    def __init__(self, base_url="https://jy-api.fyshark.com"):
+        self.base_url = base_url
+
+    def add_videos(self, draft_url: str, video_config: Dict) -&gt; Dict:
+        response = requests.post(
+            f'{self.base_url}/api/drafts/add_videos',
+            headers={'Content-Type': 'application/json'},
+            json={
+                "draft_url": draft_url,
+                **video_config
+            }
+        )
+        return response.json()
+
+    def create_video_sequence(self, videos: List[Dict], transition_type: str = "淡入淡出") -&gt; Dict:
+        current_time = 0
+        video_infos = []
+        
+        for i, video in enumerate(videos):
+            video_info = {
+                "video_url": video["url"],
+                "width": video["width"],
+                "height": video["height"],
+                "start": current_time,
+                "end": current_time + video["play_duration"],
+                "duration": video["total_duration"],
+                "volume": video.get("volume", 1.0)
+            }
+            
+            # 添加转场效果（除了最后一个）
+            if i &lt; len(videos) - 1:
+                video_info["transition"] = transition_type
+                video_info["transition_duration"] = 500000
+            
+            # 添加遮罩
+            if "mask" in video:
+                video_info["mask"] = video["mask"]
+            
+            video_infos.append(video_info)
+            current_time += video["play_duration"]
+        
+        return {
+            "video_infos": json.dumps(video_infos)
+        }
+
+    def create_picture_in_picture(self, main_video: Dict, overlay_video: Dict, 
+                                position: Dict = None, scale: float = 0.3) -&gt; Dict:
+        if position is None:
+            position = {"x": 300, "y": -200}
+        
+        video_infos = [
+            {
+                "video_url": main_video["url"],
+                "width": main_video["width"],
+                "height": main_video["height"],
+                "start": 0,
+                "end": main_video["duration"],
+                "duration": main_video["duration"]
+            },
+            {
+                "video_url": overlay_video["url"],
+                "width": overlay_video["width"],
+                "height": overlay_video["height"],
+                "start": overlay_video.get("start", 0),
+                "end": overlay_video.get("end", overlay_video["duration"]),
+                "duration": overlay_video["duration"],
+                "mask": overlay_video.get("mask", "圆形")
+            }
+        ]
+        
+        return {
+            "video_infos": json.dumps(video_infos),
+            "transform_x": position["x"],
+            "transform_y": position["y"],
+            "scale_x": scale,
+            "scale_y": scale
+        }
+
+# 使用示例
+processor = VideoProcessor()
+
+# 视频序列
+videos = [
+    {
+        "url": "https://example.com/intro.mp4",
+        "width": 1920,
+        "height": 1080,
+        "play_duration": 3000000,
+        "total_duration": 5000000
+    },
+    {
+        "url": "https://example.com/main.mp4",
+        "width": 1920,
+        "height": 1080,
+        "play_duration": 10000000,
+        "total_duration": 15000000,
+        "volume": 0.8
+    }
+]
+
+sequence_config = processor.create_video_sequence(videos)
+result = processor.add_videos("YOUR_DRAFT_URL", sequence_config)
+print(f"结果: {result}")
+</code></pre>
+<h2>错误码说明</h2>
+<table>
+<thead>
+<tr>
+<th>错误码</th>
+<th>错误信息</th>
+<th>说明</th>
+<th>解决方案</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>400</td>
+<td>draft_url是必填项</td>
+<td>缺少草稿URL参数</td>
+<td>提供有效的草稿URL</td>
+</tr>
+<tr>
+<td>400</td>
+<td>video_infos是必填项</td>
+<td>缺少视频信息参数</td>
+<td>提供有效的视频信息JSON</td>
+</tr>
+<tr>
+<td>400</td>
+<td>video_infos格式错误</td>
+<td>JSON格式不正确</td>
+<td>检查JSON字符串格式</td>
+</tr>
+<tr>
+<td>400</td>
+<td>视频配置验证失败</td>
+<td>视频参数不符合要求</td>
+<td>检查每个视频的参数</td>
+</tr>
+<tr>
+<td>400</td>
+<td>video_url是必填项</td>
+<td>视频URL缺失</td>
+<td>为每个视频提供URL</td>
+</tr>
+<tr>
+<td>400</td>
+<td>视频尺寸无效</td>
+<td>width或height无效</td>
+<td>提供正数的宽度和高度</td>
+</tr>
+<tr>
+<td>400</td>
+<td>时间范围无效</td>
+<td>end必须大于start</td>
+<td>确保结束时间大于开始时间</td>
+</tr>
+<tr>
+<td>400</td>
+<td>透明度值无效</td>
+<td>alpha不在0-1范围内</td>
+<td>使用0-1之间的透明度值</td>
+</tr>
+<tr>
+<td>400</td>
+<td>转场时长无效</td>
+<td>transition_duration超出范围</td>
+<td>使用100000-2500000微秒范围</td>
+</tr>
+<tr>
+<td>404</td>
+<td>草稿不存在</td>
+<td>指定的草稿URL无效</td>
+<td>检查草稿URL是否正确</td>
+</tr>
+<tr>
+<td>404</td>
+<td>视频资源不存在</td>
+<td>视频URL无法访问</td>
+<td>检查视频URL是否可访问</td>
+</tr>
+<tr>
+<td>500</td>
+<td>视频处理失败</td>
+<td>内部处理错误</td>
+<td>联系技术支持</td>
+</tr>
+</tbody></table>
+<h2>注意事项</h2>
+<ol>
+<li><strong>JSON格式</strong>: video_infos必须是合法的JSON字符串</li>
+<li><strong>时间单位</strong>: 所有时间参数使用微秒（1秒 = 1,000,000微秒）</li>
+<li><strong>视频格式</strong>: 确保视频文件格式被支持（如MP4、AVI等）</li>
+<li><strong>文件大小</strong>: 大视频文件可能影响处理速度</li>
+<li><strong>网络访问</strong>: 视频URL必须可以正常访问</li>
+<li><strong>遮罩限制</strong>: 只支持预定义的遮罩类型</li>
+<li><strong>转场限制</strong>: 转场时长有固定范围限制</li>
+<li><strong>性能考虑</strong>: 批量添加大量视频可能影响性能</li>
+</ol>
+<h2>工作流程</h2>
+<ol>
+<li>验证必填参数（draft_url, video_infos）</li>
+<li>解析video_infos JSON字符串</li>
+<li>验证每个视频的参数配置</li>
+<li>获取并解密草稿内容</li>
+<li>创建视频轨道</li>
+<li>循环处理每个视频：<ul>
+<li>创建视频素材</li>
+<li>添加视频片段</li>
+<li>应用遮罩效果（如果指定）</li>
+<li>应用缩放和变换</li>
+<li>设置透明度和音量</li>
+<li>添加转场效果（如果指定）</li>
+</ul>
+</li>
+<li>加密并保存更新后的草稿</li>
+<li>返回处理结果</li>
+</ol>
+<h2>技术特性</h2>
+<h3>批量处理</h3>
+<ul>
+<li><strong>多视频支持</strong>: 一次请求可处理多个视频</li>
+<li><strong>独立配置</strong>: 每个视频可以有独立的参数设置</li>
+<li><strong>统一变换</strong>: 全局变换参数应用于所有视频</li>
+</ul>
+<h3>高级效果</h3>
+<ul>
+<li><strong>遮罩系统</strong>: 支持6种预定义遮罩类型</li>
+<li><strong>转场动画</strong>: 支持视频间的平滑过渡</li>
+<li><strong>音量控制</strong>: 独立的音量调节</li>
+<li><strong>透明度混合</strong>: 支持视频叠加效果</li>
+</ul>
+<h3>性能优化</h3>
+<ul>
+<li><strong>参数验证</strong>: 前置验证避免无效处理</li>
+<li><strong>错误隔离</strong>: 单个视频失败不影响其他视频</li>
+<li><strong>内存管理</strong>: 优化大文件处理内存占用</li>
+</ul>
+<h2>最佳实践</h2>
+<h3>视频组织建议</h3>
+<pre><code class="language-javascript">const videoOrganization = {
+  // 时间规划
+  timing: {
+    intro: { start: 0, duration: 3000000 },        // 3秒
+    main: { start: 3000000, duration: 10000000 },  // 10秒
+    outro: { start: 13000000, duration: 2000000 }  // 2秒
+  },
+  
+  // 分辨率统一
+  resolution: {
+    hd: { width: 1920, height: 1080 },
+    mobile: { width: 1080, height: 1920 },
+    square: { width: 1080, height: 1080 }
+  },
+  
+  // 音量平衡
+  audioLevels: {
+    background: 0.3,  // 背景视频
+    main: 0.8,        // 主要内容
+    accent: 1.0       // 强调部分
+  }
+};
+</code></pre>
+<h3>性能优化</h3>
+<ol>
+<li><strong>视频预处理</strong>: 在上传前优化视频文件大小和格式</li>
+<li><strong>批量大小控制</strong>: 单次请求建议不超过10个视频</li>
+<li><strong>时间安排</strong>: 合理安排视频时间，避免过度重叠</li>
+<li><strong>网络优化</strong>: 使用CDN加速视频文件访问</li>
+</ol>
+<h3>创意应用</h3>
+<ol>
+<li><strong>视频拼接</strong>: 创建连续的视频序列</li>
+<li><strong>画中画效果</strong>: 实现多视角显示</li>
+<li><strong>分屏展示</strong>: 同时展示多个视频内容</li>
+<li><strong>过渡动画</strong>: 使用转场创建平滑切换</li>
+<li><strong>遮罩创意</strong>: 使用不同遮罩创建独特视觉效果</li>
+</ol>
+<h2>高级用法</h2>
+<h3>复杂视频组合</h3>
+<pre><code class="language-javascript">// 创建电影级转场效果
+const createCinematicTransition = (videos) =&gt; {
+  return videos.map((video, index) =&gt; ({
+    ...video,
+    transition: index &lt; videos.length - 1 ? "电影转场" : undefined,
+    transition_duration: 800000, // 0.8秒转场
+    volume: video.type === 'background' ? 0.4 : 0.9
+  }));
+};
+
+// 多层视频叠加
+const createVideoLayers = (baseVideo, overlays) =&gt; {
+  const videoInfos = [baseVideo];
+  
+  overlays.forEach((overlay, index) =&gt; {
+    videoInfos.push({
+      ...overlay,
+      mask: overlay.mask || "圆形",
+      // 每层稍微错开位置
+      transform_x: (index + 1) * 50,
+      transform_y: (index + 1) * -30
+    });
+  });
+  
+  return { video_infos: JSON.stringify(videoInfos) };
+};
+</code></pre>
+<h3>响应式视频布局</h3>
+<pre><code class="language-javascript">const createResponsiveLayout = (videos, canvasSize) =&gt; {
+  const isVertical = canvasSize.height &gt; canvasSize.width;
+  
+  return videos.map((video, index) =&gt; {
+    if (isVertical) {
+      // 竖屏布局：垂直堆叠
+      return {
+        ...video,
+        transform_y: (index - videos.length / 2) * 200,
+        scale_x: 0.8,
+        scale_y: 0.8
+      };
+    } else {
+      // 横屏布局：水平排列
+      return {
+        ...video,
+        transform_x: (index - videos.length / 2) * 300,
+        scale_x: 0.6,
+        scale_y: 0.6
+      };
+    }
+  });
+};
+</code></pre>
+<h2>相关接口</h2>
+<ul>
+<li><a href="https://jy-api.fyshark.com/docs/API_DRAFT.md">CREATE_DRAFT</a> - 创建新草稿</li>
+<li><a href="https://jy-api.fyshark.com/docs/API_ADD_AUDIOS.md">ADD_AUDIOS</a> - 批量添加音频</li>
+<li><a href="https://jy-api.fyshark.com/docs/API_ADD_IMAGES.md">ADD_IMAGES</a> - 批量添加图片</li>
+<li><a href="https://jy-api.fyshark.com/docs/API_ADD_KEYFRAMES.md">ADD_KEYFRAMES</a> - 批量添加关键帧（可用于视频动画）</li>
+<li><a href="https://jy-api.fyshark.com/docs/API_ADD_MASKS.md">ADD_MASKS</a> - 批量添加遮罩（可与视频组合使用）</li>
+<li><a href="https://jy-api.fyshark.com/docs/API_ADD_STICKER.md">ADD_STICKER</a> - 添加贴纸装饰</li>
+</ul>
+<h2>更新日志</h2>
+<ul>
+<li>v1.0.0 (2025-08-01): 初始版本发布<ul>
+<li>支持批量视频添加功能</li>
+<li>实现遮罩、转场、音量控制</li>
+<li>支持缩放和位置变换</li>
+<li>支持透明度调整</li>
+<li>完善的参数验证机制</li>
+<li>多种视频组合效果支持</li>
+</ul>
+</li>
+</ul>
+<hr>
+<p><strong>📖 文档版本</strong>: v1.0.0<br><strong>🔄 最后更新</strong>: 2025-08-01<br><strong>👤 维护者</strong>: Developer</p>
+
+            </div>
+
+            <div class="navigation">
+                <a href="https://jy-api.fyshark.com/docs" class="nav-link">
+                    📚 文档中心
+                </a>
+                <a href="https://jy-api.fyshark.com/" class="nav-link">
+                    🏠 API首页
+                </a>
+            </div>
+        </div>
+
+        <a href="https://jy-api.fyshark.com/docs/API_ADD_VIDEOS.md#" class="back-to-top" title="回到顶部">↑</a>
+
+        <script>
+            // 返回顶部功能
+            document.querySelector('.back-to-top').addEventListener('click', function(e) {
+                e.preventDefault();
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            });
+
+            // 代码块复制功能
+            document.querySelectorAll('pre').forEach(pre => {
+                pre.style.position = 'relative';
+                const button = document.createElement('button');
+                button.textContent = '复制';
+                button.style.cssText = 'position:absolute;top:10px;right:10px;background:#4a5568;color:white;border:none;padding:5px 10px;border-radius:4px;cursor:pointer;font-size:12px;';
+                pre.appendChild(button);
+                
+                button.addEventListener('click', () => {
+                    const code = pre.querySelector('code') || pre;
+                    navigator.clipboard.writeText(code.textContent).then(() => {
+                        button.textContent = '已复制!';
+                        setTimeout(() => button.textContent = '复制', 2000);
+                    });
+                });
+            });
+        </script>
+    
+    
+    </body></html>
