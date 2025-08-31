@@ -1,60 +1,52 @@
 from src.utils.logger import logger
 from src.pyJianYingDraft import trange, IntroType, trange
 import src.pyJianYingDraft as draft
+from src.utils.draft_cache import DRAFT_CACHE
 import os
 from src.utils import helper
 import config
+import hashlib
 
 
-def add_video_to_draft(draft_folder, draft_id, video_path):
+def add_video_to_draft(draft_id, video_path) -> str:
     """
     向剪映草稿中添加本地视频
     
-    :param draft_folder: 草稿根目录（如 "C:/JianyingPro Drafts"）
-    :param draft_id: 草稿ID（草稿文件夹名称）
-    :param video_path: 本地视频文件路径
-    :return: 操作状态消息
+    Args:
+        draft_id: 草稿ID（草稿文件夹名称）
+        video_path: 本地视频文件路径
+    
+    Returns:
+        draft_url: 草稿URL
+        message: 响应消息，如果成功就返回"添加视频成功"，失败就返回具体错误信息
     """
+
     try:
-        # 1. 验证视频文件存在性
-        if not os.path.exists(video_path):
-            return f"视频文件不存在: {video_path}"
-        
-        # 2. 初始化草稿文件夹对象
-        draft_folder_obj = draft.Draft_folder(draft_folder)
+        # 1. 从缓存中获取草稿
+        script = DRAFT_CACHE[draft_id]
 
-        logger.info("2. init draft")
+        # 2. 添加视频轨道
+        script.add_track(draft.TrackType.video)
+        logger.info(f"2. add video track: {draft_id}")
         
-        # 3. 加载指定草稿
-        script = draft_folder_obj.load_template(draft_id)
-        # 添加音频、视频和文本轨道
-        script.add_track(draft.TrackType.audio).add_track(draft.TrackType.video).add_track(draft.TrackType.text)
-
-        logger.info(f"3. load draft: {draft_id}")
-        
-        # 4. 添加视频轨道
-        video_track = script.get_imported_track(draft.TrackType.video)
-        logger.info(f"4. add video track: {video_track}")
-        
-        # 5. 创建视频素材并添加到草稿
+        # 3. 创建视频素材并添加到草稿
         video_segment = draft.VideoSegment(video_path, trange("0s", "4.2s"))
         video_segment.add_animation(IntroType.斜切)               # 添加一个入场动画"斜切"
-        logger.info(f"5. add video segment: {video_segment}")
+        logger.info(f"3. add video segment: {video_segment}")
         
-        # 6. 添加视频片段到轨道
+        # 4. 添加视频片段到轨道
         script.add_segment(video_segment)
         
-        logger.info(f"6. add video segment to track: {video_segment}")
+        logger.info(f"4. add video segment to track: {video_segment}")
 
-        # 7. 保存草稿
+        # 5. 保存草稿
         script.save()
 
-        logger.info(f"7. save draft: {draft_id}")
+        logger.info(f"5. save draft: {draft_id}")
         
         return f"视频 '{os.path.basename(video_path)}' 成功添加到草稿 '{draft_id}' 的轨道末尾"
-    
     except Exception as e:
-        logger.error(f"10. error: {str(e)}")
+        logger.error(f"add video to draft failed, error: {str(e)}")
         return f"操作失败: {str(e)}"
 
 def add_videos(
@@ -106,13 +98,22 @@ def add_videos(
 
     # 提取草稿ID
     draft_id = helper.get_url_param(draft_url, "draft_id")
-    if not draft_id:
+    if (not draft_id) or (draft_id not in DRAFT_CACHE):
         return "", "无效的草稿URL"
 
+    # 创建保存视频资源的目录
+    draft_dir = os.path.join(config.DRAFT_DIR, draft_id)
+    draft_video_dir = os.path.join(draft_dir, "assets", "videos")
+    os.makedirs(draft_video_dir, exist_ok=True)
+
+    # 根据视频URL生成视频的文件名
+    video_url = "https://assets.jcaigc.cn/min.mp4"
+    video_filename = hashlib.md5(video_url.encode('utf-8')).hexdigest()
+
     # 下载视频
-    video_path = helper.download("https://assets.jcaigc.cn/min.mp4", ".", "test")
+    video_path = helper.download(video_url, draft_video_dir, video_filename)
 
     # 添加视频
-    add_video_to_draft(config.DRAFT_DIR, draft_id, video_path)
+    message = add_video_to_draft(draft_id, video_path)
 
-    return draft_url, "批量添加视频成功"
+    return draft_url, message

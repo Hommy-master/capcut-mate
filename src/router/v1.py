@@ -3,6 +3,7 @@ from fastapi import APIRouter, Request
 from src.schemas.create_draft import CreateDraftRequest, CreateDraftResponse
 from src.schemas.add_videos import AddVideosRequest, AddVideosResponse
 from src.schemas.save_draft import SaveDraftRequest, SaveDraftResponse
+from src.schemas.gen_video import GenVideoRequest, GenVideoResponse
 from src import service
 
 
@@ -52,3 +53,18 @@ def add_videos(request: Request, avr: AddVideosRequest):
     )
 
     return AddVideosResponse(message=message, draft_url=draft_url)
+
+# 生成视频 - 根据草稿URL，导出视频
+@router.post("/gen_video", response_model=GenVideoResponse)
+def gen_video(request: Request, gvr: GenVideoRequest):
+    """
+    生成视频 - 根据草稿URL，导出视频
+    """
+
+    # 调用service层处理业务逻辑
+    draft_url, message = service.gen_video(
+        draft_url=gvr.draft_url,
+    )
+
+    return GenVideoResponse(message=message, video_url=draft_url)
+
