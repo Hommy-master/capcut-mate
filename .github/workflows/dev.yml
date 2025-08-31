@@ -1,0 +1,92 @@
+name: Docker Image CI
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 准备代码
+        uses: actions/checkout@v4
+        
+      # 安装uv环境
+      - name: 安装uv
+        uses: astral-sh/setup-uv@v2
+        with:
+          version: "0.8.11"
+          enable-cache: true
+
+      - name: 准备python环境
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: 安装依赖（含开发工具）
+        run: uv sync --all-extras  # 安装生产+开发依赖
+
+      - name: 查看文件和目录结构
+        run: ls -lha  
+
+      - name: 准备生产环境文件
+        run: |
+          mkdir -p dist
+          # 复制源代码
+          cp -r src dist/
+          # 复制依赖配置文件
+          cp pyproject.toml dist/
+          cp main.py dist/
+          cp uv.lock dist/
+
+      - name: 查看文件和目录结构
+        run: ls -lha  dist -R
+
+      - name: 准备打包Docker镜像的环境
+        uses: docker/setup-buildx-action@v3
+
+      # 登录到Docker Hub
+      - name: 登录Docker Hub
+        if: github.event_name != 'pull_request'  # PR时不登录
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # 提取标签信息 - 使用与登录相同的Secret变量名
+      - name: 提取镜像标签
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/capcut-mate  # 统一使用DOCKERHUB_USERNAME（无下划线）
+          tags: |
+            type=ref,event=branch
+            type=ref,event=tag
+            type=sha,format=short
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      # 调试步骤：检查生成的标签
+      - name: 显示生成的镜像标签
+        run: |
+          echo "生成的标签: ${{ steps.meta.outputs.tags }}"
+          # 检查标签是否包含正确的用户名格式
+          if [[ ! "${{ steps.meta.outputs.tags }}" == *"${{ secrets.DOCKERHUB_USERNAME }}/capcut-mate:"* ]]; then
+            echo "错误：标签格式不正确，应为 ${secrets.DOCKERHUB_USERNAME}/capcut-mate:标签"
+            exit 1
+          fi
+
+      # 构建并推送Docker镜像
+      - name: 构建并推送Docker镜像
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+    
