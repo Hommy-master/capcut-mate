@@ -2,6 +2,8 @@ from urllib.parse import urlparse, parse_qs
 import os
 import requests
 import mimetypes
+import datetime
+import uuid
 
 
 def get_url_param(url: str, key: str, default=None):
@@ -85,3 +87,12 @@ def download(url, save_dir, filename, limit=30*1024*1024, timeout=300) -> str:
         if os.path.exists(save_path):
             os.remove(save_path)
         raise e
+
+def gen_unique_id() -> str:
+    """
+    生成唯一ID
+    """
+    timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+    unique_id = uuid.uuid4().hex[:8]
+    
+    return f"{timestamp}{unique_id}"
