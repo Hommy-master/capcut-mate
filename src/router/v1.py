@@ -1,10 +1,12 @@
 from email import message
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Request, Depends
 from src.schemas.create_draft import CreateDraftRequest, CreateDraftResponse
 from src.schemas.add_videos import AddVideosRequest, AddVideosResponse
 from src.schemas.save_draft import SaveDraftRequest, SaveDraftResponse
 from src.schemas.gen_video import GenVideoRequest, GenVideoResponse
+from src.schemas.get_draft import GetDraftRequest, GetDraftResponse
 from src import service
+from typing import Annotated
 
 
 router = APIRouter(prefix="/v1", tags=["v1"])
@@ -53,6 +55,19 @@ def add_videos(request: Request, avr: AddVideosRequest):
     )
 
     return AddVideosResponse(message=message, draft_url=draft_url)
+
+@router.get("/get_draft", response_model=GetDraftResponse)
+def get_draft(params: Annotated[GetDraftRequest, Depends()]):
+    """
+    获取草稿 - 获取所有文件列表
+    """
+
+    # 调用service层处理业务逻辑
+    files, message = service.get_draft(
+        draft_id=params.draft_id,
+    )
+
+    return GetDraftResponse(message=message, files=files)
 
 # 生成视频 - 根据草稿URL，导出视频
 @router.post("/gen_video", response_model=GenVideoResponse)
