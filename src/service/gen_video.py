@@ -3,7 +3,16 @@ from src.utils import helper
 import src.pyJianYingDraft as draft
 import config
 import os
-from uiautomation import UIAutomationInitializerInThread
+import sys
+
+# 如果是Linux系统，则不导入uiautomation，并避免执行相关代码
+if sys.platform.startswith('win'):
+    from uiautomation import UIAutomationInitializerInThread
+else:
+    # 可以在这里定义一个假的UIAutomationInitializerInThread类或设置一个标记
+    # 或者直接跳过，并在使用的地方做判断
+    UIAutomationInitializerInThread = None
+    # 或者使用其他替代方案（如果有的话）或者只是pass
 
 
 def gen_video(draft_url: str) -> (str, str):
