@@ -63,11 +63,11 @@ def get_draft(params: Annotated[GetDraftRequest, Depends()]):
     """
 
     # 调用service层处理业务逻辑
-    files, message = service.get_draft(
+    files = service.get_draft(
         draft_id=params.draft_id,
     )
 
-    return GetDraftResponse(message=message, files=files)
+    return GetDraftResponse(files=files)
 
 # 生成视频 - 根据草稿URL，导出视频
 @router.post("/gen_video", response_model=GenVideoResponse)

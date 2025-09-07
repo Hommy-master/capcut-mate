@@ -8,5 +8,4 @@ class GetDraftRequest(BaseModel):
 
 class GetDraftResponse(BaseModel):
     """获取草稿响应参数"""
-    message: str = Field(default="", description="响应消息")
     files: list[str] = Field(default=[], description="文件列表")

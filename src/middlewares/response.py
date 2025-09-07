@@ -51,7 +51,7 @@ async def response_middleware(request: Request, call_next):
         
     except CustomException as e:
         # 处理自定义业务异常
-        logger.error(f"Custom exception: {e.err.code} - {e.err.message}" + (f" ({e.detail})" if e.detail else ""))
+        logger.error(f"Custom exception: {e.err.code} - {e.err.cn_message}" + (f" ({e.detail})" if e.detail else ""))
         return JSONResponse(
             status_code=200,
             content=e.err.as_dict(e.detail, language=lang)
