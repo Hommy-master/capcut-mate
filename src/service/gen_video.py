@@ -1,8 +1,6 @@
 from src.utils.logger import logger
-from src.utils.draft_cache import DRAFT_CACHE
 from src.utils import helper
 import src.pyJianYingDraft as draft
-from src.pyJianYingDraft import ExportResolution, ExportFramerate
 import config
 import os
 from uiautomation import UIAutomationInitializerInThread
