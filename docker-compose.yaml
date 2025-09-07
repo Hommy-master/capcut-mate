@@ -10,13 +10,9 @@ services:
       - /etc/timezone:/etc/timezone:ro    # 挂载时区名称（可选）
     extra_hosts: # 用于容器内访问主机的服务
       - "host.docker.internal:10.0.16.6"
-    dns:
-      - 8.8.8.8     # Google 主 DNS
-      - 8.8.4.4     # Google 备用 DNS
-      # - 1.1.1.1   # Cloudflare DNS (备选)
     environment:
-      # 生成资源的下载地址
-      - URL=https://assets.jcaigc.cn
+      # 草稿下载URL
+      - DRAFT_URL=https://cm.jcaigc.cn/openapi/v1/get_draft
     mem_limit: 1G     # 内存限制
     memswap_limit: 2G # 总内存（物理内存 + Swap）限制
     cpus: '1.6'       # CPU使用率限制为150%，即容器最多可以使用1.5个完整的CPU核心
