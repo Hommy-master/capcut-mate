@@ -13,6 +13,8 @@ services:
     environment:
       # 草稿下载URL
       - DRAFT_URL=https://cm.jcaigc.cn/openapi/v1/get_draft
+      # 用于将容器内部的文件路径转成URL，本质是将/app/替换成DOWNLOAD_URL得到下载路径
+      - DOWNLOAD_URL=https://cm.jcaigc.cn/
     mem_limit: 1G     # 内存限制
     memswap_limit: 2G # 总内存（物理内存 + Swap）限制
     cpus: '1.6'       # CPU使用率限制为150%，即容器最多可以使用1.5个完整的CPU核心

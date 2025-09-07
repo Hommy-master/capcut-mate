@@ -3,6 +3,35 @@ from src.utils import helper
 import config
 import os
 
+def gen_download_url(file_path: str) -> str:
+    """
+    生成下载URL，将文件路径中的/app/替换成DOWNLOAD_URL
+    
+    Args:
+        file_path: 文件路径
+    
+    Returns:
+        download_url: 下载URL
+    """
+    # 替换文件路径中的/app/为DOWNLOAD_URL
+    download_url = file_path.replace("/app/", config.DOWNLOAD_URL)
+    return download_url
+
+def batch_gen_download_url(file_paths: list) -> list:
+    """
+    批量生成下载URL
+    
+    Args:
+        file_paths: 文件路径列表
+    
+    Returns:
+        download_urls: 下载URL列表
+    """
+    download_urls = []
+    for file_path in file_paths:
+        download_url = gen_download_url(file_path)
+        download_urls.append(download_url)
+    return download_urls
 
 def get_draft(draft_id: str) -> (str, str):
     """
@@ -16,7 +45,7 @@ def get_draft(draft_id: str) -> (str, str):
         message: 响应消息，如果成功，就返回“获取草稿成功”，如果失败，则包含具体的错误信息
     """
 
-    # 从URL中提取草稿ID
+    # 1. 从URL中提取草稿ID
     if not draft_id:
         return [], "无效的草稿ID"
 
@@ -24,9 +53,12 @@ def get_draft(draft_id: str) -> (str, str):
     if not os.path.exists(draft_dir):
         return [], f"草稿目录{draft_dir}不存在"
     
-    # 从草稿目录中获取文件列表
+    # 2. 从草稿目录中获取文件列表
     files = helper.get_all_files(draft_dir)
 
-    logger.info(f"get draft success: {draft_id}")
-    return files, "获取草稿成功"
+    # 3. 批量生成下载URL
+    download_urls = batch_gen_download_url(files)
+
+    logger.info(f"get draft success: {draft_id}, download urls: {download_urls}")
+    return download_urls, "获取草稿成功"
 
