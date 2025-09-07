@@ -39,8 +39,7 @@ jobs:
           cp -r src dist/
           # 复制依赖配置文件
           cp pyproject.toml dist/
-          cp main.py dist/
-          cp config.py dist/
+          cp *.py dist/
           cp uv.lock dist/
 
       - name: 查看文件和目录结构
