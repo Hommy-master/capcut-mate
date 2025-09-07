@@ -12,6 +12,11 @@ async def response_middleware(request: Request, call_next):
     2. 统一处理异常，返回标准错误格式
     """
     try:
+        # 获取语言偏好（默认中文）
+        lang = request.headers.get('Accept-Language', 'zh').split(',')[0].split('-')[0]
+        if lang not in ['zh', 'en']:
+            lang = 'zh'
+        
         # 调用下一个处理函数
         response = await call_next(request)
         
@@ -30,7 +35,7 @@ async def response_middleware(request: Request, call_next):
                         # 包装成统一响应格式（平铺业务数据）
                         unified_response = {
                             'code': CustomError.SUCCESS.code,
-                            'message': CustomError.SUCCESS.message,
+                            'message': CustomError.SUCCESS.as_dict(language=lang)['message'],
                             **data
                         }
                         
@@ -49,12 +54,12 @@ async def response_middleware(request: Request, call_next):
         logger.error(f"Custom exception: {e.err.code} - {e.err.message}" + (f" ({e.detail})" if e.detail else ""))
         return JSONResponse(
             status_code=200,
-            content=e.err.as_dict(e.detail)
+            content=e.err.as_dict(e.detail, language=lang)
         )
     except Exception as e:
         # 处理其他未捕获的异常
         logger.error(f"Internal server error: {str(e)}")
         return JSONResponse(
             status_code=200,
-            content=CustomError.INTERNAL_SERVER_ERROR.as_dict(str(e))
+            content=CustomError.INTERNAL_SERVER_ERROR.as_dict(str(e), language=lang)
         )
