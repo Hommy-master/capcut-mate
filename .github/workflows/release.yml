@@ -1,10 +1,9 @@
-name: Docker Image CI Dev
+name: Docker Image CI Release
 
 on:
   push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+    tags:
+      - 'v*'  # 当推送v开头的tag时触发
 
 jobs:
   build:
