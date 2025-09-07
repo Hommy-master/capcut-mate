@@ -18,12 +18,12 @@ def create_draft(request: Request, cdr: CreateDraftRequest):
     """
     
     # 调用service层处理业务逻辑
-    draft_url, message = service.create_draft(
+    draft_url = service.create_draft(
         width=cdr.width,
         height=cdr.height
     )
 
-    return CreateDraftResponse(message=message, draft_url=draft_url)
+    return CreateDraftResponse(draft_url=draft_url)
 
 @router.post("/save_draft", response_model=SaveDraftResponse)
 def save_draft(request: Request, sdr: SaveDraftRequest):

@@ -2,11 +2,12 @@ from src.utils.logger import logger
 import config
 import src.pyJianYingDraft as draft
 from src.utils.draft_cache import update_cache
+from exceptions import CustomException, CustomError
 import datetime
 import uuid
 
 
-def create_draft(width: int, height: int) -> (str, str):
+def create_draft(width: int, height: int) -> str:
     """
     创建剪映草稿的业务逻辑
     
@@ -16,7 +17,9 @@ def create_draft(width: int, height: int) -> (str, str):
     
     Returns:
         draft_url: 草稿URL
-        message: 响应消息，如果成功，就返回“创建草稿成功”，如果失败，则包含具体的错误信息
+
+    Raises:
+        CustomException: 草稿创建失败
     """
     # 生成一个草稿ID
     timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
@@ -28,14 +31,14 @@ def create_draft(width: int, height: int) -> (str, str):
 
     # 创建剪映草稿
     try:
-        script = draft_folder.create_draft(draft_id, width, height, allow_replace=True)
+        script = draft_folder.create_draft(draft_id, width, height, allow_replace=True)        
     except Exception as e:
         logger.error(f"create draft failed: {e}")
-        return "", f"创建草稿失败"
+        raise CustomException(CustomError.DRAFT_CREATE_FAILED)
 
     # 缓存草稿
     update_cache(draft_id, script)
 
     logger.info(f"create draft success: {draft_id}")
-    return config.DRAFT_URL + "?draft_id=" + draft_id, "创建草稿成功"
+    return config.DRAFT_URL + "?draft_id=" + draft_id
 

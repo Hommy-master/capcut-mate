@@ -1,9 +1,11 @@
 from enum import Enum
 
-class ErrCode(Enum):
+# 自定义错误码
+class CustomError(Enum):
     """错误码枚举类（符合Python 3.4+标准）"""
+    
     # ===== 基础错误码 (1000-1999) =====
-    SUCCESS = (0, "操作成功")
+    SUCCESS = (0, "成功")
     PARAM_VALIDATION_FAILED = (1001, "参数校验失败")
     RESOURCE_NOT_FOUND = (1002, "资源不存在")
     PERMISSION_DENIED = (1003, "权限不足")
@@ -23,3 +25,12 @@ class ErrCode(Enum):
     def as_dict(self, detail: str = None) -> dict:
         """转换为API响应格式"""
         return {"code": self.code, "message": self.message + f"({detail})"} if detail else {"code": self.code, "message": self.message}
+
+
+# 自定义异常类
+class CustomException(Exception):
+    """自定义业务异常类"""
+    def __init__(self, err: CustomError, detail: str = None):
+        self.err = err
+        self.detail = detail
+        super().__init__(err.message)

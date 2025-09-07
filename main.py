@@ -5,7 +5,7 @@ from src import middlewares
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi import Request, status
-from src.constants.errcode import ErrCode
+from exceptions import CustomError
 
 
 # 0. 创建 FastAPI 应用
@@ -16,6 +16,8 @@ app.include_router(v1_router, prefix="/openapi", tags=["capcut-mate"])
 
 # 2. 添加中间件
 app.middleware("http")(middlewares.prepare_middleware)
+# 注册统一响应处理中间件（注意顺序，应该在其他中间件之后注册）
+app.middleware("http")(middlewares.response_middleware)
 
 # 3. 异常处理：参数校验错误
 @app.exception_handler(RequestValidationError)
@@ -34,15 +36,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     full_message = "; ".join(error_messages)  # 用分号分隔多个错误
     return JSONResponse(
         status_code=status.HTTP_200_OK,
-        content=ErrCode.PARAM_VALIDATION_FAILED.as_dict(full_message)
-    )
-
-# 异常处理：其它异常
-@app.exception_handler(Exception)
-async def handle_errors(request, exc):
-    return JSONResponse(
-        status_code=status.HTTP_200_OK,
-        content=ErrCode.INTERNAL_SERVER_ERROR.as_dict()
+        content=CustomError.PARAM_VALIDATION_FAILED.as_dict(full_message)
     )
 
 # 4. 打印所有路由
