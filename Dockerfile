@@ -10,21 +10,13 @@ RUN uv --version
 WORKDIR /app
 
 # 创建非root用户并提前配置缓存目录
-RUN addgroup --system --gid 1001 appgroup && \
-    adduser --system --uid 1001 --gid 1001 --home /home/appuser appuser && \
-    # 创建uv缓存目录并设置权限
-    mkdir -p /home/appuser/.cache/uv && \
-    chown -R appuser:appgroup /home/appuser/.cache
+RUN mkdir -p /root/.cache/uv
 
 # 从CI构建的dist目录复制所有文件
 COPY dist/ .
 
 # 安装依赖（仍使用root用户确保权限）
-RUN uv sync && \
-    chown -R appuser:appgroup /app
-
-# 切换到非root用户
-USER appuser
+RUN uv sync
 
 # 暴露应用端口
 EXPOSE 60000
@@ -33,8 +25,8 @@ EXPOSE 60000
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PATH="/app/.venv/bin:$PATH" \
-    HOME="/home/appuser" \
-    UV_CACHE_DIR="/home/appuser/.cache/uv"
+    HOME="/root" \
+    UV_CACHE_DIR="/root/.cache/uv"
 
 # 启动命令
 CMD ["uv", "run", "main.py", "--workers", "4"]
