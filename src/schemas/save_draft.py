@@ -8,5 +8,4 @@ class SaveDraftRequest(BaseModel):
 
 class SaveDraftResponse(BaseModel):
     """创建草稿响应参数"""
-    message: str = Field(default="", description="响应消息")
     draft_url: str = Field(default="", description="草稿URL")

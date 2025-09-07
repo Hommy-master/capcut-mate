@@ -1,4 +1,3 @@
-from email import message
 from fastapi import APIRouter, Request, Depends
 from src.schemas.create_draft import CreateDraftRequest, CreateDraftResponse
 from src.schemas.add_videos import AddVideosRequest, AddVideosResponse
@@ -7,6 +6,7 @@ from src.schemas.gen_video import GenVideoRequest, GenVideoResponse
 from src.schemas.get_draft import GetDraftRequest, GetDraftResponse
 from src import service
 from typing import Annotated
+import config
 
 
 router = APIRouter(prefix="/v1", tags=["v1"])
@@ -23,7 +23,7 @@ def create_draft(request: Request, cdr: CreateDraftRequest):
         height=cdr.height
     )
 
-    return CreateDraftResponse(draft_url=draft_url)
+    return CreateDraftResponse(draft_url=draft_url, tip_url=config.TIP_URL)
 
 @router.post("/save_draft", response_model=SaveDraftResponse)
 def save_draft(request: Request, sdr: SaveDraftRequest):
@@ -31,11 +31,11 @@ def save_draft(request: Request, sdr: SaveDraftRequest):
     保存剪映草稿 (v1版本)
     """
     # 调用service层处理业务逻辑
-    draft_url, message = service.save_draft(
+    draft_url = service.save_draft(
         draft_url=sdr.draft_url,
     )
 
-    return SaveDraftResponse(message=message, draft_url=draft_url)
+    return SaveDraftResponse(draft_url=draft_url)
 
 @router.post("/add_videos", response_model=AddVideosResponse)
 def add_videos(request: Request, avr: AddVideosRequest):

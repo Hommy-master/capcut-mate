@@ -10,3 +10,4 @@ class CreateDraftRequest(BaseModel):
 class CreateDraftResponse(BaseModel):
     """创建草稿响应参数"""
     draft_url: str = Field(default="", description="草稿URL")
+    tip_url: str = Field(default="", description="草稿提示URL，获取帮助文档")

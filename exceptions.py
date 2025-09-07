@@ -12,7 +12,8 @@ class CustomError(Enum):
     AUTHENTICATION_FAILED = (1004, "认证失败")
     
     # ===== 业务错误码 (2000-2999) =====
-    DRAFT_CREATE_FAILED = (2001, "草稿创建失败")
+    INVALID_DRAFT_URL = (2001, "无效的草稿URL")
+    DRAFT_CREATE_FAILED = (2002, "草稿创建失败")
     
     # ===== 系统错误码 (9000-9999) =====
     INTERNAL_SERVER_ERROR = (9998, "系统内部错误")
