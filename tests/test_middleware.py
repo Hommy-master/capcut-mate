@@ -2,7 +2,7 @@ import os
 import asyncio
 from fastapi import FastAPI, Request
 from src.middlewares import init_env_middleware
-from src.constants.setttings import DRAFT_DIR
+from src.customException.setttings import DRAFT_DIR
 
 # 创建测试应用
 app = FastAPI()

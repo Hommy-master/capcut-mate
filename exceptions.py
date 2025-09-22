@@ -5,7 +5,7 @@ class CustomError(Enum):
     """错误码枚举类（支持中英文）"""
     
     # ===== 基础错误码 (1000-1999) =====
-    SUCCESS = (0, "成功", "success")
+    SUCCESS = (0, "成功", "Success")
     PARAM_VALIDATION_FAILED = (1001, "参数校验失败", "Parameter validation failed")
     RESOURCE_NOT_FOUND = (1002, "资源不存在", "Resource not found")
     PERMISSION_DENIED = (1003, "权限不足", "Permission denied")
@@ -14,6 +14,7 @@ class CustomError(Enum):
     # ===== 业务错误码 (2000-2999) =====
     INVALID_DRAFT_URL = (2001, "无效的草稿URL", "Invalid draft URL")
     DRAFT_CREATE_FAILED = (2002, "草稿创建失败", "Draft creation failed")
+    INVALID_VIDEO_INFO = (2003, "无效的视频信息，请检查video_infos字段值是否正确", "Invalid video information, please check if the value of the video_infos field is correct.")
     
     # ===== 系统错误码 (9000-9999) =====
     INTERNAL_SERVER_ERROR = (9998, "系统内部错误", "Internal server error")
