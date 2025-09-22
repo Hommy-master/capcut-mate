@@ -8,6 +8,7 @@ from src.utils import helper
 import config
 import hashlib
 import json
+from typing import List, Dict, Any
 
 
 def add_video_to_draft(draft_id, video_path) -> str:
@@ -100,7 +101,7 @@ def add_videos(
         CustomException: 视频批量添加失败
     """
 
-    logger.debug(f"add_videos_service: {draft_url}, {video_infos}, {alpha}, {scale_x}, {scale_y}, {transform_x}, {transform_y}")
+    logger.info(f"add_videos_service: {draft_url}, {video_infos}, {alpha}, {scale_x}, {scale_y}, {transform_x}, {transform_y}")
 
     # 提取草稿ID
     draft_id = helper.get_url_param(draft_url, "draft_id")
@@ -124,12 +125,13 @@ def add_videos(
 
     return draft_url, message
 
-def parse_video_infos(video_infos_str: str) -> list:
+
+def parse_video_data(json_str: str) -> List[Dict[str, Any]]:
     """
-    解析包含视频信息的JSON字符串，验证必选字段并为可选字段提供默认值
+    解析视频数据的JSON字符串，处理可选字段的默认值
     
     Args:
-        video_infos_str: JSON字符串，json字符串的值为数组，示例如下：
+        json_str: 包含视频数据的JSON字符串，格式如下：
         [ 
             {
                 "video_url": "https://example.com/video1.mp4", // [必选] 视频文件的URL地址
@@ -146,131 +148,58 @@ def parse_video_infos(video_infos_str: str) -> list:
         ]
         
     Returns:
-        list: 解析后的video_infos列表
+        包含视频对象的数组，每个对象都处理了默认值
         
     Raises:
-        CustomException: 视频信息解析失败
+        json.JSONDecodeError: 当JSON格式错误时抛出
+        KeyError: 当缺少必选字段时抛出
     """
     try:
         # 解析JSON字符串
-        video_infos = json.loads(video_infos_str)
+        data = json.loads(json_str)
     except json.JSONDecodeError as e:
-        logger.info(f"parse video_infos_str failed, error: {e}")
-        raise CustomException(CustomError.INVALID_VIDEO_INFO)
+        raise CustomException(CustomError.INVALID_VIDEO_INFO, f"JSON parse error: {e.msg}")
     
-    # 检查video_infos是否为一个列表
-    if not isinstance(video_infos, list):
-        logger.info(f"video_infos is not list, video_infos_str: {video_infos_str}")
-        raise CustomException(CustomError.INVALID_VIDEO_INFO)
+    # 确保输入是列表
+    if not isinstance(data, list):
+        raise CustomException(CustomError.INVALID_VIDEO_INFO, "video_infos should be a list")
     
-    required_fields = ['video_url', 'width', 'height', 'start', 'end', 'duration']
+    result = []
     
-    for i, video_info in enumerate(video_infos):
-        if not isinstance(video_info, dict):
-            logger.info(f"video_info is not dict, video_info: {video_info}")
-            raise CustomException(CustomError.INVALID_VIDEO_INFO)
+    for i, item in enumerate(data):
+        if not isinstance(item, dict):
+            raise CustomException(CustomError.INVALID_VIDEO_INFO, f"the {i}th item should be a dict")
         
         # 检查必选字段
-        for field in required_fields:
-            if field not in video_info:
-                logger.info(f"invalid video_info, missing field: {field}, i: {i}, video_info: {video_info}")
-                raise CustomException(CustomError.INVALID_VIDEO_INFO)
+        required_fields = ["video_url", "width", "height", "start", "end", "duration"]
+        missing_fields = [field for field in required_fields if field not in item]
         
-        # 设置可选字段的默认值
-        video_info.setdefault('mask', None)
-        video_info.setdefault('transition', None)
-        video_info.setdefault('transition_duration', 500000)
-        video_info.setdefault('volume', 1.0)
+        if missing_fields:
+            raise CustomException(CustomError.INVALID_VIDEO_INFO, f"the {i}th item is missing required fields: {', '.join(missing_fields)}")
         
-        # 验证数值类型和范围
-        if not isinstance(video_info['width'], (int, float)) or video_info['width'] <= 0:
-            raise TypeError(f"视频信息 {i} 的width必须是正数")
-        
-        if not isinstance(video_info['height'], (int, float)) or video_info['height'] <= 0:
-            raise TypeError(f"视频信息 {i} 的height必须是正数")
-        
-        if not isinstance(video_info['volume'], (int, float)) or not 0 <= video_info['volume'] <= 1:
-            raise TypeError(f"视频信息 {i} 的volume必须在0到1之间")
-    
-    return video_infos
-
-import json
-
-def parse_video_infos(video_infos_str):
-    """
-    解析包含视频信息的JSON数组字符串，验证必选字段并为可选字段提供默认值
-    
-    Args:
-        video_infos_str (str): 包含视频信息数组的JSON字符串
-        
-    Returns:
-        list: 解析后的视频信息对象数组
-        
-    Raises:
-        ValueError: 当JSON格式无效或缺少必选字段时
-        KeyError: 当缺少必选字段时
-        TypeError: 当字段类型不正确时
-    """
-    try:
-        # 解析JSON字符串
-        video_infos = json.loads(video_infos_str)
-    except json.JSONDecodeError as e:
-        raise ValueError("无效的JSON格式") from e
-    
-    if not isinstance(video_infos, list):
-        raise TypeError("输入应该是视频信息数组")
-    
-    required_fields = ['video_url', 'width', 'height', 'start', 'end', 'duration']
-    
-    for i, video_info in enumerate(video_infos):
-        if not isinstance(video_info, dict):
-            raise TypeError(f"索引 {i} 处的元素应该是字典类型")
-        
-        # 检查必选字段
-        for field in required_fields:
-            if field not in video_info:
-                raise KeyError(f"视频信息 {i} 中缺少必选字段: {field}")
-        
-        # 设置可选字段的默认值
-        video_info.setdefault('mask', None)
-        video_info.setdefault('transition', None)
-        video_info.setdefault('transition_duration', 500000)
-        video_info.setdefault('volume', 1.0)
-        
-        # 验证数值类型和范围
-        if not isinstance(video_info['width'], (int, float)) or video_info['width'] <= 0:
-            raise TypeError(f"视频信息 {i} 的width必须是正数")
-        
-        if not isinstance(video_info['height'], (int, float)) or video_info['height'] <= 0:
-            raise TypeError(f"视频信息 {i} 的height必须是正数")
-        
-        if not isinstance(video_info['volume'], (int, float)) or not 0 <= video_info['volume'] <= 1:
-            raise TypeError(f"视频信息 {i} 的volume必须在0到1之间")
-    
-    return video_infos
-
-# 使用示例
-if __name__ == "__main__":
-    sample_json = """
-    [
-        {
-            "video_url": "https://example.com/video1.mp4",
-            "width": 1920,
-            "height": 1080,
-            "start": 0,
-            "end": 12000000,
-            "duration": 12000000,
-            "mask": "circle",
-            "transition": "fade",
-            "transition_duration": 500000,
-            "volume": 0.8
+        # 创建处理后的对象，设置默认值
+        processed_item = {
+            "video_url": item["video_url"],
+            "width": item["width"],
+            "height": item["height"],
+            "start": item["start"],
+            "end": item["end"],
+            "duration": item["duration"],
+            "mask": item.get("mask", None),  # 默认值 None
+            "transition": item.get("transition", None),  # 默认值 None
+            "transition_duration": item.get("transition_duration", 500000),  # 默认值 500000
+            "volume": item.get("volume", 1.0)  # 默认值 1.0
         }
-    ]
-    """
+        
+        # 验证数值范围
+        if processed_item["volume"] < 0 or processed_item["volume"] > 1:
+            # 音量值必须在[0, 1]范围内，给默认值
+            processed_item["volume"] = 1.0
+        
+        if processed_item["transition_duration"] < 0:
+            # 转场持续时间必须为非负数，给默认值
+            processed_item["transition_duration"] = 500000
+        
+        result.append(processed_item)
     
-    try:
-        result = parse_video_infos(sample_json)
-        print("解析成功:")
-        print(json.dumps(result, indent=2))
-    except Exception as e:
-        print(f"解析错误: {e}")
+    return result

@@ -82,8 +82,7 @@ class ResponseMiddleware(BaseHTTPMiddleware):
         # 其他非200错误处理
         error_response = {
             "code": response.status_code,
-            "message": f"HTTP Error {response.status_code}",
-            "data": {"detail": body_str}
+            "message": f"HTTP Error {response.status_code}, detail: {body_str}"
         }
         
         return JSONResponse(status_code=200, content=error_response)
@@ -111,7 +110,7 @@ class ResponseMiddleware(BaseHTTPMiddleware):
             unified_response = {
                 'code': CustomError.SUCCESS.code,
                 'message': CustomError.SUCCESS.as_dict(lang=lang)['message'],
-                'data': data
+                **data
             }
             
             return JSONResponse(

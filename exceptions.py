@@ -15,7 +15,7 @@ class CustomError(Enum):
     INVALID_DRAFT_URL = (2001, "无效的草稿URL", "Invalid draft URL")
     DRAFT_CREATE_FAILED = (2002, "草稿创建失败", "Draft creation failed")
     INVALID_VIDEO_INFO = (2003, "无效的视频信息，请检查video_infos字段值是否正确", "Invalid video information, please check if the value of the video_infos field is correct.")
-    
+
     # ===== 系统错误码 (9000-9999) =====
     INTERNAL_SERVER_ERROR = (9998, "系统内部错误", "Internal server error")
     UNKNOWN_ERROR = (9999, "未知异常", "Unknown error")
