@@ -25,9 +25,9 @@ class CustomError(Enum):
         self.cn_message = cn_message
         self.en_message = en_message
 
-    def as_dict(self, detail: str = None, language: str = 'zh') -> dict:
+    def as_dict(self, detail: str = None, lang: str = 'zh') -> dict:
         """转换为API响应格式，支持中英文"""
-        message = self.cn_message if language == 'zh' else self.en_message
+        message = self.cn_message if lang == 'zh' else self.en_message
         if detail:
             message += f"({detail})"
         return {"code": self.code, "message": message}
