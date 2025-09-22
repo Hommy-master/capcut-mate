@@ -4,9 +4,8 @@
 CapCut Mate API 是一个基于 FastAPI 构建的剪映小助手
 
 ## 功能特点
-- 用户管理：创建、查询、更新和删除用户
+- 用户管理：创建草稿、添加视频、保存草稿、云端渲染
 - 数据验证：使用 Pydantic 进行请求数据验证
-- 安全认证：密码加密存储
 - RESTful API 设计：符合标准的 API 设计规范
 - 自动生成文档：FastAPI 自动生成交互式 API 文档
 
@@ -56,5 +55,5 @@ docker pull gogoshine/capcut-mate:latest
 - 微信：
 
   ![微信](./assets/wechat.png)
-  
+
 - 邮箱：taohongmin51@gmail.com
