@@ -53,5 +53,6 @@ docker pull gogoshine/capcut-mate:latest
 ```
 
 ## 商业合作
-- 微信：![微信](./assets/wechat.png)
+- 微信：
+  ![微信](./assets/wechat.png)
 - 邮箱：taohongmin51@gmail.com
