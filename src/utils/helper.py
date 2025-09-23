@@ -6,6 +6,7 @@ import datetime
 import uuid
 from pathlib import Path
 from src.utils.logger import logger
+from exceptions import CustomException, CustomError
 
 
 def get_url_param(url: str, key: str, default=None):
@@ -16,7 +17,7 @@ def get_url_param(url: str, key: str, default=None):
     query = parse_qs(urlparse(url).query)
     return query.get(key, [default])[0]
 
-def download(url, save_dir, filename, limit=512*1024*1024, timeout=180) -> str:
+def download(url, save_dir, limit=100*1024*1024, timeout=180) -> str:
     """
     下载文件并根据Content-Type判断文件类型
     
@@ -28,15 +29,19 @@ def download(url, save_dir, filename, limit=512*1024*1024, timeout=180) -> str:
         timeout: 整体下载超时时间（秒），默认3分钟
     
     Returns:
-        如果下载成功，则返回完整的文件路径，如果失败，则返回空字符串，并输出错误日志
+        完整的文件路径
+
+    Raises:
+        CustomException: 自定义异常
     """
-    save_path = os.path.join(save_dir, filename)
-    
+    # 1. 生成文件名
+    save_path = os.path.join(save_dir, gen_unique_id())
+
     try:
         # 1. 发送GET请求下载文件
         headers = {
             'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36',
-            'Referer': 'https://www.163.com/',  # 网易的Referer
+            'Referer': 'https://www.jcaigc.cn/',
             'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
             'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8'
         }
@@ -47,12 +52,9 @@ def download(url, save_dir, filename, limit=512*1024*1024, timeout=180) -> str:
         content_type = response.headers.get('Content-Type', '').split(';')[0].strip()
         
         # 如果没有扩展名，则根据Content-Type猜测扩展名
-        if '.' not in filename:
-            extension = mimetypes.guess_extension(content_type)
-            if extension:
-                filename += extension
-                # 更新保存路径
-                save_path = os.path.join(save_dir, filename)
+        extension = mimetypes.guess_extension(content_type)
+        if extension:
+            save_path += extension
 
         # 3. 下载文件并实时检查大小
         downloaded_size = 0
@@ -69,22 +71,23 @@ def download(url, save_dir, filename, limit=512*1024*1024, timeout=180) -> str:
                         os.remove(save_path)
                         
                         logger.info(f"Download failed, url: {url}, error: File size exceeds the limit of {limit/1024/1024:.2f}MB")
-                        return ""
+                        raise CustomException(err=CustomError.FILE_SIZE_LIMIT_EXCEEDED, detail=f"{limit/1024/1024:.2f} MB")
         
         # 4. 验证下载完整性（如果服务器提供了Content-Length）
         content_length = response.headers.get('Content-Length')
         if content_length and os.path.getsize(save_path) != int(content_length):
             os.remove(save_path)
-            logger.info(f"Download failed, url: {url}, error: File download incomplete: expected {content_length} bytes, actual {os.path.getsize(save_path)} bytes")
-            return ""
+            logger.warning(f"Download failed, url: {url}, error: File download incomplete: expected {content_length} bytes, actual {os.path.getsize(save_path)} bytes")
+            raise CustomException(err=CustomError.DOWNLOAD_FILE_FAILED)
         
+        logger.info(f"Download success, url: {url}, save_path: {save_path}")
         return save_path
     except Exception as e:
         # 清理可能已部分下载的文件
         if os.path.exists(save_path):
             os.remove(save_path)
-        logger.info(f"Download failed, url: {url}, error: {str(e)}")
-        return ""
+        logger.warning(f"Download failed, url: {url}, error: {str(e)}")
+        raise CustomException(err=CustomError.DOWNLOAD_FILE_FAILED)
 
 def gen_unique_id() -> str:
     """

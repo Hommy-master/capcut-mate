@@ -1,3 +1,8 @@
+from src.schemas.gen_video import GenVideoResponse
+from src.schemas.get_draft import GetDraftResponse
+from src.schemas.add_videos import AddVideosResponse
+from src.schemas.save_draft import SaveDraftResponse
+from src.schemas.create_draft import CreateDraftResponse
 from fastapi import APIRouter, Request, Depends
 from src.schemas.create_draft import CreateDraftRequest, CreateDraftResponse
 from src.schemas.add_videos import AddVideosRequest, AddVideosResponse
@@ -11,8 +16,8 @@ import config
 
 router = APIRouter(prefix="/v1", tags=["v1"])
 
-@router.post("/create_draft", response_model=CreateDraftResponse)
-def create_draft(request: Request, cdr: CreateDraftRequest):
+@router.post(path="/create_draft", response_model=CreateDraftResponse)
+def create_draft(cdr: CreateDraftRequest) -> CreateDraftResponse:
     """
     创建剪映草稿 (v1版本)
     """
@@ -25,8 +30,8 @@ def create_draft(request: Request, cdr: CreateDraftRequest):
 
     return CreateDraftResponse(draft_url=draft_url, tip_url=config.TIP_URL)
 
-@router.post("/save_draft", response_model=SaveDraftResponse)
-def save_draft(request: Request, sdr: SaveDraftRequest):
+@router.post(path="/save_draft", response_model=SaveDraftResponse)
+def save_draft(sdr: SaveDraftRequest) -> SaveDraftResponse:
     """
     保存剪映草稿 (v1版本)
     """
@@ -37,14 +42,14 @@ def save_draft(request: Request, sdr: SaveDraftRequest):
 
     return SaveDraftResponse(draft_url=draft_url)
 
-@router.post("/add_videos", response_model=AddVideosResponse)
-def add_videos(request: Request, avr: AddVideosRequest):
+@router.post(path="/add_videos", response_model=AddVideosResponse)
+def add_videos(avr: AddVideosRequest) -> AddVideosResponse:
     """
     向剪映草稿添加视频 (v1版本)
     """
 
     # 调用service层处理业务逻辑
-    draft_url, message = service.add_videos(
+    draft_url, track_id, video_ids, segment_ids = service.add_videos(
         draft_url=avr.draft_url,
         video_infos=avr.video_infos,
         alpha=avr.alpha,
@@ -54,10 +59,10 @@ def add_videos(request: Request, avr: AddVideosRequest):
         transform_y=avr.transform_y
     )
 
-    return AddVideosResponse(message=message, draft_url=draft_url)
+    return AddVideosResponse(draft_url=draft_url, track_id=track_id, video_ids=video_ids, segment_ids=segment_ids)
 
-@router.get("/get_draft", response_model=GetDraftResponse)
-def get_draft(params: Annotated[GetDraftRequest, Depends()]):
+@router.get(path="/get_draft", response_model=GetDraftResponse)
+def get_draft(params: Annotated[GetDraftRequest, Depends()]) -> GetDraftResponse:
     """
     获取草稿 - 获取所有文件列表
     """
@@ -70,8 +75,8 @@ def get_draft(params: Annotated[GetDraftRequest, Depends()]):
     return GetDraftResponse(files=files)
 
 # 生成视频 - 根据草稿URL，导出视频
-@router.post("/gen_video", response_model=GenVideoResponse)
-def gen_video(request: Request, gvr: GenVideoRequest):
+@router.post(path="/gen_video", response_model=GenVideoResponse)
+def gen_video(request: Request, gvr: GenVideoRequest) -> GenVideoResponse:
     """
     生成视频 - 根据草稿URL，导出视频
     """

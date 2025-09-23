@@ -14,6 +14,9 @@ class ResponseMiddleware(BaseHTTPMiddleware):
     """
 
     async def dispatch(self, request: Request, call_next):
+        # 提前初始化 lang 变量，确保在异常处理中可用
+        lang = 'zh'  # 默认语言
+        
         try:
             lang = self._get_language_from_request(request)
             response = await call_next(request)
@@ -35,8 +38,28 @@ class ResponseMiddleware(BaseHTTPMiddleware):
 
     def _get_language_from_request(self, request: Request) -> str:
         """从请求头获取语言偏好"""
-        lang = request.headers.get('Accept-Language', 'zh').split(',')[0].split('-')[0]
-        return lang if lang in ['zh', 'en'] else 'zh'
+        try:
+            # 安全地解析 Accept-Language 头
+            accept_lang = request.headers.get('Accept-Language', 'zh')
+            if not accept_lang or not accept_lang.strip():
+                return 'zh'
+            
+            # 先按逗号分割，取第一部分
+            lang_parts = accept_lang.split(',')[0].strip()
+            if not lang_parts:
+                return 'zh'
+            
+            # 再按连字符分割，取语言代码部分
+            lang_code_parts = lang_parts.split('-')
+            if not lang_code_parts or not lang_code_parts[0]:
+                return 'zh'
+            
+            lang = lang_code_parts[0].lower()
+            return lang if lang in ['zh', 'en'] else 'zh'
+            
+        except Exception:
+            # 如果解析过程中出现任何异常，返回默认语言
+            return 'zh'
     
     def _handle_422_error(self, body_str: str, lang: str) -> JSONResponse:
         """特殊处理422参数验证错误"""

@@ -14,6 +14,6 @@ def update_cache(key: str, value: draft.Script_file) -> None:
     elif len(DRAFT_CACHE) >= MAX_CACHE_SIZE:
         print(f"{key}, Cache is full, deleting the least recently used item")
         # 如果缓存已满，就删除最近最少使用的项（即第一个项）
-        DRAFT_CACHE.popitem(last=False)
+        DRAFT_CACHE.popitem()
     # 添加到缓存的末尾（最近使用的）
     DRAFT_CACHE[key] = value

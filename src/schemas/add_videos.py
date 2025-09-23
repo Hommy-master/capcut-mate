@@ -1,4 +1,5 @@
 from pydantic import BaseModel, Field
+from typing import List
 
 
 class AddVideosRequest(BaseModel):
@@ -13,5 +14,7 @@ class AddVideosRequest(BaseModel):
 
 class AddVideosResponse(BaseModel):
     """添加视频响应参数"""
-    message: str = Field(default="", description="响应消息")
     draft_url: str = Field(default="", description="草稿URL")
+    track_id: str = Field(default="", description="轨道ID")
+    video_ids: List[str] = Field(default=[], description="视频ID列表")
+    segment_ids: List[str] = Field(default=[], description="片段ID列表")
