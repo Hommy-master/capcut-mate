@@ -6,6 +6,7 @@ from src.schemas.add_images import AddImagesResponse
 from src.schemas.add_sticker import AddStickerResponse
 from src.schemas.add_keyframes import AddKeyframesResponse
 from src.schemas.add_captions import AddCaptionsResponse
+from src.schemas.add_effects import AddEffectsResponse
 from src.schemas.save_draft import SaveDraftResponse
 from src.schemas.create_draft import CreateDraftResponse
 from fastapi import APIRouter, Request, Depends
@@ -16,6 +17,7 @@ from src.schemas.add_images import AddImagesRequest, AddImagesResponse
 from src.schemas.add_sticker import AddStickerRequest, AddStickerResponse
 from src.schemas.add_keyframes import AddKeyframesRequest, AddKeyframesResponse
 from src.schemas.add_captions import AddCaptionsRequest, AddCaptionsResponse
+from src.schemas.add_effects import AddEffectsRequest, AddEffectsResponse
 from src.schemas.save_draft import SaveDraftRequest, SaveDraftResponse
 from src.schemas.gen_video import GenVideoRequest, GenVideoResponse
 from src.schemas.get_draft import GetDraftRequest, GetDraftResponse
@@ -182,6 +184,25 @@ def add_captions(acr: AddCaptionsRequest) -> AddCaptionsResponse:
         draft_url=draft_url,
         track_id=track_id,
         text_ids=text_ids,
+        segment_ids=segment_ids
+    )
+
+@router.post(path="/add_effects", response_model=AddEffectsResponse)
+def add_effects(aer: AddEffectsRequest) -> AddEffectsResponse:
+    """
+    向剪映草稿添加特效 (v1版本)
+    """
+
+    # 调用service层处理业务逻辑
+    draft_url, track_id, effect_ids, segment_ids = service.add_effects(
+        draft_url=aer.draft_url,
+        effect_infos=aer.effect_infos
+    )
+
+    return AddEffectsResponse(
+        draft_url=draft_url,
+        track_id=track_id,
+        effect_ids=effect_ids,
         segment_ids=segment_ids
     )
 

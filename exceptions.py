@@ -31,6 +31,9 @@ class CustomError(Enum):
     INVALID_KEYFRAME_PROPERTY = (2017, "无效的关键帧属性类型", "Invalid keyframe property type.")
     INVALID_CAPTION_INFO = (2018, "无效的字幕信息，请检查captions字段值是否正确", "Invalid caption information, please check if the value of the captions field is correct.")
     CAPTION_ADD_FAILED = (2019, "字幕添加失败", "Caption addition failed")
+    INVALID_EFFECT_INFO = (2020, "无效的特效信息，请检查effect_infos字段值是否正确", "Invalid effect information, please check if the value of the effect_infos field is correct.")
+    EFFECT_ADD_FAILED = (2021, "特效添加失败", "Effect addition failed")
+    EFFECT_NOT_FOUND = (2022, "特效未找到，请检查特效名称是否正确", "Effect not found, please check if the effect name is correct.")
 
     # ===== 系统错误码 (9000-9999) =====
     INTERNAL_SERVER_ERROR = (9998, "系统内部错误", "Internal server error")
