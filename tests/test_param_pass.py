@@ -35,7 +35,7 @@ def test_create_draft_with_custom_params():
                 continue
 
             if response.json()["message"] != "草稿创建成功":
-                print(f"Error: Unexpected message: {response.json()["message"]}")
+                print(f"Error: Unexpected message: {response.json()['message']}")
                 continue
 
             print("Test passed!")

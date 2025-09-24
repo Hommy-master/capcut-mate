@@ -1,6 +1,7 @@
 from exceptions import CustomException, CustomError
 from src.utils.logger import logger
 from src.utils import helper
+from typing import List
 import config
 import os
 
@@ -18,7 +19,7 @@ def gen_download_url(file_path: str) -> str:
     download_url = file_path.replace("/app/", config.DOWNLOAD_URL)
     return download_url
 
-def batch_gen_download_url(file_paths: list) -> list:
+def batch_gen_download_url(file_paths: List[str]) -> List[str]:
     """
     批量生成下载URL
     
@@ -34,7 +35,7 @@ def batch_gen_download_url(file_paths: list) -> list:
         download_urls.append(download_url)
     return download_urls
 
-def get_draft(draft_id: str) -> list[str]:
+def get_draft(draft_id: str) -> List[str]:
     """
     获取剪映草稿的业务逻辑
     

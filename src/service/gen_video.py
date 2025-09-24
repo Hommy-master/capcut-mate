@@ -1,5 +1,6 @@
 from src.utils.logger import logger
 from src.utils import helper
+from typing import Tuple
 import src.pyJianYingDraft as draft
 import config
 import os
@@ -7,15 +8,17 @@ import sys
 
 # 如果是Linux系统，则不导入uiautomation，并避免执行相关代码
 if sys.platform.startswith('win'):
-    from uiautomation import UIAutomationInitializerInThread
+    from uiautomation import UIAutomationInitializerInThread  # type: ignore
 else:
-    # 可以在这里定义一个假的UIAutomationInitializerInThread类或设置一个标记
-    # 或者直接跳过，并在使用的地方做判断
-    UIAutomationInitializerInThread = None
-    # 或者使用其他替代方案（如果有的话）或者只是pass
+    # 在非Windows系统上创建一个占位符
+    class UIAutomationInitializerInThread:  # type: ignore
+        def __enter__(self):
+            pass
+        def __exit__(self, *args):
+            pass
 
 
-def gen_video(draft_url: str) -> (str, str):
+def gen_video(draft_url: str) -> Tuple[str, str]:
     """
     生成视频的业务逻辑
     
@@ -36,6 +39,9 @@ def gen_video(draft_url: str) -> (str, str):
     outfile = os.path.join(config.DRAFT_DIR, f"{helper.gen_unique_id()}.mp4")
 
     try:
+        if not sys.platform.startswith('win'):
+            return "", "视频生成功能仅在Windows系统上可用"
+            
         with UIAutomationInitializerInThread():
             logger.info("begin to export draft: %s -> %s", draft_id, outfile)
 

@@ -3,10 +3,10 @@ import src.pyJianYingDraft as draft
 from typing import Dict
 
 # Modify global variable, use OrderedDict to implement LRU cache, limit the maximum number to 10000
-DRAFT_CACHE: Dict[str, 'draft.Script_file'] = OrderedDict()  # Use Dict for type hinting
+DRAFT_CACHE: Dict[str, 'draft.ScriptFile'] = OrderedDict()  # Use Dict for type hinting
 MAX_CACHE_SIZE = 10000
 
-def update_cache(key: str, value: draft.Script_file) -> None:
+def update_cache(key: str, value: draft.ScriptFile) -> None:
     """Update LRU cache"""
     if key in DRAFT_CACHE:
         # 如果当前key已经存在，就删除旧的
