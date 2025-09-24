@@ -29,6 +29,8 @@ class CustomError(Enum):
     SEGMENT_NOT_FOUND = (2015, "片段未找到，请检查segment_id是否正确", "Segment not found, please check if the segment_id is correct.")
     INVALID_SEGMENT_TYPE = (2016, "无效的片段类型，该片段不支持关键帧", "Invalid segment type, this segment does not support keyframes.")
     INVALID_KEYFRAME_PROPERTY = (2017, "无效的关键帧属性类型", "Invalid keyframe property type.")
+    INVALID_CAPTION_INFO = (2018, "无效的字幕信息，请检查captions字段值是否正确", "Invalid caption information, please check if the value of the captions field is correct.")
+    CAPTION_ADD_FAILED = (2019, "字幕添加失败", "Caption addition failed")
 
     # ===== 系统错误码 (9000-9999) =====
     INTERNAL_SERVER_ERROR = (9998, "系统内部错误", "Internal server error")

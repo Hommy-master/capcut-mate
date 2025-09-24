@@ -5,6 +5,7 @@ from src.schemas.add_audios import AddAudiosResponse
 from src.schemas.add_images import AddImagesResponse
 from src.schemas.add_sticker import AddStickerResponse
 from src.schemas.add_keyframes import AddKeyframesResponse
+from src.schemas.add_captions import AddCaptionsResponse
 from src.schemas.save_draft import SaveDraftResponse
 from src.schemas.create_draft import CreateDraftResponse
 from fastapi import APIRouter, Request, Depends
@@ -14,6 +15,7 @@ from src.schemas.add_audios import AddAudiosRequest, AddAudiosResponse
 from src.schemas.add_images import AddImagesRequest, AddImagesResponse
 from src.schemas.add_sticker import AddStickerRequest, AddStickerResponse
 from src.schemas.add_keyframes import AddKeyframesRequest, AddKeyframesResponse
+from src.schemas.add_captions import AddCaptionsRequest, AddCaptionsResponse
 from src.schemas.save_draft import SaveDraftRequest, SaveDraftResponse
 from src.schemas.gen_video import GenVideoRequest, GenVideoResponse
 from src.schemas.get_draft import GetDraftRequest, GetDraftResponse
@@ -149,6 +151,38 @@ def add_keyframes(akr: AddKeyframesRequest) -> AddKeyframesResponse:
         draft_url=draft_url,
         keyframes_added=keyframes_added,
         affected_segments=affected_segments
+    )
+
+@router.post(path="/add_captions", response_model=AddCaptionsResponse)
+def add_captions(acr: AddCaptionsRequest) -> AddCaptionsResponse:
+    """
+    向剪映草稿批量添加字幕 (v1版本)
+    """
+
+    # 调用service层处理业务逻辑
+    draft_url, track_id, text_ids, segment_ids = service.add_captions(
+        draft_url=acr.draft_url,
+        captions=acr.captions,
+        text_color=acr.text_color,
+        border_color=acr.border_color,
+        alignment=acr.alignment,
+        alpha=acr.alpha,
+        font=acr.font,
+        font_size=acr.font_size,
+        letter_spacing=acr.letter_spacing,
+        line_spacing=acr.line_spacing,
+        scale_x=acr.scale_x,
+        scale_y=acr.scale_y,
+        transform_x=acr.transform_x,
+        transform_y=acr.transform_y,
+        style_text=acr.style_text
+    )
+
+    return AddCaptionsResponse(
+        draft_url=draft_url,
+        track_id=track_id,
+        text_ids=text_ids,
+        segment_ids=segment_ids
     )
 
 @router.get(path="/get_draft", response_model=GetDraftResponse)
