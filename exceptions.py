@@ -44,6 +44,7 @@ class CustomError(Enum):
     VIDEO_GENERATION_SUBMIT_FAILED = (2030, "视频生成任务提交失败", "Video generation task submit failed")
     VIDEO_TASK_NOT_FOUND = (2031, "视频生成任务未找到", "Video generation task not found")
     VIDEO_STATUS_QUERY_FAILED = (2032, "视频任务状态查询失败", "Video task status query failed")
+    IMAGE_ANIMATION_GET_FAILED = (2033, "获取图片动画失败", "Get image animation failed")
 
     # ===== 系统错误码 (9000-9999) =====
     INTERNAL_SERVER_ERROR = (9998, "系统内部错误", "Internal server error")

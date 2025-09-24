@@ -10,6 +10,7 @@ from src.schemas.add_effects import AddEffectsResponse
 from src.schemas.add_masks import AddMasksResponse
 from src.schemas.add_text_style import AddTextStyleResponse
 from src.schemas.get_text_animations import GetTextAnimationsResponse
+from src.schemas.get_image_animations import GetImageAnimationsResponse
 from src.schemas.easy_create_material import EasyCreateMaterialResponse
 from src.schemas.save_draft import SaveDraftResponse
 from src.schemas.create_draft import CreateDraftResponse
@@ -25,6 +26,7 @@ from src.schemas.add_effects import AddEffectsRequest, AddEffectsResponse
 from src.schemas.add_masks import AddMasksRequest, AddMasksResponse
 from src.schemas.add_text_style import AddTextStyleRequest, AddTextStyleResponse
 from src.schemas.get_text_animations import GetTextAnimationsRequest, GetTextAnimationsResponse
+from src.schemas.get_image_animations import GetImageAnimationsRequest, GetImageAnimationsResponse
 from src.schemas.easy_create_material import EasyCreateMaterialRequest, EasyCreateMaterialResponse
 from src.schemas.save_draft import SaveDraftRequest, SaveDraftResponse
 from src.schemas.gen_video import GenVideoRequest, GenVideoResponse
@@ -297,6 +299,22 @@ def get_text_animations(gtar: GetTextAnimationsRequest) -> GetTextAnimationsResp
     )
 
     return GetTextAnimationsResponse(
+        effects=effects
+    )
+
+@router.post(path="/get_image_animations", response_model=GetImageAnimationsResponse)
+def get_image_animations(giar: GetImageAnimationsRequest) -> GetImageAnimationsResponse:
+    """
+    获取图片出入场动画 (v1版本)
+    """
+
+    # 调用service层处理业务逻辑
+    effects = service.get_image_animations(
+        mode=giar.mode,
+        type=giar.type
+    )
+
+    return GetImageAnimationsResponse(
         effects=effects
     )
 
