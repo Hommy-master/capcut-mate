@@ -2,12 +2,14 @@ from src.schemas.gen_video import GenVideoResponse
 from src.schemas.get_draft import GetDraftResponse
 from src.schemas.add_videos import AddVideosResponse
 from src.schemas.add_audios import AddAudiosResponse
+from src.schemas.add_images import AddImagesResponse
 from src.schemas.save_draft import SaveDraftResponse
 from src.schemas.create_draft import CreateDraftResponse
 from fastapi import APIRouter, Request, Depends
 from src.schemas.create_draft import CreateDraftRequest, CreateDraftResponse
 from src.schemas.add_videos import AddVideosRequest, AddVideosResponse
 from src.schemas.add_audios import AddAudiosRequest, AddAudiosResponse
+from src.schemas.add_images import AddImagesRequest, AddImagesResponse
 from src.schemas.save_draft import SaveDraftRequest, SaveDraftResponse
 from src.schemas.gen_video import GenVideoRequest, GenVideoResponse
 from src.schemas.get_draft import GetDraftRequest, GetDraftResponse
@@ -76,6 +78,31 @@ def add_audios(aar: AddAudiosRequest) -> AddAudiosResponse:
     )
 
     return AddAudiosResponse(draft_url=draft_url, track_id=track_id, audio_ids=audio_ids)
+
+@router.post(path="/add_images", response_model=AddImagesResponse)
+def add_images(air: AddImagesRequest) -> AddImagesResponse:
+    """
+    向剪映草稿批量添加图片 (v1版本)
+    """
+
+    # 调用service层处理业务逻辑
+    draft_url, track_id, image_ids, segment_ids, segment_infos = service.add_images(
+        draft_url=air.draft_url,
+        image_infos=air.image_infos,
+        alpha=air.alpha,
+        scale_x=air.scale_x,
+        scale_y=air.scale_y,
+        transform_x=air.transform_x,
+        transform_y=air.transform_y
+    )
+
+    return AddImagesResponse(
+        draft_url=draft_url, 
+        track_id=track_id, 
+        image_ids=image_ids, 
+        segment_ids=segment_ids, 
+        segment_infos=segment_infos
+    )
 
 @router.get(path="/get_draft", response_model=GetDraftResponse)
 def get_draft(params: Annotated[GetDraftRequest, Depends()]) -> GetDraftResponse:

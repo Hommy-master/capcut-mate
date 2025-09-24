@@ -20,6 +20,8 @@ class CustomError(Enum):
     VIDEO_ADD_FAILED = (2006, "视频添加失败", "Video addition failed")
     INVALID_AUDIO_INFO = (2007, "无效的音频信息，请检查audio_infos字段值是否正确", "Invalid audio information, please check if the value of the audio_infos field is correct.")
     AUDIO_ADD_FAILED = (2008, "音频添加失败", "Audio addition failed")
+    INVALID_IMAGE_INFO = (2009, "无效的图片信息，请检查image_infos字段值是否正确", "Invalid image information, please check if the value of the image_infos field is correct.")
+    IMAGE_ADD_FAILED = (2010, "图片添加失败", "Image addition failed")
 
     # ===== 系统错误码 (9000-9999) =====
     INTERNAL_SERVER_ERROR = (9998, "系统内部错误", "Internal server error")
