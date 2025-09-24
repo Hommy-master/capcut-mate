@@ -78,12 +78,23 @@ def _analyze_audio_with_ffprobe(file_path: str) -> int:
         result = subprocess.run(
             cmd, 
             capture_output=True, 
-            text=True, 
+            text=True,
+            encoding='utf-8',  # 明确指定UTF-8编码
+            errors='replace',  # 遇到无法解码的字符时用替换字符代替
             timeout=30,
             check=True
         )
         
         logger.info("FFprobe analysis completed successfully")
+        
+        # 调试信息：检查result的内容
+        logger.info(f"FFprobe result.stdout type: {type(result.stdout)}, value: {repr(result.stdout[:100] if result.stdout else 'None')}")
+        logger.info(f"FFprobe result.stderr type: {type(result.stderr)}, value: {repr(result.stderr[:100] if result.stderr else 'None')}")
+        
+        # 检查stdout是否为None或为空（编码问题可能导致这个情况）
+        if result.stdout is None or not result.stdout.strip():
+            logger.warning("FFprobe stdout is None or empty, likely due to encoding issues, trying binary mode")
+            return _analyze_audio_with_ffprobe_binary(file_path)
         
         # 解析ffprobe输出
         ffprobe_data = _parse_ffprobe_output(result.stdout)
@@ -94,6 +105,10 @@ def _analyze_audio_with_ffprobe(file_path: str) -> int:
         # 验证并转换时长
         return _validate_and_convert_duration(duration_seconds)
         
+    except UnicodeDecodeError as e:
+        logger.warning(f"FFprobe output encoding issue: {e}, trying binary mode")
+        # 如果编码问题仍然存在，尝试使用二进制模式
+        return _analyze_audio_with_ffprobe_binary(file_path)
     except subprocess.TimeoutExpired:
         logger.error("FFprobe command timed out")
         raise CustomException(CustomError.AUDIO_DURATION_GET_FAILED, "Audio analysis timed out")
@@ -197,3 +212,69 @@ def _cleanup_temp_file(temp_file_path: Optional[str]) -> None:
             logger.info(f"Temporary file removed: {temp_file_path}")
         except Exception as cleanup_error:
             logger.warning(f"Failed to cleanup temporary file {temp_file_path}: {cleanup_error}")
+
+
+def _analyze_audio_with_ffprobe_binary(file_path: str) -> int:
+    """
+    使用二进制模式执行ffprobe，解决编码问题
+    
+    Args:
+        file_path: 音频文件路径
+    
+    Returns:
+        duration: 音频时长，单位：微秒
+    
+    Raises:
+        CustomException: 音频分析失败
+    """
+    logger.info(f"Trying binary mode for ffprobe analysis: {file_path}")
+    
+    try:
+        cmd = [
+            'ffprobe', 
+            '-i', file_path,
+            '-v', 'quiet',
+            '-print_format', 'json',
+            '-show_format',
+            '-show_streams'
+        ]
+        
+        # 使用二进制模式执行命令
+        result = subprocess.run(
+            cmd, 
+            capture_output=True, 
+            text=False,  # 二进制模式
+            timeout=30,
+            check=True
+        )
+        
+        # 手动解码，先尝试UTF-8，再尝试GBK
+        stdout_text = None
+        for encoding in ['utf-8', 'gbk', 'latin1']:
+            try:
+                stdout_text = result.stdout.decode(encoding)
+                logger.info(f"Successfully decoded ffprobe output using {encoding} encoding")
+                break
+            except UnicodeDecodeError:
+                continue
+        
+        if stdout_text is None:
+            # 如果所有编码都失败，使用错误替换
+            stdout_text = result.stdout.decode('utf-8', errors='replace')
+            logger.warning("Used error replacement for ffprobe output decoding")
+        
+        # 解析ffprobe输出
+        ffprobe_data = _parse_ffprobe_output(stdout_text)
+        
+        # 提取时长信息
+        duration_seconds = _extract_duration_from_ffprobe_data(ffprobe_data)
+        
+        # 验证并转换时长
+        return _validate_and_convert_duration(duration_seconds)
+        
+    except subprocess.CalledProcessError as e:
+        logger.error(f"FFprobe binary mode failed with return code {e.returncode}")
+        raise CustomException(CustomError.AUDIO_DURATION_GET_FAILED, f"FFprobe binary analysis failed: {e.returncode}")
+    except Exception as e:
+        logger.error(f"FFprobe binary mode failed with error: {str(e)}")
+        raise CustomException(CustomError.AUDIO_DURATION_GET_FAILED, f"FFprobe binary analysis error: {str(e)}")
