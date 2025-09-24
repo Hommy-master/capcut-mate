@@ -9,6 +9,8 @@ from src.schemas.add_captions import AddCaptionsResponse
 from src.schemas.add_effects import AddEffectsResponse
 from src.schemas.add_masks import AddMasksResponse
 from src.schemas.add_text_style import AddTextStyleResponse
+from src.schemas.get_text_animations import GetTextAnimationsResponse
+from src.schemas.easy_create_material import EasyCreateMaterialResponse
 from src.schemas.save_draft import SaveDraftResponse
 from src.schemas.create_draft import CreateDraftResponse
 from fastapi import APIRouter, Request, Depends
@@ -22,6 +24,8 @@ from src.schemas.add_captions import AddCaptionsRequest, AddCaptionsResponse
 from src.schemas.add_effects import AddEffectsRequest, AddEffectsResponse
 from src.schemas.add_masks import AddMasksRequest, AddMasksResponse
 from src.schemas.add_text_style import AddTextStyleRequest, AddTextStyleResponse
+from src.schemas.get_text_animations import GetTextAnimationsRequest, GetTextAnimationsResponse
+from src.schemas.easy_create_material import EasyCreateMaterialRequest, EasyCreateMaterialResponse
 from src.schemas.save_draft import SaveDraftRequest, SaveDraftResponse
 from src.schemas.gen_video import GenVideoRequest, GenVideoResponse
 from src.schemas.get_draft import GetDraftRequest, GetDraftResponse
@@ -255,6 +259,44 @@ def add_text_style(atsr: AddTextStyleRequest) -> AddTextStyleResponse:
 
     return AddTextStyleResponse(
         text_style=text_style
+    )
+
+@router.post(path="/easy_create_material", response_model=EasyCreateMaterialResponse)
+def easy_create_material(ecmr: EasyCreateMaterialRequest) -> EasyCreateMaterialResponse:
+    """
+    快速创建素材轨道 (v1版本)
+    """
+
+    # 调用service层处理业务逻辑
+    draft_url = service.easy_create_material(
+        draft_url=ecmr.draft_url,
+        audio_url=ecmr.audio_url,
+        text=ecmr.text,
+        img_url=ecmr.img_url,
+        video_url=ecmr.video_url,
+        text_color=ecmr.text_color,
+        font_size=ecmr.font_size,
+        text_transform_y=ecmr.text_transform_y
+    )
+
+    return EasyCreateMaterialResponse(
+        draft_url=draft_url
+    )
+
+@router.post(path="/get_text_animations", response_model=GetTextAnimationsResponse)
+def get_text_animations(gtar: GetTextAnimationsRequest) -> GetTextAnimationsResponse:
+    """
+    获取文字出入场动画 (v1版本)
+    """
+
+    # 调用service层处理业务逻辑
+    effects = service.get_text_animations(
+        mode=gtar.mode,
+        type=gtar.type
+    )
+
+    return GetTextAnimationsResponse(
+        effects=effects
     )
 
 @router.get(path="/get_draft", response_model=GetDraftResponse)
