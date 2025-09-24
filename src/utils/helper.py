@@ -17,7 +17,7 @@ def get_url_param(url: str, key: str, default=None):
     query = parse_qs(urlparse(url).query)
     return query.get(key, [default])[0]
 
-def download(url, save_dir, limit=100*1024*1024, timeout=180) -> str:
+def download(url, save_dir, limit=30*1024*1024, timeout=180) -> str:
     """
     下载文件并根据Content-Type判断文件类型
     
@@ -25,7 +25,7 @@ def download(url, save_dir, limit=100*1024*1024, timeout=180) -> str:
         url: 文件的URL地址
         save_dir: 文件保存目录
         filename: 文件名
-        limit: 文件大小限制（字节），默认512MB
+        limit: 文件大小限制（字节），默认30MB
         timeout: 整体下载超时时间（秒），默认3分钟
     
     Returns:

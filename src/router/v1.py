@@ -32,6 +32,7 @@ from src.schemas.save_draft import SaveDraftRequest, SaveDraftResponse
 from src.schemas.gen_video import GenVideoRequest, GenVideoResponse
 from src.schemas.gen_video_status import GenVideoStatusRequest, GenVideoStatusResponse
 from src.schemas.get_draft import GetDraftRequest, GetDraftResponse
+from src.schemas.get_audio_duration import GetAudioDurationRequest, GetAudioDurationResponse
 from src import service
 from typing import Annotated
 import config
@@ -358,4 +359,18 @@ def gen_video_status(gvsr: GenVideoStatusRequest) -> GenVideoStatusResponse:
     )
 
     return GenVideoStatusResponse(**status_info)
+
+
+@router.post(path="/get_audio_duration", response_model=GetAudioDurationResponse)
+def get_audio_duration(gadr: GetAudioDurationRequest) -> GetAudioDurationResponse:
+    """
+    获取音频文件时长 (v1版本)
+    """
+    
+    # 调用service层处理业务逻辑
+    duration = service.get_audio_duration(
+        mp3_url=gadr.mp3_url
+    )
+    
+    return GetAudioDurationResponse(duration=duration)
 
