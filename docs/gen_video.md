@@ -1,96 +1,80 @@
-# GEN_VIDEO API 接口文档
+# gen_video 接口文档
 
-## 接口信息
+## 接口概述
 
-```
-POST /v1/gen_video
-```
-
-## 功能描述
-
-生成视频 - 根据草稿URL，导出视频。该接口用于将编辑完成的草稿导出为最终的视频文件。接口会处理草稿中的所有素材、效果、转场等，生成一个完整的视频文件供下载或进一步使用。
+**接口名称**：gen_video  
+**接口地址**：`POST /v1/gen_video`  
+**功能描述**：提交视频生成任务。该接口采用异步处理模式，立即返回任务ID，视频生成在后台进行。支持任务排队，确保系统稳定性。
 
 ## 请求参数
 
+### 请求体 (application/json)
+
+| 参数名 | 类型 | 必填 | 默认值 | 描述 |
+|--------|------|------|--------|------|
+| draft_url | string | 是 | - | 草稿URL，格式如：https://ts.fyshark.com/#/cozeToJianyin?drafId=... |
+
+## 请求示例
+
 ```json
 {
-  "draft_url": "https://ts.fyshark.com/#/cozeToJianyin?drafId=https://video-snot-12220.oss-cn-shanghai.aliyuncs.com/2025-05-28/draft/2f52a63b-8c6a-4417-8b01-1b2a569ccb6c.json"
+  "draft_url": "https://ts.fyshark.com/#/cozeToJianyin?drafId=7434912345678901234"
 }
 ```
 
-### 参数说明
-
-| 参数名 | 类型 | 必填 | 默认值 | 说明 |
-|--------|------|------|--------|------|
-| draft_url | string | ✅ | - | 要导出的草稿URL |
-
-### 参数详解
-
-#### draft_url
-
-- **类型**: 字符串
-- **必填**: 是
-- **格式**: 完整的草稿URL，包含草稿ID信息
-- **示例**: `https://ts.fyshark.com/#/cozeToJianyin?drafId=https://video-snot-12220.oss-cn-shanghai.aliyuncs.com/...`
-- **要求**: 必须是有效的、存在的草稿URL
-
-#### 导出流程说明
-
-视频生成过程包括以下步骤：
-1. **草稿解析**: 解析草稿配置文件，获取所有素材和效果信息
-2. **素材下载**: 下载所有必需的视频、音频、图片素材
-3. **时间轴处理**: 按照时间轴顺序排列所有素材
-4. **效果渲染**: 应用透明度、缩放、位置变换等效果
-5. **转场处理**: 添加视频间的转场效果
-6. **音频混合**: 混合多个音频轨道
-7. **视频编码**: 将处理后的内容编码为最终视频
-8. **文件上传**: 将生成的视频上传到存储服务
-
 ## 响应格式
 
-### 成功响应 (200)
+### 成功响应
 
 ```json
 {
-  "message": "视频生成成功",
-  "video_url": "https://video-output.example.com/generated/2f52a63b-8c6a-4417-8b01-1b2a569ccb6c_final.mp4"
+  "message": "视频生成任务已提交，请使用draft_url查询进度"
 }
 ```
 
 ### 响应字段说明
 
-| 字段名 | 类型 | 说明 |
+| 字段名 | 类型 | 描述 |
 |--------|------|------|
-| message | string | 处理结果消息 |
-| video_url | string | 生成的视频文件URL |
+| message | string | 响应消息 |
 
-#### video_url说明
+### 错误响应
 
-- **格式**: 完整的视频文件URL
-- **有效期**: 通常具有一定的有效期限制
-- **下载**: 可以直接通过URL下载视频文件
-- **格式**: 通常为MP4格式，具有良好的兼容性
-
-### 错误响应 (4xx/5xx)
+#### 400 Bad Request - 参数验证失败
 
 ```json
 {
-  "detail": "错误信息描述"
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "请求参数验证失败",
+    "details": "draft_url 参数不能为空"
+  }
 }
 ```
 
-### 处理状态说明
+#### 404 Not Found - 草稿不存在
 
-视频生成是一个相对耗时的过程，可能的状态包括：
+```json
+{
+  "error": {
+    "code": "INVALID_DRAFT_URL",
+    "message": "无效的草稿URL",
+    "details": "无法解析草稿ID或草稿不存在"
+  }
+}
+```
 
-| 状态 | 说明 | 预期时间 |
-|------|------|----------|
-| 开始处理 | 接收请求，开始解析草稿 | 1-2秒 |
-| 素材下载 | 下载所有必需的素材文件 | 5-30秒 |
-| 视频渲染 | 处理视频效果和转场 | 10秒-数分钟 |
-| 音频处理 | 混合和同步音频 | 5-20秒 |
-| 最终编码 | 生成最终视频文件 | 10秒-数分钟 |
-| 上传完成 | 视频上传到存储服务 | 5-30秒 |
+#### 500 Internal Server Error - 任务提交失败
+
+```json
+{
+  "error": {
+    "code": "VIDEO_GENERATION_SUBMIT_FAILED",
+    "message": "视频生成任务提交失败",
+    "details": "系统内部错误"
+  }
+}
+```
 
 ## 使用示例
 

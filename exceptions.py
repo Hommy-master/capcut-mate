@@ -41,6 +41,9 @@ class CustomError(Enum):
     TEXT_STYLE_CREATE_FAILED = (2027, "文本样式创建失败", "Text style creation failed")
     MATERIAL_CREATE_FAILED = (2028, "素材创建失败", "Material creation failed")
     TEXT_ANIMATION_GET_FAILED = (2029, "获取文字动画失败", "Get text animation failed")
+    VIDEO_GENERATION_SUBMIT_FAILED = (2030, "视频生成任务提交失败", "Video generation task submit failed")
+    VIDEO_TASK_NOT_FOUND = (2031, "视频生成任务未找到", "Video generation task not found")
+    VIDEO_STATUS_QUERY_FAILED = (2032, "视频任务状态查询失败", "Video task status query failed")
 
     # ===== 系统错误码 (9000-9999) =====
     INTERNAL_SERVER_ERROR = (9998, "系统内部错误", "Internal server error")

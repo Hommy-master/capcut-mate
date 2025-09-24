@@ -8,4 +8,4 @@ class GenVideoRequest(BaseModel):
 
 class GenVideoResponse(BaseModel):
     """生成视频响应参数"""
-    video_url: str = Field(default="", description="视频URL")
+    message: str = Field(..., description="响应消息")

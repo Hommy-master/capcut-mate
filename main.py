@@ -1,6 +1,3 @@
-from fastapi.applications import FastAPI
-
-
 from fastapi import FastAPI
 from src.router import v1_router
 from src.utils.logger import logger

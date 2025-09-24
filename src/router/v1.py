@@ -28,6 +28,7 @@ from src.schemas.get_text_animations import GetTextAnimationsRequest, GetTextAni
 from src.schemas.easy_create_material import EasyCreateMaterialRequest, EasyCreateMaterialResponse
 from src.schemas.save_draft import SaveDraftRequest, SaveDraftResponse
 from src.schemas.gen_video import GenVideoRequest, GenVideoResponse
+from src.schemas.gen_video_status import GenVideoStatusRequest, GenVideoStatusResponse
 from src.schemas.get_draft import GetDraftRequest, GetDraftResponse
 from src import service
 from typing import Annotated
@@ -320,9 +321,23 @@ def gen_video(request: Request, gvr: GenVideoRequest) -> GenVideoResponse:
     """
 
     # 调用service层处理业务逻辑
-    draft_url, message = service.gen_video(
+    message = service.gen_video(
         draft_url=gvr.draft_url,
     )
 
-    return GenVideoResponse(message=message, video_url=draft_url)
+    return GenVideoResponse(message=message)
+
+
+@router.post(path="/gen_video_status", response_model=GenVideoStatusResponse)
+def gen_video_status(gvsr: GenVideoStatusRequest) -> GenVideoStatusResponse:
+    """
+    查询视频生成任务状态 (v1版本)
+    """
+
+    # 调用service层处理业务逻辑
+    status_info = service.gen_video_status(
+        draft_url=gvsr.draft_url
+    )
+
+    return GenVideoStatusResponse(**status_info)
 

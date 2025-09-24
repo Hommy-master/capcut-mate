@@ -1,61 +1,61 @@
 from src.utils.logger import logger
-from src.utils import helper
+from src.utils.video_task_manager import task_manager
+from exceptions import CustomException, CustomError
 from typing import Tuple
-import src.pyJianYingDraft as draft
-import config
-import os
-import sys
-
-# 如果是Linux系统，则不导入uiautomation，并避免执行相关代码
-if sys.platform.startswith('win'):
-    from uiautomation import UIAutomationInitializerInThread  # type: ignore
-else:
-    # 在非Windows系统上创建一个占位符
-    class UIAutomationInitializerInThread:  # type: ignore
-        def __enter__(self):
-            pass
-        def __exit__(self, *args):
-            pass
 
 
-def gen_video(draft_url: str) -> Tuple[str, str]:
+def gen_video(draft_url: str) -> str:
     """
-    生成视频的业务逻辑
+    提交视频生成任务（异步处理）
     
     Args:
         draft_url: 草稿URL
     
     Returns:
-        video_url: 视频URL
-        message: 响应消息，如果成功就返回"视频生成成功"，失败就返回具体错误信息
+        message: 响应消息
     """
-
-    # 从URL中提取草稿ID
-    draft_id = helper.get_url_param(draft_url, "draft_id")
-    if not draft_id:
-        return "", "无效的草稿URL"
-
-    # 生成输出文件路径
-    outfile = os.path.join(config.DRAFT_DIR, f"{helper.gen_unique_id()}.mp4")
-
+    logger.info(f"gen_video called with draft_url: {draft_url}")
+    
     try:
-        if not sys.platform.startswith('win'):
-            return "", "视频生成功能仅在Windows系统上可用"
-            
-        with UIAutomationInitializerInThread():
-            logger.info("begin to export draft: %s -> %s", draft_id, outfile)
+        # 提交任务到队列
+        task_manager.submit_task(draft_url)
+        
+        logger.info(f"Video generation task submitted for draft_url: {draft_url}")
+        return "视频生成任务已提交，请使用draft_url查询进度"
+        
+    except ValueError as e:
+        logger.error(f"Invalid draft_url: {draft_url}, error: {e}")
+        raise CustomException(CustomError.INVALID_DRAFT_URL)
+    except Exception as e:
+        logger.error(f"Submit video generation task failed: {e}")
+        raise CustomException(CustomError.VIDEO_GENERATION_SUBMIT_FAILED)
 
-            # 此前需要将剪映打开，并位于目录页
-            ctrl = draft.JianyingController()
 
-            # 然后即可导出指定名称的草稿, 注意导出结束后视频才会被剪切(重命名)至指定位置
-            ctrl.export_draft(draft_id, outfile)
-        if not os.path.exists(outfile):
-            # 个别版本剪映不会抛异常，但文件未生成
-            raise RuntimeError("剪映导出结束但目标文件未生成，请检查磁盘空间或剪映版本")
-    except Exception as exc:  # 捕获 COM/剪映/磁盘等所有异常
-        logger.exception("export draft failed: draft_id=%s, error=%s", draft_id, exc)
-        return "", f"导出草稿失败: {exc}"
-
-    logger.info(f"export draft success: %s", outfile)
-    return outfile, "视频生成成功"
+def gen_video_status(draft_url: str) -> dict:
+    """
+    查询视频生成任务状态
+    
+    Args:
+        draft_url: 草稿URL
+    
+    Returns:
+        任务状态信息
+    """
+    logger.info(f"gen_video_status called with draft_url: {draft_url}")
+    
+    try:
+        # 查询任务状态
+        status_info = task_manager.get_task_status(draft_url)
+        
+        if status_info is None:
+            logger.warning(f"No task found for draft_url: {draft_url}")
+            raise CustomException(CustomError.VIDEO_TASK_NOT_FOUND)
+        
+        logger.info(f"Task status retrieved for draft_url: {draft_url}, status={status_info['status']}")
+        return status_info
+        
+    except CustomException:
+        raise
+    except Exception as e:
+        logger.error(f"Get video generation status failed: {e}")
+        raise CustomException(CustomError.VIDEO_STATUS_QUERY_FAILED)
