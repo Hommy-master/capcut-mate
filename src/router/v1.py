@@ -4,6 +4,7 @@ from src.schemas.add_videos import AddVideosResponse
 from src.schemas.add_audios import AddAudiosResponse
 from src.schemas.add_images import AddImagesResponse
 from src.schemas.add_sticker import AddStickerResponse
+from src.schemas.add_keyframes import AddKeyframesResponse
 from src.schemas.save_draft import SaveDraftResponse
 from src.schemas.create_draft import CreateDraftResponse
 from fastapi import APIRouter, Request, Depends
@@ -12,6 +13,7 @@ from src.schemas.add_videos import AddVideosRequest, AddVideosResponse
 from src.schemas.add_audios import AddAudiosRequest, AddAudiosResponse
 from src.schemas.add_images import AddImagesRequest, AddImagesResponse
 from src.schemas.add_sticker import AddStickerRequest, AddStickerResponse
+from src.schemas.add_keyframes import AddKeyframesRequest, AddKeyframesResponse
 from src.schemas.save_draft import SaveDraftRequest, SaveDraftResponse
 from src.schemas.gen_video import GenVideoRequest, GenVideoResponse
 from src.schemas.get_draft import GetDraftRequest, GetDraftResponse
@@ -129,6 +131,24 @@ def add_sticker(asr: AddStickerRequest) -> AddStickerResponse:
         track_id=track_id,
         segment_id=segment_id,
         duration=duration
+    )
+
+@router.post(path="/add_keyframes", response_model=AddKeyframesResponse)
+def add_keyframes(akr: AddKeyframesRequest) -> AddKeyframesResponse:
+    """
+    向剪映草稿添加关键帧 (v1版本)
+    """
+
+    # 调用service层处理业务逻辑
+    draft_url, keyframes_added, affected_segments = service.add_keyframes(
+        draft_url=akr.draft_url,
+        keyframes=akr.keyframes
+    )
+
+    return AddKeyframesResponse(
+        draft_url=draft_url,
+        keyframes_added=keyframes_added,
+        affected_segments=affected_segments
     )
 
 @router.get(path="/get_draft", response_model=GetDraftResponse)

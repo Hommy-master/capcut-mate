@@ -24,6 +24,11 @@ class CustomError(Enum):
     IMAGE_ADD_FAILED = (2010, "图片添加失败", "Image addition failed")
     INVALID_STICKER_INFO = (2011, "无效的贴纸信息，请检查贴纸参数是否正确", "Invalid sticker information, please check if sticker parameters are correct.")
     STICKER_ADD_FAILED = (2012, "贴纸添加失败", "Sticker addition failed")
+    INVALID_KEYFRAME_INFO = (2013, "无效的关键帧信息，请检查keyframes字段值是否正确", "Invalid keyframe information, please check if the value of the keyframes field is correct.")
+    KEYFRAME_ADD_FAILED = (2014, "关键帧添加失败", "Keyframe addition failed")
+    SEGMENT_NOT_FOUND = (2015, "片段未找到，请检查segment_id是否正确", "Segment not found, please check if the segment_id is correct.")
+    INVALID_SEGMENT_TYPE = (2016, "无效的片段类型，该片段不支持关键帧", "Invalid segment type, this segment does not support keyframes.")
+    INVALID_KEYFRAME_PROPERTY = (2017, "无效的关键帧属性类型", "Invalid keyframe property type.")
 
     # ===== 系统错误码 (9000-9999) =====
     INTERNAL_SERVER_ERROR = (9998, "系统内部错误", "Internal server error")

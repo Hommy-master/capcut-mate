@@ -3,8 +3,9 @@ from .add_videos import add_videos
 from .add_audios import add_audios
 from .add_images import add_images
 from .add_sticker import add_sticker
+from .add_keyframes import add_keyframes
 from .save_draft import save_draft
 from .gen_video import gen_video
 from .get_draft import get_draft
 
-__all__ = ["create_draft", "add_videos", "add_audios", "add_images", "add_sticker", "save_draft", "gen_video", "get_draft"]
+__all__ = ["create_draft", "add_videos", "add_audios", "add_images", "add_sticker", "add_keyframes", "save_draft", "gen_video", "get_draft"]
