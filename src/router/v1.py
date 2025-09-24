@@ -8,6 +8,7 @@ from src.schemas.add_keyframes import AddKeyframesResponse
 from src.schemas.add_captions import AddCaptionsResponse
 from src.schemas.add_effects import AddEffectsResponse
 from src.schemas.add_masks import AddMasksResponse
+from src.schemas.add_text_style import AddTextStyleResponse
 from src.schemas.save_draft import SaveDraftResponse
 from src.schemas.create_draft import CreateDraftResponse
 from fastapi import APIRouter, Request, Depends
@@ -20,6 +21,7 @@ from src.schemas.add_keyframes import AddKeyframesRequest, AddKeyframesResponse
 from src.schemas.add_captions import AddCaptionsRequest, AddCaptionsResponse
 from src.schemas.add_effects import AddEffectsRequest, AddEffectsResponse
 from src.schemas.add_masks import AddMasksRequest, AddMasksResponse
+from src.schemas.add_text_style import AddTextStyleRequest, AddTextStyleResponse
 from src.schemas.save_draft import SaveDraftRequest, SaveDraftResponse
 from src.schemas.gen_video import GenVideoRequest, GenVideoResponse
 from src.schemas.get_draft import GetDraftRequest, GetDraftResponse
@@ -234,6 +236,25 @@ def add_masks(amr: AddMasksRequest) -> AddMasksResponse:
         masks_added=masks_added,
         affected_segments=affected_segments,
         mask_ids=mask_ids
+    )
+
+@router.post(path="/add_text_style", response_model=AddTextStyleResponse)
+def add_text_style(atsr: AddTextStyleRequest) -> AddTextStyleResponse:
+    """
+    为文本创建富文本样式 (v1版本)
+    """
+
+    # 调用service层处理业务逻辑
+    text_style = service.add_text_style(
+        text=atsr.text,
+        keyword=atsr.keyword,
+        font_size=atsr.font_size,
+        keyword_color=atsr.keyword_color,
+        keyword_font_size=atsr.keyword_font_size
+    )
+
+    return AddTextStyleResponse(
+        text_style=text_style
     )
 
 @router.get(path="/get_draft", response_model=GetDraftResponse)

@@ -37,6 +37,8 @@ class CustomError(Enum):
     INVALID_MASK_INFO = (2023, "无效的遮罩信息，请检查遮罩参数是否正确", "Invalid mask information, please check if mask parameters are correct.")
     MASK_ADD_FAILED = (2024, "遮罩添加失败", "Mask addition failed")
     MASK_NOT_FOUND = (2025, "遮罩类型未找到，请检查遮罩名称是否正确", "Mask type not found, please check if the mask name is correct.")
+    INVALID_TEXT_STYLE_INFO = (2026, "无效的文本样式信息，请检查文本或关键词参数", "Invalid text style information, please check text or keyword parameters.")
+    TEXT_STYLE_CREATE_FAILED = (2027, "文本样式创建失败", "Text style creation failed")
 
     # ===== 系统错误码 (9000-9999) =====
     INTERNAL_SERVER_ERROR = (9998, "系统内部错误", "Internal server error")
