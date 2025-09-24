@@ -7,6 +7,7 @@ from src.schemas.add_sticker import AddStickerResponse
 from src.schemas.add_keyframes import AddKeyframesResponse
 from src.schemas.add_captions import AddCaptionsResponse
 from src.schemas.add_effects import AddEffectsResponse
+from src.schemas.add_masks import AddMasksResponse
 from src.schemas.save_draft import SaveDraftResponse
 from src.schemas.create_draft import CreateDraftResponse
 from fastapi import APIRouter, Request, Depends
@@ -18,6 +19,7 @@ from src.schemas.add_sticker import AddStickerRequest, AddStickerResponse
 from src.schemas.add_keyframes import AddKeyframesRequest, AddKeyframesResponse
 from src.schemas.add_captions import AddCaptionsRequest, AddCaptionsResponse
 from src.schemas.add_effects import AddEffectsRequest, AddEffectsResponse
+from src.schemas.add_masks import AddMasksRequest, AddMasksResponse
 from src.schemas.save_draft import SaveDraftRequest, SaveDraftResponse
 from src.schemas.gen_video import GenVideoRequest, GenVideoResponse
 from src.schemas.get_draft import GetDraftRequest, GetDraftResponse
@@ -204,6 +206,34 @@ def add_effects(aer: AddEffectsRequest) -> AddEffectsResponse:
         track_id=track_id,
         effect_ids=effect_ids,
         segment_ids=segment_ids
+    )
+
+@router.post(path="/add_masks", response_model=AddMasksResponse)
+def add_masks(amr: AddMasksRequest) -> AddMasksResponse:
+    """
+    向剪映草稿添加遮罩 (v1版本)
+    """
+
+    # 调用service层处理业务逻辑
+    draft_url, masks_added, affected_segments, mask_ids = service.add_masks(
+        draft_url=amr.draft_url,
+        segment_ids=amr.segment_ids,
+        name=amr.name,
+        X=amr.X,
+        Y=amr.Y,
+        width=amr.width,
+        height=amr.height,
+        feather=amr.feather,
+        rotation=amr.rotation,
+        invert=amr.invert,
+        roundCorner=amr.roundCorner
+    )
+
+    return AddMasksResponse(
+        draft_url=draft_url,
+        masks_added=masks_added,
+        affected_segments=affected_segments,
+        mask_ids=mask_ids
     )
 
 @router.get(path="/get_draft", response_model=GetDraftResponse)

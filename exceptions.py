@@ -34,6 +34,9 @@ class CustomError(Enum):
     INVALID_EFFECT_INFO = (2020, "无效的特效信息，请检查effect_infos字段值是否正确", "Invalid effect information, please check if the value of the effect_infos field is correct.")
     EFFECT_ADD_FAILED = (2021, "特效添加失败", "Effect addition failed")
     EFFECT_NOT_FOUND = (2022, "特效未找到，请检查特效名称是否正确", "Effect not found, please check if the effect name is correct.")
+    INVALID_MASK_INFO = (2023, "无效的遮罩信息，请检查遮罩参数是否正确", "Invalid mask information, please check if mask parameters are correct.")
+    MASK_ADD_FAILED = (2024, "遮罩添加失败", "Mask addition failed")
+    MASK_NOT_FOUND = (2025, "遮罩类型未找到，请检查遮罩名称是否正确", "Mask type not found, please check if the mask name is correct.")
 
     # ===== 系统错误码 (9000-9999) =====
     INTERNAL_SERVER_ERROR = (9998, "系统内部错误", "Internal server error")
