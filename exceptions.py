@@ -22,6 +22,8 @@ class CustomError(Enum):
     AUDIO_ADD_FAILED = (2008, "音频添加失败", "Audio addition failed")
     INVALID_IMAGE_INFO = (2009, "无效的图片信息，请检查image_infos字段值是否正确", "Invalid image information, please check if the value of the image_infos field is correct.")
     IMAGE_ADD_FAILED = (2010, "图片添加失败", "Image addition failed")
+    INVALID_STICKER_INFO = (2011, "无效的贴纸信息，请检查贴纸参数是否正确", "Invalid sticker information, please check if sticker parameters are correct.")
+    STICKER_ADD_FAILED = (2012, "贴纸添加失败", "Sticker addition failed")
 
     # ===== 系统错误码 (9000-9999) =====
     INTERNAL_SERVER_ERROR = (9998, "系统内部错误", "Internal server error")
