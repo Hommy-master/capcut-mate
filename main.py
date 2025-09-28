@@ -4,18 +4,18 @@ from src.utils.logger import logger
 from src.middlewares import PrepareMiddleware, ResponseMiddleware
 
 
-# 0. 创建 FastAPI 应用
+# 1. 创建 FastAPI 应用
 app: FastAPI = FastAPI(title="CapCut Mate API", version="1.0")
 
-# 1. 注册路由
+# 2. 注册路由
 app.include_router(router=v1_router, prefix="/openapi/capcut-mate", tags=["capcut-mate"])
 
-# 2. 添加中间件
+# 3. 添加中间件
 app.add_middleware(middleware_class=PrepareMiddleware)
 # 注册统一响应处理中间件（注意顺序，应该在其他中间件之后注册）
 app.add_middleware(middleware_class=ResponseMiddleware)
 
-# 3. 打印所有路由
+# 4. 打印所有路由
 for r in app.routes:
     # 1. 取 HTTP 方法列表
     methods = getattr(r, "methods", None) or [getattr(r, "method", "WS")]

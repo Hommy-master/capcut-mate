@@ -9,7 +9,7 @@ class GetAudioDurationRequest(BaseModel):
     )
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "mp3_url": "https://www.soundjay.com/misc/sounds/bell-ringing-05.wav"
             }
@@ -25,7 +25,7 @@ class GetAudioDurationResponse(BaseModel):
     )
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "duration": 2325333
             }
