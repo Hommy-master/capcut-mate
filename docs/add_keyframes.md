@@ -5,7 +5,7 @@
 
 ## 接口信息
 - **方法**: POST
-- **路径**: `/v1/add_keyframes`
+- **路径**: `/openapi/capcut-mate/v1/add_keyframes`
 - **Content-Type**: `application/json`
 
 ## 请求参数
@@ -13,7 +13,7 @@
 ### 请求体
 ```json
 {
-  "draft_url": "https://ts.fyshark.com/#/cozeToJianyin?drafId=...",
+  "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
   "keyframes": "[{\"segment_id\":\"d62994b4-25fe-422a-a123-87ef05038558\",\"property\":\"KFTypePositionX\",\"offset\":0.5,\"value\":-0.1}]"
 }
 ```
@@ -51,7 +51,7 @@ keyframes 是一个JSON字符串，包含关键帧数组，每个关键帧对象
 ### 成功响应
 ```json
 {
-  "draft_url": "https://ts.fyshark.com/#/cozeToJianyin?drafId=...",
+  "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
   "keyframes_added": 3,
   "affected_segments": ["segment_001", "segment_002"]
 }
@@ -77,10 +77,10 @@ keyframes 是一个JSON字符串，包含关键帧数组，每个关键帧对象
 
 ### cURL 示例
 ```bash
-curl -X POST "http://localhost:8000/v1/add_keyframes" \
+curl -X POST "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_keyframes" \
   -H "Content-Type: application/json" \
   -d '{
-    "draft_url": "https://ts.fyshark.com/#/cozeToJianyin?drafId=example123",
+    "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
     "keyframes": "[{\"segment_id\":\"d62994b4-25fe-422a-a123-87ef05038558\",\"property\":\"KFTypePositionX\",\"offset\":0,\"value\":0},{\"segment_id\":\"d62994b4-25fe-422a-a123-87ef05038558\",\"property\":\"KFTypePositionX\",\"offset\":1,\"value\":-0.5}]"
   }'
 ```
@@ -90,7 +90,7 @@ curl -X POST "http://localhost:8000/v1/add_keyframes" \
 import requests
 import json
 
-url = "http://localhost:8000/v1/add_keyframes"
+url = "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_keyframes"
 keyframes_data = [
     {
         "segment_id": "d62994b4-25fe-422a-a123-87ef05038558",
@@ -107,7 +107,7 @@ keyframes_data = [
 ]
 
 payload = {
-    "draft_url": "https://ts.fyshark.com/#/cozeToJianyin?drafId=example123",
+    "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
     "keyframes": json.dumps(keyframes_data)
 }
 

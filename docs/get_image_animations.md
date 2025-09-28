@@ -3,7 +3,7 @@
 ## 接口概述
 
 **接口名称**：get_image_animations  
-**接口地址**：`POST /v1/get_image_animations`  
+**接口地址**：`POST /openapi/capcut-mate/v1/get_image_animations`  
 **功能描述**：获取图片出入场动画列表，返回所有支持的且满足条件的图片出入场动画。支持根据动画类型（入场、出场、循环）和会员模式（所有、VIP、免费）进行筛选。
 
 ## 请求参数
@@ -164,7 +164,7 @@
 ```javascript
 // 获取所有入场动画
 const getImageInAnimations = async () => {
-  const response = await fetch('/v1/get_image_animations', {
+  const response = await fetch('/openapi/capcut-mate/v1/get_image_animations', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -182,7 +182,7 @@ const getImageInAnimations = async () => {
 
 // 获取免费循环动画
 const getFreeImageLoopAnimations = async () => {
-  const response = await fetch('/v1/get_image_animations', {
+  const response = await fetch('/openapi/capcut-mate/v1/get_image_animations', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

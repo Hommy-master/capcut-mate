@@ -3,7 +3,7 @@
 ## 接口信息
 
 ```
-POST /v1/add_videos
+POST /openapi/capcut-mate/v1/add_videos
 ```
 
 ## 功能描述
@@ -14,7 +14,7 @@ POST /v1/add_videos
 
 ```json
 {
-  "draft_url": "https://ts.fyshark.com/#/cozeToJianyin?drafId=...",
+  "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
   "video_infos": "[{\"video_url\":\"https://example.com/video1.mp4\",\"width\":1024,\"height\":1024,\"start\":0,\"end\":5000000,\"duration\":5000000,\"mask\":\"圆形\",\"transition\":\"淡入淡出\",\"transition_duration\":500000,\"volume\":0.8}]",
   "alpha": 0.5,
   "scale_x": 1.0,
@@ -105,7 +105,7 @@ POST /v1/add_videos
 
 ```json
 {
-  "draft_url": "https://ts.fyshark.com/#/cozeToJianyin?drafId=...",
+  "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
   "track_id": "video-track-uuid",
   "video_ids": ["video1-uuid", "video2-uuid", "video3-uuid"],
   "segment_ids": ["segment1-uuid", "segment2-uuid", "segment3-uuid"]
@@ -128,7 +128,7 @@ POST /v1/add_videos
 #### 1. 基本视频添加
 
 ```bash
-curl -X POST https://api.example.com/v1/add_videos \
+curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_videos \
   -H "Content-Type: application/json" \
   -d '{
     "draft_url": "YOUR_DRAFT_URL",
@@ -139,7 +139,7 @@ curl -X POST https://api.example.com/v1/add_videos \
 #### 2. 多视频批量添加
 
 ```bash
-curl -X POST https://api.example.com/v1/add_videos \
+curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_videos \
   -H "Content-Type: application/json" \
   -d '{
     "draft_url": "YOUR_DRAFT_URL",
@@ -151,7 +151,7 @@ curl -X POST https://api.example.com/v1/add_videos \
 #### 3. 带遮罩和转场的视频
 
 ```bash
-curl -X POST https://api.example.com/v1/add_videos \
+curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_videos \
   -H "Content-Type: application/json" \
   -d '{
     "draft_url": "YOUR_DRAFT_URL",
@@ -165,7 +165,7 @@ curl -X POST https://api.example.com/v1/add_videos \
 #### 4. 画中画效果
 
 ```bash
-curl -X POST https://api.example.com/v1/add_videos \
+curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_videos \
   -H "Content-Type: application/json" \
   -d '{
     "draft_url": "YOUR_DRAFT_URL",
@@ -181,7 +181,7 @@ curl -X POST https://api.example.com/v1/add_videos \
 
 ```javascript
 const addVideos = async (draftUrl, videoConfig) => {
-  const response = await fetch('/v1/add_videos', {
+  const response = await fetch('/openapi/capcut-mate/v1/add_videos', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -288,12 +288,12 @@ try {
 
 ```javascript
 class VideoManager {
-  constructor(baseUrl = 'https://api.example.com') {
+  constructor(baseUrl = 'https://capcut-mate.jcaigc.cn') {
     this.baseUrl = baseUrl;
   }
 
   async addVideos(draftUrl, videoConfig) {
-    const response = await fetch(`${this.baseUrl}/v1/add_videos`, {
+    const response = await fetch(`${this.baseUrl}/openapi/capcut-mate/v1/add_videos`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -453,12 +453,12 @@ import json
 from typing import List, Dict
 
 class VideoProcessor:
-    def __init__(self, base_url="https://api.example.com"):
+    def __init__(self, base_url="https://capcut-mate.jcaigc.cn"):
         self.base_url = base_url
 
     def add_videos(self, draft_url: str, video_config: Dict) -> Dict:
         response = requests.post(
-            f'{self.base_url}/v1/add_videos',
+            f'{self.base_url}/openapi/capcut-mate/v1/add_videos',
             headers={'Content-Type': 'application/json'},
             json={
                 "draft_url": draft_url,

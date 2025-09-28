@@ -3,7 +3,7 @@
 ## 接口概述
 
 **接口名称**：easy_create_material  
-**接口地址**：`POST /v1/easy_create_material`  
+**接口地址**：`POST /openapi/capcut-mate/v1/easy_create_material`  
 **功能描述**：在现有草稿中添加多种类型的素材内容，包括音频、视频、图片和文字。该接口可以一次性向草稿添加多种媒体素材，自动处理素材的时长、尺寸等属性，并智能管理不同类型的媒体轨道。是视频创作的核心接口之一。
 
 ## 请求参数
@@ -36,7 +36,7 @@
 
 ```json
 {
-  "draft_url": "https://ts.fyshark.com/#/cozeToJianyin?drafId=7434912345678901234",
+  "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
   "audio_url": "https://example.com/audio.mp3",
   "text": "Hello World",
   "img_url": "https://s.coze.cn/t/JTa5Ne6_liY/",
@@ -51,7 +51,7 @@
 
 ```json
 {
-  "draft_url": "https://ts.fyshark.com/#/cozeToJianyin?drafId=7434912345678901234",
+  "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
   "audio_url": "https://example.com/background_music.mp3",
   "text": "欢迎观看",
   "text_color": "#0066ff",
@@ -63,7 +63,7 @@
 
 ```json
 {
-  "draft_url": "https://ts.fyshark.com/#/cozeToJianyin?drafId=7434912345678901234",
+  "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
   "audio_url": "https://example.com/audio.wav"
 }
 ```
@@ -74,7 +74,7 @@
 
 ```json
 {
-  "draft_url": "https://ts.fyshark.com/#/cozeToJianyin?drafId=7434912345678901234"
+  "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258"
 }
 ```
 
@@ -129,7 +129,7 @@
 
 ### 参数说明
 
-1. **draft_url**：必须是有效的剪映草稿URL，格式为 `https://ts.fyshark.com/#/cozeToJianyin?drafId=...`
+1. **draft_url**：必须是有效的剪映草稿URL，格式为 `https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258
 2. **audio_url**：必填参数，必须提供有效的音频文件URL，不接受空字符串或null值
 3. **可选素材**：text、img_url、video_url 都是可选参数，可以根据需要选择添加
 4. **文字样式**：text_color支持十六进制颜色代码，font_size范围建议10-50
@@ -210,4 +210,4 @@ src/
 ---
 
 **版本信息**：v1.0  
-**最后更新**：2024-09-24
+**最后更新**：2025-09-24

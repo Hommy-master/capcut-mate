@@ -5,7 +5,7 @@
 
 ## 接口信息
 - **方法**: POST
-- **路径**: `/v1/add_captions`
+- **路径**: `/openapi/capcut-mate/v1/add_captions`
 - **Content-Type**: `application/json`
 
 ## 请求参数
@@ -13,7 +13,7 @@
 ### 请求体
 ```json
 {
-  "draft_url": "https://ts.fyshark.com/#/cozeToJianyin?drafId=...",
+  "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
   "captions": "[{\"start\":0,\"end\":10000000,\"text\":\"你好，剪映\",\"keyword\":\"好\",\"keyword_color\":\"#457616\",\"keyword_font_size\":15,\"font_size\":15}]",
   "text_color": "#ffffff",
   "border_color": null,
@@ -86,7 +86,7 @@ captions 是一个JSON字符串，包含字幕数组，每个字幕对象包含�
 ### 成功响应
 ```json
 {
-  "draft_url": "https://ts.fyshark.com/#/cozeToJianyin?drafId=...",
+  "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
   "track_id": "text_track_123",
   "text_ids": ["text_001", "text_002"],
   "segment_ids": ["seg_001", "seg_002"]
@@ -114,10 +114,10 @@ captions 是一个JSON字符串，包含字幕数组，每个字幕对象包含�
 
 ### cURL 示例
 ```bash
-curl -X POST "http://localhost:8000/v1/add_captions" \
+curl -X POST "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_captions" \
   -H "Content-Type: application/json" \
   -d '{
-    "draft_url": "https://ts.fyshark.com/#/cozeToJianyin?drafId=example123",
+    "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
     "captions": "[{\"start\":0,\"end\":5000000,\"text\":\"你好，剪映\",\"keyword\":\"好\",\"keyword_color\":\"#ff0000\"}]",
     "text_color": "#ffffff",
     "alignment": 1,
@@ -131,7 +131,7 @@ curl -X POST "http://localhost:8000/v1/add_captions" \
 import requests
 import json
 
-url = "http://localhost:8000/v1/add_captions"
+url = "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_captions"
 captions_data = [
     {
         "start": 0,
@@ -152,7 +152,7 @@ captions_data = [
 ]
 
 payload = {
-    "draft_url": "https://ts.fyshark.com/#/cozeToJianyin?drafId=example123",
+    "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
     "captions": json.dumps(captions_data),
     "text_color": "#ffffff",
     "alignment": 1,
@@ -167,7 +167,7 @@ print(response.json())
 
 ### JavaScript 示例
 ```javascript
-const url = "http://localhost:8000/v1/add_captions";
+const url = "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_captions";
 const captionsData = [
   {
     start: 0,
@@ -180,7 +180,7 @@ const captionsData = [
 ];
 
 const payload = {
-  draft_url: "https://ts.fyshark.com/#/cozeToJianyin?drafId=example123",
+  draft_url: "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
   captions: JSON.stringify(captionsData),
   text_color: "#ffffff",
   alignment: 1,

@@ -5,7 +5,7 @@
 
 ## 接口信息
 - **请求方式**: POST
-- **接口路径**: `/v1/add_effects`
+- **接口路径**: `/openapi/capcut-mate/v1/add_effects`
 - **Content-Type**: `application/json`
 
 ## 请求参数
@@ -48,10 +48,10 @@
 ## 请求示例
 
 ```bash
-curl -X POST "http://localhost:8000/v1/add_effects" \
+curl -X POST "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_effects" \
 -H "Content-Type: application/json" \
 -d '{
-  "draft_url": "https://ts.fyshark.com/#/cozeToJianyin?drafId=7427078525303048221",
+  "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
   "effect_infos": "[{\"effect_title\": \"录制边框 III\", \"start\": 0, \"end\": 5000000}, {\"effect_title\": \"复古滤镜\", \"start\": 2000000, \"end\": 7000000}]"
 }'
 ```
@@ -65,7 +65,7 @@ curl -X POST "http://localhost:8000/v1/add_effects" \
   "code": 0,
   "message": "Success",
   "data": {
-    "draft_url": "https://ts.fyshark.com/#/cozeToJianyin?drafId=7427078525303048221",
+    "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
     "track_id": "effect_track_123",
     "effect_ids": ["effect_001", "effect_002"],
     "segment_ids": ["seg_001", "seg_002"]

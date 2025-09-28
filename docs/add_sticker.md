@@ -3,7 +3,7 @@
 ## 接口信息
 
 ```
-POST /v1/add_sticker
+POST /openapi/capcut-mate/v1/add_sticker
 ```
 
 ## 功能描述
@@ -14,7 +14,7 @@ POST /v1/add_sticker
 
 ```json
 {
-  "draft_url": "https://ts.fyshark.com/#/cozeToJianyin?drafId=https://video-snot-12220.oss-cn-shanghai.aliyuncs.com/2025-05-28/draft/2f52a63b-8c6a-4417-8b01-1b2a569ccb6c.json",
+  "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
   "sticker_id": "7326810673609018675",
   "start": 0,
   "end": 5000000,
@@ -77,7 +77,7 @@ POST /v1/add_sticker
 
 ```json
 {
-  "draft_url": "https://ts.fyshark.com/#/cozeToJianyin?drafId=...",
+  "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
   "sticker_id": "7326810673609018675",
   "track_id": "track-uuid",
   "segment_id": "segment-uuid",
@@ -110,7 +110,7 @@ POST /v1/add_sticker
 #### 1. 基本贴纸添加
 
 ```bash
-curl -X POST https://api.example.com/v1/add_sticker \
+curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_sticker \
   -H "Content-Type: application/json" \
   -d '{
     "draft_url": "YOUR_DRAFT_URL",
@@ -123,7 +123,7 @@ curl -X POST https://api.example.com/v1/add_sticker \
 #### 2. 带缩放的贴纸
 
 ```bash
-curl -X POST https://api.example.com/v1/add_sticker \
+curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_sticker \
   -H "Content-Type: application/json" \
   -d '{
     "draft_url": "YOUR_DRAFT_URL",
@@ -137,7 +137,7 @@ curl -X POST https://api.example.com/v1/add_sticker \
 #### 3. 带位置偏移的贴纸
 
 ```bash
-curl -X POST https://api.example.com/v1/add_sticker \
+curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_sticker \
   -H "Content-Type: application/json" \
   -d '{
     "draft_url": "YOUR_DRAFT_URL",
@@ -154,7 +154,7 @@ curl -X POST https://api.example.com/v1/add_sticker \
 
 ```javascript
 const addSticker = async (draftUrl, stickerConfig) => {
-  const response = await fetch('/v1/add_sticker', {
+  const response = await fetch('/openapi/capcut-mate/v1/add_sticker', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -211,12 +211,12 @@ try {
 
 ```javascript
 class StickerManager {
-  constructor(baseUrl = 'https://api.example.com') {
+  constructor(baseUrl = 'https://capcut-mate.jcaigc.cn') {
     this.baseUrl = baseUrl;
   }
 
   async addSticker(draftUrl, stickerConfig) {
-    const response = await fetch(`${this.baseUrl}/v1/add_sticker`, {
+    const response = await fetch(`${this.baseUrl}/openapi/capcut-mate/v1/add_sticker`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -423,7 +423,7 @@ class StickerProcessor:
 
     def add_sticker(self, draft_url: str, sticker_config: Dict) -> Dict:
         response = requests.post(
-            f'{self.base_url}/v1/add_sticker',
+            f'{self.base_url}/openapi/capcut-mate/v1/add_sticker',
             headers={'Content-Type': 'application/json'},
             json={
                 "draft_url": draft_url,

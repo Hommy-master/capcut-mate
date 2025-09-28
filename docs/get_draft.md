@@ -3,7 +3,7 @@
 ## 接口信息
 
 ```
-GET /v1/get_draft
+GET /openapi/capcut-mate/v1/get_draft
 ```
 
 ## 功能描述
@@ -34,15 +34,7 @@ GET /v1/get_draft
 从draft_url中提取draft_id：
 ```javascript
 // 示例draft_url:
-// https://ts.fyshark.com/#/cozeToJianyin?drafId=https://video-snot-12220.oss-cn-shanghai.aliyuncs.com/2025-05-28/draft/2f52a63b-8c6a-4417-8b01-1b2a569ccb6c.json
-
-function extractDraftId(draftUrl) {
-  const match = draftUrl.match(/\/([^\/]+)\.json$/);
-  return match ? match[1] : null;
-}
-
-const draftId = extractDraftId(draftUrl);
-// 结果: "2f52a63b-8c6a-4417-8b01-1b2a569ccb6c"
+// https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258"2f52a63b-8c6a-4417-8b01-1b2a569ccb6c"
 ```
 
 ## 响应格式
@@ -95,14 +87,14 @@ const draftId = extractDraftId(draftUrl);
 #### 1. 基本获取草稿文件列表
 
 ```bash
-curl -X GET "https://api.example.com/v1/get_draft?draft_id=2f52a63b-8c6a-4417-8b01-1b2a569ccb6c" \
+curl -X GET "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2f52a63b-8c6a-4417-8b01-1b2a569ccb6c" \
   -H "Content-Type: application/json"
 ```
 
 #### 2. 使用完整的draft_id
 
 ```bash
-curl -X GET "https://api.example.com/v1/get_draft?draft_id=7e8f9a0b-1c2d-3e4f-5g6h-7i8j9k0l1m2n" \
+curl -X GET "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=7e8f9a0b-1c2d-3e4f-5g6h-7i8j9k0l1m2n" \
   -H "Content-Type: application/json"
 ```
 
@@ -128,7 +120,7 @@ function extractDraftId(draftUrl) {
   return match ? match[1] : null;
 }
 
-const draftUrl = "https://ts.fyshark.com/#/cozeToJianyin?drafId=https://video-snot-12220.oss-cn-shanghai.aliyuncs.com/2025-05-28/draft/example.json";
+const draftUrl = "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258";
 const extractedId = extractDraftId(draftUrl);
 
 if (extractedId) {
@@ -141,7 +133,7 @@ if (extractedId) {
 
 ```javascript
 class DraftManager {
-  constructor(baseUrl = 'https://api.example.com') {
+  constructor(baseUrl = 'https://capcut-mate.jcaigc.cn') {
     this.baseUrl = baseUrl;
   }
 
@@ -304,7 +296,7 @@ class DraftManager {
 const draftManager = new DraftManager();
 
 // 获取单个草稿详情
-const draftUrl = "https://ts.fyshark.com/#/cozeToJianyin?drafId=https://video-snot-12220.oss-cn-shanghai.aliyuncs.com/2025-05-28/draft/example.json";
+const draftUrl = "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258";
 const details = await draftManager.getDraftDetails(draftUrl);
 
 console.log('草稿详情:', {
@@ -317,8 +309,8 @@ console.log('草稿详情:', {
 
 // 批量获取草稿信息
 const multipleDrafts = {
-  "project1": "https://ts.fyshark.com/#/cozeToJianyin?drafId=...project1.json",
-  "project2": "https://ts.fyshark.com/#/cozeToJianyin?drafId=...project2.json"
+  "project1": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
+  "project2": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258"
 };
 
 const batchResults = await draftManager.getBatchDrafts(multipleDrafts);
@@ -360,7 +352,7 @@ class DraftManager:
     def get_draft(self, draft_id: str) -> Dict:
         """获取草稿文件列表"""
         response = requests.get(
-            f'{self.base_url}/v1/get_draft',
+            f'{self.base_url}/openapi/capcut-mate/v1/get_draft',
             params={'draft_id': draft_id},
             headers={'Content-Type': 'application/json'}
         )
@@ -495,7 +487,7 @@ class DraftManager:
 manager = DraftManager()
 
 # 获取单个草稿
-draft_url = "https://ts.fyshark.com/#/cozeToJianyin?drafId=https://video-snot-12220.oss-cn-shanghai.aliyuncs.com/2025-05-28/draft/example.json"
+draft_url = "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258"
 details = manager.get_draft_details(draft_url)
 
 print(f"草稿ID: {details['draft_id']}")
@@ -506,8 +498,8 @@ print(f"图片文件: {len(details['analysis']['types']['image'])}个")
 
 # 批量获取草稿
 multiple_drafts = {
-    "project1": "https://ts.fyshark.com/#/cozeToJianyin?drafId=...project1.json",
-    "project2": "https://ts.fyshark.com/#/cozeToJianyin?drafId=...project2.json"
+    "project1": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
+    "project2": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258"
 }
 
 batch_results = manager.get_batch_drafts(multiple_drafts)

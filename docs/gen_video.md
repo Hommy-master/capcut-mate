@@ -3,7 +3,7 @@
 ## 接口概述
 
 **接口名称**：gen_video  
-**接口地址**：`POST /v1/gen_video`  
+**接口地址**：`POST /openapi/capcut-mate/v1/gen_video`  
 **功能描述**：提交视频生成任务。该接口采用异步处理模式，立即返回任务ID，视频生成在后台进行。支持任务排队，确保系统稳定性。
 
 ## 请求参数
@@ -12,13 +12,7 @@
 
 | 参数名 | 类型 | 必填 | 默认值 | 描述 |
 |--------|------|------|--------|------|
-| draft_url | string | 是 | - | 草稿URL，格式如：https://ts.fyshark.com/#/cozeToJianyin?drafId=... |
-
-## 请求示例
-
-```json
-{
-  "draft_url": "https://ts.fyshark.com/#/cozeToJianyin?drafId=7434912345678901234"
+| draft_url | string | 是 | - | 草稿URL，格式如：https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258"draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258"
 }
 ```
 
@@ -83,17 +77,17 @@
 #### 1. 基本视频生成
 
 ```bash
-curl -X POST https://api.example.com/v1/gen_video \
+curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/gen_video \
   -H "Content-Type: application/json" \
   -d '{
-    "draft_url": "https://ts.fyshark.com/#/cozeToJianyin?drafId=https://video-snot-12220.oss-cn-shanghai.aliyuncs.com/2025-05-28/draft/example.json"
+    "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258"
   }'
 ```
 
 #### 2. 带超时设置的请求
 
 ```bash
-curl -X POST https://api.example.com/v1/gen_video \
+curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/gen_video \
   -H "Content-Type: application/json" \
   -d '{
     "draft_url": "YOUR_DRAFT_URL"
@@ -105,7 +99,7 @@ curl -X POST https://api.example.com/v1/gen_video \
 
 ```javascript
 const generateVideo = async (draftUrl) => {
-  const response = await fetch('/v1/gen_video', {
+  const response = await fetch('/openapi/capcut-mate/v1/gen_video', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ draft_url: draftUrl })
@@ -114,7 +108,7 @@ const generateVideo = async (draftUrl) => {
 };
 
 // 基本使用
-const draftUrl = "https://ts.fyshark.com/#/cozeToJianyin?drafId=...";
+const draftUrl = "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258";
 const result = await generateVideo(draftUrl);
 
 if (result.video_url) {
@@ -134,7 +128,7 @@ if (result.video_url) {
 
 ```javascript
 class VideoGenerator {
-  constructor(baseUrl = 'https://api.example.com') {
+  constructor(baseUrl = 'https://capcut-mate.jcaigc.cn') {
     this.baseUrl = baseUrl;
   }
 
@@ -148,7 +142,7 @@ class VideoGenerator {
     const timeoutId = setTimeout(() => controller.abort(), timeout);
 
     try {
-      const response = await fetch(`${this.baseUrl}/v1/gen_video`, {
+      const response = await fetch(`${this.baseUrl}/openapi/capcut-mate/v1/gen_video`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ draft_url: draftUrl }),
@@ -310,7 +304,7 @@ class VideoGenerator {
 const videoGenerator = new VideoGenerator();
 
 // 单个视频生成
-const draftUrl = "https://ts.fyshark.com/#/cozeToJianyin?drafId=...";
+const draftUrl = "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258";
 
 try {
   const result = await videoGenerator.generateVideoWithPolling(draftUrl, {
@@ -334,9 +328,9 @@ try {
 
 // 批量生成视频
 const multipleDrafts = {
-  "video1": "https://ts.fyshark.com/#/cozeToJianyin?drafId=...draft1.json",
-  "video2": "https://ts.fyshark.com/#/cozeToJianyin?drafId=...draft2.json",
-  "video3": "https://ts.fyshark.com/#/cozeToJianyin?drafId=...draft3.json"
+  "video1": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
+  "video2": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
+  "video3": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258"
 };
 
 const batchResults = await videoGenerator.generateBatchVideos(multipleDrafts, {
@@ -372,7 +366,7 @@ class VideoGenerator:
     def generate_video(self, draft_url: str, timeout: int = 300) -> Dict:
         """生成视频"""
         response = requests.post(
-            f'{self.base_url}/v1/gen_video',
+            f'{self.base_url}/openapi/capcut-mate/v1/gen_video',
             headers={'Content-Type': 'application/json'},
             json={"draft_url": draft_url},
             timeout=timeout
@@ -489,7 +483,7 @@ class VideoGenerator:
 generator = VideoGenerator()
 
 # 单个视频生成
-draft_url = "https://ts.fyshark.com/#/cozeToJianyin?drafId=example.json"
+draft_url = "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258"
 
 def on_progress(progress):
     print(f"生成进度: {progress['status']}")
@@ -512,8 +506,8 @@ except Exception as e:
 
 # 批量生成
 multiple_drafts = {
-    "video1": "https://ts.fyshark.com/#/cozeToJianyin?drafId=draft1.json",
-    "video2": "https://ts.fyshark.com/#/cozeToJianyin?drafId=draft2.json"
+    "video1": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
+    "video2": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258"
 }
 
 def batch_progress(progress):

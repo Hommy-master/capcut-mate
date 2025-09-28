@@ -3,7 +3,7 @@
 ## 接口信息
 
 ```
-POST /v1/save_draft
+POST /openapi/capcut-mate/v1/save_draft
 ```
 
 ## 功能描述
@@ -14,7 +14,7 @@ POST /v1/save_draft
 
 ```json
 {
-  "draft_url": "https://ts.fyshark.com/#/cozeToJianyin?drafId=https://video-snot-12220.oss-cn-shanghai.aliyuncs.com/2025-05-28/draft/2f52a63b-8c6a-4417-8b01-1b2a569ccb6c.json"
+  "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258"
 }
 ```
 
@@ -31,22 +31,7 @@ POST /v1/save_draft
 - **类型**: 字符串
 - **必填**: 是
 - **格式**: 完整的草稿URL，通常由create_draft接口返回
-- **示例**: `https://ts.fyshark.com/#/cozeToJianyin?drafId=https://video-snot-12220.oss-cn-shanghai.aliyuncs.com/...`
-
-#### URL格式说明
-
-草稿URL通常包含以下部分：
-- **域名**: `https://ts.fyshark.com`
-- **路径**: `/#/cozeToJianyin`
-- **参数**: `drafId`指向实际的草稿JSON文件URL
-
-## 响应格式
-
-### 成功响应 (200)
-
-```json
-{
-  "draft_url": "https://ts.fyshark.com/#/cozeToJianyin?drafId=https://video-snot-12220.oss-cn-shanghai.aliyuncs.com/2025-05-28/draft/2f52a63b-8c6a-4417-8b01-1b2a569ccb6c.json"
+- **示例**: `https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258"draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258"
 }
 ```
 
@@ -71,10 +56,10 @@ POST /v1/save_draft
 #### 1. 基本保存草稿
 
 ```bash
-curl -X POST https://api.example.com/v1/save_draft \
+curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/save_draft \
   -H "Content-Type: application/json" \
   -d '{
-    "draft_url": "https://ts.fyshark.com/#/cozeToJianyin?drafId=https://video-snot-12220.oss-cn-shanghai.aliyuncs.com/2025-05-28/draft/example.json"
+    "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258"
   }'
 ```
 
@@ -82,7 +67,7 @@ curl -X POST https://api.example.com/v1/save_draft \
 
 ```javascript
 const saveDraft = async (draftUrl) => {
-  const response = await fetch('/v1/save_draft', {
+  const response = await fetch('/openapi/capcut-mate/v1/save_draft', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ draft_url: draftUrl })
@@ -91,7 +76,7 @@ const saveDraft = async (draftUrl) => {
 };
 
 // 保存草稿
-const draftUrl = "https://ts.fyshark.com/#/cozeToJianyin?drafId=...";
+const draftUrl = "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258";
 const result = await saveDraft(draftUrl);
 console.log('草稿保存成功:', result.draft_url);
 ```
@@ -100,12 +85,12 @@ console.log('草稿保存成功:', result.draft_url);
 
 ```javascript
 class DraftManager {
-  constructor(baseUrl = 'https://api.example.com') {
+  constructor(baseUrl = 'https://capcut-mate.jcaigc.cn') {
     this.baseUrl = baseUrl;
   }
 
   async saveDraft(draftUrl) {
-    const response = await fetch(`${this.baseUrl}/v1/save_draft`, {
+    const response = await fetch(`${this.baseUrl}/openapi/capcut-mate/v1/save_draft`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ draft_url: draftUrl })
@@ -181,7 +166,7 @@ class DraftManager {
 const draftManager = new DraftManager();
 
 // 基本保存
-const draftUrl = "https://ts.fyshark.com/#/cozeToJianyin?drafId=...";
+const draftUrl = "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258";
 await draftManager.saveDraft(draftUrl);
 
 // 启动自动保存（每30秒保存一次）
@@ -195,8 +180,8 @@ setTimeout(() => {
 
 // 批量保存多个草稿
 const multipleDrafts = {
-  "project1": "https://ts.fyshark.com/#/cozeToJianyin?drafId=project1.json",
-  "project2": "https://ts.fyshark.com/#/cozeToJianyin?drafId=project2.json"
+  "project1": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
+  "project2": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258"
 };
 const saveResults = await draftManager.saveMutipleDrafts(multipleDrafts);
 ```
@@ -217,7 +202,7 @@ class DraftSaver:
     def save_draft(self, draft_url: str) -> Dict:
         """保存草稿"""
         response = requests.post(
-            f'{self.base_url}/v1/save_draft',
+            f'{self.base_url}/openapi/capcut-mate/v1/save_draft',
             headers={'Content-Type': 'application/json'},
             json={"draft_url": draft_url}
         )
@@ -265,7 +250,7 @@ class DraftSaver:
 saver = DraftSaver()
 
 # 基本保存
-draft_url = "https://ts.fyshark.com/#/cozeToJianyin?drafId=example.json"
+draft_url = "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258"
 result = saver.save_draft(draft_url)
 print(f"草稿保存成功: {result['draft_url']}")
 

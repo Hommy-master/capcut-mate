@@ -5,7 +5,7 @@
 
 ## 接口信息
 - **请求方式**: POST
-- **接口路径**: `/v1/add_text_style`
+- **接口路径**: `/openapi/capcut-mate/v1/add_text_style`
 - **Content-Type**: `application/json`
 
 ## 请求参数
@@ -55,7 +55,7 @@
 ## 请求示例
 
 ```bash
-curl -X POST "http://localhost:8000/v1/add_text_style" \
+curl -X POST "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_text_style" \
 -H "Content-Type: application/json" \
 -d '{
   "text": "五个快乐到死的顶级思维",

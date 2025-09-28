@@ -5,7 +5,7 @@
 
 ## 接口信息
 - **请求方式**: POST
-- **接口路径**: `/v1/add_masks`
+- **接口路径**: `/openapi/capcut-mate/v1/add_masks`
 - **Content-Type**: `application/json`
 
 ## 请求参数
@@ -49,10 +49,10 @@
 ## 请求示例
 
 ```bash
-curl -X POST "http://localhost:8000/v1/add_masks" \
+curl -X POST "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_masks" \
 -H "Content-Type: application/json" \
 -d '{
-  "draft_url": "https://ts.fyshark.com/#/cozeToJianyin?drafId=7427078525303048221",
+  "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
   "segment_ids": ["d62994b4-25fe-422a-a123-87ef05038558", "e73995c5-36ef-533b-b234-98fg16149669"],
   "name": "圆形",
   "X": 100,
@@ -75,7 +75,7 @@ curl -X POST "http://localhost:8000/v1/add_masks" \
   "code": 0,
   "message": "Success",
   "data": {
-    "draft_url": "https://ts.fyshark.com/#/cozeToJianyin?drafId=7427078525303048221",
+    "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
     "masks_added": 2,
     "affected_segments": ["d62994b4-25fe-422a-a123-87ef05038558", "e73995c5-36ef-533b-b234-98fg16149669"],
     "mask_ids": ["mask_001", "mask_002"]

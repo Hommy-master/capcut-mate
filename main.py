@@ -8,7 +8,7 @@ from src.middlewares import PrepareMiddleware, ResponseMiddleware
 app: FastAPI = FastAPI(title="CapCut Mate API", version="1.0")
 
 # 1. 注册路由
-app.include_router(router=v1_router, prefix="/openapi", tags=["capcut-mate"])
+app.include_router(router=v1_router, prefix="/openapi/capcut-mate", tags=["capcut-mate"])
 
 # 2. 添加中间件
 app.add_middleware(middleware_class=PrepareMiddleware)

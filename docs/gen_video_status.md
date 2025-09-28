@@ -3,7 +3,7 @@
 ## 接口概述
 
 **接口名称**：gen_video_status  
-**接口地址**：`POST /v1/gen_video_status`  
+**接口地址**：`POST /openapi/capcut-mate/v1/gen_video_status`  
 **功能描述**：查询视频生成任务的状态和进度。配合 gen_video 接口使用，用于实时跟踪视频生成任务的执行情况，包括任务状态、进度百分比、完成结果等信息。
 
 ## 请求参数
@@ -18,7 +18,7 @@
 
 ```json
 {
-  "draft_url": "https://ts.fyshark.com/#/cozeToJianyin?drafId=7434912345678901234"
+  "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258"
 }
 ```
 
@@ -30,7 +30,7 @@
 
 ```json
 {
-  "draft_url": "https://ts.fyshark.com/#/cozeToJianyin?drafId=7434912345678901234",
+  "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
   "status": "pending",
   "progress": 0,
   "video_url": "",
@@ -45,7 +45,7 @@
 
 ```json
 {
-  "draft_url": "https://ts.fyshark.com/#/cozeToJianyin?drafId=7434912345678901234", 
+  "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258", 
   "status": "processing",
   "progress": 65,
   "video_url": "",
@@ -60,7 +60,7 @@
 
 ```json
 {
-  "draft_url": "https://ts.fyshark.com/#/cozeToJianyin?drafId=7434912345678901234",
+  "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
   "status": "completed",
   "progress": 100,
   "video_url": "https://video-output.example.com/generated/video_abc123def456ghi789.mp4",
@@ -75,7 +75,7 @@
 
 ```json
 {
-  "draft_url": "https://ts.fyshark.com/#/cozeToJianyin?drafId=7434912345678901234",
+  "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
   "status": "failed",
   "progress": 0,
   "video_url": "",
@@ -185,7 +185,7 @@ async function pollVideoStatus(draftUrl, maxAttempts = 120) {
   
   while (attempts < maxAttempts) {
     try {
-      const response = await fetch('/v1/gen_video_status', {
+      const response = await fetch('/openapi/capcut-mate/v1/gen_video_status', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ draft_url: draftUrl })
@@ -219,7 +219,7 @@ async function pollVideoStatus(draftUrl, maxAttempts = 120) {
 }
 
 // 使用示例
-const draftUrl = "https://ts.fyshark.com/#/cozeToJianyin?drafId=...";
+const draftUrl = "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258";
 
 try {
   const result = await pollVideoStatus(draftUrl);
@@ -268,7 +268,7 @@ def poll_video_status(draft_url, max_attempts=120, poll_interval=5):
 
 # 使用示例
 if __name__ == "__main__":
-    draft_url = "https://ts.fyshark.com/#/cozeToJianyin?drafId=..."
+    draft_url = "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258"
     
     try:
         result = poll_video_status(draft_url)

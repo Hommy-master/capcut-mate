@@ -3,7 +3,7 @@
 ## 接口概述
 
 **接口名称**：get_audio_duration  
-**接口地址**：`POST /v1/get_audio_duration`  
+**接口地址**：`POST /openapi/capcut-mate/v1/get_audio_duration`  
 **功能描述**：获取音频文件的时长，支持各种常见的音频格式。使用FFprobe工具进行精确的音频分析，返回音频文件的准确时长，单位为微秒。
 
 ## 请求参数
@@ -132,7 +132,7 @@
 ```javascript
 // 获取音频时长
 const getAudioDuration = async (audioUrl) => {
-  const response = await fetch('/v1/get_audio_duration', {
+  const response = await fetch('/openapi/capcut-mate/v1/get_audio_duration', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -172,7 +172,7 @@ import requests
 
 def get_audio_duration(mp3_url):
     """获取音频文件时长"""
-    url = 'http://localhost:8000/v1/get_audio_duration'
+    url = 'https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_audio_duration'
     data = {
         'mp3_url': mp3_url
     }

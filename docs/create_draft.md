@@ -3,7 +3,7 @@
 ## 接口信息
 
 ```
-POST /v1/create_draft
+POST /openapi/capcut-mate/v1/create_draft
 ```
 
 ## 功能描述
@@ -56,7 +56,7 @@ POST /v1/create_draft
 
 ```json
 {
-  "draft_url": "https://ts.fyshark.com/#/cozeToJianyin?drafId=https://video-snot-12220.oss-cn-shanghai.aliyuncs.com/2025-05-28/draft/2f52a63b-8c6a-4417-8b01-1b2a569ccb6c.json",
+  "draft_url": "https://cm.jcaigc.cn/openapi/v1/get_draft?draft_id=2025092811473036584258",
   "tip_url": "https://help.example.com/draft-usage"
 }
 ```
@@ -83,7 +83,7 @@ POST /v1/create_draft
 #### 1. 创建默认分辨率草稿
 
 ```bash
-curl -X POST https://api.example.com/v1/create_draft \
+curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/create_draft \
   -H "Content-Type: application/json" \
   -d '{}'
 ```
@@ -91,7 +91,7 @@ curl -X POST https://api.example.com/v1/create_draft \
 #### 2. 创建自定义分辨率草稿
 
 ```bash
-curl -X POST https://api.example.com/v1/create_draft \
+curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/create_draft \
   -H "Content-Type: application/json" \
   -d '{
     "width": 1280,
@@ -102,7 +102,7 @@ curl -X POST https://api.example.com/v1/create_draft \
 #### 3. 创建竖屏短视频草稿
 
 ```bash
-curl -X POST https://api.example.com/v1/create_draft \
+curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/create_draft \
   -H "Content-Type: application/json" \
   -d '{
     "width": 1080,
@@ -114,7 +114,7 @@ curl -X POST https://api.example.com/v1/create_draft \
 
 ```javascript
 const createDraft = async (width = 1920, height = 1080) => {
-  const response = await fetch('/v1/create_draft', {
+  const response = await fetch('/openapi/capcut-mate/v1/create_draft', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ width, height })
@@ -142,14 +142,14 @@ console.log('草稿创建成功:', {
 
 ```javascript
 class DraftManager {
-  constructor(baseUrl = 'https://api.example.com') {
+  constructor(baseUrl = 'https://capcut-mate.jcaigc.cn') {
     this.baseUrl = baseUrl;
   }
 
   async createDraft(config = {}) {
     const { width = 1920, height = 1080 } = config;
     
-    const response = await fetch(`${this.baseUrl}/v1/create_draft`, {
+    const response = await fetch(`${this.baseUrl}/openapi/capcut-mate/v1/create_draft`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ width, height })
@@ -239,7 +239,7 @@ class DraftCreator:
     def create_draft(self, width: int = 1920, height: int = 1080) -> Dict:
         """创建草稿"""
         response = requests.post(
-            f'{self.base_url}/v1/create_draft',
+            f'{self.base_url}/openapi/capcut-mate/v1/create_draft',
             headers={'Content-Type': 'application/json'},
             json={
                 "width": width,

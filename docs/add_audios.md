@@ -3,7 +3,7 @@
 ## 接口信息
 
 ```
-POST /v1/add_audios
+POST /openapi/capcut-mate/v1/add_audios
 ```
 
 ## 功能描述
@@ -14,7 +14,7 @@ POST /v1/add_audios
 
 ```json
 {
-  "draft_url": "https://ts.fyshark.com/#/cozeToJianyin?drafId=https://video-snot-12220.oss-cn-shanghai.aliyuncs.com/2025-05-28/draft/2f52a63b-8c6a-4417-8b01-1b2a569ccb6c.json",
+  "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
   "audio_infos": "[{\"audio_url\":\"https://example.com/audio1.mp3\",\"start\":0,\"end\":5000000,\"duration\":10000000,\"volume\":0.8,\"fade_in\":1000000,\"fade_out\":1000000}]"
 }
 ```
@@ -73,7 +73,7 @@ audio_infos是一个JSON字符串，解析后为数组，每个元素包含以�
 
 ```json
 {
-  "draft_url": "https://ts.fyshark.com/#/cozeToJianyin?drafId=...",
+  "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
   "track_id": "audio-track-uuid",
   "audio_ids": ["audio1-uuid", "audio2-uuid", "audio3-uuid"]
 }
@@ -102,7 +102,7 @@ audio_infos是一个JSON字符串，解析后为数组，每个元素包含以�
 #### 1. 基本音频添加
 
 ```bash
-curl -X POST https://api.example.com/v1/add_audios \
+curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_audios \
   -H "Content-Type: application/json" \
   -d '{
     "draft_url": "YOUR_DRAFT_URL",
@@ -113,7 +113,7 @@ curl -X POST https://api.example.com/v1/add_audios \
 #### 2. 多音频批量添加
 
 ```bash
-curl -X POST https://api.example.com/v1/add_audios \
+curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_audios \
   -H "Content-Type: application/json" \
   -d '{
     "draft_url": "YOUR_DRAFT_URL",
@@ -124,7 +124,7 @@ curl -X POST https://api.example.com/v1/add_audios \
 #### 3. 带淡入淡出效果的音频
 
 ```bash
-curl -X POST https://api.example.com/v1/add_audios \
+curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_audios \
   -H "Content-Type: application/json" \
   -d '{
     "draft_url": "YOUR_DRAFT_URL",
@@ -136,7 +136,7 @@ curl -X POST https://api.example.com/v1/add_audios \
 
 ```javascript
 const addAudios = async (draftUrl, audioConfig) => {
-  const response = await fetch('/v1/add_audios', {
+  const response = await fetch('/openapi/capcut-mate/v1/add_audios', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -228,12 +228,12 @@ try {
 
 ```javascript
 class AudioManager {
-  constructor(baseUrl = 'https://api.example.com') {
+  constructor(baseUrl = 'https://capcut-mate.jcaigc.cn') {
     this.baseUrl = baseUrl;
   }
 
   async addAudios(draftUrl, audioConfig) {
-    const response = await fetch(`${this.baseUrl}/v1/add_audios`, {
+    const response = await fetch(`${this.baseUrl}/openapi/capcut-mate/v1/add_audios`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -430,12 +430,12 @@ import json
 from typing import List, Dict, Optional
 
 class AudioProcessor:
-    def __init__(self, base_url="https://api.example.com"):
+    def __init__(self, base_url="https://capcut-mate.jcaigc.cn"):
         self.base_url = base_url
 
     def add_audios(self, draft_url: str, audio_config: Dict) -> Dict:
         response = requests.post(
-            f'{self.base_url}/v1/add_audios',
+            f'{self.base_url}/openapi/capcut-mate/v1/add_audios',
             headers={'Content-Type': 'application/json'},
             json={
                 "draft_url": draft_url,

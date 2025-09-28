@@ -3,7 +3,7 @@
 ## 接口信息
 
 ```
-POST /v1/add_images
+POST /openapi/capcut-mate/v1/add_images
 ```
 
 ## 功能描述
@@ -14,7 +14,7 @@ POST /v1/add_images
 
 ```json
 {
-  "draft_url": "https://ts.fyshark.com/#/cozeToJianyin?drafId=...",
+  "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
   "image_infos": "[{\"image_url\":\"https://example.com/image1.jpg\",\"width\":1920,\"height\":1080,\"start\":0,\"end\":5000000,\"duration\":5000000,\"animation\":\"淡入淡出\",\"transition\":\"溶解\",\"transition_duration\":500000}]",
   "alpha": 1.0,
   "scale_x": 1.0,
@@ -73,7 +73,7 @@ POST /v1/add_images
 
 ```json
 {
-  "draft_url": "https://ts.fyshark.com/#/cozeToJianyin?drafId=...",
+  "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
   "track_id": "video-track-uuid",
   "image_ids": ["image1-uuid", "image2-uuid"],
   "segment_ids": ["segment1-uuid", "segment2-uuid"],
@@ -104,7 +104,7 @@ POST /v1/add_images
 #### 基本图片添加
 
 ```bash
-curl -X POST https://api.example.com/v1/add_images \
+curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_images \
   -H "Content-Type: application/json" \
   -d '{
     "draft_url": "YOUR_DRAFT_URL",
@@ -115,7 +115,7 @@ curl -X POST https://api.example.com/v1/add_images \
 #### 带动画效果的图片
 
 ```bash
-curl -X POST https://api.example.com/v1/add_images \
+curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_images \
   -H "Content-Type: application/json" \
   -d '{
     "draft_url": "YOUR_DRAFT_URL",
@@ -132,7 +132,7 @@ curl -X POST https://api.example.com/v1/add_images \
 
 ```javascript
 const addImages = async (draftUrl, imageConfig) => {
-  const response = await fetch('/v1/add_images', {
+  const response = await fetch('/openapi/capcut-mate/v1/add_images', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -221,12 +221,12 @@ import requests
 import json
 
 class ImageProcessor:
-    def __init__(self, base_url="https://api.example.com"):
+    def __init__(self, base_url="https://capcut-mate.jcaigc.cn"):
         self.base_url = base_url
 
     def add_images(self, draft_url: str, image_config: dict) -> dict:
         response = requests.post(
-            f'{self.base_url}/v1/add_images',
+            f'{self.base_url}/openapi/capcut-mate/v1/add_images',
             headers={'Content-Type': 'application/json'},
             json={
                 "draft_url": draft_url,
