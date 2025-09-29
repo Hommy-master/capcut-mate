@@ -10,6 +10,10 @@ POST /openapi/capcut-mate/v1/create_draft
 
 创建剪映草稿。该接口用于创建一个新的剪映草稿项目，可以自定义视频的宽度和高度。创建成功后会返回草稿URL和帮助文档URL，为后续的视频编辑操作提供基础。
 
+## 更多文档
+
+📖 更多详细文档和教程请访问：[https://docs.jcaigc.cn](https://docs.jcaigc.cn)
+
 ## 请求参数
 
 ```json
@@ -57,7 +61,7 @@ POST /openapi/capcut-mate/v1/create_draft
 ```json
 {
   "draft_url": "https://cm.jcaigc.cn/openapi/v1/get_draft?draft_id=2025092811473036584258",
-  "tip_url": "https://help.example.com/draft-usage"
+  "tip_url": "https://help.assets.jcaigc.cn/draft-usage"
 }
 ```
 
@@ -233,7 +237,7 @@ import requests
 from typing import Optional, Dict
 
 class DraftCreator:
-    def __init__(self, base_url: str = "https://api.example.com"):
+    def __init__(self, base_url: str = "https://api.assets.jcaigc.cn"):
         self.base_url = base_url
 
     def create_draft(self, width: int = 1920, height: int = 1080) -> Dict:

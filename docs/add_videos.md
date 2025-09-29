@@ -10,12 +10,16 @@ POST /openapi/capcut-mate/v1/add_videos
 
 批量向现有草稿中添加视频素材。该接口是一个功能强大的视频添加工具，支持多个视频的批量处理，包括时间范围控制、透明度调整、遮罩效果、转场动画、音量控制、缩放变换等高级功能。特别适合创建复杂的多视频组合场景，如画中画效果、视频拼接、过渡动画等。
 
+## 更多文档
+
+📖 更多详细文档和教程请访问：[https://docs.jcaigc.cn](https://docs.jcaigc.cn)
+
 ## 请求参数
 
 ```json
 {
   "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
-  "video_infos": "[{\"video_url\":\"https://example.com/video1.mp4\",\"width\":1024,\"height\":1024,\"start\":0,\"end\":5000000,\"duration\":5000000,\"mask\":\"圆形\",\"transition\":\"淡入淡出\",\"transition_duration\":500000,\"volume\":0.8}]",
+  "video_infos": "[{\"video_url\":\"https://assets.jcaigc.cn/video1.mp4\",\"width\":1024,\"height\":1024,\"start\":0,\"end\":5000000,\"duration\":5000000,\"mask\":\"圆形\",\"transition\":\"淡入淡出\",\"transition_duration\":500000,\"volume\":0.8}]",
   "alpha": 0.5,
   "scale_x": 1.0,
   "scale_y": 1.0,
@@ -132,7 +136,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_videos \
   -H "Content-Type: application/json" \
   -d '{
     "draft_url": "YOUR_DRAFT_URL",
-    "video_infos": "[{\"video_url\":\"https://example.com/video1.mp4\",\"width\":1920,\"height\":1080,\"start\":0,\"end\":5000000,\"duration\":10000000}]"
+    "video_infos": "[{\"video_url\":\"https://assets.jcaigc.cn/video1.mp4\",\"width\":1920,\"height\":1080,\"start\":0,\"end\":5000000,\"duration\":10000000}]"
   }'
 ```
 
@@ -143,7 +147,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_videos \
   -H "Content-Type: application/json" \
   -d '{
     "draft_url": "YOUR_DRAFT_URL",
-    "video_infos": "[{\"video_url\":\"https://example.com/video1.mp4\",\"width\":1920,\"height\":1080,\"start\":0,\"end\":5000000,\"duration\":10000000},{\"video_url\":\"https://example.com/video2.mp4\",\"width\":1280,\"height\":720,\"start\":5000000,\"end\":10000000,\"duration\":8000000}]",
+    "video_infos": "[{\"video_url\":\"https://assets.jcaigc.cn/video1.mp4\",\"width\":1920,\"height\":1080,\"start\":0,\"end\":5000000,\"duration\":10000000},{\"video_url\":\"https://assets.jcaigc.cn/video2.mp4\",\"width\":1280,\"height\":720,\"start\":5000000,\"end\":10000000,\"duration\":8000000}]",
     "alpha": 0.8
   }'
 ```
@@ -155,7 +159,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_videos \
   -H "Content-Type: application/json" \
   -d '{
     "draft_url": "YOUR_DRAFT_URL",
-    "video_infos": "[{\"video_url\":\"https://example.com/video1.mp4\",\"width\":1024,\"height\":1024,\"start\":0,\"end\":5000000,\"duration\":10000000,\"mask\":\"圆形\",\"transition\":\"淡入淡出\",\"transition_duration\":500000,\"volume\":0.8}]",
+    "video_infos": "[{\"video_url\":\"https://assets.jcaigc.cn/video1.mp4\",\"width\":1024,\"height\":1024,\"start\":0,\"end\":5000000,\"duration\":10000000,\"mask\":\"圆形\",\"transition\":\"淡入淡出\",\"transition_duration\":500000,\"volume\":0.8}]",
     "alpha": 1.0,
     "scale_x": 1.2,
     "scale_y": 1.2
@@ -169,7 +173,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_videos \
   -H "Content-Type: application/json" \
   -d '{
     "draft_url": "YOUR_DRAFT_URL",
-    "video_infos": "[{\"video_url\":\"https://example.com/main.mp4\",\"width\":1920,\"height\":1080,\"start\":0,\"end\":10000000,\"duration\":15000000},{\"video_url\":\"https://example.com/pip.mp4\",\"width\":640,\"height\":360,\"start\":2000000,\"end\":8000000,\"duration\":10000000}]",
+    "video_infos": "[{\"video_url\":\"https://assets.jcaigc.cn/main.mp4\",\"width\":1920,\"height\":1080,\"start\":0,\"end\":10000000,\"duration\":15000000},{\"video_url\":\"https://assets.jcaigc.cn/pip.mp4\",\"width\":640,\"height\":360,\"start\":2000000,\"end\":8000000,\"duration\":10000000}]",
     "transform_x": 300,
     "transform_y": -200,
     "scale_x": 0.3,
@@ -196,7 +200,7 @@ const addVideos = async (draftUrl, videoConfig) => {
 const basicVideos = {
   video_infos: JSON.stringify([
     {
-      video_url: "https://example.com/video1.mp4",
+      video_url: "https://assets.jcaigc.cn/video1.mp4",
       width: 1920,
       height: 1080,
       start: 0,
@@ -210,7 +214,7 @@ const basicVideos = {
 const videoSequence = {
   video_infos: JSON.stringify([
     {
-      video_url: "https://example.com/intro.mp4",
+      video_url: "https://assets.jcaigc.cn/intro.mp4",
       width: 1920,
       height: 1080,
       start: 0,
@@ -220,7 +224,7 @@ const videoSequence = {
       transition_duration: 500000
     },
     {
-      video_url: "https://example.com/main.mp4",
+      video_url: "https://assets.jcaigc.cn/main.mp4",
       width: 1920,
       height: 1080,
       start: 3000000,
@@ -229,7 +233,7 @@ const videoSequence = {
       volume: 0.8
     },
     {
-      video_url: "https://example.com/outro.mp4",
+      video_url: "https://assets.jcaigc.cn/outro.mp4",
       width: 1920,
       height: 1080,
       start: 15000000,
@@ -245,7 +249,7 @@ const videoSequence = {
 const pipEffect = {
   video_infos: JSON.stringify([
     {
-      video_url: "https://example.com/background.mp4",
+      video_url: "https://assets.jcaigc.cn/background.mp4",
       width: 1920,
       height: 1080,
       start: 0,
@@ -253,7 +257,7 @@ const pipEffect = {
       duration: 15000000
     },
     {
-      video_url: "https://example.com/overlay.mp4",
+      video_url: "https://assets.jcaigc.cn/overlay.mp4",
       width: 640,
       height: 360,
       start: 2000000,
@@ -406,14 +410,14 @@ const videoManager = new VideoManager();
 // 创建视频序列
 const sequence = videoManager.createVideoSequence([
   {
-    url: "https://example.com/intro.mp4",
+    url: "https://assets.jcaigc.cn/intro.mp4",
     width: 1920,
     height: 1080,
     playDuration: 3000000,
     totalDuration: 5000000
   },
   {
-    url: "https://example.com/main.mp4",
+    url: "https://assets.jcaigc.cn/main.mp4",
     width: 1920,
     height: 1080,
     playDuration: 10000000,
@@ -425,13 +429,13 @@ const sequence = videoManager.createVideoSequence([
 // 创建画中画
 const pip = videoManager.createPictureInPicture(
   {
-    url: "https://example.com/background.mp4",
+    url: "https://assets.jcaigc.cn/background.mp4",
     width: 1920,
     height: 1080,
     duration: 10000000
   },
   {
-    url: "https://example.com/overlay.mp4",
+    url: "https://assets.jcaigc.cn/overlay.mp4",
     width: 640,
     height: 360,
     duration: 6000000,
@@ -537,14 +541,14 @@ processor = VideoProcessor()
 # 视频序列
 videos = [
     {
-        "url": "https://example.com/intro.mp4",
+        "url": "https://assets.jcaigc.cn/intro.mp4",
         "width": 1920,
         "height": 1080,
         "play_duration": 3000000,
         "total_duration": 5000000
     },
     {
-        "url": "https://example.com/main.mp4",
+        "url": "https://assets.jcaigc.cn/main.mp4",
         "width": 1920,
         "height": 1080,
         "play_duration": 10000000,

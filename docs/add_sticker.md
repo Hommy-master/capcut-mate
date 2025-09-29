@@ -10,6 +10,10 @@ POST /openapi/capcut-mate/v1/add_sticker
 
 向现有草稿中添加贴纸。该接口用于在指定的时间段内添加贴纸素材到剪映草稿中，支持贴纸的缩放和位置调整。贴纸可以用于增强视频的视觉效果，如表情、装饰、文字等。
 
+## 更多文档
+
+📖 更多详细文档和教程请访问：[https://docs.jcaigc.cn](https://docs.jcaigc.cn)
+
 ## 请求参数
 
 ```json
@@ -418,7 +422,7 @@ import random
 from typing import List, Dict
 
 class StickerProcessor:
-    def __init__(self, base_url: str = "https://api.example.com"):
+    def __init__(self, base_url: str = "https://api.assets.jcaigc.cn"):
         self.base_url = base_url
 
     def add_sticker(self, draft_url: str, sticker_config: Dict) -> Dict:

@@ -10,12 +10,16 @@ POST /openapi/capcut-mate/v1/add_audios
 
 批量向现有草稿中添加音频素材。该接口支持添加多个音频文件到剪映草稿，为视频创建背景音乐、音效、旁白等音频内容。音频将被添加到独立的音频轨道中，不会影响视频内容。
 
+## 更多文档
+
+📖 更多详细文档和教程请访问：[https://docs.jcaigc.cn](https://docs.jcaigc.cn)
+
 ## 请求参数
 
 ```json
 {
   "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
-  "audio_infos": "[{\"audio_url\":\"https://example.com/audio1.mp3\",\"start\":0,\"end\":5000000,\"duration\":10000000,\"volume\":0.8,\"fade_in\":1000000,\"fade_out\":1000000}]"
+  "audio_infos": "[{\"audio_url\":\"https://assets.jcaigc.cn/audio1.mp3\",\"start\":0,\"end\":5000000,\"duration\":10000000,\"volume\":0.8,\"fade_in\":1000000,\"fade_out\":1000000}]"
 }
 ```
 
@@ -106,7 +110,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_audios \
   -H "Content-Type: application/json" \
   -d '{
     "draft_url": "YOUR_DRAFT_URL",
-    "audio_infos": "[{\"audio_url\":\"https://example.com/bgm.mp3\",\"start\":0,\"end\":10000000,\"duration\":15000000,\"volume\":0.8}]"
+    "audio_infos": "[{\"audio_url\":\"https://assets.jcaigc.cn/bgm.mp3\",\"start\":0,\"end\":10000000,\"duration\":15000000,\"volume\":0.8}]"
   }'
 ```
 
@@ -117,7 +121,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_audios \
   -H "Content-Type: application/json" \
   -d '{
     "draft_url": "YOUR_DRAFT_URL",
-    "audio_infos": "[{\"audio_url\":\"https://example.com/intro.mp3\",\"start\":0,\"end\":3000000,\"duration\":5000000,\"volume\":1.0,\"fade_in\":500000},{\"audio_url\":\"https://example.com/bgm.mp3\",\"start\":3000000,\"end\":30000000,\"duration\":35000000,\"volume\":0.6}]"
+    "audio_infos": "[{\"audio_url\":\"https://assets.jcaigc.cn/intro.mp3\",\"start\":0,\"end\":3000000,\"duration\":5000000,\"volume\":1.0,\"fade_in\":500000},{\"audio_url\":\"https://assets.jcaigc.cn/bgm.mp3\",\"start\":3000000,\"end\":30000000,\"duration\":35000000,\"volume\":0.6}]"
   }'
 ```
 
@@ -128,7 +132,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_audios \
   -H "Content-Type: application/json" \
   -d '{
     "draft_url": "YOUR_DRAFT_URL",
-    "audio_infos": "[{\"audio_url\":\"https://example.com/outro.mp3\",\"start\":25000000,\"end\":30000000,\"duration\":8000000,\"volume\":0.9,\"fade_in\":1000000,\"fade_out\":2000000}]"
+    "audio_infos": "[{\"audio_url\":\"https://assets.jcaigc.cn/outro.mp3\",\"start\":25000000,\"end\":30000000,\"duration\":8000000,\"volume\":0.9,\"fade_in\":1000000,\"fade_out\":2000000}]"
   }'
 ```
 
@@ -151,7 +155,7 @@ const addAudios = async (draftUrl, audioConfig) => {
 const basicAudio = {
   audio_infos: JSON.stringify([
     {
-      audio_url: "https://example.com/bgm.mp3",
+      audio_url: "https://assets.jcaigc.cn/bgm.mp3",
       start: 0,
       end: 10000000,
       duration: 15000000,
@@ -164,7 +168,7 @@ const basicAudio = {
 const audioSequence = {
   audio_infos: JSON.stringify([
     {
-      audio_url: "https://example.com/intro.mp3",
+      audio_url: "https://assets.jcaigc.cn/intro.mp3",
       start: 0,
       end: 3000000,
       duration: 5000000,
@@ -172,14 +176,14 @@ const audioSequence = {
       fade_in: 500000
     },
     {
-      audio_url: "https://example.com/main-bgm.mp3",
+      audio_url: "https://assets.jcaigc.cn/main-bgm.mp3",
       start: 2000000,
       end: 25000000,
       duration: 30000000,
       volume: 0.6
     },
     {
-      audio_url: "https://example.com/outro.mp3",
+      audio_url: "https://assets.jcaigc.cn/outro.mp3",
       start: 24000000,
       end: 28000000,
       duration: 6000000,
@@ -193,14 +197,14 @@ const audioSequence = {
 const soundEffects = {
   audio_infos: JSON.stringify([
     {
-      audio_url: "https://example.com/applause.mp3",
+      audio_url: "https://assets.jcaigc.cn/applause.mp3",
       start: 5000000,
       end: 8000000,
       duration: 4000000,
       volume: 0.7
     },
     {
-      audio_url: "https://example.com/transition.mp3",
+      audio_url: "https://assets.jcaigc.cn/transition.mp3",
       start: 12000000,
       end: 13500000,
       duration: 2000000,
@@ -373,7 +377,7 @@ const audioManager = new AudioManager();
 
 // 创建背景音乐
 const bgm = audioManager.createBackgroundMusic(
-  "https://example.com/bgm.mp3", 
+  "https://assets.jcaigc.cn/bgm.mp3", 
   60000000, // 60秒
   0.6, 
   true // 循环播放
@@ -382,19 +386,19 @@ const bgm = audioManager.createBackgroundMusic(
 // 创建音频序列
 const sequence = audioManager.createAudioSequence([
   {
-    url: "https://example.com/intro.mp3",
+    url: "https://assets.jcaigc.cn/intro.mp3",
     playDuration: 5000000,
     totalDuration: 5000000,
     volume: 1.0
   },
   {
-    url: "https://example.com/main.mp3",
+    url: "https://assets.jcaigc.cn/main.mp3",
     playDuration: 20000000,
     totalDuration: 25000000,
     volume: 0.8
   },
   {
-    url: "https://example.com/outro.mp3",
+    url: "https://assets.jcaigc.cn/outro.mp3",
     playDuration: 3000000,
     totalDuration: 3000000,
     volume: 1.0,
@@ -405,13 +409,13 @@ const sequence = audioManager.createAudioSequence([
 // 创建音效
 const effects = audioManager.createSoundEffects([
   {
-    url: "https://example.com/whoosh.mp3",
+    url: "https://assets.jcaigc.cn/whoosh.mp3",
     startTime: 10000000,
     duration: 1500000,
     volume: 0.5
   },
   {
-    url: "https://example.com/ding.mp3",
+    url: "https://assets.jcaigc.cn/ding.mp3",
     startTime: 25000000,
     duration: 1000000,
     volume: 0.8
@@ -526,7 +530,7 @@ processor = AudioProcessor()
 
 # 背景音乐
 bgm_config = processor.create_background_music(
-    "https://example.com/bgm.mp3",
+    "https://assets.jcaigc.cn/bgm.mp3",
     60000000,  # 60秒
     volume=0.6,
     loop=True
@@ -535,13 +539,13 @@ bgm_config = processor.create_background_music(
 # 音频序列
 sequence_config = processor.create_audio_sequence([
     {
-        "url": "https://example.com/intro.mp3",
+        "url": "https://assets.jcaigc.cn/intro.mp3",
         "play_duration": 5000000,
         "total_duration": 5000000,
         "volume": 1.0
     },
     {
-        "url": "https://example.com/main.mp3",
+        "url": "https://assets.jcaigc.cn/main.mp3",
         "play_duration": 20000000,
         "total_duration": 25000000,
         "volume": 0.8
@@ -551,7 +555,7 @@ sequence_config = processor.create_audio_sequence([
 # 音效
 effects_config = processor.create_sound_effects([
     {
-        "url": "https://example.com/whoosh.mp3",
+        "url": "https://assets.jcaigc.cn/whoosh.mp3",
         "start_time": 10000000,
         "duration": 1500000,
         "volume": 0.5

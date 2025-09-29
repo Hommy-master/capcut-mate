@@ -8,6 +8,10 @@
 - **路径**: `/openapi/capcut-mate/v1/add_captions`
 - **Content-Type**: `application/json`
 
+## 更多文档
+
+📖 更多详细文档和教程请访问：[https://docs.jcaigc.cn](https://docs.jcaigc.cn)
+
 ## 请求参数
 
 ### 请求体

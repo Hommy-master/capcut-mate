@@ -3,6 +3,10 @@
 ## 接口描述
 向剪映草稿添加关键帧，支持多种动画属性的关键帧设置。
 
+## 更多文档
+
+📖 更多详细文档和教程请访问：[https://docs.jcaigc.cn](https://docs.jcaigc.cn)
+
 ## 接口信息
 - **方法**: POST
 - **路径**: `/openapi/capcut-mate/v1/add_keyframes`

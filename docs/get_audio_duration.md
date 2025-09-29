@@ -6,6 +6,10 @@
 **接口地址**：`POST /openapi/capcut-mate/v1/get_audio_duration`  
 **功能描述**：获取音频文件的时长，支持各种常见的音频格式。使用FFprobe工具进行精确的音频分析，返回音频文件的准确时长，单位为微秒。
 
+## 更多文档
+
+📖 更多详细文档和教程请访问：[https://docs.jcaigc.cn](https://docs.jcaigc.cn)
+
 ## 请求参数
 
 ### 请求体 (application/json)
@@ -27,7 +31,7 @@
 
 ```json
 {
-  "mp3_url": "https://example.com/audio/sample.mp3"
+  "mp3_url": "https://assets.jcaigc.cn/audio/sample.mp3"
 }
 ```
 
@@ -35,7 +39,7 @@
 
 ```json
 {
-  "mp3_url": "https://example.com/audio/music.wav"
+  "mp3_url": "https://assets.jcaigc.cn/audio/music.wav"
 }
 ```
 
@@ -155,7 +159,7 @@ const getAudioDuration = async (audioUrl) => {
 };
 
 // 使用示例
-getAudioDuration('https://example.com/audio/sample.mp3')
+getAudioDuration('https://assets.jcaigc.cn/audio/sample.mp3')
   .then(duration => {
     console.log(`音频时长（微秒）: ${duration}`);
     console.log(`音频时长（秒）: ${duration / 1000000}`);
@@ -189,7 +193,7 @@ def get_audio_duration(mp3_url):
         return None
 
 # 使用示例
-audio_url = "https://example.com/audio/sample.mp3"
+audio_url = "https://assets.jcaigc.cn/audio/sample.mp3"
 duration_info = get_audio_duration(audio_url)
 
 if duration_info:
@@ -235,9 +239,9 @@ def get_audio_duration_batch(audio_urls):
 
 # 使用示例
 audio_urls = [
-    "https://example.com/audio1.mp3",
-    "https://example.com/audio2.wav",
-    "https://example.com/audio3.aac"
+    "https://assets.jcaigc.cn/audio1.mp3",
+    "https://assets.jcaigc.cn/audio2.wav",
+    "https://assets.jcaigc.cn/audio3.aac"
 ]
 
 results = get_audio_duration_batch(audio_urls)
