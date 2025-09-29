@@ -6,6 +6,10 @@
 **接口地址**：`POST /openapi/capcut-mate/v1/easy_create_material`  
 **功能描述**：在现有草稿中添加多种类型的素材内容，包括音频、视频、图片和文字。该接口可以一次性向草稿添加多种媒体素材，自动处理素材的时长、尺寸等属性，并智能管理不同类型的媒体轨道。是视频创作的核心接口之一。
 
+## 更多文档
+
+📖 更多详细文档和教程请访问：[https://docs.jcaigc.cn](https://docs.jcaigc.cn)
+
 ## 请求参数
 
 ### 请求体 (application/json)
@@ -37,10 +41,10 @@
 ```json
 {
   "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
-  "audio_url": "https://example.com/audio.mp3",
+  "audio_url": "https://assets.jcaigc.cn/audio.mp3",
   "text": "Hello World",
   "img_url": "https://s.coze.cn/t/JTa5Ne6_liY/",
-  "video_url": "https://example.com/video.mp4",
+  "video_url": "https://assets.jcaigc.cn/video.mp4",
   "text_color": "#ff0000",
   "font_size": 20,
   "text_transform_y": 100
@@ -52,7 +56,7 @@
 ```json
 {
   "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
-  "audio_url": "https://example.com/background_music.mp3",
+  "audio_url": "https://assets.jcaigc.cn/background_music.mp3",
   "text": "欢迎观看",
   "text_color": "#0066ff",
   "font_size": 18
@@ -64,7 +68,7 @@
 ```json
 {
   "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
-  "audio_url": "https://example.com/audio.wav"
+  "audio_url": "https://assets.jcaigc.cn/audio.wav"
 }
 ```
 

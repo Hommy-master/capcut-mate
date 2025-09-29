@@ -10,12 +10,16 @@ POST /openapi/capcut-mate/v1/add_images
 
 批量向现有草稿中添加图片素材。该接口支持多个图片的批量处理，包括透明度调整、缩放变换、位置偏移、动画效果等功能。在剪映系统中，图片被作为VideoSegment处理。
 
+## 更多文档
+
+📖 更多详细文档和教程请访问：[https://docs.jcaigc.cn](https://docs.jcaigc.cn)
+
 ## 请求参数
 
 ```json
 {
   "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
-  "image_infos": "[{\"image_url\":\"https://example.com/image1.jpg\",\"width\":1920,\"height\":1080,\"start\":0,\"end\":5000000,\"duration\":5000000,\"animation\":\"淡入淡出\",\"transition\":\"溶解\",\"transition_duration\":500000}]",
+  "image_infos": "[{\"image_url\":\"https://assets.jcaigc.cn/image1.jpg\",\"width\":1920,\"height\":1080,\"start\":0,\"end\":5000000,\"duration\":5000000,\"animation\":\"淡入淡出\",\"transition\":\"溶解\",\"transition_duration\":500000}]",
   "alpha": 1.0,
   "scale_x": 1.0,
   "scale_y": 1.0,
@@ -108,7 +112,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_images \
   -H "Content-Type: application/json" \
   -d '{
     "draft_url": "YOUR_DRAFT_URL",
-    "image_infos": "[{\"image_url\":\"https://example.com/photo1.jpg\",\"width\":1920,\"height\":1080,\"start\":0,\"end\":5000000,\"duration\":5000000}]"
+    "image_infos": "[{\"image_url\":\"https://assets.jcaigc.cn/photo1.jpg\",\"width\":1920,\"height\":1080,\"start\":0,\"end\":5000000,\"duration\":5000000}]"
   }'
 ```
 
@@ -119,7 +123,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_images \
   -H "Content-Type: application/json" \
   -d '{
     "draft_url": "YOUR_DRAFT_URL",
-    "image_infos": "[{\"image_url\":\"https://example.com/logo.png\",\"width\":800,\"height\":600,\"start\":1000000,\"end\":4000000,\"duration\":3000000,\"animation\":\"缩放入场\",\"transition\":\"淡入淡出\"}]",
+    "image_infos": "[{\"image_url\":\"https://assets.jcaigc.cn/logo.png\",\"width\":800,\"height\":600,\"start\":1000000,\"end\":4000000,\"duration\":3000000,\"animation\":\"缩放入场\",\"transition\":\"淡入淡出\"}]",
     "alpha": 0.9,
     "scale_x": 1.2,
     "scale_y": 1.2,
@@ -147,7 +151,7 @@ const addImages = async (draftUrl, imageConfig) => {
 const basicImages = {
   image_infos: JSON.stringify([
     {
-      image_url: "https://example.com/cover.jpg",
+      image_url: "https://assets.jcaigc.cn/cover.jpg",
       width: 1920,
       height: 1080,
       start: 0,
@@ -161,7 +165,7 @@ const basicImages = {
 const slideshow = {
   image_infos: JSON.stringify([
     {
-      image_url: "https://example.com/slide1.jpg",
+      image_url: "https://assets.jcaigc.cn/slide1.jpg",
       width: 1920,
       height: 1080,
       start: 0,
@@ -171,7 +175,7 @@ const slideshow = {
       transition: "淡入淡出"
     },
     {
-      image_url: "https://example.com/slide2.jpg",
+      image_url: "https://assets.jcaigc.cn/slide2.jpg",
       width: 1920,
       height: 1080,
       start: 3000000,
@@ -187,7 +191,7 @@ const slideshow = {
 const watermark = {
   image_infos: JSON.stringify([
     {
-      image_url: "https://example.com/logo.png",
+      image_url: "https://assets.jcaigc.cn/logo.png",
       width: 300,
       height: 100,
       start: 0,
@@ -260,7 +264,7 @@ processor = ImageProcessor()
 
 slideshow_config = processor.create_slideshow([
     {
-        "url": "https://example.com/slide1.jpg",
+        "url": "https://assets.jcaigc.cn/slide1.jpg",
         "width": 1920,
         "height": 1080,
         "animation": "淡入淡出"

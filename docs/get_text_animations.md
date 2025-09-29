@@ -6,6 +6,10 @@
 **接口地址**：`POST /openapi/capcut-mate/v1/get_text_animations`  
 **功能描述**：获取文字出入场动画列表，返回所有支持的且满足条件的文字出入场动画。支持根据动画类型（入场、出场、循环）和会员模式（所有、VIP、免费）进行筛选。
 
+## 更多文档
+
+📖 更多详细文档和教程请访问：[https://docs.jcaigc.cn](https://docs.jcaigc.cn)
+
 ## 请求参数
 
 ### 请求体 (application/json)

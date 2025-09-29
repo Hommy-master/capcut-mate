@@ -6,6 +6,10 @@
 **接口地址**：`POST /openapi/capcut-mate/v1/gen_video_status`  
 **功能描述**：查询视频生成任务的状态和进度。配合 gen_video 接口使用，用于实时跟踪视频生成任务的执行情况，包括任务状态、进度百分比、完成结果等信息。
 
+## 更多文档
+
+📖 更多详细文档和教程请访问：[https://docs.jcaigc.cn](https://docs.jcaigc.cn)
+
 ## 请求参数
 
 ### 请求体 (application/json)
@@ -63,7 +67,7 @@
   "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
   "status": "completed",
   "progress": 100,
-  "video_url": "https://video-output.example.com/generated/video_abc123def456ghi789.mp4",
+  "video_url": "https://video-output.assets.jcaigc.cn/generated/video_abc123def456ghi789.mp4",
   "error_message": "",
   "created_at": "2024-09-24T10:30:00.000Z",
   "started_at": "2024-09-24T10:30:05.000Z",

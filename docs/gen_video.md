@@ -6,6 +6,10 @@
 **接口地址**：`POST /openapi/capcut-mate/v1/gen_video`  
 **功能描述**：提交视频生成任务。该接口采用异步处理模式，立即返回任务ID，视频生成在后台进行。支持任务排队，确保系统稳定性。
 
+## 更多文档
+
+📖 更多详细文档和教程请访问：[https://docs.jcaigc.cn](https://docs.jcaigc.cn)
+
 ## 请求参数
 
 ### 请求体 (application/json)
@@ -360,7 +364,7 @@ import aiohttp
 from typing import Dict, Optional, Callable
 
 class VideoGenerator:
-    def __init__(self, base_url: str = "https://api.example.com"):
+    def __init__(self, base_url: str = "https://api.assets.jcaigc.cn"):
         self.base_url = base_url
 
     def generate_video(self, draft_url: str, timeout: int = 300) -> Dict:

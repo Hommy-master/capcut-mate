@@ -10,6 +10,10 @@ POST /openapi/capcut-mate/v1/save_draft
 
 保存剪映草稿。该接口用于保存当前的草稿状态，确保编辑的内容得到持久化存储。通常在完成一系列编辑操作后调用此接口，以防止编辑内容丢失。
 
+## 更多文档
+
+📖 更多详细文档和教程请访问：[https://docs.jcaigc.cn](https://docs.jcaigc.cn)
+
 ## 请求参数
 
 ```json
@@ -195,7 +199,7 @@ import threading
 from typing import Dict, List, Callable
 
 class DraftSaver:
-    def __init__(self, base_url: str = "https://api.example.com"):
+    def __init__(self, base_url: str = "https://assets.jcaigc.cn"):
         self.base_url = base_url
         self._auto_save_threads = {}
 
