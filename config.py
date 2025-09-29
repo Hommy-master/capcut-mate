@@ -9,10 +9,10 @@ DRAFT_DIR = os.path.join(os.path.dirname(__file__), "output", "draft")
 TEMP_DIR = os.path.join(os.path.dirname(__file__), "temp")
 
 # 剪映草稿的下载路径
-DRAFT_URL = os.getenv("DRAFT_URL", "https://cm.jcaigc.cn/openapi/v1/get_draft")
+DRAFT_URL = os.getenv("DRAFT_URL", "https://capcut-mate.jcaigc.cn/openapi/v1/get_draft")
 
-# 将容器内的文件路径转成一个下载路径，执行替换操作，即将/app/ -> https://cm.jcaigc.cn/
-DOWNLOAD_URL = os.getenv("DOWNLOAD_URL", "https://cm.jcaigc.cn/")
+# 将容器内的文件路径转成一个下载路径，执行替换操作，即将/app/ -> https://capcut-mate.jcaigc.cn/
+DOWNLOAD_URL = os.getenv("DOWNLOAD_URL", "https://capcut-mate.jcaigc.cn/")
 
 # 草稿提示URL
 TIP_URL = os.getenv("TIP_URL", "https://docs.jcaigc.cn/")
