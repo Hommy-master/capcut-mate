@@ -69,6 +69,31 @@
 
 ### 2. 安装部署
 
+#### 使用 uv (推荐)
+
+```bash
+# 1. 克隆项目
+git clone https://github.com/sun-guannan/CapCutAPI.git
+cd CapCutAPI
+
+# 2. 安装 uv (如果尚未安装)
+# Windows
+powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+
+# macOS/Linux
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# 3. 安装依赖
+uv sync                    # 安装基础依赖
+uv sync --extra mcp       # 安装包含 MCP 协议支持的依赖
+
+# 4. 配置文件 (可选)
+cp config.json.example config.json
+# 根据需要编辑 config.json
+```
+
+#### 使用传统方式
+
 ```bash
 # 1. 克隆项目
 git clone https://github.com/sun-guannan/CapCutAPI.git
@@ -90,6 +115,16 @@ cp config.json.example config.json
 
 ### 3. 启动服务
 
+#### 使用 uv
+
+```bash
+uv run capcut_server.py # 启动HTTP API服务器, 默认端口: 9001
+
+uv run mcp_server.py # 启动 MCP 协议服务，支持 stdio 通信
+```
+
+#### 使用传统方式
+
 ```bash
 python capcut_server.py # 启动HTTP API服务器, 默认端口: 9001
 
@@ -104,15 +139,33 @@ python mcp_server.py # 启动 MCP 协议服务，支持 stdio 通信
 
 创建或更新 `mcp_config.json` 配置文件：
 
+#### 使用 uv
+```json
+{
+  "mcpServers": {
+    "capcut-api": {
+      "command": "uv",
+      "args": ["run", "mcp_server.py"],
+      "cwd": "/path/to/capcut-mate",
+      "env": {
+        "PYTHONPATH": "/path/to/capcut-mate",
+        "DEBUG": "0"
+      }
+    }
+  }
+}
+```
+
+#### 使用传统 Python
 ```json
 {
   "mcpServers": {
     "capcut-api": {
       "command": "python3",
       "args": ["mcp_server.py"],
-      "cwd": "/path/to/CapCutAPI",
+      "cwd": "/path/to/capcut-mate",
       "env": {
-        "PYTHONPATH": "/path/to/CapCutAPI",
+        "PYTHONPATH": "/path/to/capcut-mate",
         "DEBUG": "0"
       }
     }
@@ -278,8 +331,7 @@ mcp_client.call_tool("add_text", {
 - **加入我们**: 我们的目标是提供稳定可靠的视频剪辑工具，方便融合AI生成的图片/视频/语音。如果你有兴趣，可以先从将工程里的中文翻译成英文开始！提交pr，我会看到。更深入的，还有MCP剪辑Agent, web剪辑端，云渲染这三个模块代码还没有开源出来。
 
 - **联系方式**:
-  - 微信：sguann
-  - 抖音：剪映草稿助手
+  - 微信：gogoshine-com
 
 
 ## 📈 Star History
@@ -299,3 +351,10 @@ mcp_client.call_tool("add_text", {
 *Made with ❤️ by the CapCutAPI Community*
 
 </div>
+
+## 商业合作
+- 微信：
+
+  ![微信](./assets/wechat.png)
+
+- 邮箱：taohongmin51@gmail.com

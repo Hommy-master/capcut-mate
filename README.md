@@ -66,6 +66,31 @@ Enjoy It!  😀😀😀
 
 ### 2\. Installation and Deployment
 
+#### Using uv (Recommended)
+
+```bash
+# 1. Clone the project
+git clone https://github.com/sun-guannan/CapCutAPI.git
+cd CapCutAPI
+
+# 2. Install uv (if not already installed)
+# Windows
+powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+
+# macOS/Linux
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# 3. Install dependencies
+uv sync                    # Install basic dependencies
+uv sync --extra mcp       # Install dependencies with MCP protocol support
+
+# 4. Configuration file (optional)
+cp config.json.example config.json
+# Edit config.json as needed
+```
+
+#### Using Traditional Method
+
 ```bash
 # 1. Clone the project
 git clone https://github.com/sun-guannan/CapCutAPI.git
@@ -87,6 +112,16 @@ cp config.json.example config.json
 
 ### 3\. Start the service
 
+#### Using uv
+
+```bash
+uv run capcut_server.py # Start the HTTP API server, default port: 9001
+
+uv run mcp_server.py # Start the MCP protocol service, supports stdio communication
+```
+
+#### Using Traditional Method
+
 ```bash
 python capcut_server.py # Start the HTTP API server, default port: 9001
 
@@ -101,15 +136,33 @@ python mcp_server.py # Start the MCP protocol service, supports stdio communicat
 
 Create or update the `mcp_config.json` configuration file:
 
+#### Using uv
+```json
+{
+  "mcpServers": {
+    "capcut-api": {
+      "command": "uv",
+      "args": ["run", "mcp_server.py"],
+      "cwd": "/path/to/capcut-mate",
+      "env": {
+        "PYTHONPATH": "/path/to/capcut-mate",
+        "DEBUG": "0"
+      }
+    }
+  }
+}
+```
+
+#### Using Traditional Python
 ```json
 {
   "mcpServers": {
     "capcut-api": {
       "command": "python3",
       "args": ["mcp_server.py"],
-      "cwd": "/path/to/CapCutAPI",
+      "cwd": "/path/to/capcut-mate",
       "env": {
-        "PYTHONPATH": "/path/to/CapCutAPI",
+        "PYTHONPATH": "/path/to/capcut-mate",
         "DEBUG": "0"
       }
     }

@@ -4,3 +4,4 @@ flask
 requests
 oss2
 json5
+flasgger

@@ -33,8 +33,11 @@ from util import generate_draft_url as utilgenerate_draft_url, hex_to_rgb
 from pyJianYingDraft.text_segment import TextStyleRange, Text_style, Text_border
 
 from settings.local import IS_CAPCUT_ENV, DRAFT_DOMAIN, PREVIEW_ROUTER, PORT
+from flasgger import Swagger
 
 app = Flask(__name__)
+# 挂载 Swagger
+Swagger(app)
  
 @app.route('/add_video', methods=['POST'])
 def add_video():
@@ -1432,4 +1435,37 @@ def get_video_character_effect_types():
 
 
 if __name__ == '__main__':
+    # 输出所有已注册的路由信息
+    print("\n" + "=" * 80)
+    print("📋 已注册的路由信息 / Registered Routes:")
+    print("=" * 80)
+    
+    routes_info = []
+    for rule in app.url_map.iter_rules():
+        if rule.methods:
+            methods = ','.join(sorted(rule.methods - {'HEAD', 'OPTIONS'}))
+        else:
+            methods = 'N/A'
+        routes_info.append({
+            'endpoint': rule.endpoint,
+            'methods': methods,
+            'path': str(rule)
+        })
+    
+    # 按路径排序
+    routes_info.sort(key=lambda x: x['path'])
+    
+    # 输出格式化的路由表
+    print(f"\n{'序号':<6} {'方法':<12} {'路径':<40} {'端点'}")
+    print("-" * 80)
+    
+    for idx, route in enumerate(routes_info, 1):
+        print(f"{idx:<6} {route['methods']:<12} {route['path']:<40} {route['endpoint']}")
+    
+    print("\n" + "=" * 80)
+    print(f"✅ 总计: {len(routes_info)} 个路由")
+    print(f"🚀 服务启动于: http://0.0.0.0:{PORT}")
+    print(f"📖 API 文档: http://0.0.0.0:{PORT}/apidocs")
+    print("=" * 80 + "\n")
+    
     app.run(host='0.0.0.0', port=PORT)

@@ -1,20 +1,22 @@
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [project]
-name = "capcut-api"
+name = "capcut-mate"
 version = "1.0.0"
 description = "Open source CapCut API tool with MCP support"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
+authors = [
+    { name = "CapCut Mate Contributors" }
+]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
 ]
@@ -27,6 +29,12 @@ dependencies = [
     "pydantic>=2.0.0",
     "fastapi>=0.100.0",
     "uvicorn[standard]>=0.23.0",
+    "imageio>=2.31.0",
+    "psutil>=5.9.0",
+    "flask>=2.3.0",
+    "oss2>=2.17.0",
+    "json5>=0.9.0",
+    "flasgger>=0.9.0",
 ]
 
 [project.optional-dependencies]
@@ -40,6 +48,12 @@ mcp = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/ashreo/CapCutAPI"
-Repository = "https://github.com/ashreo/CapCutAPI.git"
-Issues = "https://github.com/ashreo/CapCutAPI/issues"
+Homepage = "https://github.com/sun-guannan/CapCutAPI"
+Repository = "https://github.com/sun-guannan/CapCutAPI.git"
+Issues = "https://github.com/sun-guannan/CapCutAPI/issues"
+
+[tool.uv]
+dev-dependencies = []
+
+[tool.hatch.build.targets.wheel]
+packages = ["pyJianYingDraft", "settings"]

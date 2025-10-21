@@ -1,17 +1,60 @@
-__pycache__
-ignored
-
-build/
-dist/
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
 *.egg-info/
+dist/
+build/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg
+MANIFEST
 
+# Virtual environments
+venv/
+venv-capcut/
+ENV/
+env/
+.venv/
+
+# uv
+.uv/
+uv.lock
+
+# IDE
 .vscode/
 .idea/
+*.swp
+*.swo
+*~
+
+# OS
 .DS_Store
+Thumbs.db
 
-config.json
-./resource
+# Project specific
+output/
+draft_*/
+dfd_*/
+*.zip
 
-.venv/
-venv/
-tmp/
+# Logs
+*.log
+
+# Environment variables
+.env
+.env.local
+
+# Cache
+.cache/
+*.cache

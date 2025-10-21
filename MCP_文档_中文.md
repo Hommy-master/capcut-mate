@@ -43,25 +43,50 @@ source venv-mcp/bin/activate  # macOS/Linux
 # 或 venv-mcp\Scripts\activate  # Windows
 
 # 安装依赖
+### 使用 uv (推荐)
+```bash
+uv sync --extra mcp
+```
+
+### 使用传统方法
+```bash
 pip install -r requirements-mcp.txt
 ```
 
 ### MCP 配置
 创建或更新 `mcp_config.json` 文件：
 
+#### 使用 uv
 ```json
 {
   "mcpServers": {
     "capcut-api": {
-      "command": "python3.10",
-      "args": ["mcp_server.py"],
-      "cwd": "/path/to/CapCutAPI-dev",
+      "command": "uv",
+      "args": ["run", "mcp_server.py"],
+      "cwd": "/path/to/capcut-mate",
       "env": {
-        "PYTHONPATH": "/path/to/CapCutAPI-dev"
+        "PYTHONPATH": "/path/to/capcut-mate"
       }
     }
   }
 }
+```
+
+#### 使用传统 Python
+```json
+{
+  "mcpServers": {
+    "capcut-api": {
+      "command": "python3",
+      "args": ["mcp_server.py"],
+      "cwd": "/path/to/capcut-mate",
+      "env": {
+        "PYTHONPATH": "/path/to/capcut-mate"
+      }
+    }
+  }
+}
+```
 ```
 
 ## 使用指南
