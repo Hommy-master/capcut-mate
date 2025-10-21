@@ -1,0 +1,33 @@
+###添加文本 
+POST http://localhost:9001/add_text
+Content-Type: application/json
+
+{
+    "text": "你好，世界！",
+    "start": 0,
+    "end": 3,
+    "font": "SourceHanSansCN_Regular",
+    "font_color": "#FF0000",
+    "font_size": 30.0
+}
+
+###添加视频 
+POST http://localhost:9001/add_video
+Content-Type: application/json
+
+{
+    "video_url": "http://example.com/video.mp4",
+    "start": 0,
+    "end": 10,
+    "width": 1080,
+    "height": 1920
+}
+
+###保存草稿
+POST http://localhost:9001/save_draft
+Content-Type: application/json
+
+{
+    "draft_id": "dfd_cat_1752912902_0cae2e04",
+    "draft_folder":"/Users/xxx/Movies/JianyingPro/User Data/Projects/com.lveditor.draft/"
+}
