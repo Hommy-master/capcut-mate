@@ -34,6 +34,14 @@ from util import generate_draft_url as utilgenerate_draft_url, hex_to_rgb
 from pyJianYingDraft.text_segment import TextStyleRange, Text_style, Text_border
 from settings.local import IS_CAPCUT_ENV, DRAFT_DOMAIN, PREVIEW_ROUTER, PORT
 
+# 请求模型定义在 schemas 中
+from schemas import (
+    AddVideoRequest, AddAudioRequest, CreateDraftRequest, AddSubtitleRequest,
+    AddTextRequest, AddImageRequest, AddVideoKeyframeRequest, AddEffectRequest,
+    QueryScriptRequest, SaveDraftRequest, QueryDraftStatusRequest,
+    GenerateDraftURLRequest, AddStickerRequest
+)
+
 # 创建 FastAPI 应用
 app = FastAPI(
     title="CapCut Mate API",
@@ -58,14 +66,6 @@ class StandardResponse(BaseModel):
     success: bool = Field(description="请求是否成功")
     output: Any = Field(default="", description="返回数据")
     error: str = Field(default="", description="错误信息")
-
-# 请求模型定义在 schemas.py 中
-from schemas import (
-    AddVideoRequest, AddAudioRequest, CreateDraftRequest, AddSubtitleRequest,
-    AddTextRequest, AddImageRequest, AddVideoKeyframeRequest, AddEffectRequest,
-    QueryScriptRequest, SaveDraftRequest, QueryDraftStatusRequest,
-    GenerateDraftURLRequest, AddStickerRequest
-)
 
 # ==================== API 路由 ====================
 
