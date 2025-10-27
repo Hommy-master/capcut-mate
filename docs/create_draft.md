@@ -1,260 +1,329 @@
-# create_draft 接口文档
-
-## 接口概述
-
-创建一个新的剪映草稿项目，支持自定义画布宽度和高度。
-
----
+# CREATE_DRAFT API 接口文档
 
 ## 接口信息
 
-### RESTful API 端点
-
 ```
-POST /create_draft
+POST /openapi/capcut-mate/v1/create_draft
 ```
 
-### Content-Type
+## 功能描述
 
-```
-application/json
-```
+创建剪映草稿。该接口用于创建一个新的剪映草稿项目，可以自定义视频的宽度和高度。创建成功后会返回草稿URL和帮助文档URL，为后续的视频编辑操作提供基础。
 
----
+## 更多文档
+
+📖 更多详细文档和教程请访问：[https://docs.jcaigc.cn](https://docs.jcaigc.cn)
 
 ## 请求参数
 
-### 请求体 (JSON)
+```json
+{
+  "width": 1920,
+  "height": 1080
+}
+```
+
+### 参数说明
 
 | 参数名 | 类型 | 必填 | 默认值 | 说明 |
 |--------|------|------|--------|------|
-| width | integer | 否 | 1080 | 画布宽度（像素） |
-| height | integer | 否 | 1920 | 画布高度（像素） |
+| width | number | ❌ | 1920 | 视频宽度(像素)，必须大于等于1 |
+| height | number | ❌ | 1080 | 视频高度(像素)，必须大于等于1 |
 
----
+### 参数详解
 
-## 响应参数
+#### 尺寸参数
 
-### 响应体 (JSON)
+- **width**: 草稿视频的宽度
+  - 最小值：1像素
+  - 建议常用值：1920、1280、720
+  - 支持自定义尺寸
 
-| 参数名 | 类型 | 说明 |
+- **height**: 草稿视频的高度
+  - 最小值：1像素
+  - 建议常用值：1080、720、480
+  - 支持自定义尺寸
+
+#### 常用分辨率
+
+| 分辨率名称 | 宽度 | 高度 | 适用场景 |
+|------------|------|------|----------|
+| 1080P | 1920 | 1080 | 高清视频制作 |
+| 720P | 1280 | 720 | 标清视频制作 |
+| 4K | 3840 | 2160 | 超高清视频制作 |
+| 竖屏短视频 | 1080 | 1920 | 手机短视频 |
+| 正方形 | 1080 | 1080 | 社交媒体内容 |
+
+## 响应格式
+
+### 成功响应 (200)
+
+```json
+{
+  "draft_url": "https://cm.jcaigc.cn/openapi/v1/get_draft?draft_id=2025092811473036584258",
+  "tip_url": "https://help.assets.jcaigc.cn/draft-usage"
+}
+```
+
+### 响应字段说明
+
+| 字段名 | 类型 | 说明 |
 |--------|------|------|
-| success | boolean | 请求是否成功 |
-| output | object | 成功时返回草稿信息 |
-| error | string | 失败时的错误信息 |
+| draft_url | string | 新创建的草稿URL，用于后续的编辑操作 |
+| tip_url | string | 草稿使用帮助文档URL |
 
-### 成功响应的 output 字段
+### 错误响应 (4xx/5xx)
 
-| 参数名 | 类型 | 说明 |
-|--------|------|------|
-| draft_id | string | 草稿唯一标识符 |
-| draft_url | string | 草稿预览 URL |
+```json
+{
+  "detail": "错误信息描述"
+}
+```
 
----
+## 使用示例
 
-## 请求示例
+### cURL 示例
 
-### 示例 1: 创建默认竖屏草稿（1080x1920）
+#### 1. 创建默认分辨率草稿
 
 ```bash
-curl -X POST http://localhost:9001/create_draft \
+curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/create_draft \
   -H "Content-Type: application/json" \
   -d '{}'
 ```
 
-**请求体 (JSON):**
-
-```json
-{}
-```
-
-### 示例 2: 创建横屏草稿（1920x1080）
+#### 2. 创建自定义分辨率草稿
 
 ```bash
-curl -X POST http://localhost:9001/create_draft \
+curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/create_draft \
   -H "Content-Type: application/json" \
   -d '{
-    "width": 1920,
-    "height": 1080
+    "width": 1280,
+    "height": 720
   }'
 ```
 
-**请求体 (JSON):**
-
-```json
-{
-  "width": 1920,
-  "height": 1080
-}
-```
-
-### 示例 3: 创建方形草稿（1080x1080）
+#### 3. 创建竖屏短视频草稿
 
 ```bash
-curl -X POST http://localhost:9001/create_draft \
+curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/create_draft \
   -H "Content-Type: application/json" \
   -d '{
     "width": 1080,
-    "height": 1080
+    "height": 1920
   }'
 ```
 
-**请求体 (JSON):**
+### JavaScript 示例
 
-```json
-{
-  "width": 1080,
-  "height": 1080
-}
+```javascript
+const createDraft = async (width = 1920, height = 1080) => {
+  const response = await fetch('/openapi/capcut-mate/v1/create_draft', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ width, height })
+  });
+  return response.json();
+};
+
+// 创建默认分辨率草稿
+const defaultDraft = await createDraft();
+
+// 创建720P草稿
+const hdDraft = await createDraft(1280, 720);
+
+// 创建正方形草稿
+const squareDraft = await createDraft(1080, 1080);
+
+console.log('草稿创建成功:', {
+  default: defaultDraft.draft_url,
+  hd: hdDraft.draft_url,
+  square: squareDraft.draft_url
+});
 ```
 
-### 示例 4: Python 请求示例
+### 高级JavaScript示例
+
+```javascript
+class DraftManager {
+  constructor(baseUrl = 'https://capcut-mate.jcaigc.cn') {
+    this.baseUrl = baseUrl;
+  }
+
+  async createDraft(config = {}) {
+    const { width = 1920, height = 1080 } = config;
+    
+    const response = await fetch(`${this.baseUrl}/openapi/capcut-mate/v1/create_draft`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ width, height })
+    });
+    
+    if (!response.ok) {
+      throw new Error(`创建草稿失败: ${response.statusText}`);
+    }
+    
+    return response.json();
+  }
+
+  // 预设分辨率创建方法
+  async create1080p() {
+    return this.createDraft({ width: 1920, height: 1080 });
+  }
+
+  async create720p() {
+    return this.createDraft({ width: 1280, height: 720 });
+  }
+
+  async create4K() {
+    return this.createDraft({ width: 3840, height: 2160 });
+  }
+
+  async createVertical() {
+    return this.createDraft({ width: 1080, height: 1920 });
+  }
+
+  async createSquare() {
+    return this.createDraft({ width: 1080, height: 1080 });
+  }
+
+  // 批量创建多种规格草稿
+  async createMultipleFormats() {
+    const formats = [
+      { name: '1080P', width: 1920, height: 1080 },
+      { name: '720P', width: 1280, height: 720 },
+      { name: '竖屏', width: 1080, height: 1920 },
+      { name: '正方形', width: 1080, height: 1080 }
+    ];
+
+    const results = {};
+    
+    for (const format of formats) {
+      try {
+        const draft = await this.createDraft({
+          width: format.width,
+          height: format.height
+        });
+        results[format.name] = draft;
+        
+        // 添加延迟避免请求过快
+        await new Promise(resolve => setTimeout(resolve, 100));
+      } catch (error) {
+        console.error(`创建${format.name}草稿失败:`, error);
+        results[format.name] = { error: error.message };
+      }
+    }
+    
+    return results;
+  }
+}
+
+// 使用示例
+const draftManager = new DraftManager();
+
+// 创建单个草稿
+const draft = await draftManager.create1080p();
+console.log('草稿URL:', draft.draft_url);
+
+// 批量创建多种格式
+const multipleDrafts = await draftManager.createMultipleFormats();
+console.log('多种格式草稿:', multipleDrafts);
+```
+
+### Python 示例
 
 ```python
 import requests
+from typing import Optional, Dict
 
-url = "http://localhost:9001/create_draft"
-headers = {
-    "Content-Type": "application/json"
+class DraftCreator:
+    def __init__(self, base_url: str = "https://api.assets.jcaigc.cn"):
+        self.base_url = base_url
+
+    def create_draft(self, width: int = 1920, height: int = 1080) -> Dict:
+        """创建草稿"""
+        response = requests.post(
+            f'{self.base_url}/openapi/capcut-mate/v1/create_draft',
+            headers={'Content-Type': 'application/json'},
+            json={
+                "width": width,
+                "height": height
+            }
+        )
+        response.raise_for_status()
+        return response.json()
+
+    # 预设分辨率方法
+    def create_1080p(self) -> Dict:
+        return self.create_draft(1920, 1080)
+
+    def create_720p(self) -> Dict:
+        return self.create_draft(1280, 720)
+
+    def create_4k(self) -> Dict:
+        return self.create_draft(3840, 2160)
+
+    def create_vertical(self) -> Dict:
+        return self.create_draft(1080, 1920)
+
+    def create_square(self) -> Dict:
+        return self.create_draft(1080, 1080)
+
+# 使用示例
+creator = DraftCreator()
+
+# 创建不同分辨率的草稿
+drafts = {
+    "1080p": creator.create_1080p(),
+    "720p": creator.create_720p(),
+    "vertical": creator.create_vertical(),
+    "square": creator.create_square()
 }
-data = {
-    "width": 1920,
-    "height": 1080
-}
 
-response = requests.post(url, json=data, headers=headers)
-result = response.json()
-
-print(f"Success: {result['success']}")
-if result['success']:
-    print(f"Draft ID: {result['output']['draft_id']}")
-    print(f"Draft URL: {result['output']['draft_url']}")
-else:
-    print(f"Error: {result['error']}")
+for name, draft in drafts.items():
+    print(f"{name} 草稿URL: {draft['draft_url']}")
 ```
 
----
+## 错误码说明
 
-## 响应示例
-
-### 成功响应
-
-**状态码:** 200 OK
-
-```json
-{
-  "success": true,
-  "output": {
-    "draft_id": "dfd_1234567890abcdef",
-    "draft_url": "http://example.com/preview?draft_id=dfd_1234567890abcdef"
-  },
-  "error": ""
-}
-```
-
-### 失败响应
-
-**状态码:** 200 OK
-
-```json
-{
-  "success": false,
-  "output": "",
-  "error": "Error occurred while creating draft: Invalid dimensions."
-}
-```
-
----
-
-## 常见画布尺寸
-
-| 类型 | 宽度 | 高度 | 说明 |
-|------|------|------|------|
-| 竖屏 | 1080 | 1920 | 默认，适合抖音、快手等短视频平台 |
-| 横屏 | 1920 | 1080 | 适合 YouTube、B站横屏视频 |
-| 方形 | 1080 | 1080 | 适合 Instagram 等社交平台 |
-| 4K竖屏 | 2160 | 3840 | 高清竖屏视频 |
-| 4K横屏 | 3840 | 2160 | 高清横屏视频 |
-
----
-
-## 使用场景
-
-### 场景 1: 创建抖音短视频草稿
-
-```json
-{
-  "width": 1080,
-  "height": 1920
-}
-```
-
-### 场景 2: 创建 YouTube 视频草稿
-
-```json
-{
-  "width": 1920,
-  "height": 1080
-}
-```
-
-### 场景 3: 创建 Instagram 方形视频
-
-```json
-{
-  "width": 1080,
-  "height": 1080
-}
-```
-
----
+| 错误码 | 错误信息 | 说明 | 解决方案 |
+|--------|----------|------|----------|
+| 400 | width必须大于等于1 | 宽度参数无效 | 提供大于等于1的宽度值 |
+| 400 | height必须大于等于1 | 高度参数无效 | 提供大于等于1的高度值 |
+| 400 | 参数类型错误 | 参数类型不正确 | 确保width和height为数字类型 |
+| 500 | 草稿创建失败 | 内部服务错误 | 联系技术支持 |
+| 503 | 服务不可用 | 系统维护中 | 稍后重试 |
 
 ## 注意事项
 
-1. **默认值**: 如果不提供任何参数，将创建 1080x1920 的竖屏草稿
-2. **分辨率**: 建议使用常见的视频分辨率，避免过大或过小的尺寸
-3. **草稿 ID**: 返回的 draft_id 需要保存，后续所有操作都需要使用它
-4. **预览 URL**: draft_url 可用于在浏览器中预览草稿内容
-
----
+1. **参数验证**: width和height必须为正整数
+2. **分辨率建议**: 建议使用常见的视频分辨率以确保兼容性
+3. **性能考虑**: 超高分辨率可能影响后续处理性能
+4. **存储占用**: 高分辨率草稿会占用更多存储空间
+5. **URL有效期**: 返回的draft_url具有一定的有效期
 
 ## 工作流程
 
-```
-1. 调用 create_draft 创建草稿
-   ↓
-2. 保存返回的 draft_id
-   ↓
-3. 使用 draft_id 添加视频、音频、文字等素材
-   ↓
-4. 调用 save_draft 保存草稿
-   ↓
-5. 导入剪映或在线预览
-```
+1. 接收并验证请求参数
+2. 创建草稿基础结构
+3. 设置画布尺寸
+4. 生成草稿URL
+5. 返回草稿信息和帮助文档链接
 
----
+## 下一步操作
+
+创建草稿后，您可以使用以下接口继续编辑：
+
+- **add_videos**: 添加视频素材
+- **add_audios**: 添加音频素材  
+- **add_images**: 添加图片素材
+- **save_draft**: 保存草稿
+- **gen_video**: 导出视频
 
 ## 相关接口
 
-- `POST /add_video` - 添加视频到草稿
-- `POST /add_audio` - 添加音频到草稿
-- `POST /add_text` - 添加文字到草稿
-- `POST /add_image` - 添加图片到草稿
-- `POST /save_draft` - 保存草稿
-- `POST /query_script` - 查询草稿脚本
-
----
-
-## 更新日志
-
-| 版本 | 日期 | 说明 |
-|------|------|------|
-| 1.0 | 2025-10-21 | 初始版本 |
-
----
-
-## 技术支持
-
-如有问题，请联系：
-- Email: sguann2023@gmail.com
-- GitHub Issues: https://github.com/sun-guannan/CapCutAPI/issues
+- [添加视频](./add_videos.md)
+- [添加音频](./add_audios.md)
+- [添加图片](./add_images.md)
+- [保存草稿](./save_draft.md)
+- [生成视频](./gen_video.md)

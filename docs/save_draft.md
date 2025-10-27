@@ -1,287 +1,318 @@
-# save_draft 接口文档
-
-## 接口概述
-
-保存草稿项目到本地文件，生成可导入剪映的草稿文件夹。
-
----
+# SAVE_DRAFT API 接口文档
 
 ## 接口信息
 
-### RESTful API 端点
-
 ```
-POST /save_draft
+POST /openapi/capcut-mate/v1/save_draft
 ```
 
-### Content-Type
+## 功能描述
 
-```
-application/json
-```
+保存剪映草稿。该接口用于保存当前的草稿状态，确保编辑的内容得到持久化存储。通常在完成一系列编辑操作后调用此接口，以防止编辑内容丢失。
 
----
+## 更多文档
+
+📖 更多详细文档和教程请访问：[https://docs.jcaigc.cn](https://docs.jcaigc.cn)
 
 ## 请求参数
 
-### 请求体 (JSON)
+```json
+{
+  "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258"
+}
+```
+
+### 参数说明
 
 | 参数名 | 类型 | 必填 | 默认值 | 说明 |
 |--------|------|------|--------|------|
-| **draft_id** | string | **是** | - | 草稿唯一标识符（必需参数） |
-| draft_folder | string | 否 | null | 草稿保存的文件夹路径 |
+| draft_url | string | ✅ | - | 要保存的草稿URL |
 
----
+### 参数详解
 
-## 响应参数
+#### draft_url
 
-### 响应体 (JSON)
-
-| 参数名 | 类型 | 说明 |
-|--------|------|------|
-| success | boolean | 请求是否成功 |
-| output | object/string | 成功时返回任务信息 |
-| error | string | 失败时的错误信息 |
-
-### 成功响应的 output 字段
-
-| 参数名 | 类型 | 说明 |
-|--------|------|------|
-| task_id | string | 保存任务的唯一标识符 |
-| status | string | 任务状态（pending/processing/completed/failed） |
-| draft_folder | string | 草稿保存的文件夹路径 |
-
----
-
-## 请求示例
-
-### 示例 1: 基础保存草稿
-
-```bash
-curl -X POST http://localhost:9001/save_draft \
-  -H "Content-Type: application/json" \
-  -d '{
-    "draft_id": "dfd_1234567890abcdef"
-  }'
-```
-
-**请求体 (JSON):**
-
-```json
-{
-  "draft_id": "dfd_1234567890abcdef"
+- **类型**: 字符串
+- **必填**: 是
+- **格式**: 完整的草稿URL，通常由create_draft接口返回
+- **示例**: `https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258"draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258"
 }
 ```
 
-### 示例 2: 指定保存路径
+### 响应字段说明
 
-```bash
-curl -X POST http://localhost:9001/save_draft \
-  -H "Content-Type: application/json" \
-  -d '{
-    "draft_id": "dfd_1234567890abcdef",
-    "draft_folder": "/path/to/save/folder"
-  }'
-```
+| 字段名 | 类型 | 说明 |
+|--------|------|------|
+| draft_url | string | 保存后的草稿URL，通常与请求中的URL相同 |
 
-**请求体 (JSON):**
+### 错误响应 (4xx/5xx)
 
 ```json
 {
-  "draft_id": "dfd_1234567890abcdef",
-  "draft_folder": "/path/to/save/folder"
+  "detail": "错误信息描述"
 }
 ```
 
-### 示例 3: Python 请求示例
+## 使用示例
+
+### cURL 示例
+
+#### 1. 基本保存草稿
+
+```bash
+curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/save_draft \
+  -H "Content-Type: application/json" \
+  -d '{
+    "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258"
+  }'
+```
+
+### JavaScript 示例
+
+```javascript
+const saveDraft = async (draftUrl) => {
+  const response = await fetch('/openapi/capcut-mate/v1/save_draft', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ draft_url: draftUrl })
+  });
+  return response.json();
+};
+
+// 保存草稿
+const draftUrl = "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258";
+const result = await saveDraft(draftUrl);
+console.log('草稿保存成功:', result.draft_url);
+```
+
+### 高级JavaScript示例
+
+```javascript
+class DraftManager {
+  constructor(baseUrl = 'https://capcut-mate.jcaigc.cn') {
+    this.baseUrl = baseUrl;
+  }
+
+  async saveDraft(draftUrl) {
+    const response = await fetch(`${this.baseUrl}/openapi/capcut-mate/v1/save_draft`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ draft_url: draftUrl })
+    });
+    
+    if (!response.ok) {
+      throw new Error(`保存草稿失败: ${response.statusText}`);
+    }
+    
+    return response.json();
+  }
+
+  // 自动保存功能
+  async autoSave(draftUrl, intervalMs = 30000) {
+    const saveInterval = setInterval(async () => {
+      try {
+        await this.saveDraft(draftUrl);
+        console.log(`自动保存成功: ${new Date().toLocaleTimeString()}`);
+      } catch (error) {
+        console.error('自动保存失败:', error);
+      }
+    }, intervalMs);
+
+    // 返回停止自动保存的函数
+    return () => clearInterval(saveInterval);
+  }
+
+  // 编辑流程中的保存
+  async editWorkflow(draftUrl, operations) {
+    const results = [];
+    
+    for (const operation of operations) {
+      try {
+        // 执行编辑操作（这里是示例）
+        const editResult = await operation();
+        results.push(editResult);
+        
+        // 每次操作后自动保存
+        await this.saveDraft(draftUrl);
+        console.log(`操作完成并保存: ${operation.name}`);
+        
+      } catch (error) {
+        console.error(`操作失败: ${operation.name}`, error);
+        results.push({ error: error.message });
+      }
+    }
+    
+    return results;
+  }
+
+  // 批量保存多个草稿
+  async saveMutipleDrafts(draftUrls) {
+    const results = {};
+    
+    for (const [name, url] of Object.entries(draftUrls)) {
+      try {
+        const result = await this.saveDraft(url);
+        results[name] = result;
+        
+        // 添加延迟避免请求过快
+        await new Promise(resolve => setTimeout(resolve, 100));
+      } catch (error) {
+        console.error(`保存草稿失败 ${name}:`, error);
+        results[name] = { error: error.message };
+      }
+    }
+    
+    return results;
+  }
+}
+
+// 使用示例
+const draftManager = new DraftManager();
+
+// 基本保存
+const draftUrl = "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258";
+await draftManager.saveDraft(draftUrl);
+
+// 启动自动保存（每30秒保存一次）
+const stopAutoSave = await draftManager.autoSave(draftUrl, 30000);
+
+// 编辑完成后停止自动保存
+setTimeout(() => {
+  stopAutoSave();
+  console.log('自动保存已停止');
+}, 300000); // 5分钟后停止
+
+// 批量保存多个草稿
+const multipleDrafts = {
+  "project1": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
+  "project2": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258"
+};
+const saveResults = await draftManager.saveMutipleDrafts(multipleDrafts);
+```
+
+### Python 示例
 
 ```python
 import requests
+import time
+import threading
+from typing import Dict, List, Callable
 
-url = "http://localhost:9001/save_draft"
-headers = {
-    "Content-Type": "application/json"
-}
-data = {
-    "draft_id": "dfd_1234567890abcdef"
-}
+class DraftSaver:
+    def __init__(self, base_url: str = "https://assets.jcaigc.cn"):
+        self.base_url = base_url
+        self._auto_save_threads = {}
 
-response = requests.post(url, json=data, headers=headers)
-result = response.json()
+    def save_draft(self, draft_url: str) -> Dict:
+        """保存草稿"""
+        response = requests.post(
+            f'{self.base_url}/openapi/capcut-mate/v1/save_draft',
+            headers={'Content-Type': 'application/json'},
+            json={"draft_url": draft_url}
+        )
+        response.raise_for_status()
+        return response.json()
 
-print(f"Success: {result['success']}")
-if result['success']:
-    print(f"Task ID: {result['output']['task_id']}")
-    print(f"Status: {result['output']['status']}")
-    print(f"Draft Folder: {result['output']['draft_folder']}")
-else:
-    print(f"Error: {result['error']}")
+    def auto_save(self, draft_url: str, interval_seconds: int = 30) -> str:
+        """启动自动保存，返回线程ID用于停止"""
+        def save_loop():
+            while True:
+                try:
+                    self.save_draft(draft_url)
+                    print(f"自动保存成功: {time.strftime('%H:%M:%S')}")
+                    time.sleep(interval_seconds)
+                except Exception as e:
+                    print(f"自动保存失败: {e}")
+                    time.sleep(5)  # 出错后等待5秒再重试
+
+        thread_id = f"auto_save_{int(time.time())}"
+        thread = threading.Thread(target=save_loop, daemon=True)
+        thread.start()
+        self._auto_save_threads[thread_id] = thread
+        
+        return thread_id
+
+    def stop_auto_save(self, thread_id: str):
+        """停止自动保存"""
+        if thread_id in self._auto_save_threads:
+            # 线程设为daemon，程序结束时会自动停止
+            del self._auto_save_threads[thread_id]
+            print(f"自动保存线程 {thread_id} 已标记停止")
+
+    def save_with_retry(self, draft_url: str, max_retries: int = 3) -> Dict:
+        """带重试机制的保存"""
+        for attempt in range(max_retries):
+            try:
+                return self.save_draft(draft_url)
+            except Exception as e:
+                if attempt == max_retries - 1:
+                    raise e
+                print(f"保存失败，第{attempt + 1}次重试: {e}")
+                time.sleep(2 ** attempt)  # 指数退避
+
+# 使用示例
+saver = DraftSaver()
+
+# 基本保存
+draft_url = "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258"
+result = saver.save_draft(draft_url)
+print(f"草稿保存成功: {result['draft_url']}")
+
+# 带重试的保存
+try:
+    result = saver.save_with_retry(draft_url, max_retries=3)
+    print("保存成功（带重试机制）")
+except Exception as e:
+    print(f"保存最终失败: {e}")
+
+# 启动自动保存
+auto_save_id = saver.auto_save(draft_url, interval_seconds=30)
+print(f"自动保存已启动，ID: {auto_save_id}")
+
+# 10分钟后停止自动保存
+time.sleep(600)
+saver.stop_auto_save(auto_save_id)
 ```
-
----
-
-## 响应示例
-
-### 成功响应
-
-**状态码:** 200 OK
-
-```json
-{
-  "success": true,
-  "output": {
-    "task_id": "task_abc123",
-    "status": "processing",
-    "draft_folder": "/output/draft/dfd_1234567890abcdef"
-  },
-  "error": ""
-}
-```
-
-### 失败响应 - 缺少必需参数
-
-**状态码:** 200 OK
-
-```json
-{
-  "success": false,
-  "output": "",
-  "error": "Hi, the required parameter 'draft_id' is missing. Please add it and try again."
-}
-```
-
-### 失败响应 - 保存错误
-
-**状态码:** 200 OK
-
-```json
-{
-  "success": false,
-  "output": "",
-  "error": "Error occurred while saving draft: Draft not found."
-}
-```
-
----
 
 ## 错误码说明
 
-| 错误信息 | 说明 | 解决方案 |
-|---------|------|---------|
-| "Hi, the required parameter 'draft_id' is missing." | 缺少必需的 draft_id 参数 | 请在请求体中提供 draft_id 参数 |
-| "Error occurred while saving draft: Draft not found." | 草稿不存在 | 检查 draft_id 是否正确，或先创建草稿 |
-| "Error occurred while saving draft: ..." | 保存过程中出错 | 检查错误详情，确认权限和磁盘空间 |
-
----
-
-## 使用场景
-
-### 场景 1: 保存草稿到默认位置
-
-```json
-{
-  "draft_id": "dfd_abc123"
-}
-```
-
-### 场景 2: 查询保存状态
-
-首先保存草稿获取 task_id：
-
-```json
-{
-  "draft_id": "dfd_abc123"
-}
-```
-
-然后使用 `/query_draft_status` 查询进度：
-
-```json
-{
-  "task_id": "task_abc123"
-}
-```
-
----
-
-## 保存后的文件结构
-
-保存成功后，会在指定位置或默认位置生成以下文件结构：
-
-```
-dfd_1234567890abcdef/
-├── draft_content.json          # 草稿内容
-├── draft_info.json             # 草稿信息
-├── draft_meta_info.json        # 草稿元信息
-└── assets/                     # 资源文件夹
-    ├── video/                  # 视频文件
-    ├── audio/                  # 音频文件
-    └── image/                  # 图片文件
-```
-
----
-
-## 导入剪映
-
-保存后的草稿可以直接导入剪映：
-
-1. **Windows 剪映**
-   - 复制草稿文件夹到：`C:\Users\[用户名]\AppData\Local\JianyingPro\User Data\Projects\com.lveditor.draft\`
-
-2. **macOS 剪映**
-   - 复制草稿文件夹到：`~/Library/Containers/com.lveditor.LveDitor/Data/Movies/JianyingPro/User Data/Projects/com.lveditor.draft/`
-
-3. **剪映国际版 (CapCut)**
-   - 复制草稿文件夹到对应的 CapCut 草稿目录
-
----
+| 错误码 | 错误信息 | 说明 | 解决方案 |
+|--------|----------|------|----------|
+| 400 | draft_url是必填项 | 缺少草稿URL参数 | 提供有效的draft_url |
+| 400 | draft_url格式无效 | URL格式不正确 | 检查URL格式是否正确 |
+| 404 | 草稿不存在 | 指定的草稿无法找到 | 确认草稿URL是否正确且存在 |
+| 500 | 保存失败 | 内部服务错误 | 联系技术支持或稍后重试 |
+| 503 | 服务不可用 | 系统维护中 | 稍后重试 |
 
 ## 注意事项
 
-1. **必需参数**: draft_id 是必需的
-2. **异步处理**: 保存操作是异步的，返回 task_id 后可以查询状态
-3. **文件夹权限**: 确保有写入权限到指定的 draft_folder
-4. **草稿存在性**: 保存前确保草稿已创建并添加了内容
-5. **覆盖警告**: 如果目标位置已存在同名草稿，可能会被覆盖
-6. **资源文件**: 会自动下载和保存所有引用的远程资源
-
----
+1. **URL有效性**: 确保传入的draft_url是有效且存在的
+2. **网络稳定性**: 保存操作需要稳定的网络连接
+3. **频率控制**: 避免过于频繁的保存操作
+4. **自动保存**: 建议在长时间编辑时启用自动保存功能
+5. **错误处理**: 保存失败时应该有重试机制
+6. **并发安全**: 同一草稿的并发保存可能导致冲突
 
 ## 工作流程
 
-```
-1. 创建草稿 (create_draft)
-   ↓
-2. 添加各种素材 (add_video/audio/text/image)
-   ↓
-3. 保存草稿 (save_draft) ← 当前接口
-   ↓
-4. 查询保存状态 (query_draft_status)
-   ↓
-5. 导入剪映进行编辑
-```
+1. 验证draft_url参数
+2. 检查草稿是否存在
+3. 获取当前草稿状态
+4. 持久化保存草稿数据
+5. 返回保存结果
 
----
+## 最佳实践
+
+1. **定期保存**: 在重要操作后及时保存
+2. **自动保存**: 为长时间编辑设置自动保存
+3. **错误恢复**: 保存失败时提供重试机制
+4. **状态提示**: 向用户显示保存状态
+5. **备份策略**: 考虑多版本备份机制
 
 ## 相关接口
 
-- `POST /create_draft` - 创建新草稿
-- `POST /query_draft_status` - 查询保存状态
-- `POST /query_script` - 查询草稿脚本
-- `POST /generate_draft_url` - 生成草稿预览 URL
-
----
-
-## 更新日志
-
-| 版本 | 日期 | 说明 |
-|------|------|------|
-| 1.0 | 2025-10-21 | 初始版本 |
-
----
-
-## 技术支持
-
-如有问题，请联系：
-- Email: sguann2023@gmail.com
-- GitHub Issues: https://github.com/sun-guannan/CapCutAPI/issues
+- [创建草稿](./create_draft.md)
+- [添加视频](./add_videos.md)
+- [添加音频](./add_audios.md)
+- [添加图片](./add_images.md)
+- [生成视频](./gen_video.md)
