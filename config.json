@@ -1,7 +1,7 @@
 {
   "is_capcut_env": true,  // Whether to use CapCut environment (true) or JianYing environment (false)
   "draft_domain": "https://www.capcutapi.top",  // Base domain for draft operations
-  "port": 9001,  // Port number for the local server
+  "port": 30000,  // Port number for the local server
   "preview_router": "/draft/downloader",  // Router path for preview functionality
   "is_upload_draft": false,  // Whether to upload drafts to remote storage
   "oss_config": {  // General OSS (Object Storage Service) configuration
