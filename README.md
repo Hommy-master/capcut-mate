@@ -51,7 +51,7 @@ uv run main.py
 docker pull gogoshine/capcut-mate:latest
 ```
 
-## 开源社区交流群
+## 开源社区问题交流群
 - 微信群：
 
   ![剪映小助手](./assets/wechat-q.jpg)
