@@ -54,7 +54,7 @@ docker pull gogoshine/capcut-mate:latest
 ## 开源社区问题交流群
 - 微信群：
 
-  <img src="./assets/wechat-q.jpg" width="516" height="748" alt="剪映小助手">
+  <img src="./assets/wechat-q.jpg" width="344" height="498" alt="剪映小助手">
 
 ## 商业合作
 - 微信：
