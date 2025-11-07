@@ -118,7 +118,14 @@ def _analyze_audio_with_ffprobe(file_path: str) -> int:
         raise CustomException(CustomError.AUDIO_DURATION_GET_FAILED, f"FFprobe analysis failed: {e.stderr}")
     except FileNotFoundError:
         logger.error("FFprobe command not found. Please ensure FFprobe is installed and in PATH")
-        raise CustomException(CustomError.AUDIO_DURATION_GET_FAILED, "FFprobe tool not available")
+        error_msg = (
+            "FFprobe tool not available. "
+            "Please install ffmpeg: "
+            "Debian/Ubuntu: 'sudo apt-get install -y ffmpeg' | "
+            "macOS: 'brew install ffmpeg' | "
+            "Docker: Rebuild image with updated Dockerfile"
+        )
+        raise CustomException(CustomError.AUDIO_DURATION_GET_FAILED, error_msg)
 
 
 def _parse_ffprobe_output(stdout: str) -> Dict[str, Any]:

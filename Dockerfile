@@ -1,5 +1,28 @@
 FROM python:3.11-slim
 
+# 配置阿里云镜像源（Debian 13 trixie）以加速软件包下载
+RUN cp /etc/apt/sources.list.d/debian.sources /etc/apt/sources.list.d/debian.sources.backup 2>/dev/null || true && \
+    echo 'Types: deb\n\
+URIs: https://mirrors.aliyun.com/debian\n\
+Suites: trixie trixie-updates trixie-backports\n\
+Components: main contrib non-free non-free-firmware\n\
+Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg\n\
+\n\
+Types: deb\n\
+URIs: https://mirrors.aliyun.com/debian-security\n\
+Suites: trixie-security\n\
+Components: main contrib non-free non-free-firmware\n\
+Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg' > /etc/apt/sources.list.d/debian.sources
+
+# 安装系统依赖：ffmpeg（用于音频处理）
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
+
+# 验证 ffmpeg 安装
+RUN ffmpeg -version && ffprobe -version
+
 # 使用pip安装uv
 RUN pip install --no-cache-dir uv
 
