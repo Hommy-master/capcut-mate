@@ -7,13 +7,14 @@ import os
 from src.utils import helper
 import config
 import json
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Tuple, Optional
+from src.utils.enum_mapper import map_audio_effect_type
 
 
 def add_audios(draft_url: str, audio_infos: str) -> Tuple[str, str, List[str]]:
     """
     添加音频到剪映草稿的业务逻辑
-    
+
     Args:
         draft_url: 草稿URL，必选参数
         audio_infos: 音频信息JSON字符串，格式如下：
@@ -24,10 +25,13 @@ def add_audios(draft_url: str, audio_infos: str) -> Tuple[str, str, List[str]]:
                 "end": 23184000, // [必选] 音频片段结束时间(微秒)
                 "start": 0, // [必选] 音频片段开始时间(微秒)
                 "volume": 1.0, // [可选] 音频音量[0.0, 2.0]，默认值为1.0
-                "audio_effect": "reverb" // [可选] 音频效果名称，默认值为None
+                "audio_effect": "reverb", // [可选] 音频效果名称，默认值为None
+                "audio_effect_params": [50, 80], // [可选] 音频效果参数列表
+                "fade_in_duration": 1000000, // [可选] 淡入时长(微秒)
+                "fade_out_duration": 1000000 // [可选] 淡出时长(微秒)
             }
         ]
-    
+
     Returns:
         draft_url: 草稿URL
         track_id: 音频轨道ID
@@ -99,7 +103,7 @@ def add_audio_to_draft(
 ) -> str:
     """
     向剪映草稿中添加单个音频
-    
+
     Args:
         script: 草稿文件对象
         track_name: 音频轨道名称
@@ -111,10 +115,13 @@ def add_audio_to_draft(
             end: 结束时间(微秒)
             volume: 音量[0.0, 2.0]
             audio_effect: 音频效果名称(可选)
-    
+            audio_effect_params: 音频效果参数列表(可选)
+            fade_in_duration: 淡入时长(微秒，可选)
+            fade_out_duration: 淡出时长(微秒，可选)
+
     Returns:
         material_id: 音频素材ID
-    
+
     Raises:
         CustomException: 添加音频失败
     """
@@ -130,24 +137,41 @@ def add_audio_to_draft(
             target_timerange=trange(start=audio['start'], duration=segment_duration),
             volume=audio['volume']
         )
-        
+
         # 3. 添加音频效果（如果指定了）
         if audio.get('audio_effect'):
             try:
-                # 这里可以根据需要添加具体的音频效果
-                # 由于音频效果类型较多，这里先预留接口
-                logger.info(f"Audio effect '{audio['audio_effect']}' specified but not implemented yet")
+                effect_type = map_audio_effect_type(audio['audio_effect'])
+                if effect_type:
+                    params = audio.get('audio_effect_params', None)
+                    audio_segment.add_effect(effect_type, params)
+                    logger.info(f"Added audio effect: {audio['audio_effect']}, params: {params}")
+                else:
+                    logger.warning(f"Audio effect type not found: {audio['audio_effect']}")
             except Exception as e:
                 logger.warning(f"Failed to add audio effect '{audio['audio_effect']}': {str(e)}")
+
+        # 4. 添加淡入淡出效果（如果指定了）
+        fade_in = audio.get('fade_in_duration')
+        fade_out = audio.get('fade_out_duration')
+        if fade_in is not None or fade_out is not None:
+            try:
+                # 如果只指定了一个，另一个设为0
+                fade_in_duration = fade_in if fade_in is not None else 0
+                fade_out_duration = fade_out if fade_out is not None else 0
+                audio_segment.add_fade(fade_in_duration, fade_out_duration)
+                logger.info(f"Added fade: in={fade_in_duration}, out={fade_out_duration}")
+            except Exception as e:
+                logger.warning(f"Failed to add fade effect: {str(e)}")
 
         logger.info(f"Created audio segment, material_id: {audio_segment.material_instance.material_id}")
         logger.info(f"Audio segment details - start: {audio['start']}, duration: {segment_duration}, volume: {audio['volume']}")
 
-        # 4. 向指定轨道添加片段
+        # 5. 向指定轨道添加片段
         script.add_segment(audio_segment, track_name)
 
         return audio_segment.material_instance.material_id
-        
+
     except CustomException:
         logger.error(f"Add audio to draft failed, draft_audio_dir: {draft_audio_dir}, audio: {audio}")
         raise
@@ -159,7 +183,7 @@ def add_audio_to_draft(
 def parse_audio_data(json_str: str) -> List[Dict[str, Any]]:
     """
     解析音频数据的JSON字符串，处理可选字段的默认值
-    
+
     Args:
         json_str: 包含音频数据的JSON字符串，格式如下：
         [
@@ -169,13 +193,16 @@ def parse_audio_data(json_str: str) -> List[Dict[str, Any]]:
                 "end": 23184000, // [必选] 音频片段结束时间(微秒)
                 "start": 0, // [必选] 音频片段开始时间(微秒)
                 "volume": 1.0, // [可选] 音频音量[0.0, 2.0]，默认值为1.0
-                "audio_effect": "reverb" // [可选] 音频效果名称，默认值为None
+                "audio_effect": "reverb", // [可选] 音频效果名称，默认值为None
+                "audio_effect_params": [50, 80], // [可选] 音频效果参数列表
+                "fade_in_duration": 1000000, // [可选] 淡入时长(微秒)
+                "fade_out_duration": 1000000 // [可选] 淡出时长(微秒)
             }
         ]
-        
+
     Returns:
         包含音频对象的数组，每个对象都处理了默认值
-        
+
     Raises:
         CustomException: 当JSON格式错误或缺少必选字段时抛出
     """
@@ -186,27 +213,27 @@ def parse_audio_data(json_str: str) -> List[Dict[str, Any]]:
     except json.JSONDecodeError as e:
         logger.error(f"JSON parse error: {e.msg}")
         raise CustomException(CustomError.INVALID_AUDIO_INFO, f"JSON parse error: {e.msg}")
-    
+
     # 确保输入是列表
     if not isinstance(data, list):
         logger.error("Audio infos should be a list")
         raise CustomException(CustomError.INVALID_AUDIO_INFO, "audio_infos should be a list")
-    
+
     result = []
-    
+
     for i, item in enumerate(data):
         if not isinstance(item, dict):
             logger.error(f"The {i}th item should be a dict")
             raise CustomException(CustomError.INVALID_AUDIO_INFO, f"the {i}th item should be a dict")
-        
+
         # 检查必选字段
         required_fields = ["audio_url", "duration", "start", "end"]
         missing_fields = [field for field in required_fields if field not in item]
-        
+
         if missing_fields:
             logger.error(f"The {i}th item is missing required fields: {', '.join(missing_fields)}")
             raise CustomException(CustomError.INVALID_AUDIO_INFO, f"the {i}th item is missing required fields: {', '.join(missing_fields)}")
-        
+
         # 创建处理后的对象，设置默认值
         processed_item = {
             "audio_url": item["audio_url"],
@@ -214,23 +241,26 @@ def parse_audio_data(json_str: str) -> List[Dict[str, Any]]:
             "start": item["start"],
             "end": item["end"],
             "volume": item.get("volume", 1.0),  # 默认音量 1.0
-            "audio_effect": item.get("audio_effect", None)  # 默认无音频效果
+            "audio_effect": item.get("audio_effect", None),  # 默认无音频效果
+            "audio_effect_params": item.get("audio_effect_params", None),  # 音频效果参数
+            "fade_in_duration": item.get("fade_in_duration", None),  # 淡入时长
+            "fade_out_duration": item.get("fade_out_duration", None)  # 淡出时长
         }
-        
+
         # 验证数值范围
         if processed_item["volume"] < 0.0 or processed_item["volume"] > 2.0:
             logger.warning(f"Volume value {processed_item['volume']} out of range [0.0, 2.0], using default 1.0")
             processed_item["volume"] = 1.0
-        
+
         if processed_item["start"] < 0 or processed_item["end"] <= processed_item["start"]:
             logger.error(f"Invalid time range: start={processed_item['start']}, end={processed_item['end']}")
             raise CustomException(CustomError.INVALID_AUDIO_INFO, f"the {i}th item has invalid time range")
-        
+
         if processed_item["duration"] <= 0:
             logger.error(f"Invalid duration: {processed_item['duration']}")
             raise CustomException(CustomError.INVALID_AUDIO_INFO, f"the {i}th item has invalid duration")
-        
+
         result.append(processed_item)
         logger.debug(f"Processed audio item {i+1}: {processed_item}")
-    
+
     return result
