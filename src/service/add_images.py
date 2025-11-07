@@ -9,20 +9,26 @@ from src.utils import helper
 import config
 import json
 from typing import List, Dict, Any, Tuple
+from src.utils.enum_mapper import (
+    map_transition_type,
+    map_video_intro_type,
+    map_video_outro_type,
+    map_video_group_animation_type
+)
 
 
 def add_images(
-    draft_url: str, 
+    draft_url: str,
     image_infos: str,
-    alpha: float = 1.0, 
-    scale_x: float = 1.0, 
-    scale_y: float = 1.0, 
-    transform_x: int = 0, 
+    alpha: float = 1.0,
+    scale_x: float = 1.0,
+    scale_y: float = 1.0,
+    transform_x: int = 0,
     transform_y: int = 0
 ) -> Tuple[str, str, List[str], List[str], List[SegmentInfo]]:
     """
     添加图片到剪映草稿的业务逻辑
-    
+
     Args:
         draft_url: 草稿URL，必选参数
         image_infos: 图片信息JSON字符串，格式如下：
@@ -35,10 +41,8 @@ def add_images(
                 "end": 1000000, // [必选] 显示结束时间(微秒)
                 "in_animation": "", // [可选] 入场动画类型
                 "out_animation": "", // [可选] 出场动画类型
-                "loop_animation": "", // [可选] 循环动画类型
-                "in_animation_duration": "", // [可选] 入场动画时长(微秒)
-                "out_animation_duration": "", // [可选] 出场动画时长(微秒)
-                "loop_animation_duration": "", // [可选] 循环动画时长(微秒)
+                "group_animation": "", // [可选] 组合动画类型
+                "animation_duration": null, // [可选] 动画时长(微秒)
                 "transition": "", // [可选] 转场效果类型
                 "transition_duration": 500000 // [可选] 转场效果时长(微秒，范围100000-2500000)
             }
@@ -48,7 +52,7 @@ def add_images(
         scale_y: Y轴缩放比例，默认值为1.0
         transform_x: X轴位置偏移(像素)，默认值为0
         transform_y: Y轴位置偏移(像素)，默认值为0
-    
+
     Returns:
         draft_url: 草稿URL
         track_id: 视频轨道ID
@@ -94,8 +98,8 @@ def add_images(
     for i, image in enumerate(images):
         try:
             segment_id, segment_info = add_image_to_draft(
-                script, track_name, 
-                draft_image_dir=draft_image_dir, 
+                script, track_name,
+                draft_image_dir=draft_image_dir,
                 image=image,
                 alpha=alpha,
                 scale_x=scale_x,
@@ -134,15 +138,15 @@ def add_image_to_draft(
     track_name: str,
     draft_image_dir: str,
     image: dict,
-    alpha: float = 1.0, 
-    scale_x: float = 1.0, 
-    scale_y: float = 1.0, 
-    transform_x: int = 0, 
+    alpha: float = 1.0,
+    scale_x: float = 1.0,
+    scale_y: float = 1.0,
+    transform_x: int = 0,
     transform_y: int = 0
 ) -> Tuple[str, SegmentInfo]:
     """
     向剪映草稿中添加单个图片
-    
+
     Args:
         script: 草稿文件对象
         track_name: 视频轨道名称
@@ -155,10 +159,8 @@ def add_image_to_draft(
             end: 显示结束时间(微秒)
             in_animation: 入场动画类型(可选)
             out_animation: 出场动画类型(可选)
-            loop_animation: 循环动画类型(可选)
-            in_animation_duration: 入场动画时长(微秒，可选)
-            out_animation_duration: 出场动画时长(微秒，可选)
-            loop_animation_duration: 循环动画时长(微秒，可选)
+            group_animation: 组合动画类型(可选)
+            animation_duration: 动画时长(微秒，可选)
             transition: 转场效果类型(可选)
             transition_duration: 转场效果时长(微秒，可选)
         alpha: 图片透明度
@@ -166,11 +168,11 @@ def add_image_to_draft(
         scale_y: 纵向缩放
         transform_x: X轴位置偏移(像素)
         transform_y: Y轴位置偏移(像素)
-    
+
     Returns:
         segment_id: 片段ID
         segment_info: 片段信息字典，包含id、start、end
-    
+
     Raises:
         CustomException: 添加图片失败
     """
@@ -179,65 +181,91 @@ def add_image_to_draft(
         image_path = helper.download(url=image['image_url'], save_dir=draft_image_dir)
         logger.info(f"Downloaded image from {image['image_url']} to {image_path}")
 
-        # 2. 创建图片素材并添加到草稿
+        # 2. 创建图像调节设置
         segment_duration = image['end'] - image['start']
-        
-        # 创建图像调节设置
+
         clip_settings = draft.ClipSettings(
             alpha=alpha,
             scale_x=scale_x,
             scale_y=scale_y,
-            transform_x=transform_x / (image['width'] / 2),  # 转换为半画布宽单位
-            transform_y=transform_y / (image['height'] / 2)  # 转换为半画布高单位
+            transform_x=transform_x / (image['width'] / 2) if image['width'] > 0 else 0,
+            transform_y=transform_y / (image['height'] / 2) if image['height'] > 0 else 0
         )
-        
-        # 创建视频片段（图片使用VideoSegment）
+
+        # 3. 创建视频片段（图片使用VideoSegment）
         video_segment = draft.VideoSegment(
             material=image_path,
             target_timerange=trange(start=image['start'], duration=segment_duration),
             clip_settings=clip_settings
         )
-        
-        # 3. 添加动画效果（如果指定了）
-        # 注意：由于动画相关的枚举类型较复杂，这里先预留接口
+
+        # 4. 添加入场动画（如果指定了）
         if image.get('in_animation'):
             try:
-                logger.info(f"In animation '{image['in_animation']}' specified but not implemented yet")
-                # 这里可以根据需要添加具体的入场动画
-                # 例如：video_segment.add_animation(IntroType.XXX, duration=image.get('in_animation_duration'))
+                intro_type = map_video_intro_type(image['in_animation'])
+                if intro_type:
+                    video_segment.add_animation(
+                        intro_type,
+                        duration=image.get('animation_duration')
+                    )
+                    logger.info(f"Added in_animation: {image['in_animation']}")
+                else:
+                    logger.warning(f"Intro animation type not found: {image['in_animation']}")
             except Exception as e:
                 logger.warning(f"Failed to add in animation '{image['in_animation']}': {str(e)}")
-        
+
+        # 5. 添加出场动画（如果指定了）
         if image.get('out_animation'):
             try:
-                logger.info(f"Out animation '{image['out_animation']}' specified but not implemented yet")
-                # 这里可以根据需要添加具体的出场动画
-                # 例如：video_segment.add_animation(OutroType.XXX, duration=image.get('out_animation_duration'))
+                outro_type = map_video_outro_type(image['out_animation'])
+                if outro_type:
+                    video_segment.add_animation(
+                        outro_type,
+                        duration=image.get('animation_duration')
+                    )
+                    logger.info(f"Added out_animation: {image['out_animation']}")
+                else:
+                    logger.warning(f"Outro animation type not found: {image['out_animation']}")
             except Exception as e:
                 logger.warning(f"Failed to add out animation '{image['out_animation']}': {str(e)}")
-        
-        if image.get('loop_animation'):
+
+        # 6. 添加组合动画（如果指定了）
+        if image.get('group_animation'):
             try:
-                logger.info(f"Loop animation '{image['loop_animation']}' specified but not implemented yet")
-                # 循环动画可能需要特殊处理
+                group_type = map_video_group_animation_type(image['group_animation'])
+                if group_type:
+                    video_segment.add_animation(
+                        group_type,
+                        duration=image.get('animation_duration')
+                    )
+                    logger.info(f"Added group_animation: {image['group_animation']}")
+                else:
+                    logger.warning(f"Group animation type not found: {image['group_animation']}")
             except Exception as e:
-                logger.warning(f"Failed to add loop animation '{image['loop_animation']}': {str(e)}")
-        
-        # 4. 添加转场效果（如果指定了）
+                logger.warning(f"Failed to add group animation '{image['group_animation']}': {str(e)}")
+
+        # 7. 添加转场效果（如果指定了）
         if image.get('transition'):
             try:
-                logger.info(f"Transition '{image['transition']}' specified but not implemented yet")
-                # 例如：video_segment.add_transition(TransitionType.XXX, duration=image.get('transition_duration'))
+                transition_type = map_transition_type(image['transition'])
+                if transition_type:
+                    video_segment.add_transition(
+                        transition_type,
+                        duration=image.get('transition_duration')
+                    )
+                    logger.info(f"Added transition: {image['transition']}, duration: {image.get('transition_duration')}")
+                else:
+                    logger.warning(f"Transition type not found: {image['transition']}")
             except Exception as e:
                 logger.warning(f"Failed to add transition '{image['transition']}': {str(e)}")
 
         logger.info(f"Created image segment, material_id: {video_segment.material_instance.material_id}")
         logger.info(f"Image segment details - start: {image['start']}, duration: {segment_duration}, size: {image['width']}x{image['height']}")
 
-        # 5. 向指定轨道添加片段
+        # 8. 向指定轨道添加片段
         script.add_segment(video_segment, track_name)
 
-        # 6. 构造片段信息
+        # 9. 构造片段信息
         segment_info = SegmentInfo(
             id=video_segment.segment_id,
             start=image['start'],
@@ -245,7 +273,7 @@ def add_image_to_draft(
         )
 
         return video_segment.segment_id, segment_info
-        
+
     except CustomException:
         logger.error(f"Add image to draft failed, draft_image_dir: {draft_image_dir}, image: {image}")
         raise
@@ -257,7 +285,7 @@ def add_image_to_draft(
 def parse_image_data(json_str: str) -> List[Dict[str, Any]]:
     """
     解析图片数据的JSON字符串，处理可选字段的默认值
-    
+
     Args:
         json_str: 包含图片数据的JSON字符串，格式如下：
         [
@@ -269,18 +297,16 @@ def parse_image_data(json_str: str) -> List[Dict[str, Any]]:
                 "end": 1000000, // [必选] 显示结束时间(微秒)
                 "in_animation": "", // [可选] 入场动画类型
                 "out_animation": "", // [可选] 出场动画类型
-                "loop_animation": "", // [可选] 循环动画类型
-                "in_animation_duration": "", // [可选] 入场动画时长(微秒)
-                "out_animation_duration": "", // [可选] 出场动画时长(微秒)
-                "loop_animation_duration": "", // [可选] 循环动画时长(微秒)
+                "group_animation": "", // [可选] 组合动画类型
+                "animation_duration": null, // [可选] 动画时长(微秒)
                 "transition": "", // [可选] 转场效果类型
                 "transition_duration": 500000 // [可选] 转场效果时长(微秒，范围100000-2500000)
             }
         ]
-        
+
     Returns:
         包含图片对象的数组，每个对象都处理了默认值
-        
+
     Raises:
         CustomException: 当JSON格式错误或缺少必选字段时抛出
     """
@@ -291,27 +317,27 @@ def parse_image_data(json_str: str) -> List[Dict[str, Any]]:
     except json.JSONDecodeError as e:
         logger.error(f"JSON parse error: {e.msg}")
         raise CustomException(CustomError.INVALID_IMAGE_INFO, f"JSON parse error: {e.msg}")
-    
+
     # 确保输入是列表
     if not isinstance(data, list):
         logger.error("Image infos should be a list")
         raise CustomException(CustomError.INVALID_IMAGE_INFO, "image_infos should be a list")
-    
+
     result = []
-    
+
     for i, item in enumerate(data):
         if not isinstance(item, dict):
             logger.error(f"The {i}th item should be a dict")
             raise CustomException(CustomError.INVALID_IMAGE_INFO, f"the {i}th item should be a dict")
-        
+
         # 检查必选字段
         required_fields = ["image_url", "width", "height", "start", "end"]
         missing_fields = [field for field in required_fields if field not in item]
-        
+
         if missing_fields:
             logger.error(f"The {i}th item is missing required fields: {', '.join(missing_fields)}")
             raise CustomException(CustomError.INVALID_IMAGE_INFO, f"the {i}th item is missing required fields: {', '.join(missing_fields)}")
-        
+
         # 创建处理后的对象，设置默认值
         processed_item = {
             "image_url": item["image_url"],
@@ -321,29 +347,27 @@ def parse_image_data(json_str: str) -> List[Dict[str, Any]]:
             "end": item["end"],
             "in_animation": item.get("in_animation", None),  # 默认无入场动画
             "out_animation": item.get("out_animation", None),  # 默认无出场动画
-            "loop_animation": item.get("loop_animation", None),  # 默认无循环动画
-            "in_animation_duration": item.get("in_animation_duration", None),  # 默认无入场动画时长
-            "out_animation_duration": item.get("out_animation_duration", None),  # 默认无出场动画时长
-            "loop_animation_duration": item.get("loop_animation_duration", None),  # 默认无循环动画时长
+            "group_animation": item.get("group_animation", None),  # 默认无组合动画
+            "animation_duration": item.get("animation_duration", None),  # 默认动画时长
             "transition": item.get("transition", None),  # 默认无转场
             "transition_duration": item.get("transition_duration", 500000)  # 默认转场时长500000微秒
         }
-        
+
         # 验证数值范围
         if processed_item["width"] <= 0 or processed_item["height"] <= 0:
             logger.error(f"Invalid image dimensions: width={processed_item['width']}, height={processed_item['height']}")
             raise CustomException(CustomError.INVALID_IMAGE_INFO, f"the {i}th item has invalid image dimensions")
-        
+
         if processed_item["start"] < 0 or processed_item["end"] <= processed_item["start"]:
             logger.error(f"Invalid time range: start={processed_item['start']}, end={processed_item['end']}")
             raise CustomException(CustomError.INVALID_IMAGE_INFO, f"the {i}th item has invalid time range")
-        
+
         # 验证转场时长范围
         if processed_item["transition_duration"] < 100000 or processed_item["transition_duration"] > 2500000:
             logger.warning(f"Transition duration {processed_item['transition_duration']} out of range [100000, 2500000], using default 500000")
             processed_item["transition_duration"] = 500000
-        
+
         result.append(processed_item)
         logger.debug(f"Processed image item {i+1}: {processed_item}")
-    
+
     return result
