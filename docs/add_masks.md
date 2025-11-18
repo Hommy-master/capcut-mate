@@ -156,3 +156,13 @@ curl -X POST "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_masks" \
 - [添加视频](./add_videos.md) - 向草稿添加视频内容
 - [添加特效](./add_effects.md) - 向草稿添加视频特效
 - [保存草稿](./save_draft.md) - 保存草稿更改
+
+---
+
+<div align="right">
+
+📚 **项目资源**  
+**GitHub**: [https://github.com/Hommy-master/capcut-mate](https://github.com/Hommy-master/capcut-mate)  
+**Gitee**: [https://gitee.com/taohongmin-gitee/capcut-mate](https://gitee.com/taohongmin-gitee/capcut-mate)
+
+</div>

@@ -314,6 +314,16 @@ graph TB
 
 ---
 
+<div align="right">
+
+📚 **项目资源**  
+**GitHub**: [https://github.com/Hommy-master/capcut-mate](https://github.com/Hommy-master/capcut-mate)  
+**Gitee**: [https://gitee.com/taohongmin-gitee/capcut-mate](https://gitee.com/taohongmin-gitee/capcut-mate)
+
+</div>
+
+---
+
 ## 📄 许可证
 
 本项目采用 MIT 许可证，详情请查看 [LICENSE](https://github.com/Hommy-master/capcut-mate/blob/main/LICENSE) 文件。

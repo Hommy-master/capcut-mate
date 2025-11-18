@@ -631,10 +631,10 @@ for config in [bgm_config, sequence_config, effects_config]:
 - [保存草稿](./save_draft.md)
 - [生成视频](./gen_video.md)
 
----
-
 <div align="right">
 
-**📚 项目资源**: [GitHub](https://github.com/Hommy-master/capcut-mate) | [Gitee](https://gitee.com/taohongmin-gitee/capcut-mate)
+📚 **项目资源**  
+**GitHub**: [https://github.com/Hommy-master/capcut-mate](https://github.com/Hommy-master/capcut-mate)  
+**Gitee**: [https://gitee.com/taohongmin-gitee/capcut-mate](https://gitee.com/taohongmin-gitee/capcut-mate)
 
 </div>

@@ -7,6 +7,22 @@
 
 📖 更多详细文档和教程请访问：[https://docs.jcaigc.cn](https://docs.jcaigc.cn)
 
+## 相关接口
+
+- [create_draft](./create_draft.md) - 创建新的剪映草稿
+- [add_videos](./add_videos.md) - 向草稿添加视频内容
+- [save_draft](./save_draft.md) - 保存草稿更改
+
+---
+
+<div align="right">
+
+📚 **项目资源**  
+**GitHub**: [https://github.com/Hommy-master/capcut-mate](https://github.com/Hommy-master/capcut-mate)  
+**Gitee**: [https://gitee.com/taohongmin-gitee/capcut-mate](https://gitee.com/taohongmin-gitee/capcut-mate)
+
+</div>
+
 ## 接口信息
 - **方法**: POST
 - **路径**: `/openapi/capcut-mate/v1/add_keyframes`

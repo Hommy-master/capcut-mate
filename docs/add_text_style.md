@@ -227,3 +227,13 @@ curl -X POST "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_text_styl
 - [添加字幕](./add_captions.md) - 向草稿添加字幕内容
 - [创建草稿](./create_draft.md) - 创建新的剪映草稿
 - [保存草稿](./save_draft.md) - 保存草稿更改
+
+---
+
+<div align="right">
+
+📚 **项目资源**  
+**GitHub**: [https://github.com/Hommy-master/capcut-mate](https://github.com/Hommy-master/capcut-mate)  
+**Gitee**: [https://gitee.com/taohongmin-gitee/capcut-mate](https://gitee.com/taohongmin-gitee/capcut-mate)
+
+</div>

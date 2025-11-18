@@ -141,6 +141,7 @@ curl -X POST "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_effects" 
 <div align="right">
 
 📚 **项目资源**  
-[GitHub](https://github.com/Hommy-master/capcut-mate) | [Gitee](https://gitee.com/taohongmin-gitee/capcut-mate)
+**GitHub**: [https://github.com/Hommy-master/capcut-mate](https://github.com/Hommy-master/capcut-mate)  
+**Gitee**: [https://gitee.com/taohongmin-gitee/capcut-mate](https://gitee.com/taohongmin-gitee/capcut-mate)
 
 </div>
