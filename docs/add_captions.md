@@ -243,17 +243,10 @@ fetch(url, {
 5. **字体选择**: 支持自定义字体文件
 6. **边框和阴影**: 支持字幕边框和阴影效果
 
----
-
-<div align="right">
-
----
-
 <div align="right">
 
 📚 **项目资源**  
-[GitHub](https://github.com/Hommy-master/capcut-mate) | [Gitee](https://gitee.com/taohongmin-gitee/capcut-mate)
-
-</div>
+**GitHub**: [https://github.com/Hommy-master/capcut-mate](https://github.com/Hommy-master/capcut-mate)  
+**Gitee**: [https://gitee.com/taohongmin-gitee/capcut-mate](https://gitee.com/taohongmin-gitee/capcut-mate)
 
 </div>
