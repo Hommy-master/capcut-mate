@@ -1,6 +1,20 @@
 # CREATE_DRAFT API 接口文档
 
-## 接口信息
+## 📋 目录
+
+- [🔧 接口信息](#-接口信息)
+- [🎯 功能描述](#-功能描述)
+- [📖 更多文档](#-更多文档)
+- [📥 请求参数](#-请求参数)
+- [📤 响应格式](#-响应格式)
+- [💻 使用示例](#-使用示例)
+- [❌ 错误码说明](#-错误码说明)
+- [⚠️ 注意事项](#️-注意事项)
+- [🔄 工作流程](#-工作流程)
+- [➡️ 下一步操作](#️-下一步操作)
+- [🔗 相关接口](#-相关接口)
+
+## 🔧 接口信息
 
 ```
 POST /openapi/capcut-mate/v1/create_draft
@@ -80,7 +94,7 @@ POST /openapi/capcut-mate/v1/create_draft
 }
 ```
 
-## 使用示例
+## 💻 使用示例
 
 ### cURL 示例
 
@@ -116,7 +130,10 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/create_draft \
 
 ### JavaScript 示例
 
+#### 基础使用
+
 ```javascript
+// 创建草稿函数
 const createDraft = async (width = 1920, height = 1080) => {
   const response = await fetch('/openapi/capcut-mate/v1/create_draft', {
     method: 'POST',
@@ -126,23 +143,26 @@ const createDraft = async (width = 1920, height = 1080) => {
   return response.json();
 };
 
-// 创建默认分辨率草稿
-const defaultDraft = await createDraft();
-
-// 创建720P草稿
-const hdDraft = await createDraft(1280, 720);
-
-// 创建正方形草稿
-const squareDraft = await createDraft(1080, 1080);
-
-console.log('草稿创建成功:', {
-  default: defaultDraft.draft_url,
-  hd: hdDraft.draft_url,
-  square: squareDraft.draft_url
-});
+// 使用示例
+(async () => {
+  // 创建默认分辨率草稿
+  const defaultDraft = await createDraft();
+  
+  // 创建720P草稿
+  const hdDraft = await createDraft(1280, 720);
+  
+  // 创建正方形草稿
+  const squareDraft = await createDraft(1080, 1080);
+  
+  console.log('草稿创建成功:', {
+    default: defaultDraft.draft_url,
+    hd: hdDraft.draft_url,
+    square: squareDraft.draft_url
+  });
+})();
 ```
 
-### 高级JavaScript示例
+#### 高级封装类
 
 ```javascript
 class DraftManager {
@@ -222,12 +242,14 @@ class DraftManager {
 const draftManager = new DraftManager();
 
 // 创建单个草稿
-const draft = await draftManager.create1080p();
-console.log('草稿URL:', draft.draft_url);
+draftManager.create1080p().then(draft => {
+  console.log('草稿URL:', draft.draft_url);
+});
 
 // 批量创建多种格式
-const multipleDrafts = await draftManager.createMultipleFormats();
-console.log('多种格式草稿:', multipleDrafts);
+draftManager.createMultipleFormats().then(results => {
+  console.log('多种格式草稿:', results);
+});
 ```
 
 ### Python 示例
@@ -320,10 +342,27 @@ for name, draft in drafts.items():
 - **save_draft**: 保存草稿
 - **gen_video**: 导出视频
 
-## 相关接口
+## 🔗 相关接口
 
-- [添加视频](./add_videos.md)
-- [添加音频](./add_audios.md)
-- [添加图片](./add_images.md)
-- [保存草稿](./save_draft.md)
-- [生成视频](./gen_video.md)
+<div align="center">
+
+### 📚 导航指南
+
+**🎯 新手路径**: [首页文档](./index.md) ← 当前位置 → [添加视频](./add_videos.md)
+
+**🔄 工作流程**: 创建草稿 → **当前: CREATE_DRAFT** → [添加素材](./add_videos.md) → [生成视频](./gen_video.md)
+
+**📖 相关文档**:
+- [项目概览](./index.md) - 了解完整功能
+- [添加视频](./add_videos.md) - 添加视频素材
+- [保存草稿](./save_draft.md) - 保存草稿更改
+
+</div>
+
+---
+
+<div align="right">
+
+**📚 项目资源**: [GitHub](https://github.com/Hommy-master/capcut-mate) | [Gitee](https://gitee.com/taohongmin-gitee/capcut-mate)
+
+</div>

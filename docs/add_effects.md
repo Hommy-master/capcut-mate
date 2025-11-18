@@ -1,6 +1,19 @@
-# 添加特效接口文档
+# ADD_EFFECTS API 接口文档
 
-## 接口概述
+## 📋 目录
+
+- [🔧 接口概述](#-接口概述)
+- [📖 更多文档](#-更多文档)
+- [🔧 接口信息](#-接口信息)
+- [📥 请求参数](#-请求参数)
+- [📤 响应格式](#-响应格式)
+- [💻 使用示例](#-使用示例)
+- [❌ 错误码说明](#-错误码说明)
+- [📖 使用说明](#-使用说明)
+- [⚠️ 注意事项](#️-注意事项)
+- [🔗 相关接口](#-相关接口)
+
+## 🔧 接口概述
 向现有剪映草稿中添加视频特效轨道和特效片段。支持批量添加多种视频特效，包括边框特效、滤镜特效、动态特效等，为视频内容增加丰富的视觉效果。
 
 ## 更多文档
@@ -122,3 +135,12 @@ curl -X POST "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_effects" 
 - [创建草稿](./create_draft.md) - 创建新的剪映草稿
 - [添加视频](./add_videos.md) - 向草稿添加视频内容
 - [保存草稿](./save_draft.md) - 保存草稿更改
+
+---
+
+<div align="right">
+
+📚 **项目资源**  
+[GitHub](https://github.com/Hommy-master/capcut-mate) | [Gitee](https://gitee.com/taohongmin-gitee/capcut-mate)
+
+</div>
