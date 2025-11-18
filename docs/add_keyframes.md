@@ -13,16 +13,6 @@
 - [add_videos](./add_videos.md) - 向草稿添加视频内容
 - [save_draft](./save_draft.md) - 保存草稿更改
 
----
-
-<div align="right">
-
-📚 **项目资源**  
-**GitHub**: [https://github.com/Hommy-master/capcut-mate](https://github.com/Hommy-master/capcut-mate)  
-**Gitee**: [https://gitee.com/taohongmin-gitee/capcut-mate](https://gitee.com/taohongmin-gitee/capcut-mate)
-
-</div>
-
 ## 接口信息
 - **方法**: POST
 - **路径**: `/openapi/capcut-mate/v1/add_keyframes`
@@ -154,3 +144,35 @@ print(response.json())
 | 2015 | 片段未找到 | 指定的segment_id在草稿中不存在 |
 | 2016 | 无效的片段类型 | 该片段不支持关键帧功能 |
 | 2017 | 无效的关键帧属性类型 | 指定的property类型不受支持 |
+
+---
+
+## 相关接口
+
+- [create_draft](./create_draft.md) - 创建新的剪映草稿
+- [add_videos](./add_videos.md) - 向草稿添加视频内容
+- [save_draft](./save_draft.md) - 保存草稿更改
+- [get_draft](./get_draft.md) - 获取草稿详情
+
+## 技术实现
+
+### 文件结构
+- `src/service/add_keyframes.py` - 关键帧添加服务
+- `src/schemas/add_keyframes.py` - 请求响应数据模型
+- `src/pyJianYingDraft/keyframe.py` - 关键帧核心实现
+
+### 核心逻辑
+1. **参数验证**: 验证草稿URL、关键帧数据格式和属性类型
+2. **片段检查**: 确认目标片段存在且支持关键帧功能
+3. **关键帧添加**: 将关键帧数据写入草稿文件
+4. **结果返回**: 返回添加的关键帧数量和受影响的片段
+
+---
+
+<div align="right">
+
+📚 **项目资源**  
+**GitHub**: [https://github.com/Hommy-master/capcut-mate](https://github.com/Hommy-master/capcut-mate)  
+**Gitee**: [https://gitee.com/taohongmin-gitee/capcut-mate](https://gitee.com/taohongmin-gitee/capcut-mate)
+
+</div>
