@@ -35,6 +35,7 @@ from src.schemas.get_draft import GetDraftRequest, GetDraftResponse
 from src.schemas.get_audio_duration import GetAudioDurationRequest, GetAudioDurationResponse
 from src import service
 from typing import Annotated
+from src.utils.logger import logger
 import config
 
 
@@ -172,6 +173,8 @@ def add_captions(acr: AddCaptionsRequest) -> AddCaptionsResponse:
     """
     向剪映草稿批量添加字幕 (v1版本)
     """
+    # 添加日志打印参数值
+    logger.info(f"add_captions request params: {acr.model_dump_json()}")
 
     # 调用service层处理业务逻辑
     draft_url, track_id, text_ids, segment_ids = service.add_captions(
