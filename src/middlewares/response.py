@@ -34,6 +34,9 @@ class ResponseMiddleware(BaseHTTPMiddleware):
         except CustomException as e:
             return self._handle_custom_exception(e, lang)
         except Exception as e:
+            # 记录请求信息以便调试
+            logger.warning(f"Request path: {request.url.path}")
+            logger.warning(f"Request method: {request.method}")
             return self._handle_generic_exception(e, lang)
 
     def _get_language_from_request(self, request: Request) -> str:
@@ -65,6 +68,15 @@ class ResponseMiddleware(BaseHTTPMiddleware):
         """特殊处理422参数验证错误"""
         try:
             # 尝试解析422错误的响应体
+            # 添加更严格的JSON格式检查
+            if not body_str or not body_str.strip():
+                raise ValueError("Empty response body")
+            
+            # 检查是否是有效的JSON格式（以{或[开头）
+            stripped_body = body_str.strip()
+            if not (stripped_body.startswith('{') or stripped_body.startswith('[')):
+                raise ValueError(f"Invalid JSON format: {body_str[:100]}...")
+                
             error_data = json.loads(body_str)
             
             # 提取验证错误的详细信息
@@ -82,19 +94,35 @@ class ResponseMiddleware(BaseHTTPMiddleware):
             error_response = CustomError.PARAM_VALIDATION_FAILED.as_dict(detail=error_message, lang=lang)
             return JSONResponse(status_code=200, content=error_response)
             
-        except json.JSONDecodeError:
+        except json.JSONDecodeError as je:
             logger.warning(f"Failed to parse 422 response body: {body_str}")
+            logger.warning(f"JSON decode error details: {str(je)}")
             
             error_response = CustomError.PARAM_VALIDATION_FAILED.as_dict(detail=body_str, lang=lang)
+            return JSONResponse(status_code=200, content=error_response)
+        except ValueError as ve:
+            logger.warning(f"Invalid response body format: {body_str}")
+            logger.warning(f"Value error details: {str(ve)}")
+            
+            error_response = CustomError.PARAM_VALIDATION_FAILED.as_dict(detail=str(ve), lang=lang)
             return JSONResponse(status_code=200, content=error_response)
 
     async def _handle_non_200_response(self, response, lang: str) -> JSONResponse:
         """处理非200状态码的响应"""
-        body = b""
-        async for chunk in response.body_iterator:
-            body += chunk
-        
-        body_str = body.decode()
+        try:
+            body = b""
+            async for chunk in response.body_iterator:
+                body += chunk
+            
+            body_str = body.decode()
+        except Exception as e:
+            logger.warning(f"Failed to read response body: {str(e)}")
+            # 创建默认错误响应
+            error_response = {
+                "code": response.status_code,
+                "message": f"HTTP Error {response.status_code}"
+            }
+            return JSONResponse(status_code=200, content=error_response)
 
         # 特殊处理422错误（参数验证错误）
         if response.status_code == 422:
@@ -123,6 +151,15 @@ class ResponseMiddleware(BaseHTTPMiddleware):
         body_str = b''.join(body).decode()
         
         try:
+            # 添加更严格的JSON格式检查
+            if not body_str or not body_str.strip():
+                raise ValueError("Empty response body")
+                
+            # 检查是否是有效的JSON格式（以{或[开头）
+            stripped_body = body_str.strip()
+            if not (stripped_body.startswith('{') or stripped_body.startswith('[')):
+                raise ValueError(f"Invalid JSON format: {body_str[:100]}...")
+                
             data = json.loads(body_str)
             
             # 如果响应已经有统一格式，直接返回
@@ -141,8 +178,13 @@ class ResponseMiddleware(BaseHTTPMiddleware):
                 content=unified_response
             )
             
-        except json.JSONDecodeError:
+        except json.JSONDecodeError as je:
             logger.warning(f"JSON decode error: {body_str}")
+            logger.warning(f"JSON decode error details: {str(je)}")
+            return response
+        except ValueError as ve:
+            logger.warning(f"Invalid response body format: {body_str}")
+            logger.warning(f"Value error details: {str(ve)}")
             return response
 
     def _handle_custom_exception(self, e: CustomException, lang: str) -> JSONResponse:
@@ -156,7 +198,9 @@ class ResponseMiddleware(BaseHTTPMiddleware):
 
     def _handle_generic_exception(self, e: Exception, lang: str) -> JSONResponse:
         """处理通用异常（不包含data字段）"""
+        # 记录更详细的错误信息
         logger.warning(f"Internal server error: {str(e)}")
+        logger.warning(f"Exception type: {type(e).__name__}")
         
         # 获取错误信息
         error_response = CustomError.INTERNAL_SERVER_ERROR.as_dict(detail=str(e), lang=lang)
