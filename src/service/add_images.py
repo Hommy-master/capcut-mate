@@ -6,6 +6,7 @@ from exceptions import CustomException, CustomError
 from src.schemas.add_images import SegmentInfo
 import os
 from src.utils import helper
+from src.utils.download import download
 import config
 import json
 from typing import List, Dict, Any, Tuple
@@ -176,7 +177,7 @@ def add_image_to_draft(
     """
     try:
         # 1. 下载图片文件
-        image_path = helper.download(url=image['image_url'], save_dir=draft_image_dir)
+        image_path = download(url=image['image_url'], save_dir=draft_image_dir)
         logger.info(f"Downloaded image from {image['image_url']} to {image_path}")
 
         # 2. 创建图片素材并添加到草稿

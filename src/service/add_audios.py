@@ -5,6 +5,7 @@ from src.utils.draft_cache import DRAFT_CACHE
 from exceptions import CustomException, CustomError
 import os
 from src.utils import helper
+from src.utils.download import download
 import config
 import json
 from typing import List, Dict, Any, Tuple
@@ -120,7 +121,7 @@ def add_audio_to_draft(
     """
     try:
         # 1. 下载音频文件
-        audio_path = helper.download(url=audio['audio_url'], save_dir=draft_audio_dir)
+        audio_path = download(url=audio['audio_url'], save_dir=draft_audio_dir)
         logger.info(f"Downloaded audio from {audio['audio_url']} to {audio_path}")
 
         # 2. 创建音频素材并添加到草稿

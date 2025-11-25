@@ -8,6 +8,7 @@ from src.utils.draft_cache import DRAFT_CACHE
 from exceptions import CustomException, CustomError
 import os
 from src.utils import helper
+from src.utils.download import download
 import config
 import json
 from typing import List, Dict, Any, Tuple
@@ -147,7 +148,7 @@ def add_video_to_draft(
     """
     try:
         # 0. 下载视频
-        video_path = helper.download(url=video['video_url'], save_dir=draft_video_dir)
+        video_path = download(url=video['video_url'], save_dir=draft_video_dir)
 
         # 1. 创建视频素材并添加到草稿
         duration = video['end'] - video['start']

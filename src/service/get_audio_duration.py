@@ -1,5 +1,5 @@
 from src.utils.logger import logger
-from src.utils import helper
+from src.utils.download import download
 from exceptions import CustomException, CustomError
 import config
 import os
@@ -27,7 +27,7 @@ def get_audio_duration(mp3_url: str) -> int:
     try:
         # 1. 下载音频文件到临时目录
         logger.info(f"Starting to download audio file from URL: {mp3_url}")
-        temp_file_path = helper.download(mp3_url, config.TEMP_DIR)
+        temp_file_path = download(mp3_url, config.TEMP_DIR)
         
         # 2. 使用ffprobe分析音频文件获取时长
         duration_microseconds = _analyze_audio_with_ffprobe(temp_file_path)
