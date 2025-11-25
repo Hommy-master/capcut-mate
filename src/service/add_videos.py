@@ -144,7 +144,7 @@ def add_video_to_draft(
         transform_y: Y轴位置偏移(像素)       
     
     Returns:
-        material_id: 素材ID
+        segment_id: 片段ID
     """
     try:
         # 0. 下载视频
@@ -163,7 +163,8 @@ def add_video_to_draft(
         # 2. 向指定轨道添加片段，
         script.add_segment(video_segment, track_name)
 
-        return video_segment.material_instance.material_id
+        # 修复：返回 segment_id 而不是 material_id
+        return video_segment.segment_id
     except CustomException:
         logger.info(f"Add video to draft failed, draft_video_dir: {draft_video_dir}, video: {video}")
         raise
