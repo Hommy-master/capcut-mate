@@ -3,6 +3,8 @@ name: Docker Image CI Dev
 on:
   push:
     branches: [ "main" ]
+    tags:
+      - 'v*'  # 当推送v开头的tag时触发
   pull_request:
     branches: [ "main" ]
 
@@ -34,13 +36,14 @@ jobs:
 
       - name: 准备生产环境文件
         run: |
-          mkdir -p dist
+          mkdir -p dist/etc
           # 复制源代码
-          cp -r src dist/
+          cp -rf src dist/
           # 复制依赖配置文件
           cp pyproject.toml dist/
           cp *.py dist/
           cp uv.lock dist/
+          echo "${{ github.sha }}" > dist/etc/commit_hash
 
       - name: 查看文件和目录结构
         run: ls -lha  dist -R
