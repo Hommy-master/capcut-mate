@@ -174,17 +174,30 @@ def add_mask_to_segment(
         logger.info(f"Mask details - width: {width}, height: {height}, feather: {feather}, rotation: {rotation}, invert: {invert}, round_corner: {round_corner}")
 
         # 5. 添加遮罩到片段
-        segment.add_mask(
-            mask_type=mask_type,
-            center_x=float(center_x),
-            center_y=float(center_y), 
-            size=size,
-            rotation=float(rotation),
-            feather=float(feather),
-            invert=invert,
-            rect_width=rect_width,
-            round_corner=float(round_corner)
-        )
+        if mask_type == MaskType.矩形:
+            # 矩形遮罩可以使用所有参数
+            segment.add_mask(
+                mask_type=mask_type,
+                center_x=float(center_x),
+                center_y=float(center_y), 
+                size=size,
+                rotation=float(rotation),
+                feather=float(feather),
+                invert=invert,
+                rect_width=rect_width,
+                round_corner=float(round_corner)
+            )
+        else:
+            # 非矩形遮罩不能使用 rect_width 和 round_corner 参数
+            segment.add_mask(
+                mask_type=mask_type,
+                center_x=float(center_x),
+                center_y=float(center_y), 
+                size=size,
+                rotation=float(rotation),
+                feather=float(feather),
+                invert=invert
+            )
 
         mask_id = segment.mask.global_id if segment.mask is not None else ""
         if not mask_id:
