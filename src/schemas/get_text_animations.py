@@ -31,4 +31,4 @@ class TextAnimationItem(BaseModel):
 
 class GetTextAnimationsResponse(BaseModel):
     """获取文字出入场动画的响应模型"""
-    effects: str = Field(..., description="文字出入场动画数组的JSON字符串")
+    effects: List[TextAnimationItem] = Field(..., description="文字出入场动画对象数组")

@@ -31,4 +31,4 @@ class ImageAnimationItem(BaseModel):
 
 class GetImageAnimationsResponse(BaseModel):
     """获取图片出入场动画的响应模型"""
-    effects: str = Field(..., description="图片出入场动画数组的JSON字符串")
+    effects: List[ImageAnimationItem] = Field(..., description="图片出入场动画对象数组")

@@ -303,6 +303,7 @@ def get_text_animations(gtar: GetTextAnimationsRequest) -> GetTextAnimationsResp
         type=gtar.type
     )
 
+    # 直接返回对象数组，Pydantic会自动处理序列化
     return GetTextAnimationsResponse(
         effects=effects
     )
@@ -319,6 +320,7 @@ def get_image_animations(giar: GetImageAnimationsRequest) -> GetImageAnimationsR
         type=giar.type
     )
 
+    # 直接返回对象数组，Pydantic会自动处理序列化
     return GetImageAnimationsResponse(
         effects=effects
     )

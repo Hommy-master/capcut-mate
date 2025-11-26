@@ -7,7 +7,7 @@ from src.utils.logger import logger
 from exceptions import CustomException, CustomError
 
 
-def get_text_animations(mode: int = 0, type: str = "in") -> str:
+def get_text_animations(mode: int = 0, type: str = "in") -> List[Dict[str, Any]]:
     """
     获取文字出入场动画列表
     
@@ -16,7 +16,7 @@ def get_text_animations(mode: int = 0, type: str = "in") -> str:
         type: 动画类型，in=入场，out=出场，loop=循环，默认值为"in"
     
     Returns:
-        effects: 文字出入场动画数组的JSON字符串
+        effects: 文字出入场动画对象数组
         
     Raises:
         CustomException: 获取文字动画失败
@@ -37,11 +37,10 @@ def get_text_animations(mode: int = 0, type: str = "in") -> str:
         animations = _get_animations_by_type_and_mode(type=type, mode=mode)
         logger.info(f"Found {len(animations)} animations for type: {type}, mode: {mode}")
         
-        # 3. 转换为JSON字符串并返回
-        effects_json = json.dumps(animations, ensure_ascii=False)
-        logger.info(f"Successfully generated animations JSON with {len(animations)} items")
+        # 3. 直接返回对象数组（不再转换为JSON字符串）
+        logger.info(f"Successfully returned animations array with {len(animations)} items")
         
-        return effects_json
+        return animations
         
     except CustomException:
         logger.error(f"Get text animations failed for type: {type}, mode: {mode}")
