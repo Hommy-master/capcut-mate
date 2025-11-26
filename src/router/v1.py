@@ -177,7 +177,7 @@ def add_captions(acr: AddCaptionsRequest) -> AddCaptionsResponse:
     logger.info(f"add_captions request params: {acr.model_dump_json()}")
 
     # 调用service层处理业务逻辑
-    draft_url, track_id, text_ids, segment_ids = service.add_captions(
+    draft_url, track_id, text_ids, segment_ids, segment_infos = service.add_captions(
         draft_url=acr.draft_url,
         captions=acr.captions,
         text_color=acr.text_color,
@@ -199,7 +199,8 @@ def add_captions(acr: AddCaptionsRequest) -> AddCaptionsResponse:
         draft_url=draft_url,
         track_id=track_id,
         text_ids=text_ids,
-        segment_ids=segment_ids
+        segment_ids=segment_ids,
+        segment_infos=segment_infos
     )
 
 @router.post(path="/add_effects", response_model=AddEffectsResponse)

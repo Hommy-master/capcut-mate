@@ -38,9 +38,17 @@ class CaptionItem(BaseModel):
     loop_animation_duration: Optional[int] = Field(default=None, description="循环动画时长")
 
 
+class SegmentInfo(BaseModel):
+    """片段信息"""
+    id: str = Field(..., description="片段ID")
+    start: int = Field(..., description="片段开始时间（微秒）")
+    end: int = Field(..., description="片段结束时间（微秒）")
+
+
 class AddCaptionsResponse(BaseModel):
     """添加字幕响应参数"""
     draft_url: str = Field(default="", description="草稿URL")
     track_id: str = Field(default="", description="字幕轨道ID")
     text_ids: List[str] = Field(default=[], description="字幕ID列表")
     segment_ids: List[str] = Field(default=[], description="字幕片段ID列表")
+    segment_infos: List[SegmentInfo] = Field(default=[], description="片段信息列表")
