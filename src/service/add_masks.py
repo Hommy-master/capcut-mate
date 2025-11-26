@@ -161,8 +161,9 @@ def add_mask_to_segment(
         
         # 3. 检查片段是否已有遮罩
         if segment.mask is not None:
-            logger.error(f"Segment {segment_id} already has a mask")
-            raise CustomException(CustomError.MASK_ADD_FAILED)
+            logger.info(f"Segment {segment_id} already has a mask, returning existing mask id")
+            # 如果片段已经有遮罩，直接返回现有的遮罩ID而不是抛出异常
+            return segment.mask.global_id
         
         # 4. 计算遮罩尺寸参数
         # 根据 add_mask 方法的要求，size 是主要尺寸（以占素材高度的比例表示）
