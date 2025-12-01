@@ -69,6 +69,8 @@ docker run -p 30000:30000 gogoshine/capcut-mate:latest
 docker-compose up -d
 ```
 
+⭐ 如果你觉得这个项目对你有帮助，欢迎点个 Star 支持一下！你的支持是我持续维护和改进项目的最大动力 😊
+
 ## API 使用示例
 
 ### 创建草稿
@@ -109,5 +111,3 @@ curl -X POST "http://localhost:30000/openapi/capcut-mate/v1/add_videos" \
   <img src="./assets/wechat.jpg" width="220" height="220" alt="技术支持微信">
 
 - 邮箱：taohongmin51@gmail.com
-
-⭐ 如果你觉得这个项目对你有帮助，欢迎点个 Star 支持一下！你的支持是我持续维护和改进项目的最大动力 😊
