@@ -1,42 +1,20 @@
-# easy_create_material 接口文档
+# EASY_CREATE_MATERIAL API 接口文档
 
-## 接口概述
+## 接口信息
 
-**接口名称**：easy_create_material  
-**接口地址**：`POST /openapi/capcut-mate/v1/easy_create_material`  
-**功能描述**：在现有草稿中添加多种类型的素材内容，包括音频、视频、图片和文字。该接口可以一次性向草稿添加多种媒体素材，自动处理素材的时长、尺寸等属性，并智能管理不同类型的媒体轨道。是视频创作的核心接口之一。
+```
+POST /openapi/capcut-mate/v1/easy_create_material
+```
+
+## 功能描述
+
+在现有草稿中添加多种类型的素材内容，包括音频、视频、图片和文字。该接口可以一次性向草稿添加多种媒体素材，自动处理素材的时长、尺寸等属性，并智能管理不同类型的媒体轨道。是视频创作的核心接口之一。
 
 ## 更多文档
 
 📖 更多详细文档和教程请访问：[https://docs.jcaigc.cn](https://docs.jcaigc.cn)
 
 ## 请求参数
-
-### 请求体 (application/json)
-
-| 参数名 | 类型 | 必填 | 默认值 | 描述 |
-|--------|------|------|--------|------|
-| draft_url | string | 是 | - | 目标草稿的完整URL |
-| audio_url | string | 是 | - | 音频文件URL，不能为空或null |
-| text | string | 否 | null | 要添加的文字内容 |
-| img_url | string | 否 | null | 图片文件URL |
-| video_url | string | 否 | null | 视频文件URL |
-| text_color | string | 否 | "#ffffff" | 文字颜色（十六进制格式） |
-| font_size | integer | 否 | 15 | 字体大小 |
-| text_transform_y | integer | 否 | 0 | 文字Y轴位置偏移 |
-
-### 素材类型说明
-
-| 素材类型 | 支持格式 | 自动处理 | 时长设置 |
-|----------|----------|----------|----------|
-| 音频 | MP3, WAV, AAC | 自动获取时长 | 使用音频原始时长 |
-| 视频 | MP4, AVI, MOV | 自动获取属性 | 固定时长5秒 |
-| 图片 | JPEG, PNG, GIF | 自动获取尺寸 | 默认时长3秒 |
-| 文字 | UTF-8文本 | 支持样式设置 | 默认时长5秒 |
-
-## 请求示例
-
-### 添加所有类型素材
 
 ```json
 {
@@ -51,30 +29,91 @@
 }
 ```
 
-### 仅添加音频和文字
+### 参数说明
 
-```json
-{
-  "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
-  "audio_url": "https://assets.jcaigc.cn/background_music.mp3",
-  "text": "欢迎观看",
-  "text_color": "#0066ff",
-  "font_size": 18
-}
-```
+| 参数名 | 类型 | 必填 | 默认值 | 说明 |
+|--------|------|------|--------|------|
+| draft_url | string | ✅ | - | 目标草稿的完整URL |
+| audio_url | string | ✅ | - | 音频文件URL，不能为空或null |
+| text | string | ❌ | null | 要添加的文字内容 |
+| img_url | string | ❌ | null | 图片文件URL |
+| video_url | string | ❌ | null | 视频文件URL |
+| text_color | string | ❌ | "#ffffff" | 文字颜色（十六进制格式） |
+| font_size | integer | ❌ | 15 | 字体大小 |
+| text_transform_y | integer | ❌ | 0 | 文字Y轴位置偏移 |
 
-### 最简请求（仅音频）
+### 参数详解
 
-```json
-{
-  "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
-  "audio_url": "https://assets.jcaigc.cn/audio.wav"
-}
-```
+#### 必填参数
+
+- **draft_url**: 目标草稿的完整URL
+  - 格式：必须是有效的剪映草稿URL
+  - 示例：`"https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258"`
+
+- **audio_url**: 音频文件URL
+  - 必填参数，不能为空或"null"
+  - 支持格式：MP3, WAV, AAC等常见音频格式
+  - 说明：音频是必填参数，其他素材类型都是可选的
+
+#### 可选参数
+
+- **text**: 要添加的文字内容
+  - 类型：UTF-8文本
+  - 默认值：null（不添加文字）
+  - 说明：如果提供，将添加文字素材到草稿中
+
+- **img_url**: 图片文件URL
+  - 类型：有效的图片URL
+  - 默认值：null（不添加图片）
+  - 支持格式：JPEG, PNG, GIF等常见图片格式
+  - 说明：如果提供，将添加图片素材到草稿中
+
+- **video_url**: 视频文件URL
+  - 类型：有效的视频URL
+  - 默认值：null（不添加视频）
+  - 支持格式：MP4, AVI, MOV等常见视频格式
+  - 说明：如果提供，将添加视频素材到草稿中
+
+- **text_color**: 文字颜色
+  - 类型：十六进制颜色代码
+  - 默认值：`"#ffffff"`（白色）
+  - 说明：设置文字颜色，使用标准十六进制格式（如 #ffffff、#000000）
+
+- **font_size**: 字体大小
+  - 类型：整数
+  - 默认值：15
+  - 说明：设置文字字体大小，建议范围10-50
+
+- **text_transform_y**: 文字Y轴位置偏移
+  - 类型：整数
+  - 默认值：0
+  - 说明：调整文字在画面中的垂直位置，单位为像素
+
+#### 素材处理规则
+
+- **音频处理**：
+  - 自动解析音频时长
+  - 添加到音频轨道
+  - 支持多种音频格式
+
+- **视频处理**：
+  - 固定显示时长5秒
+  - 保持原始分辨率比例
+  - 添加到视频轨道
+
+- **图片处理**：
+  - 默认显示时长3秒
+  - 自动获取图片尺寸
+  - 添加到图片轨道
+
+- **文字处理**：
+  - 默认显示时长5秒
+  - 支持颜色和字体大小设置
+  - 可调整垂直位置
 
 ## 响应格式
 
-### 成功响应
+### 成功响应 (200)
 
 ```json
 {
@@ -82,139 +121,110 @@
 }
 ```
 
-### 错误响应
+### 响应字段说明
 
-#### 400 Bad Request - 参数验证失败
+| 字段名 | 类型 | 说明 |
+|--------|------|------|
+| draft_url | string | 更新后的草稿URL |
+
+### 错误响应 (4xx/5xx)
 
 ```json
 {
-  "error": {
-    "code": "VALIDATION_ERROR",
-    "message": "请求参数验证失败",
-    "details": "audio_url 不能为空"
-  }
+  "detail": "错误信息描述"
 }
 ```
 
-#### 404 Not Found - 草稿不存在
+## 使用示例
 
-```json
-{
-  "error": {
-    "code": "DRAFT_NOT_FOUND", 
-    "message": "草稿文件不存在",
-    "details": "无法找到指定的草稿文件"
-  }
-}
+### cURL 示例
+
+#### 1. 添加所有类型素材
+
+```bash
+curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/easy_create_material \
+  -H "Content-Type: application/json" \
+  -d '{
+    "draft_url": "YOUR_DRAFT_URL",
+    "audio_url": "https://assets.jcaigc.cn/audio.mp3",
+    "text": "Hello World",
+    "img_url": "https://s.coze.cn/t/JTa5Ne6_liY/",
+    "video_url": "https://assets.jcaigc.cn/video.mp4",
+    "text_color": "#ff0000",
+    "font_size": 20,
+    "text_transform_y": 100
+  }'
 ```
 
-#### 500 Internal Server Error - 素材创建失败
+#### 2. 仅添加音频和文字
 
-```json
-{
-  "error": {
-    "code": "MATERIAL_CREATE_FAILED",
-    "message": "素材创建失败", 
-    "details": "添加音频素材时发生错误"
-  }
-}
+```bash
+curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/easy_create_material \
+  -H "Content-Type: application/json" \
+  -d '{
+    "draft_url": "YOUR_DRAFT_URL",
+    "audio_url": "https://assets.jcaigc.cn/background_music.mp3",
+    "text": "欢迎观看",
+    "text_color": "#0066ff",
+    "font_size": 18
+  }'
+```
+
+#### 3. 最简请求（仅音频）
+
+```bash
+curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/easy_create_material \
+  -H "Content-Type: application/json" \
+  -d '{
+    "draft_url": "YOUR_DRAFT_URL",
+    "audio_url": "https://assets.jcaigc.cn/audio.wav"
+  }'
 ```
 
 ## 错误码说明
 
-| 错误码 | HTTP状态码 | 描述 | 解决方案 |
-|--------|------------|------|----------|
-| VALIDATION_ERROR | 400 | 请求参数验证失败 | 检查必填参数是否提供，参数格式是否正确 |
-| DRAFT_NOT_FOUND | 404 | 草稿文件不存在 | 确认草稿URL是否正确，草稿是否已被删除 |
-| MATERIAL_CREATE_FAILED | 500 | 素材创建失败 | 检查素材URL是否有效，网络连接是否正常 |
-| INVALID_URL | 400 | URL格式无效 | 确认提供的URL格式正确且可访问 |
+| 错误码 | 错误信息 | 说明 | 解决方案 |
+|--------|----------|------|----------|
+| 400 | draft_url是必填项 | 缺少草稿URL参数 | 提供有效的draft_url |
+| 400 | audio_url是必填项 | 缺少音频URL参数 | 提供有效的audio_url |
+| 400 | 无效的草稿信息，请检查草稿参数是否正确 | 草稿参数校验失败 | 检查草稿参数是否符合要求 |
+| 404 | 草稿不存在 | 指定的草稿URL无效 | 检查草稿URL是否正确 |
+| 500 | 素材创建失败 | 内部处理错误 | 联系技术支持 |
 
-## 使用说明
+## 注意事项
 
-### 参数说明
+1. **音频必填**: audio_url是必填参数，不能为空或null
+2. **素材URL**: 素材URL必须可公开访问，建议使用HTTPS协议
+3. **文字颜色**: text_color使用标准十六进制格式（如 #ffffff、#000000）
+4. **字体大小**: font_size建议范围10-50
+5. **位置偏移**: text_transform_y用于调整文字在画面中的垂直位置
+6. **时长设置**: 不同素材类型有不同的默认显示时长
+   - 音频：自动获取原始时长
+   - 视频：固定5秒
+   - 图片：默认3秒
+   - 文字：默认5秒
+7. **轨道管理**: 系统自动创建不同类型素材的轨道
+8. **性能考虑**: 避免同时添加大量素材
 
-1. **draft_url**：必须是有效的剪映草稿URL，格式为 `https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258
-2. **audio_url**：必填参数，必须提供有效的音频文件URL，不接受空字符串或null值
-3. **可选素材**：text、img_url、video_url 都是可选参数，可以根据需要选择添加
-4. **文字样式**：text_color支持十六进制颜色代码，font_size范围建议10-50
-5. **位置偏移**：text_transform_y用于调整文字在画面中的垂直位置
+## 工作流程
 
-### 素材处理规则
-
-1. **音频处理**：
-   - 自动解析音频时长
-   - 添加到音频轨道
-   - 支持多种音频格式
-
-2. **视频处理**：
-   - 固定显示时长5秒
-   - 保持原始分辨率比例
-   - 添加到视频轨道
-
-3. **图片处理**：
-   - 默认显示时长3秒
-   - 自动获取图片尺寸
-   - 添加到图片轨道
-
-4. **文字处理**：
-   - 默认显示时长5秒
-   - 支持颜色和字体大小设置
-   - 可调整垂直位置
-
-### 注意事项
-
-- 音频是必填参数，其他素材类型都是可选的
-- 素材URL必须可公开访问，建议使用HTTPS协议
-- 文字颜色使用标准十六进制格式（如 #ffffff、#000000）
-- 所有时长都以微秒为单位进行内部计算
-- 建议在添加素材前确保网络连接稳定
-
-## 应用场景
-
-1. **快速创建多媒体内容**：一次性添加背景音乐、视频片段、图片和标题文字
-2. **批量素材导入**：为新创建的草稿快速添加多种类型的基础素材
-3. **模板化创作**：基于固定的素材类型模板快速生成视频草稿
-4. **自动化流程**：在自动化视频制作流程中批量添加预设的素材内容
+1. 验证必填参数（draft_url, audio_url）
+2. 从缓存中获取草稿
+3. 创建音频轨道并添加音频素材
+4. 如果提供，创建视频轨道并添加视频素材
+5. 如果提供，创建图片轨道并添加图片素材
+6. 如果提供，创建文字轨道并添加文字素材
+7. 保存草稿
+8. 返回更新后的草稿URL
 
 ## 相关接口
 
-- [create_draft](./create_draft.md) - 创建新的草稿文件
-- [add_audios](./add_audios.md) - 单独添加音频素材
-- [add_videos](./add_videos.md) - 单独添加视频素材  
-- [add_images](./add_images.md) - 单独添加图片素材
-- [save_draft](./save_draft.md) - 保存草稿文件
-
-## 技术实现
-
-### 文件结构
-
-```
-src/
-├── schemas/easy_create_material.py    # 请求/响应数据模型
-├── service/easy_create_material.py    # 业务逻辑实现
-└── router/v1.py                       # API路由定义
-```
-
-### 核心逻辑
-
-1. **参数验证**：验证草稿URL和音频URL的有效性
-2. **草稿加载**：从URL解析并加载草稿文件
-3. **素材添加**：按类型分别添加音频、视频、图片、文字素材
-4. **轨道管理**：自动管理不同类型素材的轨道分配
-5. **文件保存**：保存更新后的草稿文件
-
-### 日志记录
-
-系统会记录以下关键操作的日志：
-- 草稿加载成功/失败
-- 各类型素材添加的详细过程
-- 文件保存结果
-- 错误异常信息
-
----
-
-**版本信息**：v1.0  
-**最后更新**：2024-09-24
+- [创建草稿](./create_draft.md)
+- [添加视频](./add_videos.md)
+- [添加音频](./add_audios.md)
+- [添加图片](./add_images.md)
+- [保存草稿](./save_draft.md)
+- [生成视频](./gen_video.md)
 
 ---
 
