@@ -62,11 +62,13 @@ POST /openapi/capcut-mate/v1/add_sticker
   - 正值向右移动
   - 负值向左移动
   - 以画布中心为原点
+  - 实际存储时会转换为半画布宽单位（假设画布宽度1920，即除以960）
 
 - **transform_y**: 贴纸在Y轴方向的位置偏移，单位为像素
   - 正值向下移动
   - 负值向上移动
   - 以画布中心为原点
+  - 实际存储时会转换为半画布高单位（假设画布高度1080，即除以540）
 
 #### 贴纸ID说明
 
@@ -158,7 +160,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_sticker \
 
 ```javascript
 const addSticker = async (draftUrl, stickerConfig) => {
-  const response = await fetch('/openapi/capcut-mate/v1/add_sticker', {
+  const response = await fetch('https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_sticker', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -422,7 +424,7 @@ import random
 from typing import List, Dict
 
 class StickerProcessor:
-    def __init__(self, base_url: str = "https://api.assets.jcaigc.cn"):
+    def __init__(self, base_url: str = "https://capcut-mate.jcaigc.cn"):
         self.base_url = base_url
 
     def add_sticker(self, draft_url: str, sticker_config: Dict) -> Dict:
@@ -436,7 +438,7 @@ class StickerProcessor:
         )
         response.raise_for_status()
         return response.json()
-
+```
     def create_sticker_sequence(self, stickers: List[Dict], interval_duration: int = 1000000) -> List[Dict]:
         """创建贴纸序列"""
         configs = []
@@ -555,6 +557,7 @@ for i, result in enumerate(results):
 | 400 | end是必填项 | 缺少结束时间参数 | 提供有效的end时间 |
 | 400 | 时间范围无效 | end必须大于start | 确保结束时间大于开始时间 |
 | 400 | 缩放比例无效 | scale超出建议范围 | 使用0.1-5.0范围内的缩放值 |
+| 400 | 无效的贴纸信息，请检查贴纸参数是否正确 | 贴纸参数校验失败 | 检查贴纸参数是否符合要求 |
 | 404 | 草稿不存在 | 指定的草稿URL无效 | 检查草稿URL是否正确 |
 | 404 | 贴纸不存在 | 指定的贴纸ID无效 | 确认贴纸ID是否正确 |
 | 500 | 贴纸添加失败 | 内部处理错误 | 联系技术支持 |
@@ -565,7 +568,9 @@ for i, result in enumerate(results):
 2. **贴纸ID**: 确保使用有效的贴纸ID
 3. **时间范围**: end必须大于start
 4. **缩放范围**: scale建议在0.1-5.0范围内
-5. **位置范围**: transform_x和transform_y应在合理范围内
+5. **位置参数**: transform_x和transform_y单位为像素，但内部会转换为半画布单位存储
+   - transform_x转换公式：实际值 / 960（假设画布宽度1920）
+   - transform_y转换公式：实际值 / 540（假设画布高度1080）
 6. **轨道管理**: 系统自动创建贴纸轨道
 7. **性能考虑**: 避免同时添加大量贴纸
 
