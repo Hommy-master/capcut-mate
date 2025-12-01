@@ -157,6 +157,9 @@ curl -X POST "http://localhost:30000/openapi/capcut-mate/v1/add_videos" \
 - 本地访问: http://localhost:30000/docs
 - ReDoc 版本: http://localhost:30000/redoc
 
+## 剪映小助手-客户端
+- [剪映小助手-客户端](https://github.com/Hommy-master/capcut-mate-electron)
+
 ## 开源社区问题交流群
 - 微信群：
 
