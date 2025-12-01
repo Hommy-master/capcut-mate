@@ -1,7 +1,7 @@
 # CapCut Mate API
 
 ## 项目简介
-CapCut Mate API 是一个基于 FastAPI 构建的剪映小助手
+CapCut Mate API 是一个基于 FastAPI 构建的剪映小助手，专为扣子插件打造，支持一键部署成为扣子插件。
 
 ## 功能特点
 - 用户管理：创建草稿、添加视频、保存草稿、云端渲染
@@ -50,6 +50,8 @@ uv run main.py
 ```bash
 docker pull gogoshine/capcut-mate:latest
 ```
+
+⭐ 如果你觉得这个项目对你有帮助，欢迎点个 Star 支持一下！你的支持是我持续维护和改进项目的最大动力 😊
 
 ## 开源社区问题交流群
 - 微信群：
