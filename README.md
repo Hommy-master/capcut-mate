@@ -69,6 +69,9 @@ docker run -p 30000:30000 gogoshine/capcut-mate:latest
 docker-compose up -d
 ```
 
+### 扣子插件配置参考
+[剪映小助手-扣子插件](https://www.coze.cn/store/plugin/7576197869707722771)
+
 ⭐ 如果你觉得这个项目对你有帮助，欢迎点个 Star 支持一下！你的支持是我持续维护和改进项目的最大动力 😊
 
 ## API 接口文档
