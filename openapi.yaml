@@ -1,0 +1,1189 @@
+components:
+    examples:
+        add_audios:
+            value:
+                ReqExample:
+                    audio_infos: '[{"audio_url":"https://www.jcaigc.cn/output/upload/2025-10-27-23/20251027234830.mp3","duration":23184000,"end":23184000,"start":0}]'
+                    draft_url: https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=202511262111301f5fceff
+                RespExample:
+                    audio_ids:
+                        - 9000bc9efb744c3196fb1d225993f43d
+                    draft_url: https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=202511262111301f5fceff
+                    track_id: a2d21e5a343c4f1eba3c9234bea16658
+        add_captions:
+            value:
+                ReqExample:
+                    alignment: 1
+                    alpha: 1
+                    bold: false
+                    border_color: '#000000'
+                    captions: '[{"start":0,"end":10000000,"text":"你好，剪映","keyword":"好","keyword_color":"#457616","keyword_font_size":15,"font_size":15}]'
+                    draft_url: https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=202511262337379d98b90e
+                    font_size: 15
+                    letter_spacing: 0
+                    line_spacing: 0
+                    scale_x: 1
+                    scale_y: 1
+                    style_text: false
+                    text_color: '#ffffff'
+                    transform_x: 0
+                    transform_y: 0
+                RespExample:
+                    draft_url: https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=202511262337379d98b90e
+                    segment_ids:
+                        - 2756e706d0d44919ab0120653e374527
+                    segment_infos:
+                        - end: 10000000
+                          id: 2756e706d0d44919ab0120653e374527
+                          start: 0
+                    text_ids:
+                        - 93bbb7d3f6234a8dbd4f0a583af7c658
+                    track_id: 2b537042c06348f881c1f9218551916c
+        add_effects:
+            value:
+                ReqExample:
+                    draft_url: https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=202511262337379d98b90e
+                    effect_infos: '[{"effect_title": "录制边框 III","start": 0,"end": 5000000}]'
+                RespExample:
+                    draft_url: https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=202511262337379d98b90e
+                    effect_ids:
+                        - 34c70fba3619444fa897110b40b39386
+                    segment_ids:
+                        - 23e0c0900c69427f82e44243183706c9
+                    track_id: 2ffea3839d304f83ae29dadc43a18227
+        add_images:
+            value:
+                ReqExample:
+                    alpha: 1
+                    draft_url: https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=202511262111301f5fceff
+                    image_infos: '[{"image_url":"https://assets.jcaigc.cn/demo.png","width":1920,"height":1080,"start":0,"end":5000000,"duration":5000000,"animation":"淡入淡出","transition":"溶解","transition_duration":500000}]'
+                    scale_x: 1
+                    scale_y: 1
+                    transform_x: 0
+                    transform_y: 0
+                RespExample:
+                    draft_url: https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=202511262111301f5fceff
+                    image_ids:
+                        - fa67760440104ca3adacdfd694fc25da
+                    segment_ids:
+                        - 2d19f38d5f544eecad18847e5eac1745
+                    segment_infos:
+                        - end: 5000000
+                          id: 2d19f38d5f544eecad18847e5eac1745
+                          start: 0
+                    track_id: 38c8dfee92374137998715329494a8f9
+        add_keyframes:
+            value:
+                ReqExample:
+                    draft_url: https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=202511262337379d98b90e
+                    keyframes: '[{"segment_id":"81e787883bc14dbda144c4a0f49262c2","property":"KFTypePositionX","offset":0.5,"value":-0.1}]'
+                RespExample:
+                    affected_segments:
+                        - 81e787883bc14dbda144c4a0f49262c2
+                    draft_url: https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=202511262337379d98b90e
+                    keyframes_added: 1
+        add_masks:
+            value:
+                ReqExample:
+                    draft_url: 线性
+                    name: 线性
+                    segment_ids:
+                        - beb4adbea83d41d08021cf4e8f219206
+                RespExample: {}
+        add_sticker:
+            value:
+                ReqExample:
+                    draft_url: https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=202511262337379d98b90e
+                    end: 5000000
+                    scale: 1
+                    start: 0
+                    sticker_id: "7326810673609018675"
+                    transform_x: 0
+                    transform_y: 0
+                RespExample:
+                    draft_url: https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=202511262337379d98b90e
+                    duration: 5000000
+                    segment_id: 7902e009fcfb44768f6f73e9432b5d5b
+                    sticker_id: "7326810673609018675"
+                    track_id: 10b612824bcd4dd882ab764d145dd7ce
+        add_text_style:
+            value:
+                ReqExample:
+                    font_size: 15
+                    keyword: 五个快乐到死的顶级思维
+                    keyword_color: '#ff7100'
+                    keyword_font_size: 15
+                    text: 快乐|顶级思维
+                RespExample:
+                    text_style: '{"text":"快乐|顶级思维","styles":[{"fill":{"content":{"solid":{"color":[1.0,1.0,1.0]}}},"range":[0,7],"size":15,"font":{"id":"","path":""}}]}'
+        add_videos:
+            value:
+                ReqExample:
+                    alpha: 1
+                    draft_url: https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=202511262111301f5fceff
+                    scale_x: 1
+                    scale_y: 1
+                    scene_timelines: []
+                    transform_x: 0
+                    transform_y: 0
+                    video_infos: '[{"video_url": "https://assets.jcaigc.cn/min.mp4","width": 1920,"height": 1080,"start": 0,"end": 3000000,"duration": 6000000,"mask": "","transition": "","transition_duration": 500000,"volume": 1}]'
+                RespExample:
+                    draft_url: https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=202511262111301f5fceff
+                    segment_ids:
+                        - 20285056b4194e2c8944b587ceb592a7
+                    track_id: 720274203a11442280b64570caf362c4
+                    video_ids:
+                        - 9b9f47126f384a6f95434cdc3fed5b7c
+        create_draft:
+            value:
+                ReqExample:
+                    height: 1920
+                    width: 1080
+                RespExample:
+                    draft_url: https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=202511262111301f5fceff
+                    tip_url: ""
+        easy_create_material:
+            value:
+                ReqExample:
+                    audio_url: https://assets.jcaigc.cn/test1.mp3
+                    draft_url: https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=202511262348074813d881
+                    font_size: 15
+                    img_url: https://assets.jcaigc.cn/demp.png
+                    text: 简创AIGC官网：www.jcaigc.cn
+                    text_color: '#ffffff'
+                    text_transform_y: 0
+                    video_url: https://assets.jcaigc.cn/min.mp4
+                RespExample:
+                    draft_url: https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=202511262348074813d881
+                    message: 成功
+        get_audio_duration:
+            value:
+                ReqExample:
+                    mp3_url: https://assets.jcaigc.cn/min.mp4
+                RespExample:
+                    duration: 6900000
+        get_image_animations:
+            value:
+                ReqExample:
+                    mode: 0
+                    type: in
+                RespExample:
+                    effects:
+                        - category_id: pic_ruchang
+                          category_name: 图片入场
+                          duration: 600000
+                          icon_url: https://lf5-hl-hw-effectcdn-tos.byteeffecttos.com/obj/ies.fe.effect/fade_in_pic_icon
+                          id: "35395179"
+                          material_type: sticker
+                          name: 渐显出现
+                          panel: ""
+                          path: ""
+                          platform: all
+                          request_id: ""
+                          resource_id: "7314291622525538844"
+                          start: 0
+                          type: in
+                        - category_id: pic_ruchang
+                          category_name: 图片入场
+                          duration: 800000
+                          icon_url: https://lf5-hl-hw-effectcdn-tos.byteeffecttos.com/obj/ies.fe.effect/scale_in_pic_icon
+                          id: "77035160"
+                          material_type: sticker
+                          name: 缩放入场
+                          panel: ""
+                          path: ""
+                          platform: all
+                          request_id: ""
+                          resource_id: "7397306443147252234"
+                          start: 0
+                          type: in
+                        - category_id: pic_ruchang
+                          category_name: 图片入场
+                          duration: 700000
+                          icon_url: https://lf5-hl-hw-effectcdn-tos.byteeffecttos.com/obj/ies.fe.effect/fly_in_pic_icon
+                          id: "12345679"
+                          material_type: sticker
+                          name: 飞入效果
+                          panel: ""
+                          path: ""
+                          platform: all
+                          request_id: ""
+                          resource_id: "7298765432109876544"
+                          start: 0
+                          type: in
+                        - category_id: pic_ruchang
+                          category_name: 图片入场
+                          duration: 900000
+                          icon_url: https://lf5-hl-hw-effectcdn-tos.byteeffecttos.com/obj/ies.fe.effect/light_emerge_pic_icon
+                          id: "98765432"
+                          material_type: sticker
+                          name: 光影浮现
+                          panel: ""
+                          path: ""
+                          platform: all
+                          request_id: ""
+                          resource_id: "7456789012345678901"
+                          start: 0
+                          type: in
+        get_text_animations:
+            value:
+                ReqExample:
+                    mode: 0
+                    type: in
+                RespExample:
+                    effects:
+                        - category_id: ruchang
+                          category_name: 入场
+                          duration: 500000
+                          icon_url: https://lf5-hl-hw-effectcdn-tos.byteeffecttos.com/obj/ies.fe.effect/459c196951cadbd024456a63db89481f
+                          id: "35395178"
+                          material_type: sticker
+                          name: 冰雪飘动
+                          panel: ""
+                          path: ""
+                          platform: all
+                          request_id: ""
+                          resource_id: "7314291622525538843"
+                          start: 0
+                          type: in
+                        - category_id: ruchang
+                          category_name: 入场
+                          duration: 500000
+                          icon_url: https://lf5-hl-hw-effectcdn-tos.byteeffecttos.com/obj/ies.fe.effect/c15f5c313f8170c558043abf300a0692
+                          id: "77035159"
+                          material_type: sticker
+                          name: 变色输入
+                          panel: ""
+                          path: ""
+                          platform: all
+                          request_id: ""
+                          resource_id: "7397306443147252233"
+                          start: 0
+                          type: in
+                        - category_id: ruchang
+                          category_name: 入场
+                          duration: 750000
+                          icon_url: https://lf5-hl-hw-effectcdn-tos.byteeffecttos.com/obj/ies.fe.effect/fade_in_icon
+                          id: "12345678"
+                          material_type: sticker
+                          name: 渐显入场
+                          panel: ""
+                          path: ""
+                          platform: all
+                          request_id: ""
+                          resource_id: "7298765432109876543"
+                          start: 0
+                          type: in
+        save_draft:
+            value:
+                ReqExample:
+                    draft_url: https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=20251126220753b7e35362
+                RespExample:
+                    draft_url: https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=20251126220753b7e35362
+                    message: 成功
+info:
+    description: 剪映小助手一个开源且免费的剪映插件，兼容剪映V5.9及以上所有版本。
+    title: 剪映小助手
+    version: v1
+openapi: 3.0.1
+paths:
+    /add_audios:
+        post:
+            operationId: add_audios
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            properties:
+                                audio_infos:
+                                    description: '音频信息，示例：[{"audio_url": "http://example.com/audio1.mp3","duration":120,"start":0,"end":12000000,"audio_effect":"教堂"}]'
+                                    type: string
+                                draft_url:
+                                    description: 草稿地址，使用create_draft输出的draft_url即可
+                                    type: string
+                            required:
+                                - draft_url
+                                - audio_infos
+                            type: object
+            responses:
+                "200":
+                    content:
+                        application/json:
+                            schema:
+                                properties:
+                                    audio_ids:
+                                        items:
+                                            type: string
+                                        type: array
+                                    code:
+                                        type: number
+                                        x-global-disable: true
+                                    draft_url:
+                                        type: string
+                                    message:
+                                        type: string
+                                        x-global-disable: true
+                                    track_id:
+                                        type: string
+                                type: object
+                    description: new desc
+                default:
+                    description: ""
+            summary: 批量添加音频
+    /add_captions:
+        post:
+            operationId: add_captions
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            properties:
+                                alignment:
+                                    default: 1
+                                    description: 文本对齐方式（0-5）
+                                    type: number
+                                alpha:
+                                    default: 1
+                                    description: 文本透明度（0.0-1.0）
+                                    type: number
+                                bold:
+                                    default: false
+                                    description: 文本加粗开关
+                                    type: boolean
+                                border_color:
+                                    default: '#000000'
+                                    description: 边框颜色（十六进制）
+                                    type: string
+                                captions:
+                                    description: JSON字符串格式的字幕信息数组
+                                    type: string
+                                draft_url:
+                                    description: 剪映草稿URL
+                                    type: string
+                                font:
+                                    description: 字体名称
+                                    type: string
+                                font_size:
+                                    default: 15
+                                    description: 字体大小
+                                    type: number
+                                letter_spacing:
+                                    default: 0
+                                    description: 字间距
+                                    type: number
+                                line_spacing:
+                                    default: 0
+                                    description: 行间距
+                                    type: number
+                                scale_x:
+                                    default: 1
+                                    description: 水平缩放
+                                    type: number
+                                scale_y:
+                                    default: 1
+                                    description: 垂直缩放
+                                    type: number
+                                style_text:
+                                    default: false
+                                    description: 是否使用样式文本
+                                    type: boolean
+                                text_color:
+                                    default: '#ffffff'
+                                    description: 文本颜色（十六进制）
+                                    type: string
+                                transform_x:
+                                    default: 0
+                                    description: 水平位移
+                                    type: number
+                                transform_y:
+                                    default: 0
+                                    description: 垂直位移
+                                    type: number
+                            required:
+                                - draft_url
+                                - captions
+                            type: object
+            responses:
+                "200":
+                    content:
+                        application/json:
+                            schema:
+                                properties:
+                                    code:
+                                        type: number
+                                        x-global-disable: true
+                                    draft_url:
+                                        type: string
+                                    message:
+                                        type: string
+                                        x-global-disable: true
+                                    segment_ids:
+                                        items:
+                                            type: string
+                                        type: array
+                                    segment_infos:
+                                        items:
+                                            properties:
+                                                end:
+                                                    type: number
+                                                id:
+                                                    type: string
+                                                start:
+                                                    type: number
+                                            type: object
+                                        type: array
+                                    text_ids:
+                                        items:
+                                            type: string
+                                        type: array
+                                    track_id:
+                                        type: string
+                                type: object
+                    description: new desc
+                default:
+                    description: ""
+            summary: 批量添加字幕
+    /add_effects:
+        post:
+            operationId: add_effects
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            properties:
+                                draft_url:
+                                    description: 草稿地址，使用create_draft输出的draft_url即可
+                                    type: string
+                                effect_infos:
+                                    description: 特效数组内容，eg:[{"effect_title":"金粉闪闪","end":5000000,"start":0}]
+                                    type: string
+                            required:
+                                - draft_url
+                                - effect_infos
+                            type: object
+            responses:
+                "200":
+                    content:
+                        application/json:
+                            schema:
+                                properties:
+                                    code:
+                                        type: number
+                                        x-global-disable: true
+                                    draft_url:
+                                        type: string
+                                    effect_ids:
+                                        items:
+                                            type: string
+                                        type: array
+                                    message:
+                                        type: string
+                                        x-global-disable: true
+                                    segment_ids:
+                                        items:
+                                            type: string
+                                        type: array
+                                    track_id:
+                                        type: string
+                                type: object
+                    description: new desc
+                default:
+                    description: ""
+            summary: 添加特效
+    /add_images:
+        post:
+            operationId: add_images
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            properties:
+                                alpha:
+                                    default: 1
+                                    description: 图片透明度，值0-1
+                                    type: number
+                                draft_url:
+                                    description: 草稿地址，使用create_draft输出的draft_url即可
+                                    type: string
+                                image_infos:
+                                    description: "图片信息，示例：[ \t{ \t\t\"image_url\":\"https://assets.jcaigc.cn/demo.png\", // 图片URL \t\t\"width\":1920, // 宽 \t\t\"height\":1080, // 高 \t\t\"start\":0, // 开始时间，单位：毫秒 \t\t\"end\":5000000,// 结束时间，单位：毫秒 \t\t\"duration\":5000000, // 时长 \t\t\"animation\":\"淡入淡出\", // 动画 \t\t\"transition\":\"溶解\",   // 转场 \t\t\"transition_duration\":500000 // 转场时间 \t} "
+                                    type: string
+                                scale_x:
+                                    default: 1
+                                    description: x缩放
+                                    type: number
+                                scale_y:
+                                    default: 1
+                                    description: y缩放
+                                    type: number
+                                transform_x:
+                                    default: 0
+                                    description: 移动transform_x
+                                    type: number
+                                transform_y:
+                                    default: 0
+                                    description: 移动transform_y
+                                    type: number
+                            required:
+                                - draft_url
+                                - image_infos
+                            type: object
+            responses:
+                "200":
+                    content:
+                        application/json:
+                            schema:
+                                properties:
+                                    code:
+                                        type: number
+                                        x-global-disable: true
+                                    draft_url:
+                                        type: string
+                                    image_ids:
+                                        items:
+                                            type: string
+                                        type: array
+                                    message:
+                                        type: string
+                                        x-global-disable: true
+                                    segment_ids:
+                                        items:
+                                            type: string
+                                        type: array
+                                    segment_infos:
+                                        items:
+                                            properties:
+                                                end:
+                                                    type: number
+                                                id:
+                                                    type: string
+                                                start:
+                                                    type: number
+                                            type: object
+                                        type: array
+                                    track_id:
+                                        type: string
+                                type: object
+                    description: new desc
+                default:
+                    description: ""
+            summary: 批量添加图片
+    /add_keyframes:
+        post:
+            operationId: add_keyframes
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            properties:
+                                draft_url:
+                                    description: 草稿地址，使用create_draft输出的draft_url即可
+                                    type: string
+                                keyframes:
+                                    description: '关键帧数据，格式： [ { "offset": 5000000, "property": "KFTypePositionX", "segment_id": "acc5b516-046b-4eae-a179-f686f35e70a8", "value": 0 } ]'
+                                    type: string
+                            required:
+                                - draft_url
+                                - keyframes
+                            type: object
+            responses:
+                "200":
+                    content:
+                        application/json:
+                            schema:
+                                properties:
+                                    affected_segments:
+                                        items:
+                                            type: string
+                                        type: array
+                                    code:
+                                        type: number
+                                        x-global-disable: true
+                                    draft_url:
+                                        type: string
+                                    keyframes_added:
+                                        type: number
+                                    message:
+                                        type: string
+                                        x-global-disable: true
+                                type: object
+                    description: new desc
+                default:
+                    description: ""
+            summary: 添加关键帧
+    /add_masks:
+        post:
+            operationId: add_masks
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            properties:
+                                X:
+                                    description: 对应剪映的X位置
+                                    type: integer
+                                "Y":
+                                    description: 对应剪映的Y位置
+                                    type: integer
+                                draft_url:
+                                    description: 草稿地址，使用create_draft输出的draft_url即可
+                                    type: string
+                                feather:
+                                    description: 羽化0-100
+                                    type: integer
+                                height:
+                                    description: 对应剪映的宽高
+                                    type: integer
+                                invert:
+                                    description: 是否反转
+                                    type: boolean
+                                name:
+                                    description: 蒙板类型：线性/镜面/圆形/矩形/爱心/星形
+                                    type: string
+                                rotation:
+                                    description: 旋转角度0-360
+                                    type: integer
+                                roundCorner:
+                                    description: 矩形的圆角
+                                    type: integer
+                                segment_ids:
+                                    description: add_videos或者add_images的返回值
+                                    items:
+                                        description: 片段id
+                                        type: string
+                                    type: array
+                                width:
+                                    description: 对应剪映的宽高
+                                    type: integer
+                            required:
+                                - draft_url
+                                - segment_ids
+                                - name
+                            type: object
+            responses:
+                "200":
+                    content:
+                        application/json:
+                            schema:
+                                properties:
+                                    affected_segments:
+                                        items:
+                                            type: string
+                                        type: array
+                                        x-global-disable: true
+                                    code:
+                                        type: number
+                                        x-global-disable: true
+                                    draft_url:
+                                        type: string
+                                    mask_ids:
+                                        items:
+                                            type: string
+                                        type: array
+                                        x-global-disable: true
+                                    masks_added:
+                                        type: number
+                                        x-global-disable: true
+                                    message:
+                                        type: string
+                                        x-global-disable: true
+                                type: object
+                    description: new desc
+                default:
+                    description: ""
+            summary: 增加蒙版
+    /add_sticker:
+        post:
+            operationId: add_sticker
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            properties:
+                                draft_url:
+                                    description: 目标草稿的完整URL
+                                    type: string
+                                end:
+                                    description: 贴纸结束时间（微秒）
+                                    type: integer
+                                scale:
+                                    default: 1
+                                    description: 贴纸缩放比例
+                                    type: number
+                                start:
+                                    description: 贴纸开始时间（微秒）
+                                    type: integer
+                                sticker_id:
+                                    description: 贴纸的唯一标识ID
+                                    type: string
+                                transform_x:
+                                    default: 0
+                                    description: X轴位置偏移（像素）
+                                    type: integer
+                                transform_y:
+                                    default: 0
+                                    description: Y轴位置偏移（像素）
+                                    type: integer
+                            required:
+                                - draft_url
+                                - end
+                                - start
+                                - sticker_id
+                            type: object
+            responses:
+                "200":
+                    content:
+                        application/json:
+                            schema:
+                                properties:
+                                    code:
+                                        type: number
+                                        x-global-disable: true
+                                    draft_url:
+                                        type: string
+                                    duration:
+                                        type: number
+                                    message:
+                                        type: string
+                                        x-global-disable: true
+                                    segment_id:
+                                        type: string
+                                    sticker_id:
+                                        type: string
+                                    track_id:
+                                        type: string
+                                type: object
+                    description: new desc
+                default:
+                    description: ""
+            summary: '添加贴纸，批处理时，并发要设置成1 '
+    /add_text_style:
+        post:
+            operationId: add_text_style
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            properties:
+                                font_size:
+                                    default: 15
+                                    description: 普通文本的字体大小
+                                    type: integer
+                                keyword:
+                                    description: 关键词，多个用 | 分隔
+                                    type: string
+                                keyword_color:
+                                    default: '#ff7100'
+                                    description: 关键词文本颜色（十六进制）
+                                    type: string
+                                keyword_font_size:
+                                    default: 15
+                                    description: 关键词字体大小
+                                    type: integer
+                                text:
+                                    description: 要处理的文本内容
+                                    type: string
+                            required:
+                                - keyword
+                                - text
+                            type: object
+            responses:
+                "200":
+                    content:
+                        application/json:
+                            schema:
+                                properties:
+                                    code:
+                                        type: number
+                                        x-global-disable: true
+                                    message:
+                                        type: string
+                                        x-global-disable: true
+                                    text_style:
+                                        type: string
+                                type: object
+                    description: new desc
+                default:
+                    description: ""
+            summary: 创建文本富文本样式
+    /add_videos:
+        post:
+            operationId: add_videos
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            properties:
+                                alpha:
+                                    default: 1
+                                    description: 透明度：0-1 ，默认1
+                                    type: number
+                                draft_url:
+                                    description: 草稿地址，使用create_draft输出的draft_url即可
+                                    type: string
+                                scale_x:
+                                    default: 1
+                                    description: 剪映scale_x 缩放
+                                    type: number
+                                scale_y:
+                                    default: 1
+                                    description: 剪映scale_y 缩放
+                                    type: number
+                                scene_timelines:
+                                    description: '分镜时间线，自动变速，例如：[{start: 0, end: 6000000}]'
+                                    items:
+                                        description: 分镜时间线
+                                        properties:
+                                            curve_speed:
+                                                description: 曲线变速参数
+                                                type: string
+                                            end:
+                                                description: 结束时间线
+                                                type: integer
+                                            start:
+                                                description: 开始时间线
+                                                type: integer
+                                        type: object
+                                    type: array
+                                transform_x:
+                                    default: 0
+                                    description: 剪映x位置
+                                    type: number
+                                transform_y:
+                                    default: 0
+                                    description: 剪映y位置
+                                    type: number
+                                video_infos:
+                                    description: '[ { "video_url": "https://example.com/video1.mp4", "duration": 12000000, // 视频时长，以秒*1000000为单位 "width": 1920, // 视频宽度 "height": 1080, // 视频高度 "start": 0, // 视频在时间轴上的开始时间 "end": 12000000 // 视频在时间轴上的结束时间 } ]'
+                                    type: string
+                            required:
+                                - draft_url
+                                - video_infos
+                            type: object
+            responses:
+                "200":
+                    content:
+                        application/json:
+                            schema:
+                                properties:
+                                    code:
+                                        type: number
+                                        x-global-disable: true
+                                    draft_url:
+                                        type: string
+                                    message:
+                                        type: string
+                                        x-global-disable: true
+                                    segment_ids:
+                                        items:
+                                            type: string
+                                        type: array
+                                    track_id:
+                                        type: string
+                                    video_ids:
+                                        items:
+                                            type: string
+                                        type: array
+                                type: object
+                    description: new desc
+                default:
+                    description: ""
+            summary: 批量添加视频
+    /create_draft:
+        post:
+            operationId: create_draft
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            properties:
+                                height:
+                                    default: 1920
+                                    description: 高
+                                    type: integer
+                                width:
+                                    default: 1080
+                                    description: 高
+                                    type: integer
+                            type: object
+            responses:
+                "200":
+                    content:
+                        application/json:
+                            schema:
+                                properties:
+                                    code:
+                                        type: number
+                                        x-global-disable: true
+                                    draft_url:
+                                        type: string
+                                    message:
+                                        type: string
+                                        x-global-disable: true
+                                    tip_url:
+                                        type: string
+                                type: object
+                    description: new desc
+                default:
+                    description: ""
+            summary: 插件入口-创建草稿
+    /easy_create_material:
+        post:
+            operationId: easy_create_material
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            properties:
+                                audio_url:
+                                    description: 音频文件URL，不能为空或"null"
+                                    type: string
+                                draft_url:
+                                    description: 目标草稿的完整URL
+                                    type: string
+                                font_size:
+                                    default: 15
+                                    description: 字体大小
+                                    type: integer
+                                img_url:
+                                    description: 图片文件URL
+                                    type: string
+                                text:
+                                    description: 要添加的文字内容
+                                    type: string
+                                text_color:
+                                    default: '#ffffff'
+                                    description: 文字颜色（十六进制格式）
+                                    type: string
+                                text_transform_y:
+                                    default: 0
+                                    description: 文字Y轴位置偏移
+                                    type: integer
+                                video_url:
+                                    description: 视频文件URL
+                                    type: string
+                            required:
+                                - audio_url
+                                - draft_url
+                            type: object
+            responses:
+                "200":
+                    content:
+                        application/json:
+                            schema:
+                                properties:
+                                    code:
+                                        type: number
+                                        x-global-disable: true
+                                    draft_url:
+                                        type: string
+                                    message:
+                                        type: string
+                                type: object
+                    description: new desc
+                default:
+                    description: ""
+            summary: |-
+                快速上手，简易创建素材轨道
+                create_draft+easy_create_material即可
+    /get_audio_duration:
+        post:
+            operationId: get_audio_duration
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            properties:
+                                mp3_url:
+                                    description: 音频/视频文件URL
+                                    type: string
+                            required:
+                                - mp3_url
+                            type: object
+            responses:
+                "200":
+                    content:
+                        application/json:
+                            schema:
+                                properties:
+                                    code:
+                                        type: number
+                                        x-global-disable: true
+                                    duration:
+                                        type: number
+                                    message:
+                                        type: string
+                                        x-global-disable: true
+                                type: object
+                    description: new desc
+                default:
+                    description: ""
+            summary: 获取音频/视频文件时长
+    /get_image_animations:
+        post:
+            operationId: get_image_animations
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            properties:
+                                mode:
+                                    default: 0
+                                    description: 默认0 全部 1 vip 2 免费
+                                    type: integer
+                                type:
+                                    default: in
+                                    description: in：入场 ，out：出场，loop：组合
+                                    type: string
+                            type: object
+            responses:
+                "200":
+                    content:
+                        application/json:
+                            schema:
+                                properties:
+                                    code:
+                                        type: number
+                                        x-global-disable: true
+                                    effects:
+                                        items:
+                                            properties:
+                                                category_id:
+                                                    type: string
+                                                category_name:
+                                                    type: string
+                                                duration:
+                                                    type: number
+                                                icon_url:
+                                                    type: string
+                                                id:
+                                                    type: string
+                                                material_type:
+                                                    type: string
+                                                name:
+                                                    type: string
+                                                panel:
+                                                    type: string
+                                                path:
+                                                    type: string
+                                                platform:
+                                                    type: string
+                                                request_id:
+                                                    type: string
+                                                resource_id:
+                                                    type: string
+                                                start:
+                                                    type: number
+                                                type:
+                                                    type: string
+                                            type: object
+                                        type: array
+                                    message:
+                                        type: string
+                                        x-global-disable: true
+                                type: object
+                    description: new desc
+                default:
+                    description: ""
+            summary: 获取图片出入场动画
+    /get_text_animations:
+        post:
+            operationId: get_text_animations
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            properties:
+                                mode:
+                                    default: 0
+                                    description: 0：所有，1：VIP， 2：免费
+                                    type: integer
+                                type:
+                                    default: in
+                                    description: in：入场，out：出场，loop：循环
+                                    type: string
+                            type: object
+            responses:
+                "200":
+                    content:
+                        application/json:
+                            schema:
+                                properties:
+                                    code:
+                                        type: number
+                                        x-global-disable: true
+                                    effects:
+                                        items:
+                                            properties:
+                                                category_id:
+                                                    type: string
+                                                category_name:
+                                                    type: string
+                                                duration:
+                                                    type: number
+                                                icon_url:
+                                                    type: string
+                                                id:
+                                                    type: string
+                                                material_type:
+                                                    type: string
+                                                name:
+                                                    type: string
+                                                panel:
+                                                    type: string
+                                                path:
+                                                    type: string
+                                                platform:
+                                                    type: string
+                                                request_id:
+                                                    type: string
+                                                resource_id:
+                                                    type: string
+                                                start:
+                                                    type: number
+                                                type:
+                                                    type: string
+                                            type: object
+                                        type: array
+                                    message:
+                                        type: string
+                                        x-global-disable: true
+                                type: object
+                    description: new desc
+                default:
+                    description: ""
+            summary: 获取文字出入场动画
+    /save_draft:
+        post:
+            operationId: save_draft
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            properties:
+                                draft_url:
+                                    description: 剪映草稿地址，由创建草稿插件create_draft返回。
+                                    type: string
+                            required:
+                                - draft_url
+                            type: object
+            responses:
+                "200":
+                    content:
+                        application/json:
+                            schema:
+                                properties:
+                                    code:
+                                        type: number
+                                        x-global-disable: true
+                                    draft_url:
+                                        type: string
+                                    message:
+                                        type: string
+                                type: object
+                    description: new desc
+                default:
+                    description: ""
+            summary: 保存剪映草稿
+servers:
+    - url: https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1

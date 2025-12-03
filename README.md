@@ -7,6 +7,8 @@ CapCut Mate API 是一个基于 FastAPI 构建的剪映草稿自动化助手，�
 - [剪映小助手-客户端](https://github.com/Hommy-master/capcut-mate-electron)
 - [剪映小助手-扣子插件](https://www.coze.cn/store/plugin/7576197869707722771)
 
+⭐ 如果您觉得这个项目对您有点帮助，麻烦点个 Star 支持一下！您的支持是我持续维护和改进项目的最大动力 😊
+
 ## 功能特点
 - 🎬 草稿管理：创建草稿、获取草稿、保存草稿
 - 🎥 素材添加：添加视频、音频、图片、贴纸、字幕、特效、遮罩等
@@ -73,7 +75,35 @@ docker run -p 30000:30000 gogoshine/capcut-mate:latest
 docker-compose up -d
 ```
 
-⭐ 如果您觉得这个项目对您有点帮助，麻烦点个 Star 支持一下！您的支持是我持续维护和改进项目的最大动力 😊
+## 一键导入扣子插件
+
+1. 打开扣子平台：https://coze.cn/home
+
+   ![步骤1](./assets/coze1.png)
+
+2. 添加插件
+
+   ![步骤2](./assets/coze2.png)
+
+3. 导入插件
+
+   ![步骤3](./assets/coze3.png)
+
+4. 上传当前工程目录下的openapi.yaml文件
+
+   ![步骤4](./assets/coze4.png)
+
+5. 完成文件上传
+
+   ![步骤5](./assets/coze5.png)
+
+6. 替换logo完成
+
+   ![步骤6](./assets/coze6.png)
+
+7. 启用插件
+
+   ![步骤7](./assets/coze7.png)
 
 ## API 接口文档
 
