@@ -2,7 +2,7 @@ import json
 from typing import List, Dict, Any, Tuple, Optional, Literal
 
 from src.utils.logger import logger
-from src.pyJianYingDraft import ScriptFile, TrackType, TextSegment, TextStyle, ClipSettings, Timerange
+from src.pyJianYingDraft import ScriptFile, TrackType, TextSegment, TextStyle, ClipSettings, Timerange, FontType, TextBorder
 from src.utils.draft_cache import DRAFT_CACHE
 from exceptions import CustomException, CustomError
 from src.utils import helper
@@ -234,7 +234,24 @@ def add_caption_to_draft(
             bold=bold
         )
         
-        # 4. 创建图像调节设置
+        # 4. 创建文本描边（如果提供了border_color）
+        text_border = None
+        if border_color:
+            border_rgb_color = hex_to_rgb(border_color)
+            text_border = TextBorder(color=border_rgb_color)
+        
+        # 5. 创建字体（如果提供了font）
+        font_type = None
+        if font:
+            try:
+                # 尝试根据字体名称查找对应的FontType
+                font_type = getattr(FontType, font, None)
+                if font_type is None:
+                    logger.warning(f"Font '{font}' not found, using default font")
+            except AttributeError:
+                logger.warning(f"Font '{font}' not found, using default font")
+        
+        # 6. 创建图像调节设置
         clip_settings = ClipSettings(
             scale_x=scale_x,
             scale_y=scale_y,
@@ -242,18 +259,20 @@ def add_caption_to_draft(
             transform_y=transform_y / script.height  # 转换为画布高度单位
         )
         
-        # 5. 创建文本片段
+        # 7. 创建文本片段
         text_segment = TextSegment(
             text=caption['text'],
             timerange=timerange,
             style=text_style,
+            border=text_border,  # 添加边框
+            font=font_type,      # 添加字体
             clip_settings=clip_settings
         )
         
         logger.info(f"Created text segment, material_id: {text_segment.material_id}")
         logger.info(f"Text segment details - start: {caption['start']}, duration: {caption_duration}, text: {caption['text'][:50]}")
 
-        # 6. 处理关键词高亮
+        # 8. 处理关键词高亮
         if caption.get('keyword'):
             keyword_color = caption.get('keyword_color', '#ff7100')  # 默认橙色
             keyword_rgb_color = hex_to_rgb(keyword_color)
@@ -261,7 +280,7 @@ def add_caption_to_draft(
             apply_keyword_highlight(text_segment, caption['keyword'], keyword_rgb_color)
             logger.info(f"Applied keyword highlighting: {caption['keyword']} with color {keyword_color}")
         
-        # 7. TODO: 处理动画效果（需要导入相应的动画类型）
+        # 9. TODO: 处理动画效果（需要导入相应的动画类型）
         if caption.get('in_animation'):
             logger.info(f"In animation specified but not implemented yet: {caption['in_animation']}")
         if caption.get('out_animation'):
@@ -269,10 +288,10 @@ def add_caption_to_draft(
         if caption.get('loop_animation'):
             logger.info(f"Loop animation specified but not implemented yet: {caption['loop_animation']}")
 
-        # 8. 向指定轨道添加片段
+        # 10. 向指定轨道添加片段
         script.add_segment(text_segment, track_name)
 
-        # 9. 构造片段信息
+        # 11. 构造片段信息
         segment_info = {
             "id": text_segment.segment_id,
             "start": caption['start'],
