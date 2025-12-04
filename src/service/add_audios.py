@@ -1,6 +1,7 @@
 from src.utils.logger import logger
 from src.pyJianYingDraft import ScriptFile, trange
 import src.pyJianYingDraft as draft
+from src.pyJianYingDraft.local_materials import AudioMaterial
 from src.utils.draft_cache import DRAFT_CACHE
 from exceptions import CustomException, CustomError
 import os
@@ -21,7 +22,7 @@ def add_audios(draft_url: str, audio_infos: str) -> Tuple[str, str, List[str]]:
         [
             {
                 "audio_url": "https://example.com/audio.mp3", // [必选] 音频文件URL
-                "duration": 23184000, // [必选] 音频总时长(微秒)
+                "duration": 23184000, // [可选] 音频总时长(微秒)，如果不提供将自动获取
                 "end": 23184000, // [必选] 音频片段结束时间(微秒)
                 "start": 0, // [必选] 音频片段开始时间(微秒)
                 "volume": 1.0, // [可选] 音频音量[0.0, 2.0]，默认值为1.0
@@ -107,7 +108,7 @@ def add_audio_to_draft(
         draft_audio_dir: 音频资源目录
         audio: 音频信息字典，包含以下字段：
             audio_url: 音频URL
-            duration: 音频总时长(微秒)
+            duration: 音频总时长(微秒)，可选字段
             start: 开始时间(微秒)
             end: 结束时间(微秒)
             volume: 音量[0.0, 2.0]
@@ -124,7 +125,14 @@ def add_audio_to_draft(
         audio_path = download(url=audio['audio_url'], save_dir=draft_audio_dir)
         logger.info(f"Downloaded audio from {audio['audio_url']} to {audio_path}")
 
-        # 2. 创建音频素材并添加到草稿
+        # 2. 如果没有提供duration，则从音频文件中获取实际时长
+        if audio.get('duration') is None:
+            # 创建临时AudioMaterial对象来获取音频时长
+            temp_material = AudioMaterial(audio_path)
+            audio['duration'] = temp_material.duration
+            logger.info(f"Auto-detected audio duration: {audio['duration']} microseconds")
+
+        # 3. 创建音频素材并添加到草稿
         segment_duration = audio['end'] - audio['start']
         audio_segment = draft.AudioSegment(
             material=audio_path,
@@ -166,7 +174,7 @@ def parse_audio_data(json_str: str) -> List[Dict[str, Any]]:
         [
             {
                 "audio_url": "https://example.com/audio.mp3", // [必选] 音频文件URL
-                "duration": 23184000, // [必选] 音频总时长(微秒)
+                "duration": 23184000, // [可选] 音频总时长(微秒)，如果不提供将自动获取
                 "end": 23184000, // [必选] 音频片段结束时间(微秒)
                 "start": 0, // [必选] 音频片段开始时间(微秒)
                 "volume": 1.0, // [可选] 音频音量[0.0, 2.0]，默认值为1.0
@@ -201,7 +209,7 @@ def parse_audio_data(json_str: str) -> List[Dict[str, Any]]:
             raise CustomException(CustomError.INVALID_AUDIO_INFO, f"the {i}th item should be a dict")
         
         # 检查必选字段
-        required_fields = ["audio_url", "duration", "start", "end"]
+        required_fields = ["audio_url", "start", "end"]
         missing_fields = [field for field in required_fields if field not in item]
         
         if missing_fields:
@@ -211,7 +219,7 @@ def parse_audio_data(json_str: str) -> List[Dict[str, Any]]:
         # 创建处理后的对象，设置默认值
         processed_item = {
             "audio_url": item["audio_url"],
-            "duration": item["duration"],
+            "duration": item.get("duration"),  # duration变为可选字段
             "start": item["start"],
             "end": item["end"],
             "volume": item.get("volume", 1.0),  # 默认音量 1.0
@@ -227,7 +235,8 @@ def parse_audio_data(json_str: str) -> List[Dict[str, Any]]:
             logger.error(f"Invalid time range: start={processed_item['start']}, end={processed_item['end']}")
             raise CustomException(CustomError.INVALID_AUDIO_INFO, f"the {i}th item has invalid time range")
         
-        if processed_item["duration"] <= 0:
+        # 如果提供了duration且小于等于0，则报错
+        if processed_item["duration"] is not None and processed_item["duration"] <= 0:
             logger.error(f"Invalid duration: {processed_item['duration']}")
             raise CustomException(CustomError.INVALID_AUDIO_INFO, f"the {i}th item has invalid duration")
         
