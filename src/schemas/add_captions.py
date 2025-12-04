@@ -16,9 +16,12 @@ class AddCaptionsRequest(BaseModel):
     line_spacing: Optional[float] = Field(default=None, description="行间距")
     scale_x: float = Field(default=1.0, description="水平缩放")
     scale_y: float = Field(default=1.0, description="垂直缩放")
-    transform_x: int = Field(default=0, description="水平位移")
-    transform_y: int = Field(default=0, description="垂直位移")
+    transform_x: float = Field(default=0.0, description="水平位移")
+    transform_y: float = Field(default=0.0, description="垂直位移")
     style_text: bool = Field(default=False, description="是否使用样式文本")
+    underline: bool = Field(default=False, description="文字下划线开关")
+    italic: bool = Field(default=False, description="文本斜体开关")
+    bold: bool = Field(default=False, description="文本加粗开关")
 
 
 class CaptionItem(BaseModel):

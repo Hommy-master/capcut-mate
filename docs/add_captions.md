@@ -30,8 +30,8 @@ POST /openapi/capcut-mate/v1/add_captions
   "line_spacing": null,
   "scale_x": 1.0,
   "scale_y": 1.0,
-  "transform_x": 0,
-  "transform_y": 0,
+  "transform_x": 0.0,
+  "transform_y": 0.0,
   "style_text": false
 }
 ```
@@ -52,8 +52,8 @@ POST /openapi/capcut-mate/v1/add_captions
 | line_spacing | number | ❌ | null | 行间距 |
 | scale_x | number | ❌ | 1.0 | 水平缩放比例 |
 | scale_y | number | ❌ | 1.0 | 垂直缩放比例 |
-| transform_x | integer | ❌ | 0 | X轴位置偏移（像素） |
-| transform_y | integer | ❌ | 0 | Y轴位置偏移（像素） |
+| transform_x | number | ❌ | 0.0 | X轴位置偏移（像素） |
+| transform_y | number | ❌ | 0.0 | Y轴位置偏移（像素） |
 | style_text | boolean | ❌ | false | 是否使用样式文本 |
 
 ### captions字段详细说明
@@ -212,8 +212,8 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_captions \
     "font_size": 20,
     "scale_x": 1.2,
     "scale_y": 1.2,
-    "transform_x": 100,
-    "transform_y": -50
+    "transform_x": 100.0,
+    "transform_y": -50.0
   }'
 ```
 
@@ -261,7 +261,6 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_captions \
 - [生成视频](./gen_video.md)
 
 ---
-
 <div align="right">
 
 📚 **项目资源**  

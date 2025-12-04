@@ -2,7 +2,7 @@ import json
 from typing import List, Dict, Any, Tuple, Optional, Literal
 
 from src.utils.logger import logger
-from src.pyJianYingDraft import ScriptFile, TrackType, TextSegment, TextStyle, ClipSettings, Timerange
+from src.pyJianYingDraft import ScriptFile, TrackType, TextSegment, TextStyle, ClipSettings, Timerange, FontType, TextBorder
 from src.utils.draft_cache import DRAFT_CACHE
 from exceptions import CustomException, CustomError
 from src.utils import helper
@@ -21,9 +21,12 @@ def add_captions(
     line_spacing: Optional[float] = None,
     scale_x: float = 1.0,
     scale_y: float = 1.0,
-    transform_x: int = 0,
-    transform_y: int = 0,
-    style_text: bool = False
+    transform_x: float = 0.0,
+    transform_y: float = 0.0,
+    style_text: bool = False,
+    underline: bool = False,
+    italic: bool = False,
+    bold: bool = False
 ) -> Tuple[str, str, List[str], List[str], List[dict]]:
     """
     批量添加字幕到剪映草稿的业务逻辑
@@ -58,9 +61,12 @@ def add_captions(
         line_spacing: 行间距，默认None
         scale_x: 水平缩放，默认1.0
         scale_y: 垂直缩放，默认1.0
-        transform_x: 水平位移，默认0
-        transform_y: 垂直位移，默认0
+        transform_x: 水平位移，默认0.0
+        transform_y: 垂直位移，默认0.0
         style_text: 是否使用样式文本，默认False
+        underline: 文字下划线开关，默认False
+        italic: 文本斜体开关，默认False
+        bold: 文本加粗开关，默认False
     
     Returns:
         draft_url: 草稿URL
@@ -119,7 +125,10 @@ def add_captions(
                 scale_y=scale_y,
                 transform_x=transform_x,
                 transform_y=transform_y,
-                style_text=style_text
+                style_text=style_text,
+                underline=underline,
+                italic=italic,
+                bold=bold
             )
             segment_ids.append(segment_id)
             text_ids.append(text_id)
@@ -160,9 +169,12 @@ def add_caption_to_draft(
     line_spacing: Optional[float] = None,
     scale_x: float = 1.0,
     scale_y: float = 1.0,
-    transform_x: int = 0,
-    transform_y: int = 0,
-    style_text: bool = False
+    transform_x: float = 0.0,
+    transform_y: float = 0.0,
+    style_text: bool = False,
+    underline: bool = False,
+    italic: bool = False,
+    bold: bool = False
 ) -> Tuple[str, str, dict]:
     """
     向剪映草稿中添加单个字幕
@@ -216,29 +228,51 @@ def add_caption_to_draft(
             align=align_value,
             letter_spacing=int(letter_spacing) if letter_spacing is not None else 0,
             line_spacing=int(line_spacing) if line_spacing is not None else 0,
-            auto_wrapping=True  # 字幕默认开启自动换行
+            auto_wrapping=True,  # 字幕默认开启自动换行
+            underline=underline,
+            italic=italic,
+            bold=bold
         )
         
-        # 4. 创建图像调节设置
+        # 4. 创建文本描边（如果提供了border_color）
+        text_border = None
+        if border_color:
+            border_rgb_color = hex_to_rgb(border_color)
+            text_border = TextBorder(color=border_rgb_color)
+        
+        # 5. 创建字体（如果提供了font）
+        font_type = None
+        if font:
+            try:
+                # 尝试根据字体名称查找对应的FontType
+                font_type = getattr(FontType, font, None)
+                if font_type is None:
+                    logger.warning(f"Font '{font}' not found, using default font")
+            except AttributeError:
+                logger.warning(f"Font '{font}' not found, using default font")
+        
+        # 6. 创建图像调节设置
         clip_settings = ClipSettings(
             scale_x=scale_x,
             scale_y=scale_y,
-            transform_x=float(transform_x) / script.width * 2,  # 转换为半画布宽度单位
-            transform_y=float(transform_y) / script.height * 2  # 转换为半画布高度单位
+            transform_x=transform_x / script.width,  # 转换为画布宽度单位
+            transform_y=transform_y / script.height  # 转换为画布高度单位
         )
         
-        # 5. 创建文本片段
+        # 7. 创建文本片段
         text_segment = TextSegment(
             text=caption['text'],
             timerange=timerange,
             style=text_style,
+            border=text_border,  # 添加边框
+            font=font_type,      # 添加字体
             clip_settings=clip_settings
         )
         
         logger.info(f"Created text segment, material_id: {text_segment.material_id}")
         logger.info(f"Text segment details - start: {caption['start']}, duration: {caption_duration}, text: {caption['text'][:50]}")
 
-        # 6. 处理关键词高亮
+        # 8. 处理关键词高亮
         if caption.get('keyword'):
             keyword_color = caption.get('keyword_color', '#ff7100')  # 默认橙色
             keyword_rgb_color = hex_to_rgb(keyword_color)
@@ -246,7 +280,7 @@ def add_caption_to_draft(
             apply_keyword_highlight(text_segment, caption['keyword'], keyword_rgb_color)
             logger.info(f"Applied keyword highlighting: {caption['keyword']} with color {keyword_color}")
         
-        # 7. TODO: 处理动画效果（需要导入相应的动画类型）
+        # 9. TODO: 处理动画效果（需要导入相应的动画类型）
         if caption.get('in_animation'):
             logger.info(f"In animation specified but not implemented yet: {caption['in_animation']}")
         if caption.get('out_animation'):
@@ -254,10 +288,10 @@ def add_caption_to_draft(
         if caption.get('loop_animation'):
             logger.info(f"Loop animation specified but not implemented yet: {caption['loop_animation']}")
 
-        # 8. 向指定轨道添加片段
+        # 10. 向指定轨道添加片段
         script.add_segment(text_segment, track_name)
 
-        # 9. 构造片段信息
+        # 11. 构造片段信息
         segment_info = {
             "id": text_segment.segment_id,
             "start": caption['start'],
