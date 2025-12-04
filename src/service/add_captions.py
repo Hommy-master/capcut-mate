@@ -23,7 +23,10 @@ def add_captions(
     scale_y: float = 1.0,
     transform_x: float = 0.0,
     transform_y: float = 0.0,
-    style_text: bool = False
+    style_text: bool = False,
+    underline: bool = False,
+    italic: bool = False,
+    bold: bool = False
 ) -> Tuple[str, str, List[str], List[str], List[dict]]:
     """
     批量添加字幕到剪映草稿的业务逻辑
@@ -61,6 +64,9 @@ def add_captions(
         transform_x: 水平位移，默认0.0
         transform_y: 垂直位移，默认0.0
         style_text: 是否使用样式文本，默认False
+        underline: 文字下划线开关，默认False
+        italic: 文本斜体开关，默认False
+        bold: 文本加粗开关，默认False
     
     Returns:
         draft_url: 草稿URL
@@ -119,7 +125,10 @@ def add_captions(
                 scale_y=scale_y,
                 transform_x=transform_x,
                 transform_y=transform_y,
-                style_text=style_text
+                style_text=style_text,
+                underline=underline,
+                italic=italic,
+                bold=bold
             )
             segment_ids.append(segment_id)
             text_ids.append(text_id)
@@ -162,7 +171,10 @@ def add_caption_to_draft(
     scale_y: float = 1.0,
     transform_x: float = 0.0,
     transform_y: float = 0.0,
-    style_text: bool = False
+    style_text: bool = False,
+    underline: bool = False,
+    italic: bool = False,
+    bold: bool = False
 ) -> Tuple[str, str, dict]:
     """
     向剪映草稿中添加单个字幕
@@ -216,7 +228,10 @@ def add_caption_to_draft(
             align=align_value,
             letter_spacing=int(letter_spacing) if letter_spacing is not None else 0,
             line_spacing=int(line_spacing) if line_spacing is not None else 0,
-            auto_wrapping=True  # 字幕默认开启自动换行
+            auto_wrapping=True,  # 字幕默认开启自动换行
+            underline=underline,
+            italic=italic,
+            bold=bold
         )
         
         # 4. 创建图像调节设置
