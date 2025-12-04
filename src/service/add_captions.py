@@ -21,8 +21,8 @@ def add_captions(
     line_spacing: Optional[float] = None,
     scale_x: float = 1.0,
     scale_y: float = 1.0,
-    transform_x: int = 0,
-    transform_y: int = 0,
+    transform_x: float = 0.0,
+    transform_y: float = 0.0,
     style_text: bool = False
 ) -> Tuple[str, str, List[str], List[str], List[dict]]:
     """
@@ -58,8 +58,8 @@ def add_captions(
         line_spacing: 行间距，默认None
         scale_x: 水平缩放，默认1.0
         scale_y: 垂直缩放，默认1.0
-        transform_x: 水平位移，默认0
-        transform_y: 垂直位移，默认0
+        transform_x: 水平位移，默认0.0
+        transform_y: 垂直位移，默认0.0
         style_text: 是否使用样式文本，默认False
     
     Returns:
@@ -160,8 +160,8 @@ def add_caption_to_draft(
     line_spacing: Optional[float] = None,
     scale_x: float = 1.0,
     scale_y: float = 1.0,
-    transform_x: int = 0,
-    transform_y: int = 0,
+    transform_x: float = 0.0,
+    transform_y: float = 0.0,
     style_text: bool = False
 ) -> Tuple[str, str, dict]:
     """
@@ -223,8 +223,8 @@ def add_caption_to_draft(
         clip_settings = ClipSettings(
             scale_x=scale_x,
             scale_y=scale_y,
-            transform_x=float(transform_x) / script.width * 2,  # 转换为半画布宽度单位
-            transform_y=float(transform_y) / script.height * 2  # 转换为半画布高度单位
+            transform_x=transform_x / script.width,  # 转换为画布宽度单位
+            transform_y=transform_y / script.height  # 转换为画布高度单位
         )
         
         # 5. 创建文本片段
