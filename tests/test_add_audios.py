@@ -41,6 +41,13 @@ def test_add_audios():
                 "start": 5000000,  # 从第5秒开始
                 "end": 10000000,   # 到第10秒结束
                 "volume": 1.0
+            },
+            # 测试不提供duration字段的情况
+            {
+                "audio_url": "https://example.com/audio3.mp3",
+                "start": 10000000,  # 从第10秒开始
+                "end": 15000000,    # 到第15秒结束
+                "volume": 0.5
             }
         ]
         
