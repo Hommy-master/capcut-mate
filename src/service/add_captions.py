@@ -238,9 +238,13 @@ def add_caption_to_draft(
         logger.info(f"Created text segment, material_id: {text_segment.material_id}")
         logger.info(f"Text segment details - start: {caption['start']}, duration: {caption_duration}, text: {caption['text'][:50]}")
 
-        # 6. TODO: 处理关键词高亮（这需要更复杂的实现）
+        # 6. 处理关键词高亮
         if caption.get('keyword'):
-            logger.info(f"Keyword highlighting specified but not implemented yet: {caption['keyword']}")
+            keyword_color = caption.get('keyword_color', '#ff7100')  # 默认橙色
+            keyword_rgb_color = hex_to_rgb(keyword_color)
+            # 应用关键词颜色到文本样式中
+            apply_keyword_highlight(text_segment, caption['keyword'], keyword_rgb_color)
+            logger.info(f"Applied keyword highlighting: {caption['keyword']} with color {keyword_color}")
         
         # 7. TODO: 处理动画效果（需要导入相应的动画类型）
         if caption.get('in_animation'):
@@ -268,6 +272,59 @@ def add_caption_to_draft(
     except Exception as e:
         logger.error(f"Add caption to draft failed, error: {str(e)}")
         raise CustomException(CustomError.CAPTION_ADD_FAILED)
+
+
+def apply_keyword_highlight(text_segment: TextSegment, keywords: str, keyword_color: tuple):
+    """
+    应用关键词高亮到文本片段
+    
+    Args:
+        text_segment: 文本片段对象
+        keywords: 关键词字符串，用'|'分隔多个关键词
+        keyword_color: 关键词颜色的RGB元组 (0-1范围)
+    """
+    # 分割关键词
+    keyword_list = keywords.split('|')
+    text = text_segment.text
+    
+    # 为每个关键词创建高亮样式
+    for keyword in keyword_list:
+        keyword = keyword.strip()
+        if not keyword:
+            continue
+            
+        # 查找所有匹配的关键词位置
+        start_pos = 0
+        while start_pos < len(text):
+            start_pos = text.find(keyword, start_pos)
+            if start_pos == -1:
+                break
+                
+            end_pos = start_pos + len(keyword)
+            
+            # 创建关键词高亮样式
+            highlight_style = {
+                "fill": {
+                    "alpha": 1.0,
+                    "content": {
+                        "render_type": "solid",
+                        "solid": {
+                            "alpha": 1.0,
+                            "color": list(keyword_color)  # 使用关键词颜色
+                        }
+                    }
+                },
+                "range": [start_pos, end_pos],
+                "size": text_segment.style.size,
+                "bold": text_segment.style.bold,
+                "italic": text_segment.style.italic,
+                "underline": text_segment.style.underline,
+                "strokes": [text_segment.border.export_json()] if text_segment.border else []
+            }
+            
+            # 添加到文本片段的额外样式中
+            text_segment.extra_styles.append(highlight_style)
+            start_pos = end_pos
 
 
 def parse_captions_data(json_str: str) -> List[Dict[str, Any]]:
