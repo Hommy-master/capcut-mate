@@ -49,7 +49,7 @@ POST /openapi/capcut-mate/v1/add_videos
 | height | number | ✅ | - | 视频高度(像素) |
 | start | number | ✅ | - | 视频开始播放时间(微秒) |
 | end | number | ✅ | - | 视频结束播放时间(微秒) |
-| duration | number | ✅ | - | 视频总时长(微秒) |
+| duration | number | ❌ | end-start | 视频总时长(微秒) |
 | mask | string | ❌ | - | 遮罩类型 |
 | transition | string | ❌ | - | 转场效果名称 |
 | transition_duration | number | ❌ | 500000 | 转场持续时间(微秒) |
@@ -61,7 +61,7 @@ POST /openapi/capcut-mate/v1/add_videos
 
 - **start**: 视频在时间轴上的开始时间，单位微秒（1秒 = 1,000,000微秒）
 - **end**: 视频在时间轴上的结束时间，单位微秒
-- **duration**: 视频文件的总时长，用于素材创建
+- **duration**: 视频文件的总时长，用于素材创建（可选参数，如果不传则默认为end-start）
 - **播放时长**: 实际播放时长 = end - start
 
 #### 透明度参数

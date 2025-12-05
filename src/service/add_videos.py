@@ -35,7 +35,7 @@ def add_videos(
                 "height": 1080, // [必选] 视频高度 
                 "start": 0.0, // [必选] 视频在时间轴上的开始时间 (微秒)
                 "end": 12000000.0, // [必选] 视频在时间轴上的结束时间 (微秒)
-                "duration": 12000000.0, // [必选] 视频总时长(微秒)
+                "duration": 12000000.0, // [可选] 视频总时长(微秒)，如果不传则默认为end-start
                 "mask": "", // 遮罩类型[可选]，默认值为None
                 "transition": "", // 转场效果名称[可选]，默认值为None
                 "transition_duration": 500000.0, // 转场持续时间(微秒)[可选]，默认值为500000
@@ -129,7 +129,17 @@ def add_video_to_draft(
         script: 草稿文件对象
         track_name: 视频轨道名称
         draft_video_dir: 视频资源目录
-        video: 视频信息字典
+        video: 视频信息字典，包含以下字段：
+            video_url: 视频URL
+            width: 视频宽度(像素)
+            height: 视频高度(像素)
+            start: 视频在时间轴上的开始时间(微秒)
+            end: 视频在时间轴上的结束时间(微秒)
+            duration: 视频总时长(微秒)，可选，默认为end-start
+            mask: 遮罩类型(可选)
+            transition: 转场效果(可选)
+            transition_duration: 转场持续时间(可选)
+            volume: 音量大小(可选)
         alpha: 视频透明度
         scale_x: 横向缩放
         scale_y: 纵向缩放
@@ -189,7 +199,7 @@ def parse_video_data(json_str: str) -> List[Dict[str, Any]]:
                 "height": 1080, // [必选] 视频高度 
                 "start": 0.0, // [必选] 视频在时间轴上的开始时间 
                 "end": 12000000.0, // [必选] 视频在时间轴上的结束时间 
-                "duration": 12000000.0, // [必选] 视频总时长(微秒)
+                "duration": 12000000.0, // [可选] 视频总时长(微秒)，如果不传则默认为end-start
                 "mask": "", // 遮罩类型[可选]，默认值为None
                 "transition": "", // 转场效果名称[可选]，默认值为None
                 "transition_duration": 500000.0, // 转场持续时间(微秒)[可选]，默认值为500000
@@ -221,11 +231,14 @@ def parse_video_data(json_str: str) -> List[Dict[str, Any]]:
             raise CustomException(CustomError.INVALID_VIDEO_INFO, f"the {i}th item should be a dict")
         
         # 检查必选字段
-        required_fields = ["video_url", "width", "height", "start", "end", "duration"]
+        required_fields = ["video_url", "width", "height", "start", "end"]
         missing_fields = [field for field in required_fields if field not in item]
         
         if missing_fields:
             raise CustomException(CustomError.INVALID_VIDEO_INFO, f"the {i}th item is missing required fields: {', '.join(missing_fields)}")
+        
+        # 如果没有提供duration，则计算为end-start
+        duration = item.get("duration", item["end"] - item["start"])
         
         # 创建处理后的对象，设置默认值
         processed_item = {
@@ -234,7 +247,7 @@ def parse_video_data(json_str: str) -> List[Dict[str, Any]]:
             "height": item["height"],
             "start": item["start"],
             "end": item["end"],
-            "duration": item["duration"],
+            "duration": duration,
             "mask": item.get("mask", None),  # 默认值 None
             "transition": item.get("transition", None),  # 默认值 None
             "transition_duration": item.get("transition_duration", 500000),  # 默认值 500000
