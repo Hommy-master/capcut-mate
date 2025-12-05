@@ -25,7 +25,6 @@ def add_videos(
 ) -> Tuple[str, str, List[str], List[str]]:
     """
     添加视频到剪映草稿的业务逻辑
-    文档：https://jy-api.fyshark.com/docs/API_ADD_VIDEOS.md
     
     Args:
         draft_url: ""  // [必选] 草稿URL
@@ -88,7 +87,9 @@ def add_videos(
     # 6. 遍历视频信息，添加视频到草稿中的指定轨道，收集片段ID
     segment_ids = []
     for video in videos:
-        segment_id = add_video_to_draft(script, track_name, draft_video_dir=draft_video_dir, video=video)
+        segment_id = add_video_to_draft(script, track_name, draft_video_dir=draft_video_dir, video=video,
+                                      alpha=alpha, scale_x=scale_x, scale_y=scale_y, 
+                                      transform_x=transform_x, transform_y=transform_y)
         segment_ids.append(segment_id)
     logger.info(f"segment_ids: {segment_ids}")
 
@@ -125,18 +126,10 @@ def add_video_to_draft(
     向剪映草稿中添加视频
     
     Args:
-        draft_id: 草稿ID（草稿文件夹名称）
-        video:
-            video_url: 视频URL
-            width: 视频宽度,
-            height: 视频高度,
-            start: 开始时间,
-            end: 结束时间,
-            duration: 视频总时长,
-            mask: 遮罩类型
-            transition: 转场
-            transition_duration: 转场时长
-            volume: 音量
+        script: 草稿文件对象
+        track_name: 视频轨道名称
+        draft_video_dir: 视频资源目录
+        video: 视频信息字典
         alpha: 视频透明度
         scale_x: 横向缩放
         scale_y: 纵向缩放
@@ -152,10 +145,21 @@ def add_video_to_draft(
 
         # 1. 创建视频素材并添加到草稿
         duration = video['end'] - video['start']
+        
+        # 创建图像调节设置
+        clip_settings = draft.ClipSettings(
+            alpha=alpha,
+            scale_x=scale_x,
+            scale_y=scale_y,
+            transform_x=transform_x / video['width'],  # 转换为半画布宽单位
+            transform_y=transform_y / video['height']  # 转换为半画布高单位
+        )
+        
         video_segment = draft.VideoSegment(
             material=video_path, 
             target_timerange=trange(start=video['start'], duration=duration),
-            volume=video['volume']
+            volume=video['volume'],
+            clip_settings=clip_settings
         )
         logger.info(f"material_id: {video_segment.material_instance.material_id}")
         logger.info(f"video_path: {video_path}, start: {video['start']}, duration: {duration}, volume: {video['volume']}")
