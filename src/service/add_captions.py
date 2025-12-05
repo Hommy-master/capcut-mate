@@ -352,9 +352,12 @@ def apply_keyword_highlight(text_segment: TextSegment, keywords: str, keyword_co
                 "size": text_segment.style.size,
                 "bold": text_segment.style.bold,
                 "italic": text_segment.style.italic,
-                "underline": text_segment.style.underline,
-                "strokes": [text_segment.border.export_json()] if text_segment.border else []
+                "underline": text_segment.style.underline
             }
+            
+            # 只有在确实有描边时才添加描边信息，避免默认黑色描边的出现
+            if text_segment.border:
+                highlight_style["strokes"] = [text_segment.border.export_json()]
             
             # 添加到文本片段的额外样式中
             text_segment.extra_styles.append(highlight_style)
