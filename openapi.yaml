@@ -16,29 +16,32 @@ components:
                     alignment: 1
                     alpha: 1
                     bold: false
-                    border_color: '#000000'
                     captions: '[{"start":0,"end":10000000,"text":"你好，剪映","keyword":"好","keyword_color":"#457616","keyword_font_size":15,"font_size":15}]'
-                    draft_url: https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=202511262337379d98b90e
+                    draft_url: https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025120615531620e864b1
                     font_size: 15
+                    has_shadow: false
+                    italic: false
                     letter_spacing: 0
                     line_spacing: 0
                     scale_x: 1
                     scale_y: 1
-                    style_text: false
+                    shadow_info: '{}'
+                    style_text: 0
                     text_color: '#ffffff'
                     transform_x: 0
                     transform_y: 0
+                    underline: false
                 RespExample:
-                    draft_url: https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=202511262337379d98b90e
+                    draft_url: https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025120615531620e864b1
                     segment_ids:
-                        - 2756e706d0d44919ab0120653e374527
+                        - 64af24de7d554170a35e164715a02d56
                     segment_infos:
                         - end: 10000000
-                          id: 2756e706d0d44919ab0120653e374527
+                          id: 64af24de7d554170a35e164715a02d56
                           start: 0
                     text_ids:
-                        - 93bbb7d3f6234a8dbd4f0a583af7c658
-                    track_id: 2b537042c06348f881c1f9218551916c
+                        - d3d852b619834d68982d80f9c69c23c9
+                    track_id: 7eaa2b726a9c40cf9136ef4ae1f9e28e
         add_effects:
             value:
                 ReqExample:
@@ -283,7 +286,7 @@ components:
                     message: 成功
 info:
     description: 剪映小助手一个开源且免费的剪映插件，兼容剪映V5.9及以上所有版本。
-    title: 剪映小助手
+    title: 开源剪映小助手
     version: v1
 openapi: 3.0.1
 paths:
@@ -341,7 +344,7 @@ paths:
                                 alignment:
                                     default: 1
                                     description: 文本对齐方式（0-5）
-                                    type: number
+                                    type: integer
                                 alpha:
                                     default: 1
                                     description: 文本透明度（0.0-1.0）
@@ -351,7 +354,6 @@ paths:
                                     description: 文本加粗开关
                                     type: boolean
                                 border_color:
-                                    default: '#000000'
                                     description: 边框颜色（十六进制）
                                     type: string
                                 captions:
@@ -366,7 +368,15 @@ paths:
                                 font_size:
                                     default: 15
                                     description: 字体大小
-                                    type: number
+                                    type: integer
+                                has_shadow:
+                                    default: false
+                                    description: '文本阴影开关（true为打开，false为关闭），如果打开了，但没有填shadow_info，默认就是{ "shadow_color": "#000000", "shadow_alpha": 0.9, "shadow_diffuse": 15, "shadow_distance": 5, "shadow_angle", -45 }'
+                                    type: boolean
+                                italic:
+                                    default: false
+                                    description: 文本斜线开关(true为打开，false为关闭)，默认关闭
+                                    type: boolean
                                 letter_spacing:
                                     default: 0
                                     description: 字间距
@@ -383,13 +393,20 @@ paths:
                                     default: 1
                                     description: 垂直缩放
                                     type: number
+                                shadow_info:
+                                    default: '{}'
+                                    description: 文本阴影
+                                    type: string
                                 style_text:
-                                    default: false
+                                    default: 0
                                     description: 是否使用样式文本
-                                    type: boolean
+                                    type: integer
                                 text_color:
                                     default: '#ffffff'
                                     description: 文本颜色（十六进制）
+                                    type: string
+                                text_effect:
+                                    description: 文本花字
                                     type: string
                                 transform_x:
                                     default: 0
@@ -399,6 +416,10 @@ paths:
                                     default: 0
                                     description: 垂直位移
                                     type: number
+                                underline:
+                                    default: false
+                                    description: 文本下划线开关(true为打开，false为关闭)
+                                    type: boolean
                             required:
                                 - draft_url
                                 - captions
