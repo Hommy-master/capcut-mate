@@ -25,7 +25,6 @@ def add_videos(
 ) -> Tuple[str, str, List[str], List[str]]:
     """
     添加视频到剪映草稿的业务逻辑
-    文档：https://jy-api.fyshark.com/docs/API_ADD_VIDEOS.md
     
     Args:
         draft_url: ""  // [必选] 草稿URL
@@ -36,7 +35,7 @@ def add_videos(
                 "height": 1080, // [必选] 视频高度 
                 "start": 0.0, // [必选] 视频在时间轴上的开始时间 (微秒)
                 "end": 12000000.0, // [必选] 视频在时间轴上的结束时间 (微秒)
-                "duration": 12000000.0, // [必选] 视频总时长(微秒)
+                "duration": 12000000.0, // [可选] 视频总时长(微秒)，如果不传则默认为end-start
                 "mask": "", // 遮罩类型[可选]，默认值为None
                 "transition": "", // 转场效果名称[可选]，默认值为None
                 "transition_duration": 500000.0, // 转场持续时间(微秒)[可选]，默认值为500000
@@ -88,7 +87,9 @@ def add_videos(
     # 6. 遍历视频信息，添加视频到草稿中的指定轨道，收集片段ID
     segment_ids = []
     for video in videos:
-        segment_id = add_video_to_draft(script, track_name, draft_video_dir=draft_video_dir, video=video)
+        segment_id = add_video_to_draft(script, track_name, draft_video_dir=draft_video_dir, video=video,
+                                      alpha=alpha, scale_x=scale_x, scale_y=scale_y, 
+                                      transform_x=transform_x, transform_y=transform_y)
         segment_ids.append(segment_id)
     logger.info(f"segment_ids: {segment_ids}")
 
@@ -125,18 +126,20 @@ def add_video_to_draft(
     向剪映草稿中添加视频
     
     Args:
-        draft_id: 草稿ID（草稿文件夹名称）
-        video:
+        script: 草稿文件对象
+        track_name: 视频轨道名称
+        draft_video_dir: 视频资源目录
+        video: 视频信息字典，包含以下字段：
             video_url: 视频URL
-            width: 视频宽度,
-            height: 视频高度,
-            start: 开始时间,
-            end: 结束时间,
-            duration: 视频总时长,
-            mask: 遮罩类型
-            transition: 转场
-            transition_duration: 转场时长
-            volume: 音量
+            width: 视频宽度(像素)
+            height: 视频高度(像素)
+            start: 视频在时间轴上的开始时间(微秒)
+            end: 视频在时间轴上的结束时间(微秒)
+            duration: 视频总时长(微秒)，可选，默认为end-start
+            mask: 遮罩类型(可选)
+            transition: 转场效果(可选)
+            transition_duration: 转场持续时间(可选)
+            volume: 音量大小(可选)
         alpha: 视频透明度
         scale_x: 横向缩放
         scale_y: 纵向缩放
@@ -150,15 +153,34 @@ def add_video_to_draft(
         # 0. 下载视频
         video_path = download(url=video['video_url'], save_dir=draft_video_dir)
 
-        # 1. 创建视频素材并添加到草稿
-        duration = video['end'] - video['start']
-        video_segment = draft.VideoSegment(
-            material=video_path, 
-            target_timerange=trange(start=video['start'], duration=duration),
-            volume=video['volume']
+        # 1. 使用指定的duration或计算值
+        duration = video.get('duration', video['end'] - video['start'])
+        
+        # 创建图像调节设置
+        clip_settings = draft.ClipSettings(
+            alpha=alpha,
+            scale_x=scale_x,
+            scale_y=scale_y,
+            transform_x=transform_x / video['width'],  # 转换为半画布宽单位
+            transform_y=transform_y / video['height']  # 转换为半画布高单位
         )
+        
+        # 计算在素材中的源时间范围
+        source_duration = video['end'] - video['start']
+        
+        # 创建视频素材
+        video_material = draft.VideoMaterial(video_path)
+        
+        # 使用默认方式创建视频片段
+        video_segment = draft.VideoSegment(
+            material=video_material, 
+            target_timerange=trange(start=video['start'], duration=source_duration),
+            volume=video['volume'],
+            clip_settings=clip_settings
+        )
+        
         logger.info(f"material_id: {video_segment.material_instance.material_id}")
-        logger.info(f"video_path: {video_path}, start: {video['start']}, duration: {duration}, volume: {video['volume']}")
+        logger.info(f"video_path: {video_path}, start: {video['start']}, duration: {source_duration}, volume: {video['volume']}")
 
         # 2. 向指定轨道添加片段，
         script.add_segment(video_segment, track_name)
@@ -185,7 +207,7 @@ def parse_video_data(json_str: str) -> List[Dict[str, Any]]:
                 "height": 1080, // [必选] 视频高度 
                 "start": 0.0, // [必选] 视频在时间轴上的开始时间 
                 "end": 12000000.0, // [必选] 视频在时间轴上的结束时间 
-                "duration": 12000000.0, // [必选] 视频总时长(微秒)
+                "duration": 12000000.0, // [可选] 视频总时长(微秒)，如果不传则默认为end-start
                 "mask": "", // 遮罩类型[可选]，默认值为None
                 "transition": "", // 转场效果名称[可选]，默认值为None
                 "transition_duration": 500000.0, // 转场持续时间(微秒)[可选]，默认值为500000
@@ -217,11 +239,14 @@ def parse_video_data(json_str: str) -> List[Dict[str, Any]]:
             raise CustomException(CustomError.INVALID_VIDEO_INFO, f"the {i}th item should be a dict")
         
         # 检查必选字段
-        required_fields = ["video_url", "width", "height", "start", "end", "duration"]
+        required_fields = ["video_url", "width", "height", "start", "end"]
         missing_fields = [field for field in required_fields if field not in item]
         
         if missing_fields:
             raise CustomException(CustomError.INVALID_VIDEO_INFO, f"the {i}th item is missing required fields: {', '.join(missing_fields)}")
+        
+        # 如果没有提供duration，则计算为end-start
+        duration = item.get("duration", item["end"] - item["start"])
         
         # 创建处理后的对象，设置默认值
         processed_item = {
@@ -230,7 +255,7 @@ def parse_video_data(json_str: str) -> List[Dict[str, Any]]:
             "height": item["height"],
             "start": item["start"],
             "end": item["end"],
-            "duration": item["duration"],
+            "duration": duration,
             "mask": item.get("mask", None),  # 默认值 None
             "transition": item.get("transition", None),  # 默认值 None
             "transition_duration": item.get("transition_duration", 500000),  # 默认值 500000

@@ -188,8 +188,8 @@ def add_image_to_draft(
             alpha=alpha,
             scale_x=scale_x,
             scale_y=scale_y,
-            transform_x=transform_x / (image['width'] / 2),  # 转换为半画布宽单位
-            transform_y=transform_y / (image['height'] / 2)  # 转换为半画布高单位
+            transform_x=transform_x / image['width'],  # 转换为半画布宽单位
+            transform_y=transform_y / image['height']  # 转换为半画布高单位
         )
         
         # 创建视频片段（图片使用VideoSegment）
