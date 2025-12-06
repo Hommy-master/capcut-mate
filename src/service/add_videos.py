@@ -154,8 +154,8 @@ def add_video_to_draft(
         video_path = download(url=video['video_url'], save_dir=draft_video_dir)
 
         # 1. 使用指定的duration或计算值
-        duration = video.get('duration', video['end'] - video['start'])
-        
+        specified_duration = video.get('duration', video['end'] - video['start'])
+
         # 创建图像调节设置
         clip_settings = draft.ClipSettings(
             alpha=alpha,
@@ -171,14 +171,15 @@ def add_video_to_draft(
         # 创建视频素材
         video_material = draft.VideoMaterial(video_path)
         
-        # 使用默认方式创建视频片段
         video_segment = draft.VideoSegment(
             material=video_material, 
             target_timerange=trange(start=video['start'], duration=source_duration),
+            source_timerange=trange(start=0, duration=min(video_material.duration, source_duration)),
+            speed=1.0,  # 保持原始速度
             volume=video['volume'],
             clip_settings=clip_settings
         )
-        
+            
         logger.info(f"material_id: {video_segment.material_instance.material_id}")
         logger.info(f"video_path: {video_path}, start: {video['start']}, duration: {source_duration}, volume: {video['volume']}")
 
