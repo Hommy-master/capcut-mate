@@ -78,81 +78,95 @@ def add_captions(
     Raises:
         CustomException: 字幕添加失败
     """
-    logger.info(f"add_captions started, draft_url: {draft_url}, captions count: {len(json.loads(captions) if captions else [])}")
-
-    # 1. 提取草稿ID
-    draft_id = helper.get_url_param(draft_url, "draft_id")
-    if (not draft_id) or (draft_id not in DRAFT_CACHE):
-        logger.error(f"Invalid draft_url or draft not found in cache: {draft_url}")
-        raise CustomException(CustomError.INVALID_DRAFT_URL)
-
-    # 2. 解析字幕信息
-    caption_items = parse_captions_data(json_str=captions)
-    if len(caption_items) == 0:
-        logger.info(f"No caption info provided, draft_id: {draft_id}")
-        raise CustomException(CustomError.INVALID_CAPTION_INFO)
-
-    logger.info(f"Parsed {len(caption_items)} caption items")
-
-    # 3. 从缓存中获取草稿
-    script: ScriptFile = DRAFT_CACHE[draft_id]
-
-    # 4. 添加字幕轨道
-    track_name = f"caption_track_{helper.gen_unique_id()}"
-    script.add_track(track_type=TrackType.text, track_name=track_name)
-    logger.info(f"Added caption track: {track_name}")
-
-    # 5. 遍历字幕信息，添加字幕到草稿中的指定轨道，收集片段ID
-    segment_ids = []
-    text_ids = []
-    segment_infos = []
-    for i, caption in enumerate(caption_items):
-        try:
-            logger.info(f"Processing caption {i+1}/{len(caption_items)}, text: {caption['text'][:20]}...")
-            
-            segment_id, text_id, segment_info = add_caption_to_draft(
-                script, track_name,
-                caption=caption,
-                text_color=text_color,
-                border_color=border_color,
-                alignment=alignment,
-                alpha=alpha,
-                font=font,
-                font_size=font_size,
-                letter_spacing=letter_spacing,
-                line_spacing=line_spacing,
-                scale_x=scale_x,
-                scale_y=scale_y,
-                transform_x=transform_x,
-                transform_y=transform_y,
-                style_text=style_text,
-                underline=underline,
-                italic=italic,
-                bold=bold
-            )
-            segment_ids.append(segment_id)
-            text_ids.append(text_id)
-            segment_infos.append(segment_info)
-            logger.info(f"Added caption {i+1}/{len(caption_items)}, segment_id: {segment_id}")
-        except Exception as e:
-            logger.error(f"Failed to add caption {i+1}/{len(caption_items)}, error: {str(e)}")
-            raise
-
-    # 6. 保存草稿
-    script.save()
-    logger.info(f"Draft saved successfully")
-
-    # 7. 获取当前字幕轨道ID
-    track_id = ""
-    for key in script.tracks.keys():
-        if script.tracks[key].name == track_name:
-            track_id = script.tracks[key].track_id
-            break
-    logger.info(f"Caption track created, draft_id: {draft_id}, track_id: {track_id}")
-
-    logger.info(f"add_captions completed successfully - draft_id: {draft_id}, track_id: {track_id}, captions_added: {len(caption_items)}")
+    # 记录函数入口参数，便于调试
+    logger.info(f"add_captions started, draft_url: {draft_url}")
+    logger.debug(f"Function parameters - text_color: {text_color}, border_color: {border_color}, "
+                 f"alignment: {alignment}, alpha: {alpha}, font: {font}, font_size: {font_size}, "
+                 f"scale_x: {scale_x}, scale_y: {scale_y}, transform_x: {transform_x}, transform_y: {transform_y}, "
+                 f"style_text: {style_text}, underline: {underline}, italic: {italic}, bold: {bold}")
     
-    return draft_url, track_id, text_ids, segment_ids, segment_infos
+    try:
+        # 1. 提取草稿ID
+        draft_id = helper.get_url_param(draft_url, "draft_id")
+        if (not draft_id) or (draft_id not in DRAFT_CACHE):
+            logger.error(f"Invalid draft_url or draft not found in cache: {draft_url}")
+            raise CustomException(CustomError.INVALID_DRAFT_URL)
+
+        # 2. 解析字幕信息
+        caption_items = parse_captions_data(json_str=captions)
+        if len(caption_items) == 0:
+            logger.info(f"No caption info provided, draft_id: {draft_id}")
+            raise CustomException(CustomError.INVALID_CAPTION_INFO)
+
+        logger.info(f"Parsed {len(caption_items)} caption items")
+
+        # 3. 从缓存中获取草稿
+        script: ScriptFile = DRAFT_CACHE[draft_id]
+
+        # 4. 添加字幕轨道
+        track_name = f"caption_track_{helper.gen_unique_id()}"
+        script.add_track(track_type=TrackType.text, track_name=track_name)
+        logger.info(f"Added caption track: {track_name}")
+
+        # 5. 遍历字幕信息，添加字幕到草稿中的指定轨道，收集片段ID
+        segment_ids = []
+        text_ids = []
+        segment_infos = []
+        for i, caption in enumerate(caption_items):
+            try:
+                logger.info(f"Processing caption {i+1}/{len(caption_items)}, text: {caption['text'][:20]}...")
+                
+                segment_id, text_id, segment_info = add_caption_to_draft(
+                    script, track_name,
+                    caption=caption,
+                    text_color=text_color,
+                    border_color=border_color,
+                    alignment=alignment,
+                    alpha=alpha,
+                    font=font,
+                    font_size=font_size,
+                    letter_spacing=letter_spacing,
+                    line_spacing=line_spacing,
+                    scale_x=scale_x,
+                    scale_y=scale_y,
+                    transform_x=transform_x,
+                    transform_y=transform_y,
+                    style_text=style_text,
+                    underline=underline,
+                    italic=italic,
+                    bold=bold
+                )
+                segment_ids.append(segment_id)
+                text_ids.append(text_id)
+                segment_infos.append(segment_info)
+                logger.info(f"Added caption {i+1}/{len(caption_items)}, segment_id: {segment_id}")
+            except Exception as e:
+                logger.error(f"Failed to add caption {i+1}/{len(caption_items)}, error: {str(e)}")
+                raise
+
+        # 6. 保存草稿
+        script.save()
+        logger.info(f"Draft saved successfully")
+
+        # 7. 获取当前字幕轨道ID
+        track_id = ""
+        for key in script.tracks.keys():
+            if script.tracks[key].name == track_name:
+                track_id = script.tracks[key].track_id
+                break
+        logger.info(f"Caption track created, draft_id: {draft_id}, track_id: {track_id}")
+
+        logger.info(f"add_captions completed successfully - draft_id: {draft_id}, track_id: {track_id}, captions_added: {len(caption_items)}")
+        
+        return draft_url, track_id, text_ids, segment_ids, segment_infos
+        
+    except CustomException:
+        # 重新抛出自定义异常
+        raise
+    except Exception as e:
+        # 捕获其他未预期的异常并转换为自定义异常
+        logger.error(f"Unexpected error in add_captions: {str(e)}")
+        raise CustomException(CustomError.CAPTION_ADD_FAILED, f"Unexpected error: {str(e)}")
 
 
 def add_caption_to_draft(
@@ -207,6 +221,9 @@ def add_caption_to_draft(
         CustomException: 添加字幕失败
     """
     try:
+        # 记录函数入口参数，便于调试
+        logger.debug(f"add_caption_to_draft called with caption: {caption}")
+        
         # 1. 创建时间范围
         caption_duration = caption['end'] - caption['start']
         timerange = Timerange(start=caption['start'], duration=caption_duration)
@@ -283,9 +300,10 @@ def add_caption_to_draft(
         if caption.get('keyword'):
             keyword_color = caption.get('keyword_color', '#ff7100')  # 默认橙色
             keyword_rgb_color = hex_to_rgb(keyword_color)
-            # 应用关键词颜色到文本样式中
-            apply_keyword_highlight(text_segment, caption['keyword'], keyword_rgb_color)
-            logger.info(f"Applied keyword highlighting: {caption['keyword']} with color {keyword_color}")
+            keyword_font_size = caption.get('keyword_font_size')  # 获取关键词字体大小
+            # 应用关键词颜色和字体大小到文本样式中
+            apply_keyword_highlight(text_segment, caption['keyword'], keyword_rgb_color, keyword_font_size)
+            logger.info(f"Applied keyword highlighting: {caption['keyword']} with color {keyword_color} and font size {keyword_font_size}")
         
         # 9. TODO: 处理动画效果（需要导入相应的动画类型）
         if caption.get('in_animation'):
@@ -308,14 +326,15 @@ def add_caption_to_draft(
         return text_segment.segment_id, text_segment.material_id, segment_info
         
     except CustomException:
-        logger.error(f"Add caption to draft failed, caption: {caption}")
+        # 重新抛出自定义异常
         raise
     except Exception as e:
-        logger.error(f"Add caption to draft failed, error: {str(e)}")
+        # 捕获其他未预期的异常并转换为自定义异常
+        logger.error(f"Unexpected error in add_caption_to_draft: {str(e)}")
         raise CustomException(CustomError.CAPTION_ADD_FAILED)
 
 
-def apply_keyword_highlight(text_segment: TextSegment, keywords: str, keyword_color: tuple):
+def apply_keyword_highlight(text_segment: TextSegment, keywords: str, keyword_color: tuple, keyword_font_size: float = None):
     """
     应用关键词高亮到文本片段
     
@@ -323,10 +342,14 @@ def apply_keyword_highlight(text_segment: TextSegment, keywords: str, keyword_co
         text_segment: 文本片段对象
         keywords: 关键词字符串，用'|'分隔多个关键词
         keyword_color: 关键词颜色的RGB元组 (0-1范围)
+        keyword_font_size: 关键词字体大小，默认为None，使用文本默认字体大小
     """
     # 分割关键词
     keyword_list = keywords.split('|')
     text = text_segment.text
+    
+    # 使用关键词字体大小，如果没有指定则使用文本默认字体大小
+    font_size = keyword_font_size if keyword_font_size is not None else text_segment.style.size
     
     # 为每个关键词创建高亮样式
     for keyword in keyword_list:
@@ -356,7 +379,7 @@ def apply_keyword_highlight(text_segment: TextSegment, keywords: str, keyword_co
                     }
                 },
                 "range": [start_pos, end_pos],
-                "size": text_segment.style.size,
+                "size": font_size,  # 使用关键词字体大小
                 "bold": text_segment.style.bold,
                 "italic": text_segment.style.italic,
                 "underline": text_segment.style.underline
@@ -404,6 +427,7 @@ def parse_captions_data(json_str: str) -> List[Dict[str, Any]]:
     try:
         # 解析JSON字符串
         data = json.loads(json_str)
+        logger.debug(f"Parsed JSON data: {data}")
     except json.JSONDecodeError as e:
         logger.error(f"JSON parse error: {e.msg}")
         raise CustomException(CustomError.INVALID_CAPTION_INFO, f"JSON parse error: {e.msg}")
@@ -458,7 +482,11 @@ def parse_captions_data(json_str: str) -> List[Dict[str, Any]]:
             logger.error(f"the {i}th item has invalid text: {processed_item['text']}")
             raise CustomException(CustomError.INVALID_CAPTION_INFO, f"the {i}th item has invalid text")
         
-        if not isinstance(processed_item["keyword_font_size"], (int, float)) or processed_item["keyword_font_size"] <= 0:
+        # 验证keyword_font_size参数
+        if processed_item["keyword_font_size"] is not None and (
+                not isinstance(processed_item["keyword_font_size"], (int, float)) or 
+                processed_item["keyword_font_size"] <= 0):
+            logger.warning(f"the {i}th item has invalid keyword_font_size: {processed_item['keyword_font_size']}, using default value 15")
             processed_item["keyword_font_size"] = 15
         
         result.append(processed_item)
