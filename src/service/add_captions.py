@@ -221,8 +221,14 @@ def add_caption_to_draft(
         elif alignment == 2:
             align_value = 2
         
+        # 根据需求修改：只有当caption中明确指定了font_size时才使用，否则不设置默认值
+        font_size_value = font_size
+        if 'font_size' in caption and caption['font_size'] is not None:
+            font_size_value = float(caption['font_size'])
+        
+        # 创建TextStyle对象
         text_style = TextStyle(
-            size=float(caption.get('font_size', font_size)),
+            size=font_size_value,
             color=rgb_color,
             alpha=alpha,
             align=align_value,
@@ -233,6 +239,7 @@ def add_caption_to_draft(
             italic=italic,
             bold=bold
         )
+        logger.info(f"Created text style, text_style.size: {text_style.size}, font_size from caption: {font_size}")
         
         # 4. 创建文本描边（如果提供了border_color）
         text_border = None
@@ -429,7 +436,7 @@ def parse_captions_data(json_str: str) -> List[Dict[str, Any]]:
             "keyword": item.get("keyword", None),
             "keyword_color": item.get("keyword_color", "#ff7100"),
             "keyword_font_size": item.get("keyword_font_size", 15),
-            "font_size": item.get("font_size", 15),
+            "font_size": item.get("font_size", None),
             "in_animation": item.get("in_animation", None),
             "out_animation": item.get("out_animation", None),
             "loop_animation": item.get("loop_animation", None),
@@ -451,9 +458,6 @@ def parse_captions_data(json_str: str) -> List[Dict[str, Any]]:
             logger.error(f"the {i}th item has invalid text: {processed_item['text']}")
             raise CustomException(CustomError.INVALID_CAPTION_INFO, f"the {i}th item has invalid text")
         
-        # 验证字体大小
-        if not isinstance(processed_item["font_size"], (int, float)) or processed_item["font_size"] <= 0:
-            processed_item["font_size"] = 15
         if not isinstance(processed_item["keyword_font_size"], (int, float)) or processed_item["keyword_font_size"] <= 0:
             processed_item["keyword_font_size"] = 15
         
