@@ -59,6 +59,7 @@ def add_keyframes(
     # 4. 处理每个关键帧
     keyframes_added = 0
     affected_segments: List[str] = []
+    failed_keyframes = 0  # 记录失败的关键帧数量
     
     for i, keyframe_item in enumerate(keyframe_items):
         try:
@@ -67,20 +68,23 @@ def add_keyframes(
             # 查找片段
             segment = find_segment_by_id(script, keyframe_item['segment_id'])
             if segment is None:
-                logger.error(f"Segment not found: {keyframe_item['segment_id']}")
-                raise CustomException(CustomError.SEGMENT_NOT_FOUND)
+                logger.error(f"Segment not found: {keyframe_item['segment_id']}, skipping this keyframe")
+                failed_keyframes += 1
+                continue  # 继续处理下一个关键帧，而不是抛出异常
             
             # 验证片段类型
             if not isinstance(segment, VisualSegment):
-                logger.error(f"Segment {keyframe_item['segment_id']} is not a visual segment, cannot add keyframes")
-                raise CustomException(CustomError.INVALID_SEGMENT_TYPE)
+                logger.error(f"Segment {keyframe_item['segment_id']} is not a visual segment, cannot add keyframes, skipping this keyframe")
+                failed_keyframes += 1
+                continue  # 继续处理下一个关键帧
             
             # 验证动画属性类型
             try:
                 property_enum = KeyframeProperty(keyframe_item['property'])
             except ValueError:
-                logger.error(f"Invalid property type: {keyframe_item['property']}")
-                raise CustomException(CustomError.INVALID_KEYFRAME_PROPERTY)
+                logger.error(f"Invalid property type: {keyframe_item['property']}, skipping this keyframe")
+                failed_keyframes += 1
+                continue  # 继续处理下一个关键帧
             
             # 计算时间偏移（将相对位置转换为微秒）
             segment_duration = segment.duration
@@ -97,22 +101,20 @@ def add_keyframes(
                 
             logger.info(f"Successfully added keyframe {i+1}, total added: {keyframes_added}")
             
-        except CustomException:
-            logger.error(f"Failed to add keyframe {i+1}: {keyframe_item}")
-            raise
         except Exception as e:
-            logger.error(f"Failed to add keyframe {i+1}, error: {str(e)}")
-            raise CustomException(CustomError.KEYFRAME_ADD_FAILED)
+            logger.error(f"Failed to add keyframe {i+1}, error: {str(e)}, skipping this keyframe")
+            failed_keyframes += 1
+            # 继续处理下一个关键帧，而不是抛出异常
     
     # 5. 保存草稿
     try:
         script.save()
-        logger.info(f"Draft saved successfully, keyframes_added: {keyframes_added}")
+        logger.info(f"Draft saved successfully, keyframes_added: {keyframes_added}, failed_keyframes: {failed_keyframes}")
     except Exception as e:
         logger.error(f"Failed to save draft: {str(e)}")
         raise CustomException(CustomError.KEYFRAME_ADD_FAILED)
     
-    logger.info(f"add_keyframes completed successfully - draft_id: {draft_id}, keyframes_added: {keyframes_added}, affected_segments: {affected_segments}")
+    logger.info(f"add_keyframes completed - draft_id: {draft_id}, keyframes_added: {keyframes_added}, affected_segments: {affected_segments}, failed_keyframes: {failed_keyframes}")
     
     return draft_url, keyframes_added, affected_segments
 
