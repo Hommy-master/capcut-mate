@@ -40,6 +40,7 @@ from src.schemas.imgs_infos import ImgsInfosRequest, ImgsInfosResponse
 from src.schemas.caption_infos import CaptionInfosRequest, CaptionInfosResponse
 from src.schemas.effect_infos import EffectInfosRequest, EffectInfosResponse
 from src.schemas.keyframes_infos import KeyframesInfosRequest, KeyframesInfosResponse
+from src.schemas.video_infos import VideoInfosRequest, VideoInfosResponse
 from src import service
 from typing import Annotated
 from src.utils.logger import logger
@@ -530,3 +531,25 @@ def keyframes_infos(request: KeyframesInfosRequest) -> KeyframesInfosResponse:
     )
     
     return KeyframesInfosResponse(keyframes_infos=keyframes_json)
+
+
+@router.post(path="/video_infos", response_model=VideoInfosResponse)
+def video_infos(request: VideoInfosRequest) -> VideoInfosResponse:
+    """
+    根据视频URL和时间线生成视频信息 (v1版本)
+    """
+    logger.info("Received request to generate video infos")
+    
+    # 调用service层处理业务逻辑
+    infos_json = service.video_infos(
+        video_urls=request.video_urls,
+        timelines=[{"start": t.start, "end": t.end} for t in request.timelines],
+        height=request.height,
+        width=request.width,
+        mask=request.mask,
+        transition=request.transition,
+        transition_duration=request.transition_duration,
+        volume=request.volume
+    )
+    
+    return VideoInfosResponse(infos=infos_json)

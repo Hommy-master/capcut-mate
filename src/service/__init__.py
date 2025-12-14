@@ -22,5 +22,6 @@ from .imgs_infos import imgs_infos
 from .caption_infos import caption_infos
 from .effect_infos import effect_infos
 from .keyframes_infos import keyframes_infos
+from .video_infos import video_infos
 
-__all__ = ["create_draft", "add_videos", "add_audios", "add_images", "add_sticker", "add_keyframes", "add_captions", "add_effects", "add_masks", "add_text_style", "get_text_animations", "get_image_animations", "easy_create_material", "save_draft", "gen_video", "gen_video_status", "get_draft", "get_audio_duration", "timelines", "audio_timelines", "audio_infos", "imgs_infos", "caption_infos", "effect_infos", "keyframes_infos"]
+__all__ = ["create_draft", "add_videos", "add_audios", "add_images", "add_sticker", "add_keyframes", "add_captions", "add_effects", "add_masks", "add_text_style", "get_text_animations", "get_image_animations", "easy_create_material", "save_draft", "gen_video", "gen_video_status", "get_draft", "get_audio_duration", "timelines", "audio_timelines", "audio_infos", "imgs_infos", "caption_infos", "effect_infos", "keyframes_infos", "video_infos"]
