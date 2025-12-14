@@ -33,6 +33,7 @@ from src.schemas.gen_video import GenVideoRequest, GenVideoResponse
 from src.schemas.gen_video_status import GenVideoStatusRequest, GenVideoStatusResponse
 from src.schemas.get_draft import GetDraftRequest, GetDraftResponse
 from src.schemas.get_audio_duration import GetAudioDurationRequest, GetAudioDurationResponse
+from src.schemas.timelines import TimelinesRequest, TimelinesResponse
 from src import service
 from typing import Annotated
 from src.utils.logger import logger
@@ -392,7 +393,7 @@ def timelines(request: TimelinesRequest) -> TimelinesResponse:
     logger.info("Received request to calculate timelines")
     
     # 调用service层处理业务逻辑
-    timelines, all_timelines = service.timelines.timelines(
+    timelines, all_timelines = service.timelines(
         duration=request.duration,
         num=request.num,
         start=request.start,
