@@ -42,6 +42,7 @@ from src.schemas.effect_infos import EffectInfosRequest, EffectInfosResponse
 from src.schemas.keyframes_infos import KeyframesInfosRequest, KeyframesInfosResponse
 from src.schemas.video_infos import VideoInfosRequest, VideoInfosResponse
 from src.schemas.search_sticker import SearchStickerRequest, SearchStickerResponse
+from src.schemas.get_url import GetUrlRequest, GetUrlResponse
 from src import service
 from typing import Annotated
 from src.utils.logger import logger
@@ -568,3 +569,17 @@ def search_sticker(ssr: SearchStickerRequest) -> SearchStickerResponse:
     )
     
     return SearchStickerResponse(data=data)
+
+
+@router.post(path="/get_url", response_model=GetUrlResponse)
+def get_url(gur: GetUrlRequest) -> GetUrlResponse:
+    """
+    提取链接 (v1版本)
+    """
+    
+    # 调用service层处理业务逻辑
+    output = service.get_url(
+        output=gur.output
+    )
+    
+    return GetUrlResponse(output=output)
