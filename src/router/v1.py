@@ -36,6 +36,7 @@ from src.schemas.get_audio_duration import GetAudioDurationRequest, GetAudioDura
 from src.schemas.timelines import TimelinesRequest, TimelinesResponse
 from src.schemas.audio_timelines import AudioTimelinesRequest, AudioTimelinesResponse
 from src.schemas.audio_infos import AudioInfosRequest, AudioInfosResponse
+from src.schemas.imgs_infos import ImgsInfosRequest, ImgsInfosResponse
 from src import service
 from typing import Annotated
 from src.utils.logger import logger
@@ -436,3 +437,29 @@ def audio_infos(request: AudioInfosRequest) -> AudioInfosResponse:
     )
     
     return AudioInfosResponse(infos=infos_json)
+
+
+@router.post(path="/imgs_infos", response_model=ImgsInfosResponse)
+def imgs_infos(request: ImgsInfosRequest) -> ImgsInfosResponse:
+    """
+    根据图片URL和时间线生成图片信息 (v1版本)
+    """
+    logger.info("Received request to generate image infos")
+    
+    # 调用service层处理业务逻辑
+    infos_json = service.imgs_infos(
+        imgs=request.imgs,
+        timelines=[{"start": t.start, "end": t.end} for t in request.timelines],
+        height=request.height,
+        width=request.width,
+        in_animation=request.in_animation,
+        in_animation_duration=request.in_animation_duration,
+        loop_animation=request.loop_animation,
+        loop_animation_duration=request.loop_animation_duration,
+        out_animation=request.out_animation,
+        out_animation_duration=request.out_animation_duration,
+        transition=request.transition,
+        transition_duration=request.transition_duration
+    )
+    
+    return ImgsInfosResponse(infos=infos_json)
