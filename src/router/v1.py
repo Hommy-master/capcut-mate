@@ -37,6 +37,7 @@ from src.schemas.timelines import TimelinesRequest, TimelinesResponse
 from src.schemas.audio_timelines import AudioTimelinesRequest, AudioTimelinesResponse
 from src.schemas.audio_infos import AudioInfosRequest, AudioInfosResponse
 from src.schemas.imgs_infos import ImgsInfosRequest, ImgsInfosResponse
+from src.schemas.caption_infos import CaptionInfosRequest, CaptionInfosResponse
 from src import service
 from typing import Annotated
 from src.utils.logger import logger
@@ -463,3 +464,31 @@ def imgs_infos(request: ImgsInfosRequest) -> ImgsInfosResponse:
     )
     
     return ImgsInfosResponse(infos=infos_json)
+
+
+@router.post(path="/caption_infos", response_model=CaptionInfosResponse)
+def caption_infos(request: CaptionInfosRequest) -> CaptionInfosResponse:
+    """
+    根据文本和时间线生成字幕信息 (v1版本)
+    """
+    logger.info("Received request to generate caption infos")
+    
+    # 调用service层处理业务逻辑
+    infos_json = service.caption_infos(
+        texts=request.texts,
+        timelines=[{"start": t.start, "end": t.end} for t in request.timelines],
+        font_size=request.font_size,
+        keyword_color=request.keyword_color,
+        keyword_font_size=request.keyword_font_size,
+        keywords=request.keywords,
+        in_animation=request.in_animation,
+        in_animation_duration=request.in_animation_duration,
+        loop_animation=request.loop_animation,
+        loop_animation_duration=request.loop_animation_duration,
+        out_animation=request.out_animation,
+        out_animation_duration=request.out_animation_duration,
+        transition=request.transition,
+        transition_duration=request.transition_duration
+    )
+    
+    return CaptionInfosResponse(infos=infos_json)
