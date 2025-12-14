@@ -35,6 +35,7 @@ from src.schemas.get_draft import GetDraftRequest, GetDraftResponse
 from src.schemas.get_audio_duration import GetAudioDurationRequest, GetAudioDurationResponse
 from src.schemas.timelines import TimelinesRequest, TimelinesResponse
 from src.schemas.audio_timelines import AudioTimelinesRequest, AudioTimelinesResponse
+from src.schemas.audio_infos import AudioInfosRequest, AudioInfosResponse
 from src import service
 from typing import Annotated
 from src.utils.logger import logger
@@ -417,3 +418,21 @@ def audio_timelines(request: AudioTimelinesRequest) -> AudioTimelinesResponse:
     )
     
     return AudioTimelinesResponse(timelines=timelines, all_timelines=all_timelines)
+
+
+@router.post(path="/audio_infos", response_model=AudioInfosResponse)
+def audio_infos(request: AudioInfosRequest) -> AudioInfosResponse:
+    """
+    根据音频URL和时间线生成音频信息 (v1版本)
+    """
+    logger.info("Received request to generate audio infos")
+    
+    # 调用service层处理业务逻辑
+    infos_json = service.audio_infos(
+        mp3_urls=request.mp3_urls,
+        timelines=[{"start": t.start, "end": t.end} for t in request.timelines],
+        audio_effect=request.audio_effect,
+        volume=request.volume
+    )
+    
+    return AudioInfosResponse(infos=infos_json)
