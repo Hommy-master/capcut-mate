@@ -16,5 +16,6 @@ from .gen_video import gen_video, gen_video_status
 from .get_draft import get_draft
 from .get_audio_duration import get_audio_duration
 from .timelines import timelines
+from .audio_timelines import audio_timelines
 
-__all__ = ["create_draft", "add_videos", "add_audios", "add_images", "add_sticker", "add_keyframes", "add_captions", "add_effects", "add_masks", "add_text_style", "get_text_animations", "get_image_animations", "easy_create_material", "save_draft", "gen_video", "gen_video_status", "get_draft", "get_audio_duration", "timelines"]
+__all__ = ["create_draft", "add_videos", "add_audios", "add_images", "add_sticker", "add_keyframes", "add_captions", "add_effects", "add_masks", "add_text_style", "get_text_animations", "get_image_animations", "easy_create_material", "save_draft", "gen_video", "gen_video_status", "get_draft", "get_audio_duration", "timelines", "audio_timelines"]

@@ -34,6 +34,7 @@ from src.schemas.gen_video_status import GenVideoStatusRequest, GenVideoStatusRe
 from src.schemas.get_draft import GetDraftRequest, GetDraftResponse
 from src.schemas.get_audio_duration import GetAudioDurationRequest, GetAudioDurationResponse
 from src.schemas.timelines import TimelinesRequest, TimelinesResponse
+from src.schemas.audio_timelines import AudioTimelinesRequest, AudioTimelinesResponse
 from src import service
 from typing import Annotated
 from src.utils.logger import logger
@@ -401,3 +402,18 @@ def timelines(request: TimelinesRequest) -> TimelinesResponse:
     )
 
     return TimelinesResponse(timelines=timelines, all_timelines=all_timelines)
+
+
+@router.post(path="/audio_timelines", response_model=AudioTimelinesResponse)
+def audio_timelines(request: AudioTimelinesRequest) -> AudioTimelinesResponse:
+    """
+    根据音频文件时长计算时间线 (v1版本)
+    """
+    logger.info("Received request to calculate audio timelines")
+    
+    # 调用service层处理业务逻辑
+    timelines, all_timelines = service.audio_timelines(
+        links=request.links
+    )
+    
+    return AudioTimelinesResponse(timelines=timelines, all_timelines=all_timelines)
