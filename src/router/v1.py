@@ -43,6 +43,7 @@ from src.schemas.keyframes_infos import KeyframesInfosRequest, KeyframesInfosRes
 from src.schemas.video_infos import VideoInfosRequest, VideoInfosResponse
 from src.schemas.search_sticker import SearchStickerRequest, SearchStickerResponse
 from src.schemas.get_url import GetUrlRequest, GetUrlResponse
+from src.schemas.str_list_to_objs import StrListToObjsRequest, StrListToObjsResponse
 from src import service
 from typing import Annotated
 from src.utils.logger import logger
@@ -583,3 +584,17 @@ def get_url(gur: GetUrlRequest) -> GetUrlResponse:
     )
     
     return GetUrlResponse(output=output)
+
+
+@router.post(path="/str_list_to_objs", response_model=StrListToObjsResponse)
+def str_list_to_objs(slto: StrListToObjsRequest) -> StrListToObjsResponse:
+    """
+    字符串列表转化成对象列表 (v1版本)
+    """
+    
+    # 调用service层处理业务逻辑
+    infos = service.str_list_to_objs(
+        infos=slto.infos
+    )
+    
+    return StrListToObjsResponse(infos=infos)

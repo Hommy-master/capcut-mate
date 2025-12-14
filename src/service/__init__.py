@@ -25,5 +25,6 @@ from .keyframes_infos import keyframes_infos
 from .video_infos import video_infos
 from .search_sticker import search_sticker
 from .get_url import get_url
+from .str_list_to_objs import str_list_to_objs
 
-__all__ = ["create_draft", "add_videos", "add_audios", "add_images", "add_sticker", "add_keyframes", "add_captions", "add_effects", "add_masks", "add_text_style", "get_text_animations", "get_image_animations", "easy_create_material", "save_draft", "gen_video", "gen_video_status", "get_draft", "get_audio_duration", "timelines", "audio_timelines", "audio_infos", "imgs_infos", "caption_infos", "effect_infos", "keyframes_infos", "video_infos", "search_sticker", "get_url"]
+__all__ = ["create_draft", "add_videos", "add_audios", "add_images", "add_sticker", "add_keyframes", "add_captions", "add_effects", "add_masks", "add_text_style", "get_text_animations", "get_image_animations", "easy_create_material", "save_draft", "gen_video", "gen_video_status", "get_draft", "get_audio_duration", "timelines", "audio_timelines", "audio_infos", "imgs_infos", "caption_infos", "effect_infos", "keyframes_infos", "video_infos", "search_sticker", "get_url", "str_list_to_objs"]
