@@ -39,6 +39,7 @@ jobs:
           mkdir -p dist/etc
           # 复制源代码
           cp -rf src dist/
+          cp -rf config dist/
           # 复制依赖配置文件
           cp pyproject.toml dist/
           cp *.py dist/

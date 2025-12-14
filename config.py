@@ -16,3 +16,6 @@ DOWNLOAD_URL = os.getenv("DOWNLOAD_URL", "https://capcut-mate.jcaigc.cn/")
 
 # 草稿提示URL
 TIP_URL = os.getenv("TIP_URL", "https://docs.jcaigc.cn/")
+
+# 贴纸配置文件路径
+STICKER_CONFIG_PATH = os.path.join(os.path.dirname(__file__), "config", "sticker.json")
