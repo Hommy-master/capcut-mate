@@ -38,6 +38,7 @@ from src.schemas.audio_timelines import AudioTimelinesRequest, AudioTimelinesRes
 from src.schemas.audio_infos import AudioInfosRequest, AudioInfosResponse
 from src.schemas.imgs_infos import ImgsInfosRequest, ImgsInfosResponse
 from src.schemas.caption_infos import CaptionInfosRequest, CaptionInfosResponse
+from src.schemas.effect_infos import EffectInfosRequest, EffectInfosResponse
 from src import service
 from typing import Annotated
 from src.utils.logger import logger
@@ -492,3 +493,19 @@ def caption_infos(request: CaptionInfosRequest) -> CaptionInfosResponse:
     )
     
     return CaptionInfosResponse(infos=infos_json)
+
+
+@router.post(path="/effect_infos", response_model=EffectInfosResponse)
+def effect_infos(request: EffectInfosRequest) -> EffectInfosResponse:
+    """
+    根据特效名称和时间线生成特效信息 (v1版本)
+    """
+    logger.info("Received request to generate effect infos")
+    
+    # 调用service层处理业务逻辑
+    infos_json = service.effect_infos(
+        effects=request.effects,
+        timelines=[{"start": t.start, "end": t.end} for t in request.timelines]
+    )
+    
+    return EffectInfosResponse(infos=infos_json)
