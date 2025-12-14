@@ -44,6 +44,7 @@ from src.schemas.video_infos import VideoInfosRequest, VideoInfosResponse
 from src.schemas.search_sticker import SearchStickerRequest, SearchStickerResponse
 from src.schemas.get_url import GetUrlRequest, GetUrlResponse
 from src.schemas.str_list_to_objs import StrListToObjsRequest, StrListToObjsResponse
+from src.schemas.str_to_list import StrToListRequest, StrToListResponse
 from src import service
 from typing import Annotated
 from src.utils.logger import logger
@@ -598,3 +599,17 @@ def str_list_to_objs(slto: StrListToObjsRequest) -> StrListToObjsResponse:
     )
     
     return StrListToObjsResponse(infos=infos)
+
+
+@router.post(path="/str_to_list", response_model=StrToListResponse)
+def str_to_list(stl: StrToListRequest) -> StrToListResponse:
+    """
+    字符转列表 (v1版本)
+    """
+    
+    # 调用service层处理业务逻辑
+    infos = service.str_to_list(
+        obj=stl.obj
+    )
+    
+    return StrToListResponse(infos=infos)
