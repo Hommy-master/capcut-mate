@@ -45,6 +45,7 @@ from src.schemas.search_sticker import SearchStickerRequest, SearchStickerRespon
 from src.schemas.get_url import GetUrlRequest, GetUrlResponse
 from src.schemas.str_list_to_objs import StrListToObjsRequest, StrListToObjsResponse
 from src.schemas.str_to_list import StrToListRequest, StrToListResponse
+from src.schemas.objs_to_str_list import ObjsToStrListRequest, ObjsToStrListResponse
 from src import service
 from typing import Annotated
 from src.utils.logger import logger
@@ -613,3 +614,17 @@ def str_to_list(stl: StrToListRequest) -> StrToListResponse:
     )
     
     return StrToListResponse(infos=infos)
+
+
+@router.post(path="/objs_to_str_list", response_model=ObjsToStrListResponse)
+def objs_to_str_list(otl: ObjsToStrListRequest) -> ObjsToStrListResponse:
+    """
+    对象列表转化成字符串列表 (v1版本)
+    """
+    
+    # 调用service层处理业务逻辑
+    infos = service.objs_to_str_list(
+        outputs=[obj.dict() for obj in otl.outputs]
+    )
+    
+    return ObjsToStrListResponse(infos=infos)
