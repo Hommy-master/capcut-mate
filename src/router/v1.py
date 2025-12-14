@@ -39,6 +39,7 @@ from src.schemas.audio_infos import AudioInfosRequest, AudioInfosResponse
 from src.schemas.imgs_infos import ImgsInfosRequest, ImgsInfosResponse
 from src.schemas.caption_infos import CaptionInfosRequest, CaptionInfosResponse
 from src.schemas.effect_infos import EffectInfosRequest, EffectInfosResponse
+from src.schemas.keyframes_infos import KeyframesInfosRequest, KeyframesInfosResponse
 from src import service
 from typing import Annotated
 from src.utils.logger import logger
@@ -509,3 +510,23 @@ def effect_infos(request: EffectInfosRequest) -> EffectInfosResponse:
     )
     
     return EffectInfosResponse(infos=infos_json)
+
+
+@router.post(path="/keyframes_infos", response_model=KeyframesInfosResponse)
+def keyframes_infos(request: KeyframesInfosRequest) -> KeyframesInfosResponse:
+    """
+    根据关键帧类型、位置比例和值生成关键帧信息 (v1版本)
+    """
+    logger.info("Received request to generate keyframes infos")
+    
+    # 调用service层处理业务逻辑
+    keyframes_json = service.keyframes_infos(
+        ctype=request.ctype,
+        offsets=request.offsets,
+        values=request.values,
+        segment_infos=[{"id": s.id, "start": s.start, "end": s.end} for s in request.segment_infos],
+        height=request.height,
+        width=request.width
+    )
+    
+    return KeyframesInfosResponse(keyframes_infos=keyframes_json)
