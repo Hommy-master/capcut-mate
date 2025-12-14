@@ -41,6 +41,7 @@ from src.schemas.caption_infos import CaptionInfosRequest, CaptionInfosResponse
 from src.schemas.effect_infos import EffectInfosRequest, EffectInfosResponse
 from src.schemas.keyframes_infos import KeyframesInfosRequest, KeyframesInfosResponse
 from src.schemas.video_infos import VideoInfosRequest, VideoInfosResponse
+from src.schemas.search_sticker import SearchStickerRequest, SearchStickerResponse
 from src import service
 from typing import Annotated
 from src.utils.logger import logger
@@ -553,3 +554,17 @@ def video_infos(request: VideoInfosRequest) -> VideoInfosResponse:
     )
     
     return VideoInfosResponse(infos=infos_json)
+
+
+@router.post(path="/search_sticker", response_model=SearchStickerResponse)
+def search_sticker(ssr: SearchStickerRequest) -> SearchStickerResponse:
+    """
+    搜索贴纸 (v1版本)
+    """
+    
+    # 调用service层处理业务逻辑
+    data = service.search_sticker(
+        keyword=ssr.keyword
+    )
+    
+    return SearchStickerResponse(data=data)
