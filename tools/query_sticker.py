@@ -18,7 +18,7 @@ OUTPUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)))
 DEFAULT_CONFIG = {
     "workflow_id": "7583908377370361871",
     "auth_token": "pat_fUi05j4gGqMOPZMun2n3uRlK0o7SATWX3bPPh1lSJuFktmpJjRStWiG7LtlmIOrc",
-    "output_file": os.path.join(OUTPUT_DIR, "sticker_result.json")
+    "output_file": os.path.join(OUTPUT_DIR, "sticker.json")
 }
 
 def query_stickers(keyword, workflow_id=None, auth_token=None):
