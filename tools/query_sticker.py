@@ -99,11 +99,20 @@ def save_result(result, output_file=None):
             data_content = result["data"]
             if isinstance(data_content, str):
                 # 如果是字符串，需要再次解析为 JSON
-                data_content = json.loads(data_content)
+                try:
+                    data_content = json.loads(data_content)
+                except json.JSONDecodeError as e:
+                    print(f"解析JSON数据失败: {e}")
+                    data_content = {}
                 
-            if "data" in data_content:
+            if isinstance(data_content, dict) and "data" in data_content:
                 sticker_data = data_content["data"]
-        
+                # 确保sticker_data是一个列表，即使它是None
+                if sticker_data is None:
+                    sticker_data = []
+                elif not isinstance(sticker_data, list):
+                    print(f"警告: sticker_data不是列表类型，而是 {type(sticker_data)}")
+                    sticker_data = []        
         # 保存结果，只保存贴纸数组部分
         with open(output_file, 'w', encoding='utf-8') as f:
             json.dump(sticker_data, f, indent=2, ensure_ascii=False)
@@ -141,10 +150,20 @@ def query_multiple_keywords(keywords, output_file=None):
                 data_content = result["data"]
                 if isinstance(data_content, str):
                     # 如果是字符串，需要再次解析为 JSON
-                    data_content = json.loads(data_content)
+                    try:
+                        data_content = json.loads(data_content)
+                    except json.JSONDecodeError as e:
+                        print(f"解析JSON数据失败: {e}")
+                        data_content = {}
                     
-                if "data" in data_content:
+                if isinstance(data_content, dict) and "data" in data_content:
                     sticker_data = data_content["data"]
+                    # 确保sticker_data是一个列表，即使它是None
+                    if sticker_data is None:
+                        sticker_data = []
+                    elif not isinstance(sticker_data, list):
+                        print(f"警告: sticker_data不是列表类型，而是 {type(sticker_data)}")
+                        sticker_data = []
             
             print(f"关键词 '{keyword}' 找到 {len(sticker_data)} 个贴纸")
             # 合并贴纸数据
