@@ -13,11 +13,12 @@ import os
 
 # 配置文件路径
 OUTPUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "output")
+CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
 
 # 默认配置
 DEFAULT_CONFIG = {
     "workflow_id": "7583908377370361871",
-    "auth_token": "pat_Yyo58oTgCEhRob4as8yDg85e97sCg6YQr5CImOJrBxuRGOuCcuPEyaGAQFGXt3vB",
+    "auth_token": "pat_fUi05j4gGqMOPZMun2n3uRlK0o7SATWX3bPPh1lSJuFktmpJjRStWiG7LtlmIOrc",
     "output_file": os.path.join(OUTPUT_DIR, "sticker_result.json")
 }
 
@@ -33,12 +34,10 @@ def query_stickers(keyword, workflow_id=None, auth_token=None):
     Returns:
         dict: API 响应结果
     """
-    # 加载配置
-    config = load_config()
     
     # 使用传入参数或配置文件中的参数
-    wid = workflow_id or config["workflow_id"]
-    token = auth_token or config["auth_token"]
+    wid = workflow_id or DEFAULT_CONFIG["workflow_id"]
+    token = auth_token or DEFAULT_CONFIG["auth_token"]
     
     # 构造请求
     url = "https://api.coze.cn/v1/workflow/run"
@@ -85,7 +84,7 @@ def save_result(result, output_file=None):
         result (dict): 要保存的结果
         output_file (str): 输出文件路径
     """
-
+    
     try:
         # 确保输出目录存在
         os.makedirs(os.path.dirname(output_file), exist_ok=True)
@@ -103,9 +102,13 @@ def save_result(result, output_file=None):
 
 def main():
     """主函数"""
+    # 直接使用固定的关键词进行测试
+    keyword = "人物"
+    
+    print(f"正在搜索关键词 '{keyword}' 的贴纸...")
     
     # 查询贴纸
-    result = query_stickers("人", DEFAULT_CONFIG["workflow_id"], DEFAULT_CONFIG["auth_token"])
+    result = query_stickers(keyword)
     
     # 显示结果
     if "error" in result:
@@ -122,7 +125,7 @@ def main():
                 print(f"找到 {len(output['data'])} 个贴纸")
         
         # 保存结果
-        output_file = save_result(result, DEFAULT_CONFIG["output_file"])
+        output_file = save_result(result)
         if output_file:
             print(f"结果已保存到: {output_file}")
         else:
