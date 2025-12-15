@@ -12,8 +12,7 @@ import sys
 import os
 
 # 配置文件路径
-OUTPUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "output")
-CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
+OUTPUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)))
 
 # 默认配置
 DEFAULT_CONFIG = {
@@ -86,6 +85,10 @@ def save_result(result, output_file=None):
     """
     
     try:
+        # 如果没有提供输出文件路径，则使用默认配置
+        if output_file is None:
+            output_file = DEFAULT_CONFIG["output_file"]
+            
         # 确保输出目录存在
         os.makedirs(os.path.dirname(output_file), exist_ok=True)
         
@@ -93,12 +96,10 @@ def save_result(result, output_file=None):
         with open(output_file, 'w', encoding='utf-8') as f:
             json.dump(result, f, indent=2, ensure_ascii=False)
             
-        print(f"结果已保存到: {output_file}")
         return output_file
     except Exception as e:
         print(f"保存结果失败: {e}")
         return None
-
 
 def main():
     """主函数"""
