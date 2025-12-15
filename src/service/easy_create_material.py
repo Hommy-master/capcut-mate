@@ -91,43 +91,6 @@ def easy_create_material(
         raise CustomException(CustomError.MATERIAL_CREATE_FAILED)
 
 
-def add_audio_material(script: ScriptFile, audio_url: str) -> bool:
-    """
-    添加音频素材到草稿
-    
-    Args:
-        script: 草稿文件对象
-        audio_url: 音频文件URL
-    
-    Returns:
-        是否成功添加
-    """
-    try:
-        logger.info(f"Adding audio material: {audio_url}")
-        
-        # 构造音频信息JSON
-        audio_infos = json.dumps([{
-            "audio_url": audio_url,
-            "duration": 30000000,  # 默认30秒（30 * 1000000微秒）
-            "start": 0,
-            "end": 30000000,
-            "volume": 1.0
-        }])
-        
-        # 直接使用草稿对象添加音频轨道和片段
-        from src.service.add_audios import parse_audio_data, add_audio_to_draft
-        audio_items = parse_audio_data(audio_infos)
-        if audio_items:
-            track_name = f"audio_track_{helper.gen_unique_id()}"
-            script.add_track(track_type=TrackType.audio, track_name=track_name)
-            add_audio_to_draft(script, track_name, "", audio_items[0])
-        
-        return True
-    except Exception as e:
-        logger.error(f"Failed to add audio material: {str(e)}")
-        return False
-
-
 def add_video_material(script: ScriptFile, video_url: str) -> bool:
     """
     添加视频素材到草稿（固定5秒时长）
@@ -158,7 +121,8 @@ def add_video_material(script: ScriptFile, video_url: str) -> bool:
         video_items = parse_video_data(video_infos)
         if video_items:
             track_name = f"video_track_{helper.gen_unique_id()}"
-            script.add_track(track_type=TrackType.video, track_name=track_name)
+            # 设置 relative_index=10 确保视频轨道在主视频轨道之上，避免与主轨道冲突
+            script.add_track(track_type=TrackType.video, track_name=track_name, relative_index=10)
             add_video_to_draft(script, track_name, "", video_items[0])
         
         return True
@@ -195,12 +159,50 @@ def add_image_material(script: ScriptFile, img_url: str) -> bool:
         image_items = parse_image_data(image_infos)
         if image_items:
             track_name = f"video_track_{helper.gen_unique_id()}"
-            script.add_track(track_type=TrackType.video, track_name=track_name)
+            # 设置 relative_index=10 确保图片轨道在主视频轨道之上，避免与主轨道冲突
+            script.add_track(track_type=TrackType.video, track_name=track_name, relative_index=10)
             add_image_to_draft(script, track_name, "", image_items[0])
         
         return True
     except Exception as e:
         logger.error(f"Failed to add image material: {str(e)}")
+        return False
+
+
+def add_audio_material(script: ScriptFile, audio_url: str) -> bool:
+    """
+    添加音频素材到草稿（固定5秒时长）
+    
+    Args:
+        script: 草稿文件对象
+        audio_url: 音频文件URL
+    
+    Returns:
+        是否成功添加
+    """
+    try:
+        logger.info(f"Adding audio material: {audio_url}")
+        
+        # 构造音频信息JSON（固定5秒时长）
+        audio_infos = json.dumps([{
+            "audio_url": audio_url,
+            "start": 0,
+            "end": 5000000,  # 5秒（5 * 1000000微秒）
+            "volume": 1.0
+        }])
+        
+        # 直接使用草稿对象添加音频轨道和片段
+        from src.service.add_audios import parse_audio_data, add_audio_to_draft
+        audio_items = parse_audio_data(audio_infos)
+        if audio_items:
+            track_name = f"audio_track_{helper.gen_unique_id()}"
+            # 设置 relative_index=10 确保音频轨道在主音频轨道之上，避免与主轨道冲突
+            script.add_track(track_type=TrackType.audio, track_name=track_name, relative_index=10)
+            add_audio_to_draft(script, track_name, "", audio_items[0])
+        
+        return True
+    except Exception as e:
+        logger.error(f"Failed to add audio material: {str(e)}")
         return False
 
 

@@ -32,6 +32,15 @@ def create_draft(width: int, height: int) -> str:
     # 创建剪映草稿
     try:
         script = draft_folder.create_draft(draft_id, width, height, allow_replace=True)        
+        
+        # 添加空的主轨道（仅当没有主轨道时添加）
+        main_track_name = "main_track"
+        script.add_track(track_type=draft.TrackType.video, track_name=main_track_name, relative_index=0)
+        logger.info(f"Added empty main track: {main_track_name}")
+        
+        # 保存草稿以确保主轨道被创建
+        script.save()
+        
     except Exception as e:
         logger.error(f"create draft failed: {e}")
         raise CustomException(CustomError.DRAFT_CREATE_FAILED)
@@ -41,4 +50,3 @@ def create_draft(width: int, height: int) -> str:
 
     logger.info(f"create draft success: {draft_id}")
     return config.DRAFT_URL + "?draft_id=" + draft_id
-

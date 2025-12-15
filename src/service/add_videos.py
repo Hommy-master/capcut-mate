@@ -49,7 +49,7 @@ def add_videos(
         transform_y: Y轴位置偏移(像素)[可选]，默认值为0
     
     Returns:
-        "draft_url": "https://ts.fyshark.com/#/cozeToJianyin?drafId=...",
+        "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=...",
         "track_id": "video-track-uuid",
         "video_ids": ["video1-uuid", "video2-uuid", "video3-uuid"],
         "segment_ids": ["segment1-uuid", "segment2-uuid", "segment3-uuid"],
@@ -80,9 +80,10 @@ def add_videos(
     # 4. 从缓存中获取草稿
     script: ScriptFile = DRAFT_CACHE[draft_id]
 
-    # 5. 添加视频轨道
+    # 5. 添加视频轨道（明确说明不使用主轨道，并设置合适的渲染层级）
     track_name = f"video_track_{helper.gen_unique_id()}"
-    script.add_track(track_type=draft.TrackType.video, track_name=track_name)
+    # 设置 relative_index=10 确保视频轨道在主视频轨道之上，避免与主轨道冲突
+    script.add_track(track_type=draft.TrackType.video, track_name=track_name, relative_index=10)
 
     # 6. 遍历视频信息，添加视频到草稿中的指定轨道，收集片段ID
     segment_ids = []
@@ -96,7 +97,7 @@ def add_videos(
     # 7. 保存草稿
     script.save()
 
-    # 获取当前视频轨道id
+    # 8. 获取当前视频轨道id
     track_id = ""
     for key in script.tracks.keys():
         if script.tracks[key].name == track_name:
@@ -104,7 +105,7 @@ def add_videos(
             break
     logger.info(f"draft_id: {draft_id}, track_id: {track_id}")
 
-    # 获取当前所有视频资源ID（全局唯一ID）
+    # 9. 获取当前所有视频资源ID（全局唯一ID）
     video_ids = [video.material_id for video in script.materials.videos]
     logger.info(f"draft_id: {draft_id}, video_ids: {video_ids}")
 

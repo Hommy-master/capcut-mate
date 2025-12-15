@@ -12,7 +12,10 @@ import json
 from typing import List, Dict, Any, Tuple
 
 
-def add_audios(draft_url: str, audio_infos: str) -> Tuple[str, str, List[str]]:
+def add_audios(
+    draft_url: str, 
+    audio_infos: str
+) -> Tuple[str, str, List[str]]:
     """
     添加音频到剪映草稿的业务逻辑
     
@@ -29,10 +32,10 @@ def add_audios(draft_url: str, audio_infos: str) -> Tuple[str, str, List[str]]:
                 "audio_effect": "reverb" // [可选] 音频效果名称，默认值为None
             }
         ]
-    
+        
     Returns:
         draft_url: 草稿URL
-        track_id: 音频轨道ID
+        track_id: 音频轨道ID（非主轨道）
         audio_ids: 音频ID列表
 
     Raises:
@@ -62,10 +65,11 @@ def add_audios(draft_url: str, audio_infos: str) -> Tuple[str, str, List[str]]:
     # 4. 从缓存中获取草稿
     script: ScriptFile = DRAFT_CACHE[draft_id]
 
-    # 5. 添加音频轨道
+    # 5. 添加音频轨道（明确说明不使用主轨道，并设置合适的渲染层级）
     track_name = f"audio_track_{helper.gen_unique_id()}"
-    script.add_track(track_type=draft.TrackType.audio, track_name=track_name)
-    logger.info(f"Added audio track: {track_name}")
+    # 设置 relative_index=10 确保音频轨道在主音频轨道之上，避免与主轨道冲突
+    script.add_track(track_type=draft.TrackType.audio, track_name=track_name, relative_index=10)
+    logger.info(f"Added audio track (non-main track): {track_name}")
 
     # 6. 遍历音频信息，添加音频到草稿中的指定轨道，收集音频ID
     audio_ids = []

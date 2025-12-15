@@ -52,7 +52,7 @@ def add_images(
     
     Returns:
         draft_url: 草稿URL
-        track_id: 视频轨道ID
+        track_id: 图片轨道ID（非主轨道）
         image_ids: 图片ID列表
         segment_ids: 片段ID列表
         segment_infos: 片段信息列表，包含每个片段的ID、开始时间和结束时间
@@ -84,10 +84,11 @@ def add_images(
     # 4. 从缓存中获取草稿
     script: ScriptFile = DRAFT_CACHE[draft_id]
 
-    # 5. 添加视频轨道（图片使用视频轨道）
+    # 5. 添加图片轨道（明确说明不使用主轨道，并设置合适的渲染层级）
     track_name = f"image_track_{helper.gen_unique_id()}"
-    script.add_track(track_type=draft.TrackType.video, track_name=track_name)
-    logger.info(f"Added image track: {track_name}")
+    # 设置 relative_index=10 确保图片轨道在主视频轨道之上，避免与主轨道冲突
+    script.add_track(track_type=draft.TrackType.video, track_name=track_name, relative_index=10)
+    logger.info(f"Added image track (non-main track): {track_name}")
 
     # 6. 遍历图片信息，添加图片到草稿中的指定轨道，收集片段ID和信息
     segment_ids = []
@@ -115,7 +116,7 @@ def add_images(
     script.save()
     logger.info(f"Draft saved successfully")
 
-    # 8. 获取当前视频轨道ID
+    # 8. 获取当前图片轨道ID
     track_id = ""
     for key in script.tracks.keys():
         if script.tracks[key].name == track_name:
@@ -123,7 +124,7 @@ def add_images(
             break
     logger.info(f"Image track created, draft_id: {draft_id}, track_id: {track_id}")
 
-    # 9. 获取当前所有视频资源ID（包括图片）
+    # 9. 获取当前所有图片资源ID（明确说明这些是图片资源，不与主轨道冲突）
     image_ids = [video.material_id for video in script.materials.videos if video.material_type == "photo"]
     logger.info(f"Image track completed, draft_id: {draft_id}, image_ids: {image_ids}")
 
