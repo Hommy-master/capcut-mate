@@ -77,7 +77,7 @@ def query_stickers(keyword, workflow_id=None, auth_token=None):
 
 def save_result(result, output_file=None):
     """
-    保存结果到 JSON 文件
+    保存结果到 JSON 文件，格式与 config/sticker.json 一致
     
     Args:
         result (dict): 要保存的结果
@@ -92,14 +92,27 @@ def save_result(result, output_file=None):
         # 确保输出目录存在
         os.makedirs(os.path.dirname(output_file), exist_ok=True)
         
-        # 保存结果
+        # 解析实际的贴纸数据
+        sticker_data = []
+        if "data" in result:
+            # 解析嵌套的 JSON 数据
+            data_content = result["data"]
+            if isinstance(data_content, str):
+                # 如果是字符串，需要再次解析为 JSON
+                data_content = json.loads(data_content)
+                
+            if "data" in data_content:
+                sticker_data = data_content["data"]
+        
+        # 保存结果，只保存贴纸数组部分
         with open(output_file, 'w', encoding='utf-8') as f:
-            json.dump(result, f, indent=2, ensure_ascii=False)
+            json.dump(sticker_data, f, indent=2, ensure_ascii=False)
             
         return output_file
     except Exception as e:
         print(f"保存结果失败: {e}")
         return None
+
 
 def main():
     """主函数"""
@@ -117,13 +130,18 @@ def main():
         sys.exit(1)
     else:
         print("查询成功!")
+        # 解析实际的贴纸数据
+        sticker_count = 0
         if "data" in result:
-            print(f"找到 {len(result['data'])} 个贴纸")
-        elif "output" in result:
-            # 处理 workflow 的输出格式
-            output = result["output"]
-            if isinstance(output, dict) and "data" in output:
-                print(f"找到 {len(output['data'])} 个贴纸")
+            data_content = result["data"]
+            if isinstance(data_content, str):
+                # 如果是字符串，需要再次解析为 JSON
+                data_content = json.loads(data_content)
+                
+            if "data" in data_content:
+                sticker_count = len(data_content["data"])
+        
+        print(f"找到 {sticker_count} 个贴纸")
         
         # 保存结果
         output_file = save_result(result)
@@ -131,7 +149,5 @@ def main():
             print(f"结果已保存到: {output_file}")
         else:
             print("结果保存失败")
-
-
 if __name__ == "__main__":
     main()
