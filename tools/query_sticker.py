@@ -114,40 +114,83 @@ def save_result(result, output_file=None):
         return None
 
 
+def query_multiple_keywords(keywords, output_file=None):
+    """
+    循环调用query_stickers接口，查询多个关键词并将结果合并输出到文件
+    
+    Args:
+        keywords (list): 关键词列表
+        output_file (str): 输出文件路径
+    """
+    all_stickers = []
+    
+    for keyword in keywords:
+        print(f"正在搜索关键词 '{keyword}' 的贴纸...")
+        
+        # 查询贴纸
+        result = query_stickers(keyword)
+        
+        # 显示结果
+        if "error" in result:
+            print(f"查询关键词 '{keyword}' 失败: {result}")
+        else:
+            print(f"查询关键词 '{keyword}' 成功!")
+            # 解析实际的贴纸数据
+            sticker_data = []
+            if "data" in result:
+                data_content = result["data"]
+                if isinstance(data_content, str):
+                    # 如果是字符串，需要再次解析为 JSON
+                    data_content = json.loads(data_content)
+                    
+                if "data" in data_content:
+                    sticker_data = data_content["data"]
+            
+            print(f"关键词 '{keyword}' 找到 {len(sticker_data)} 个贴纸")
+            # 合并贴纸数据
+            all_stickers.extend(sticker_data)
+    
+    # 去重处理，根据sticker_id去重
+    unique_stickers = []
+    seen_ids = set()
+    for sticker in all_stickers:
+        sticker_id = sticker.get("sticker_id")
+        if sticker_id and sticker_id not in seen_ids:
+            unique_stickers.append(sticker)
+            seen_ids.add(sticker_id)
+    
+    print(f"总共找到 {len(unique_stickers)} 个不重复的贴纸")
+    
+    # 保存合并后的结果
+    try:
+        # 如果没有提供输出文件路径，则使用默认配置
+        if output_file is None:
+            output_file = DEFAULT_CONFIG["output_file"]
+            
+        # 确保输出目录存在
+        os.makedirs(os.path.dirname(output_file), exist_ok=True)
+        
+        # 保存结果，只保存贴纸数组部分
+        with open(output_file, 'w', encoding='utf-8') as f:
+            json.dump(unique_stickers, f, indent=2, ensure_ascii=False)
+            
+        print(f"合并结果已保存到: {output_file}")
+        return output_file
+    except Exception as e:
+        print(f"保存合并结果失败: {e}")
+        return None
+
+
 def main():
     """主函数"""
-    # 直接使用固定的关键词进行测试
-    keyword = "人物"
+    # 定义要查询的关键词列表
+    keywords = ["人物", "真理"]
     
-    print(f"正在搜索关键词 '{keyword}' 的贴纸...")
-    
-    # 查询贴纸
-    result = query_stickers(keyword)
-    
-    # 显示结果
-    if "error" in result:
-        print(f"查询失败: {result}")
+    # 查询多个关键词并合并结果
+    output_file = query_multiple_keywords(keywords)
+    if not output_file:
+        print("查询或保存结果失败")
         sys.exit(1)
-    else:
-        print("查询成功!")
-        # 解析实际的贴纸数据
-        sticker_count = 0
-        if "data" in result:
-            data_content = result["data"]
-            if isinstance(data_content, str):
-                # 如果是字符串，需要再次解析为 JSON
-                data_content = json.loads(data_content)
-                
-            if "data" in data_content:
-                sticker_count = len(data_content["data"])
-        
-        print(f"找到 {sticker_count} 个贴纸")
-        
-        # 保存结果
-        output_file = save_result(result)
-        if output_file:
-            print(f"结果已保存到: {output_file}")
-        else:
-            print("结果保存失败")
+
 if __name__ == "__main__":
     main()
