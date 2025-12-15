@@ -11,7 +11,7 @@ from src.utils import helper
 from src.utils.download import download
 import config
 import json
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Tuple, Optional
 
 
 def add_videos(
@@ -184,7 +184,21 @@ def add_video_to_draft(
         logger.info(f"material_id: {video_segment.material_instance.material_id}")
         logger.info(f"video_path: {video_path}, start: {video['start']}, duration: {source_duration}, volume: {video['volume']}")
 
-        # 2. 向指定轨道添加片段，
+        # 2. 添加转场效果（如果指定了）
+        transition_name = video.get('transition')
+        if transition_name:
+            transition_type = find_transition_type_by_name(transition_name)
+            if transition_type:
+                transition_duration = video.get('transition_duration', 500000)  # 默认500ms
+                try:
+                    video_segment.add_transition(transition_type, duration=transition_duration)
+                    logger.info(f"Added transition '{transition_name}' with duration {transition_duration}us")
+                except Exception as e:
+                    logger.warning(f"Failed to add transition '{transition_name}': {str(e)}")
+            else:
+                logger.warning(f"Transition type not found for name: {transition_name}")
+
+        # 3. 向指定轨道添加片段，
         script.add_segment(video_segment, track_name)
 
         # 修复：返回 segment_id 而不是 material_id
@@ -195,6 +209,26 @@ def add_video_to_draft(
     except Exception as e:
         logger.error(f"Add video to draft failed, error: {str(e)}")
         raise CustomException(err=CustomError.VIDEO_ADD_FAILED)
+
+def find_transition_type_by_name(transition_name: str) -> Optional[draft.TransitionType]:
+    """
+    根据转场名称查找对应的转场类型
+    
+    Args:
+        transition_name: 转场名称
+    
+    Returns:
+        对应的转场类型枚举，如果未找到则返回None
+    """
+    if not transition_name:
+        return None
+        
+    try:
+        return draft.TransitionType.from_name(transition_name)
+    except ValueError:
+        logger.warning(f"Transition type not found for name: {transition_name}")
+        return None
+
 
 def parse_video_data(json_str: str) -> List[Dict[str, Any]]:
     """
