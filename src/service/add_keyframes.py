@@ -184,7 +184,8 @@ def parse_keyframes_data(json_str: str) -> List[Dict[str, Any]]:
     # 支持的动画属性类型
     supported_properties = {
         "KFTypePositionX", "KFTypePositionY", "KFTypeScaleX", 
-        "KFTypeScaleY", "KFTypeRotation", "KFTypeAlpha"
+        "KFTypeScaleY", "KFTypeRotation", "KFTypeAlpha", "UNIFORM_SCALE",
+        "KFTypeSaturation", "KFTypeContrast", "KFTypeBrightness", "KFTypeVolume"
     }
     
     for i, item in enumerate(data):
