@@ -291,13 +291,13 @@ def add_caption_to_draft(
         # 7. 创建文本阴影（如果提供了shadow_info）
         text_shadow = None
         if shadow_info:
-            shadow_rgb_color = hex_to_rgb(shadow_info.color)
+            shadow_rgb_color = hex_to_rgb(shadow_info.shadow_color)
             text_shadow = TextShadow(
-                alpha=shadow_info.alpha,
+                alpha=shadow_info.shadow_alpha,
                 color=shadow_rgb_color,
-                diffuse=shadow_info.diffuse,
-                distance=shadow_info.distance,
-                angle=shadow_info.angle
+                diffuse=shadow_info.shadow_diffuse,
+                distance=shadow_info.shadow_distance,
+                angle=shadow_info.shadow_angle
             )
         
         # 8. 创建文本片段
