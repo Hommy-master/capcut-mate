@@ -31,6 +31,7 @@ class AddCaptionsRequest(BaseModel):
     underline: bool = Field(default=False, description="文字下划线开关")
     italic: bool = Field(default=False, description="文本斜体开关")
     bold: bool = Field(default=False, description="文本加粗开关")
+    has_shadow: bool = Field(default=False, description="是否启用文本阴影")
     shadow_info: Optional[ShadowInfo] = Field(default=None, description="文本阴影参数")
 
 

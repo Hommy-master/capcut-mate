@@ -28,6 +28,7 @@ def add_captions(
     underline: bool = False,
     italic: bool = False,
     bold: bool = False,
+    has_shadow: bool = False,
     shadow_info: Optional[ShadowInfo] = None
 ) -> Tuple[str, str, List[str], List[str], List[dict]]:
     """
@@ -85,7 +86,7 @@ def add_captions(
     logger.debug(f"Function parameters - text_color: {text_color}, border_color: {border_color}, "
                  f"alignment: {alignment}, alpha: {alpha}, font: {font}, font_size: {font_size}, "
                  f"scale_x: {scale_x}, scale_y: {scale_y}, transform_x: {transform_x}, transform_y: {transform_y}, "
-                 f"style_text: {style_text}, underline: {underline}, italic: {italic}, bold: {bold}, shadow_info: {shadow_info}")
+                 f"style_text: {style_text}, underline: {underline}, italic: {italic}, bold: {bold}, has_shadow: {has_shadow}, shadow_info: {shadow_info}")
     
     try:
         # 1. 提取草稿ID
@@ -137,6 +138,7 @@ def add_captions(
                     underline=underline,
                     italic=italic,
                     bold=bold,
+                    has_shadow=has_shadow,
                     shadow_info=shadow_info
                 )
                 segment_ids.append(segment_id)
@@ -192,6 +194,7 @@ def add_caption_to_draft(
     underline: bool = False,
     italic: bool = False,
     bold: bool = False,
+    has_shadow: bool = False,
     shadow_info: Optional[ShadowInfo] = None
 ) -> Tuple[str, str, dict]:
     """
@@ -214,6 +217,7 @@ def add_caption_to_draft(
             in_animation_duration: 入场动画时长，可选
             out_animation_duration: 出场动画时长，可选
             loop_animation_duration: 循环动画时长，可选
+        has_shadow: 是否启用文本阴影
         shadow_info: 文本阴影参数
         其他参数：字幕样式设置
     
@@ -288,17 +292,30 @@ def add_caption_to_draft(
             transform_y=transform_y / script.height  # 转换为画布高度单位
         )
         
-        # 7. 创建文本阴影（如果提供了shadow_info）
+        # 7. 创建文本阴影（如果启用了阴影）
         text_shadow = None
-        if shadow_info:
-            shadow_rgb_color = hex_to_rgb(shadow_info.shadow_color)
-            text_shadow = TextShadow(
-                alpha=shadow_info.shadow_alpha,
-                color=shadow_rgb_color,
-                diffuse=shadow_info.shadow_diffuse,
-                distance=shadow_info.shadow_distance,
-                angle=shadow_info.shadow_angle
-            )
+        if has_shadow:
+            # 如果启用了阴影但没有提供shadow_info，则使用默认值
+            if shadow_info is None:
+                # 创建默认的阴影配置
+                shadow_rgb_color = hex_to_rgb("#000000")
+                text_shadow = TextShadow(
+                    alpha=0.9,
+                    color=shadow_rgb_color,
+                    diffuse=15.0,
+                    distance=5.0,
+                    angle=-45.0
+                )
+            else:
+                # 使用提供的shadow_info配置
+                shadow_rgb_color = hex_to_rgb(shadow_info.shadow_color)
+                text_shadow = TextShadow(
+                    alpha=shadow_info.shadow_alpha,
+                    color=shadow_rgb_color,
+                    diffuse=shadow_info.shadow_diffuse,
+                    distance=shadow_info.shadow_distance,
+                    angle=shadow_info.shadow_angle
+                )
         
         # 8. 创建文本片段
         text_segment = TextSegment(
