@@ -19,7 +19,7 @@ POST /openapi/capcut-mate/v1/add_keyframes
 ```json
 {
   "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
-  "keyframes": "[{\"segment_id\":\"d62994b4-25fe-422a-a123-87ef05038558\",\"property\":\"KFTypePositionX\",\"offset\":0.5,\"value\":-0.1}]"
+  "keyframes": "[{\"segment_id\":\"d62994b4-25fe-422a-a123-87ef05038558\",\"property\":\"KFTypePositionX\",\"offset\":5000000,\"value\":-0.1}]"
 }
 ```
 
@@ -39,8 +39,14 @@ keyframes 是一个JSON字符串，包含关键帧数组，每个关键帧对象
 |--------|------|------|------|
 | segment_id | string | ✅ | 目标片段的唯一标识ID |
 | property | string | ✅ | 动画属性类型，支持的类型见下表 |
-| offset | number | ✅ | 关键帧在片段中的时间偏移（0-1范围，0表示开始，1表示结束） |
+| offset | number | ✅ | 关键帧在片段中的时间偏移（微秒绝对时间） |
 | value | number | ✅ | 属性在该时间点的值 |
+
+#### offset 参数说明
+
+offset 参数只支持微秒绝对时间格式：
+- 以微秒为单位的整数，如 5000000 表示片段开始后5秒的位置
+- 系统会自动将微秒值转换为相对时间比例
 
 #### 支持的动画属性类型
 
@@ -52,6 +58,11 @@ keyframes 是一个JSON字符串，包含关键帧数组，每个关键帧对象
 | KFTypeScaleY | Y轴缩放 | 0.1 到 10.0 | 1.0 (原始), 0.5 (缩小), 2.0 (放大) |
 | KFTypeRotation | 旋转角度 | -360 到 360 | 0 (无旋转), 90 (顺时针90度) |
 | KFTypeAlpha | 透明度 | 0.0 到 1.0 | 1.0 (不透明), 0.5 (半透明), 0.0 (透明) |
+| UNIFORM_SCALE | 统一缩放 | 0.1 到 10.0 | 1.0 (原始), 0.5 (缩小), 2.0 (放大) |
+| KFTypeSaturation | 饱和度 | -1.0 到 1.0 | 0.0 (原始), -0.5 (降低), 0.5 (增强) |
+| KFTypeContrast | 对比度 | -1.0 到 1.0 | 0.0 (原始), -0.5 (降低), 0.5 (增强) |
+| KFTypeBrightness | 亮度 | -1.0 到 1.0 | 0.0 (原始), -0.5 (变暗), 0.5 (变亮) |
+| KFTypeVolume | 音量 | 0.0 到 2.0 | 1.0 (原始), 0.5 (降低), 2.0 (增强) |
 
 ## 响应格式
 
@@ -85,14 +96,14 @@ keyframes 是一个JSON字符串，包含关键帧数组，每个关键帧对象
 
 ### cURL 示例
 
-#### 1. 基本关键帧添加
+#### 1. 基本关键帧添加（使用微秒时间）
 
 ```bash
 curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_keyframes \
   -H "Content-Type: application/json" \
   -d '{
     "draft_url": "YOUR_DRAFT_URL",
-    "keyframes": "[{\"segment_id\":\"d62994b4-25fe-422a-a123-87ef05038558\",\"property\":\"KFTypePositionX\",\"offset\":0,\"value\":0},{\"segment_id\":\"d62994b4-25fe-422a-a123-87ef05038558\",\"property\":\"KFTypePositionX\",\"offset\":1,\"value\":-0.5}]"
+    "keyframes": "[{\"segment_id\":\"segment-id\",\"property\":\"UNIFORM_SCALE\",\"offset\":0,\"value\":1},{\"segment_id\":\"segment-id\",\"property\":\"UNIFORM_SCALE\",\"offset\":5000000,\"value\":1.3}]"
   }'
 ```
 
@@ -103,7 +114,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_keyframes 
   -H "Content-Type: application/json" \
   -d '{
     "draft_url": "YOUR_DRAFT_URL",
-    "keyframes": "[{\"segment_id\":\"segment-uuid\",\"property\":\"KFTypePositionX\",\"offset\":0,\"value\":0},{\"segment_id\":\"segment-uuid\",\"property\":\"KFTypePositionY\",\"offset\":0,\"value\":0},{\"segment_id\":\"segment-uuid\",\"property\":\"KFTypeRotation\",\"offset\":0.5,\"value\":90},{\"segment_id\":\"segment-uuid\",\"property\":\"KFTypeAlpha\",\"offset\":1,\"value\":0}]"
+    "keyframes": "[{\"segment_id\":\"segment-uuid\",\"property\":\"KFTypePositionX\",\"offset\":0,\"value\":0},{\"segment_id\":\"segment-uuid\",\"property\":\"KFTypePositionY\",\"offset\":0,\"value\":0},{\"segment_id\":\"segment-uuid\",\"property\":\"KFTypeRotation\",\"offset\":2500000,\"value\":90},{\"segment_id\":\"segment-uuid\",\"property\":\"KFTypeAlpha\",\"offset\":5000000,\"value\":0}]"
   }'
 ```
 
@@ -124,7 +135,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_keyframes 
 
 1. **片段ID验证**: segment_id 必须是草稿中存在的有效片段ID
 2. **片段类型限制**: 只有视觉片段（视频、图片、贴纸、文本）支持关键帧
-3. **时间偏移范围**: offset 值必须在 0.0-1.0 范围内
+3. **时间偏移范围**: offset 值必须是非负整数（微秒）
 4. **属性值范围**: 不同的属性类型有不同的值范围限制
 5. **重复关键帧**: 相同片段相同属性的关键帧会被累加，不会覆盖
 6. **性能考虑**: 单次请求建议不超过100个关键帧

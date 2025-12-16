@@ -154,10 +154,10 @@ def add_video_to_draft(
         # 0. 下载视频
         video_path = download(url=video['video_url'], save_dir=draft_video_dir)
 
-        # 1. 使用指定的duration或计算值
-        specified_duration = video.get('duration', video['end'] - video['start'])
+        # 1. 获取视频播放时长（target duration）
+        target_duration = video.get('duration', video['end'] - video['start'])
 
-        # 创建图像调节设置
+        # 2. 创建图像调节设置
         clip_settings = draft.ClipSettings(
             alpha=alpha,
             scale_x=scale_x,
@@ -166,25 +166,24 @@ def add_video_to_draft(
             transform_y=transform_y / video['height']  # 转换为半画布高单位
         )
         
-        # 计算在素材中的源时间范围
-        source_duration = video['end'] - video['start']
+        # 3. 计算在时间轴上的显示时长（source duration）
+        display_duration = video['end'] - video['start']
         
-        # 创建视频素材
+        # 4. 创建视频素材
         video_material = draft.VideoMaterial(video_path)
         
+        # 5. 创建视频片段
         video_segment = draft.VideoSegment(
             material=video_material, 
-            target_timerange=trange(start=video['start'], duration=source_duration),
-            source_timerange=trange(start=0, duration=min(video_material.duration, source_duration)),
+            target_timerange=trange(start=video['start'], duration=display_duration),
+            source_timerange=trange(start=0, duration=min(video_material.duration, display_duration)),
             speed=1.0,  # 保持原始速度
-            volume=video['volume'],
+            volume=video.get('volume', 1.0),
             clip_settings=clip_settings
         )
-            
-        logger.info(f"material_id: {video_segment.material_instance.material_id}")
-        logger.info(f"video_path: {video_path}, start: {video['start']}, duration: {source_duration}, volume: {video['volume']}")
+        logger.info(f"video_path: {video_path}, start: {video['start']}, target_duration: {target_duration}, display_duration: {display_duration}, volume: {video.get('volume', 1.0)}")
 
-        # 2. 添加转场效果（如果指定了）
+        # 6. 添加转场效果（如果指定了）
         transition_name = video.get('transition')
         if transition_name:
             transition_type = find_transition_type_by_name(transition_name)
@@ -198,10 +197,10 @@ def add_video_to_draft(
             else:
                 logger.warning(f"Transition type not found for name: {transition_name}")
 
-        # 3. 向指定轨道添加片段，
+        # 7. 向指定轨道添加片段
         script.add_segment(video_segment, track_name)
 
-        # 修复：返回 segment_id 而不是 material_id
+        # 8. 返回片段ID（注意：是segment_id而不是material_id）
         return video_segment.segment_id
     except CustomException:
         logger.info(f"Add video to draft failed, draft_video_dir: {draft_video_dir}, video: {video}")
@@ -209,6 +208,7 @@ def add_video_to_draft(
     except Exception as e:
         logger.error(f"Add video to draft failed, error: {str(e)}")
         raise CustomException(err=CustomError.VIDEO_ADD_FAILED)
+
 
 def find_transition_type_by_name(transition_name: str) -> Optional[draft.TransitionType]:
     """

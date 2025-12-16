@@ -55,6 +55,8 @@ POST /openapi/capcut-mate/v1/add_captions
 | transform_x | number | ❌ | 0.0 | X轴位置偏移（像素） |
 | transform_y | number | ❌ | 0.0 | Y轴位置偏移（像素） |
 | style_text | boolean | ❌ | false | 是否使用样式文本 |
+| has_shadow | boolean | ❌ | false | 是否启用文本阴影 |
+| shadow_info | object | ❌ | null | 文本阴影参数 |
 
 ### captions字段详细说明
 
@@ -127,6 +129,30 @@ captions是一个JSON字符串，包含字幕数组，每个字幕对象包含�
   - 负值向上移动
   - 以画布中心为原点
   - 实际存储时会转换为半画布高单位（假设画布高度1080，即除以540）
+
+#### 文本阴影参数
+
+`shadow_info` 是一个对象，包含以下字段：
+
+| 字段名 | 类型 | 必填 | 默认值 | 说明 |
+|--------|------|------|--------|------|
+| shadow_alpha | number | ❌ | 1.0 | 阴影不透明度，取值范围为[0, 1] |
+| shadow_color | string | ❌ | "#000000" | 阴影颜色（十六进制） |
+| shadow_diffuse | number | ❌ | 15.0 | 阴影扩散程度，取值范围为[0, 100] |
+| shadow_distance | number | ❌ | 5.0 | 阴影距离，取值范围为[0, 100] |
+| shadow_angle | number | ❌ | -45.0 | 阴影角度，取值范围为[-180, 180] |
+
+当 `has_shadow` 设置为 `true` 但未提供 `shadow_info` 时，系统将使用以下默认阴影配置：
+
+```json
+{
+  "shadow_color": "#000000",
+  "shadow_alpha": 0.9,
+  "shadow_diffuse": 15,
+  "shadow_distance": 5,
+  "shadow_angle": -45
+}
+```
 
 ## 响应格式
 
@@ -212,7 +238,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_captions \
   -H "Content-Type: application/json" \
   -d '{
     "draft_url": "YOUR_DRAFT_URL",
-    "captions": "[{\"start\":0,\"end\":5000000,\"text\":\"你好，剪映\",\"keyword\":\"好\",\"keyword_color\":\"#ff0000\"}]",
+    "captions": "[{\"start\":0,\"end\":5000000,\"text\":\"你好，剪映\",\"keyword\":\"好\",\"keyword_color\":\"#ff0000\"]",
     "text_color": "#ffffff",
     "alignment": 1,
     "alpha": 1.0,
@@ -221,6 +247,45 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_captions \
     "scale_y": 1.2,
     "transform_x": 100.0,
     "transform_y": -50.0
+  }'
+```
+
+#### 4. 带文本阴影的字幕
+
+```bash
+curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_captions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "draft_url": "YOUR_DRAFT_URL",
+    "captions": "[{\"start\":0,\"end\":5000000,\"text\":\"你好，剪映\"}]",
+    "text_color": "#ffffff",
+    "alignment": 1,
+    "alpha": 1.0,
+    "font_size": 20,
+    "has_shadow": true,
+    "shadow_info": {
+      "shadow_alpha": 0.8,
+      "shadow_color": "#000000",
+      "shadow_diffuse": 20.0,
+      "shadow_distance": 10.0,
+      "shadow_angle": -45.0
+    }
+  }'
+```
+
+#### 5. 使用默认文本阴影的字幕
+
+```bash
+curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_captions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "draft_url": "YOUR_DRAFT_URL",
+    "captions": "[{\"start\":0,\"end\":5000000,\"text\":\"你好，剪映\"}]",
+    "text_color": "#ffffff",
+    "alignment": 1,
+    "alpha": 1.0,
+    "font_size": 20,
+    "has_shadow": true
   }'
 ```
 

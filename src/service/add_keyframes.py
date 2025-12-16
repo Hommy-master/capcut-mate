@@ -70,7 +70,7 @@ def add_keyframes(
             if segment is None:
                 logger.error(f"Segment not found: {keyframe_item['segment_id']}, skipping this keyframe")
                 failed_keyframes += 1
-                continue  # 继续处理下一个关键帧，而不是抛出异常
+                continue  # 继续处理下一个关键帧
             
             # 验证片段类型
             if not isinstance(segment, VisualSegment):
@@ -86,9 +86,18 @@ def add_keyframes(
                 failed_keyframes += 1
                 continue  # 继续处理下一个关键帧
             
-            # 计算时间偏移（将相对位置转换为微秒）
+            # 处理offset值：只支持微秒绝对时间，需要转换为相对时间
             segment_duration = segment.duration
-            time_offset = int(keyframe_item['offset'] * segment_duration)
+            offset_value = keyframe_item['offset']
+            
+            # 将微秒绝对时间转换为相对时间（0-1范围）
+            relative_offset = offset_value / segment_duration
+            # 确保相对时间在有效范围内
+            relative_offset = max(0.0, min(1.0, relative_offset))
+            logger.info(f"Converting absolute offset {offset_value} microseconds to relative offset {relative_offset} for segment duration {segment_duration}")
+            
+            # 计算时间偏移（将相对位置转换为微秒）
+            time_offset = int(relative_offset * segment_duration)
             
             logger.info(f"Adding keyframe to segment {keyframe_item['segment_id']}: property={property_enum.value}, time_offset={time_offset}, value={keyframe_item['value']}")
             
@@ -156,7 +165,7 @@ def parse_keyframes_data(json_str: str) -> List[Dict[str, Any]]:
             {
                 "segment_id": "d62994b4-25fe-422a-a123-87ef05038558",  # [必选] 目标片段的唯一标识ID
                 "property": "KFTypePositionX",  # [必选] 动画属性类型
-                "offset": 0.5,  # [必选] 关键帧在片段中的时间偏移（0-1范围）
+                "offset": 5000000,  # [必选] 关键帧在片段中的时间偏移（微秒绝对时间）
                 "value": -0.1  # [必选] 属性在该时间点的值
             }
         ]
@@ -184,7 +193,8 @@ def parse_keyframes_data(json_str: str) -> List[Dict[str, Any]]:
     # 支持的动画属性类型
     supported_properties = {
         "KFTypePositionX", "KFTypePositionY", "KFTypeScaleX", 
-        "KFTypeScaleY", "KFTypeRotation", "KFTypeAlpha"
+        "KFTypeScaleY", "KFTypeRotation", "KFTypeAlpha", "UNIFORM_SCALE",
+        "KFTypeSaturation", "KFTypeContrast", "KFTypeBrightness", "KFTypeVolume"
     }
     
     for i, item in enumerate(data):
@@ -205,10 +215,10 @@ def parse_keyframes_data(json_str: str) -> List[Dict[str, Any]]:
             logger.error(f"the {i}th item has unsupported property type: {item['property']}")
             raise CustomException(CustomError.INVALID_KEYFRAME_INFO, f"the {i}th item has unsupported property type: {item['property']}")
         
-        # 验证offset范围（0-1）
-        if not isinstance(item["offset"], (int, float)) or item["offset"] < 0.0 or item["offset"] > 1.0:
-            logger.error(f"the {i}th item has invalid offset value: {item['offset']}, must be between 0.0 and 1.0")
-            raise CustomException(CustomError.INVALID_KEYFRAME_INFO, f"the {i}th item has invalid offset value: {item['offset']}")
+        # 验证offset是数字类型且为非负数
+        if not isinstance(item["offset"], (int, float)) or item["offset"] < 0:
+            logger.error(f"the {i}th item has invalid offset type or value: {item['offset']}, must be a non-negative number")
+            raise CustomException(CustomError.INVALID_KEYFRAME_INFO, f"the {i}th item has invalid offset type or value: {item['offset']}")
         
         # 验证value是数字类型
         if not isinstance(item["value"], (int, float)):
@@ -219,7 +229,7 @@ def parse_keyframes_data(json_str: str) -> List[Dict[str, Any]]:
         processed_item = {
             "segment_id": str(item["segment_id"]),
             "property": item["property"],
-            "offset": float(item["offset"]),
+            "offset": float(item["offset"]),  # 保持原始微秒值，在主函数中转换为相对时间
             "value": float(item["value"])
         }
         
