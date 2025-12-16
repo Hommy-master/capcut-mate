@@ -2,6 +2,15 @@ from pydantic import BaseModel, Field
 from typing import List, Optional
 
 
+class ShadowInfo(BaseModel):
+    """文本阴影参数"""
+    alpha: float = Field(default=1.0, ge=0.0, le=1.0, description="阴影不透明度, 取值范围为[0, 1]")
+    color: str = Field(default="#000000", description="阴影颜色（十六进制）")
+    diffuse: float = Field(default=15.0, ge=0.0, le=100.0, description="阴影扩散程度, 取值范围为[0, 100]")
+    distance: float = Field(default=5.0, ge=0.0, le=100.0, description="阴影距离, 取值范围为[0, 100]")
+    angle: float = Field(default=-45.0, ge=-180.0, le=180.0, description="阴影角度, 取值范围为[-180, 180]")
+
+
 class AddCaptionsRequest(BaseModel):
     """批量添加字幕请求参数"""
     draft_url: str = Field(default="", description="草稿URL")
@@ -22,6 +31,7 @@ class AddCaptionsRequest(BaseModel):
     underline: bool = Field(default=False, description="文字下划线开关")
     italic: bool = Field(default=False, description="文本斜体开关")
     bold: bool = Field(default=False, description="文本加粗开关")
+    shadow_info: Optional[ShadowInfo] = Field(default=None, description="文本阴影参数")
 
 
 class CaptionItem(BaseModel):

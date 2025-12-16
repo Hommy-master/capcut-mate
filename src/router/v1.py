@@ -208,7 +208,8 @@ def add_captions(acr: AddCaptionsRequest) -> AddCaptionsResponse:
         style_text=acr.style_text,
         underline=acr.underline,
         italic=acr.italic,
-        bold=acr.bold
+        bold=acr.bold,
+        shadow_info=acr.shadow_info
     )
 
     return AddCaptionsResponse(

@@ -2,10 +2,11 @@ import json
 from typing import List, Dict, Any, Tuple, Optional, Literal
 
 from src.utils.logger import logger
-from src.pyJianYingDraft import ScriptFile, TrackType, TextSegment, TextStyle, ClipSettings, Timerange, FontType, TextBorder
+from src.pyJianYingDraft import ScriptFile, TrackType, TextSegment, TextStyle, ClipSettings, Timerange, FontType, TextBorder, TextShadow
 from src.utils.draft_cache import DRAFT_CACHE
 from exceptions import CustomException, CustomError
 from src.utils import helper
+from src.schemas.add_captions import ShadowInfo
 
 
 def add_captions(
@@ -26,7 +27,8 @@ def add_captions(
     style_text: bool = False,
     underline: bool = False,
     italic: bool = False,
-    bold: bool = False
+    bold: bool = False,
+    shadow_info: Optional[ShadowInfo] = None
 ) -> Tuple[str, str, List[str], List[str], List[dict]]:
     """
     批量添加字幕到剪映草稿的业务逻辑
@@ -83,7 +85,7 @@ def add_captions(
     logger.debug(f"Function parameters - text_color: {text_color}, border_color: {border_color}, "
                  f"alignment: {alignment}, alpha: {alpha}, font: {font}, font_size: {font_size}, "
                  f"scale_x: {scale_x}, scale_y: {scale_y}, transform_x: {transform_x}, transform_y: {transform_y}, "
-                 f"style_text: {style_text}, underline: {underline}, italic: {italic}, bold: {bold}")
+                 f"style_text: {style_text}, underline: {underline}, italic: {italic}, bold: {bold}, shadow_info: {shadow_info}")
     
     try:
         # 1. 提取草稿ID
@@ -134,7 +136,8 @@ def add_captions(
                     style_text=style_text,
                     underline=underline,
                     italic=italic,
-                    bold=bold
+                    bold=bold,
+                    shadow_info=shadow_info
                 )
                 segment_ids.append(segment_id)
                 text_ids.append(text_id)
@@ -188,7 +191,8 @@ def add_caption_to_draft(
     style_text: bool = False,
     underline: bool = False,
     italic: bool = False,
-    bold: bool = False
+    bold: bool = False,
+    shadow_info: Optional[ShadowInfo] = None
 ) -> Tuple[str, str, dict]:
     """
     向剪映草稿中添加单个字幕
@@ -210,6 +214,7 @@ def add_caption_to_draft(
             in_animation_duration: 入场动画时长，可选
             out_animation_duration: 出场动画时长，可选
             loop_animation_duration: 循环动画时长，可选
+        shadow_info: 文本阴影参数
         其他参数：字幕样式设置
     
     Returns:
@@ -283,20 +288,33 @@ def add_caption_to_draft(
             transform_y=transform_y / script.height  # 转换为画布高度单位
         )
         
-        # 7. 创建文本片段
+        # 7. 创建文本阴影（如果提供了shadow_info）
+        text_shadow = None
+        if shadow_info:
+            shadow_rgb_color = hex_to_rgb(shadow_info.color)
+            text_shadow = TextShadow(
+                alpha=shadow_info.alpha,
+                color=shadow_rgb_color,
+                diffuse=shadow_info.diffuse,
+                distance=shadow_info.distance,
+                angle=shadow_info.angle
+            )
+        
+        # 8. 创建文本片段
         text_segment = TextSegment(
             text=caption['text'],
             timerange=timerange,
             style=text_style,
             border=text_border,  # 添加边框
             font=font_type,      # 添加字体
+            shadow=text_shadow,  # 添加阴影
             clip_settings=clip_settings
         )
         
         logger.info(f"Created text segment, material_id: {text_segment.material_id}")
         logger.info(f"Text segment details - start: {caption['start']}, duration: {caption_duration}, text: {caption['text'][:50]}")
 
-        # 8. 处理关键词高亮
+        # 9. 处理关键词高亮
         if caption.get('keyword'):
             keyword_color = caption.get('keyword_color', '#ff7100')  # 默认橙色
             keyword_rgb_color = hex_to_rgb(keyword_color)
@@ -305,7 +323,7 @@ def add_caption_to_draft(
             apply_keyword_highlight(text_segment, caption['keyword'], keyword_rgb_color, keyword_font_size)
             logger.info(f"Applied keyword highlighting: {caption['keyword']} with color {keyword_color} and font size {keyword_font_size}")
         
-        # 9. TODO: 处理动画效果（需要导入相应的动画类型）
+        # 10. TODO: 处理动画效果（需要导入相应的动画类型）
         if caption.get('in_animation'):
             logger.info(f"In animation specified but not implemented yet: {caption['in_animation']}")
         if caption.get('out_animation'):
@@ -313,10 +331,10 @@ def add_caption_to_draft(
         if caption.get('loop_animation'):
             logger.info(f"Loop animation specified but not implemented yet: {caption['loop_animation']}")
 
-        # 10. 向指定轨道添加片段
+        # 11. 向指定轨道添加片段
         script.add_segment(text_segment, track_name)
 
-        # 11. 构造片段信息
+        # 12. 构造片段信息
         segment_info = {
             "id": text_segment.segment_id,
             "start": caption['start'],
