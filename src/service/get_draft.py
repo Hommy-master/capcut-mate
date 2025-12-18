@@ -15,8 +15,18 @@ def gen_download_url(file_path: str) -> str:
     Returns:
         download_url: 下载URL
     """
-    # 替换文件路径中的/app/为DOWNLOAD_URL
-    download_url = file_path.replace("/app/", config.DOWNLOAD_URL)
+    try:
+        relative_path = os.path.relpath(file_path, config.PROJECT_ROOT)
+    except ValueError:
+        # 如果路径不在同一驱动器等情况
+        relative_path = file_path
+
+    # 将系统路径分隔符转换为URL的正斜杠
+    relative_path = relative_path.replace(os.sep, "/")
+    
+    # 拼接URL
+    base_url = config.DOWNLOAD_URL.rstrip("/")
+    download_url = f"{base_url}/{relative_path}"
     return download_url
 
 def batch_gen_download_url(file_paths: List[str]) -> List[str]:

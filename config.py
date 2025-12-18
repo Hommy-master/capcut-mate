@@ -2,11 +2,14 @@
 import os
 
 
+# 项目根目录
+PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
+
 # 保存剪映草稿的目录
-DRAFT_DIR = os.path.join(os.path.dirname(__file__), "output", "draft")
+DRAFT_DIR = os.path.join(PROJECT_ROOT, "output", "draft")
 
 # 临时文件目录
-TEMP_DIR = os.path.join(os.path.dirname(__file__), "temp")
+TEMP_DIR = os.path.join(PROJECT_ROOT, "temp")
 
 # 剪映草稿的下载路径
 DRAFT_URL = os.getenv("DRAFT_URL", "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft")
