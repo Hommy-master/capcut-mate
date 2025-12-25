@@ -34,7 +34,7 @@ jobs:
         with:
           node-version: '22'
           cache: 'npm'
-        working-directory: ./desktop-client
+          cache-dependency-path: desktop-client/package-lock.json
 
       - name: 安装Electron依赖
         run: npm ci
