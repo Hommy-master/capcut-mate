@@ -34,6 +34,7 @@ jobs:
         with:
           node-version: '22'
           cache: 'npm'
+        working-directory: ./desktop-client
 
       - name: 安装Electron依赖
         run: npm ci
