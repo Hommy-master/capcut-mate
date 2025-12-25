@@ -1,0 +1,32 @@
+{
+  "name": "@sd/web",
+  "version": "0.0.100",
+  "description": "剪映小助手，用于下载剪映草稿",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "dev:electron": "cross-env NODE_ENV=development vite",
+    "build:electron": "cross-env NODE_ENV=production vite build"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^5.1.1",
+    "cross-env": "^10.1.0",
+    "electron": "^39.2.5",
+    "electron-builder": "^26.0.12",
+    "vite": "^7.2.6",
+    "vite-plugin-electron": "^0.29.0"
+  },
+  "dependencies": {
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "axios": "^1.11.0",
+    "bootstrap": "^5.3.8",
+    "dayjs": "^1.11.19",
+    "react": "^19.2.0",
+    "react-bootstrap": "^2.10.10",
+    "react-bootstrap-icons": "^1.11.6",
+    "react-dom": "^19.2.0",
+    "react-router-dom": "^7.10.1",
+    "react-toastify": "^11.0.5"
+  }
+}
