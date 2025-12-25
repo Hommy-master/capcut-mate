@@ -4,7 +4,7 @@
 CapCut Mate API 是一个基于 FastAPI 构建的剪映草稿自动化助手，提供丰富的API接口来创建和编辑剪映草稿。支持创建草稿、添加视频/音频/图片/字幕/特效等素材、保存草稿及云端渲染等功能，可作为扣子插件一键部署使用。
 
 ## 项目相关资源
-- [剪映小助手-客户端](https://github.com/Hommy-master/capcut-mate-electron)
+- [剪映小助手](https://github.com/Hommy-master/capcut-mate)
 - [剪映小助手-扣子插件](https://www.coze.cn/store/plugin/7576197869707722771)
 
 ⭐ 如果您觉得这个项目对您有点帮助，麻烦点个 Star 支持一下！您的支持是我持续维护和改进项目的最大动力 😊
