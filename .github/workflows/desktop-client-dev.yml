@@ -1,0 +1,80 @@
+name: Build
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            platform: win
+            artifact_name: windows-build
+            build_command: build-win
+            installer_command: build-win-installer
+          - os: macos-latest
+            platform: mac
+            artifact_name: macos-build
+            build_command: build-mac
+            installer_command: build-mac-installer
+
+    steps:
+      - name: 准备代码
+        uses: actions/checkout@v4
+
+      - name: 设置Node.js环境
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: 安装Electron依赖 & 安装前端依赖 & 构建前端
+        run: npm ci && npm run web:ci && npm run web:build
+
+      - name: 更新版本号
+        run: node scripts/update-version.js
+        env:
+          GITHUB_REF: ${{ github.ref }}
+
+      - name: 根据平台打包应用程序
+        run: npm run ${{ matrix.build_command }}
+
+      - name: 根据平台创建安装包
+        run: npm run ${{ matrix.installer_command }}
+        env:
+          # 添加环境变量以解决macOS构建问题
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+          DEBUG: electron-builder
+
+      - name: 列出dist目录内容
+        run: |
+          echo "当前操作系统: ${{ runner.os }}"
+          ls dist/
+        shell: bash
+
+      - name: 上传安装包构件
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}-installer
+          path: dist/
+          if-no-files-found: ignore
+
+      - name: 发布版本
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          files: |
+            dist/capcut-mate-windows-x64-installer.exe
+            dist/capcut-mate-macos-arm64-installer.dmg
+          overwrite: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
