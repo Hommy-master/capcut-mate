@@ -188,6 +188,30 @@ curl -X POST "http://localhost:30000/openapi/capcut-mate/v1/add_videos" \
 - 本地访问: http://localhost:30000/docs
 - ReDoc 版本: http://localhost:30000/redoc
 
+## 剪映小助手客户端
+
+剪映小助手客户端提供了桌面端的便捷操作界面，以下是启动方法：
+
+1. 安装依赖
+
+```bash
+# 切换npm镜像源 - 适用于windows
+set ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/
+
+# 切换yarn镜像源 - 适用于linux 或 mac
+export ELECTRON_MIRROR="https://npmmirror.com/mirrors/electron/"
+
+# 安装依赖
+npm install --verbose
+```
+
+2. 启动项目
+
+```bash
+npm run web:dev
+npm start
+```
+
 ## 开源社区问题交流群
 - 微信群：
 
