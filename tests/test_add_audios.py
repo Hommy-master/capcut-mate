@@ -6,7 +6,7 @@ def test_add_audios():
     """测试音频添加接口"""
     
     # 1. 先创建一个草稿
-    create_draft_url = "http://localhost:8000/v1/create_draft"
+    create_draft_url = "http://localhost:30000/openapi/capcut-mate/v1/create_draft"
     create_draft_data = {
         "width": 1920,
         "height": 1080
@@ -25,29 +25,15 @@ def test_add_audios():
         print(f"Draft created successfully: {draft_url}")
         
         # 2. 添加音频
-        add_audios_url = "http://localhost:8000/v1/add_audios"
+        add_audios_url = "http://localhost:30000/openapi/capcut-mate/v1/add_audios"
         audio_infos = [
             {
-                "audio_url": "https://example.com/audio1.mp3",
+                "audio_url": "https://assets.jcaigc.cn/test1.mp3",
                 "duration": 10000000,  # 10秒 (微秒)
                 "start": 0,
                 "end": 5000000,  # 前5秒
                 "volume": 0.8,
-                "audio_effect": "reverb"
-            },
-            {
-                "audio_url": "https://example.com/audio2.mp3",
-                "duration": 15000000,  # 15秒 (微秒)
-                "start": 5000000,  # 从第5秒开始
-                "end": 10000000,   # 到第10秒结束
-                "volume": 1.0
-            },
-            # 测试不提供duration字段的情况
-            {
-                "audio_url": "https://example.com/audio3.mp3",
-                "start": 10000000,  # 从第10秒开始
-                "end": 15000000,    # 到第15秒结束
-                "volume": 0.5
+                "audio_effect": "教堂"
             }
         ]
         
@@ -71,7 +57,7 @@ def test_add_audios():
             
     except Exception as e:
         print(f"Error occurred: {e}")
-        print("Make sure the server is running on http://localhost:8000")
+        print("确保服务器正在运行 http://localhost:30000")
 
 
 if __name__ == "__main__":
