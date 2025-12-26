@@ -59,6 +59,8 @@ class Animation:
 class VideoAnimation(Animation):
     """一个视频动画效果"""
 
+    animation_type: Literal["in", "out", "group"]
+
     def __init__(self, animation_type: Union[IntroType, OutroType, GroupAnimationType],
                  start: int, duration: int):
         super().__init__(animation_type.value, start, duration)
@@ -74,6 +76,8 @@ class VideoAnimation(Animation):
 
 class Text_animation(Animation):
     """一个文本动画效果"""
+
+    animation_type: Literal["in", "out", "loop"]
 
     def __init__(self, animation_type: Union[TextIntro, TextOutro, TextLoopAnim],
                  start: int, duration: int):
