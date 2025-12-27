@@ -24,7 +24,7 @@ jobs:
             artifact_name: macos-build
             build_command: build-mac
             installer_command: build-mac-installer
-          - os: macos-13
+          - os: macos-15-intel
             platform: mac-x64
             artifact_name: macos-build-x64
             build_command: build-mac-x64
