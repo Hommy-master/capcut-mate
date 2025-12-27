@@ -11,8 +11,10 @@
     "web:build": "npm --prefix web run build",
     "build-win": "electron-packager . CapCut-Mate --platform=win32 --arch=x64 --out dist --overwrite --icon=assets/icons/logo.ico --ignore=.gitignore --ignore=.github --ignore=README.md --ignore=scripts --ignore=web",
     "build-mac": "electron-packager . CapCut-Mate --platform=darwin --arch=arm64 --out dist --overwrite --icon=assets/icons/logo.icns --ignore=.gitignore --ignore=.github --ignore=README.md --ignore=scripts --ignore=web",
+    "build-mac-x64": "electron-packager . CapCut-Mate --platform=darwin --arch=x64 --out dist --overwrite --icon=assets/icons/logo.icns --ignore=.gitignore --ignore=.github --ignore=README.md --ignore=scripts --ignore=web",
     "build-win-installer": "electron-builder --win nsis --x64 --config ./scripts/electron-builder.config.js --publish never",
-    "build-mac-installer": "electron-builder --mac --arm64 --config ./scripts/electron-builder.config.js --publish never"
+    "build-mac-installer": "electron-builder --mac --arm64 --config ./scripts/electron-builder.config.js --publish never",
+    "build-mac-x64-installer": "electron-builder --mac --x64 --config ./scripts/electron-builder.config.js --publish never"
   },
   "devDependencies": {
     "@electron/packager": "^18.3.5",

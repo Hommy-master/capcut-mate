@@ -32,8 +32,17 @@ module.exports = {
   },
   mac: {
     icon: "assets/icons/logo.icns",
-    target: "dmg",
-    artifactName: "capcut-mate-macos-arm64-installer.dmg",
+    target: [
+      {
+        target: "dmg",
+        arch: "arm64"
+      },
+      {
+        target: "dmg",
+        arch: "x64"
+      }
+    ],
+    artifactName: "capcut-mate-macos-${arch}-installer.dmg",
     category: "public.app-category.productivity"
   },
   dmg: {
