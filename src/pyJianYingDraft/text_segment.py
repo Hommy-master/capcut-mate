@@ -4,7 +4,7 @@ import json
 import uuid
 from copy import deepcopy
 
-from typing import Dict, Tuple, Any, List
+from typing import Dict, Tuple, Any
 from typing import Union, Optional, Literal
 
 from .time_util import Timerange, tim
@@ -273,9 +273,6 @@ class TextSegment(VisualSegment):
     """文本气泡效果, 在放入轨道时加入素材列表中"""
     effect: Optional[TextEffect]
     """文本花字效果, 在放入轨道时加入素材列表中, 目前仅支持一部分花字效果"""
-    
-    extra_styles: List[Dict[str, Any]]
-    """额外的文本样式，用于关键词高亮等功能"""
 
     def __init__(self, text: str, timerange: Timerange, *,
                  font: Optional[FontType] = None,
@@ -307,7 +304,6 @@ class TextSegment(VisualSegment):
 
         self.bubble = None
         self.effect = None
-        self.extra_styles = []  # 初始化额外样式列表
 
     @classmethod
     def create_from_template(cls, text: str, timerange: Timerange, template: "TextSegment") -> "TextSegment":
@@ -316,7 +312,6 @@ class TextSegment(VisualSegment):
                           border=deepcopy(template.border), background=deepcopy(template.background),
                           shadow=deepcopy(template.shadow))
         new_segment.font = deepcopy(template.font)
-        new_segment.extra_styles = deepcopy(template.extra_styles)
 
         # 处理动画等
         if template.animations_instance:
@@ -397,33 +392,27 @@ class TextSegment(VisualSegment):
         if self.shadow:
             check_flag |= 32
 
-        # 创建基础样式
-        base_style = {
-            "fill": {
-                "alpha": 1.0,
-                "content": {
-                    "render_type": "solid",
-                    "solid": {
-                        "alpha": 1.0,
-                        "color": list(self.style.color)
-                    }
-                }
-            },
-            "range": [0, len(self.text)],
-            "size": self.style.size,
-            "bold": self.style.bold,
-            "italic": self.style.italic,
-            "underline": self.style.underline,
-            "strokes": [self.border.export_json()] if self.border else []
-        }
-        
-        # 合并基础样式和额外样式
-        styles = [base_style]
-        if self.extra_styles:
-            styles.extend(self.extra_styles)
-
         content_json = {
-            "styles": styles,
+            "styles": [
+                {
+                    "fill": {
+                        "alpha": 1.0,
+                        "content": {
+                            "render_type": "solid",
+                            "solid": {
+                                "alpha": 1.0,
+                                "color": list(self.style.color)
+                            }
+                        }
+                    },
+                    "range": [0, len(self.text)],
+                    "size": self.style.size,
+                    "bold": self.style.bold,
+                    "italic": self.style.italic,
+                    "underline": self.style.underline,
+                    "strokes": [self.border.export_json()] if self.border else []
+                }
+            ],
             "text": self.text
         }
         if self.font:

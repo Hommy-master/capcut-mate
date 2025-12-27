@@ -452,7 +452,7 @@ class ScriptFile:
 
         index = 0
         text: str = ""
-        text_trange: Optional[Timerange] = None
+        text_trange: Timerange
         read_state: Literal["index", "timestamp", "content"] = "index"
         while index < len(lines):
             line = lines[index].strip()
@@ -475,8 +475,7 @@ class ScriptFile:
             elif read_state == "content":
                 # 内容结束, 生成片段
                 if len(line) == 0:
-                    if text_trange is not None:
-                        __add_text_segment(text.strip(), text_trange)
+                    __add_text_segment(text.strip(), text_trange)
 
                     text = ""
                     read_state = "index"
@@ -485,7 +484,7 @@ class ScriptFile:
                 index += 1
 
         # 添加最后一个片段
-        if len(text) > 0 and text_trange is not None:
+        if len(text) > 0:
             __add_text_segment(text.strip(), text_trange)
 
         return self

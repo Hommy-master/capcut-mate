@@ -24,6 +24,11 @@ jobs:
             artifact_name: macos-build
             build_command: build-mac
             installer_command: build-mac-installer
+          - os: macos-15-intel
+            platform: mac-x64
+            artifact_name: macos-build-x64
+            build_command: build-mac-x64
+            installer_command: build-mac-x64-installer
 
     steps:
       - name: 准备代码
@@ -88,6 +93,7 @@ jobs:
           files: |
             desktop-client/dist/capcut-mate-windows-x64-installer.exe
             desktop-client/dist/capcut-mate-macos-arm64-installer.dmg
+            desktop-client/dist/capcut-mate-macos-x64-installer.dmg
           overwrite: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
