@@ -1,6 +1,6 @@
 {
   "name": "capcut-mate",
-  "version": "2.1",
+  "version": "0.0.100",
   "description": "剪映小助手，用于下载剪映草稿",
   "main": "main.js",
   "scripts": {
