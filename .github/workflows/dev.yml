@@ -2,11 +2,11 @@ name: Docker Image CI Dev
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "dev" ]
     tags:
       - 'v*'  # 当推送v开头的tag时触发
   pull_request:
-    branches: [ "main" ]
+    branches: [ "main", "dev" ]
 
 jobs:
   build:
@@ -40,6 +40,7 @@ jobs:
           # 复制源代码
           cp -rf src dist/
           cp -rf config dist/
+          cp -rf template dist/
           # 复制依赖配置文件
           cp pyproject.toml dist/
           cp *.py dist/

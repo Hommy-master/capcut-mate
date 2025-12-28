@@ -6,9 +6,14 @@ const logger = require('./nodeapi/logger');
 const { setupIpcHandlers } = require('./nodeapi/ipcHandlers');
 
 let mainWindow;
+let ipcHandlersInitialized = false;
 
 function createWindow() {
-  mainWindow = null;
+  // 避免重复创建窗口
+  if (mainWindow) {
+    mainWindow.show();
+    return mainWindow;
+  }
 
   mainWindow = new BrowserWindow({
     width: 1366,
@@ -49,12 +54,17 @@ function createWindow() {
     mainWindow.show();
   });
 
-  // 调用IPC处理程序，传递mainWindow参数
-  setupIpcHandlers(mainWindow);
+  // 只初始化一次IPC处理程序
+  if (!ipcHandlersInitialized) {
+    setupIpcHandlers(mainWindow);
+    ipcHandlersInitialized = true;
+  }
 
   mainWindow.on('closed', function () {
     mainWindow = null;
   });
+
+  return mainWindow;
 }
 
 // 当Electron完成初始化并准备创建浏览器窗口时调用此方法
@@ -71,9 +81,15 @@ app.on('window-all-closed', () => {
 });
 
 app.on('activate', () => {
-  // 在macOS上，当单击dock图标并且没有其他窗口打开时，
-  // 通常在应用程序中重新创建一个窗口
+  // 在macOS上，当单击dock图标时，如果没有任何窗口打开则创建一个，
+  // 否则显示已存在的窗口
   if (BrowserWindow.getAllWindows().length === 0) {
     createWindow();
+  } else {
+    // 如果已有窗口，确保它被显示和聚焦
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.focus();
+    }
   }
 });
