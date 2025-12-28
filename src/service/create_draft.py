@@ -18,7 +18,11 @@ def generate_unique_draft_id():
 
 def ensure_template_exists():
     """确保默认模板存在于草稿目录中"""
-    template_source_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "template", "default")
+    # 使用绝对路径构建模板源路径
+    current_file_dir = os.path.dirname(os.path.abspath(__file__))  # src/service
+    src_dir = os.path.dirname(current_file_dir)  # src
+    project_root = os.path.dirname(src_dir)  # 项目根目录
+    template_source_path = os.path.join(project_root, "template", "default")
     template_target_path = os.path.join(config.DRAFT_DIR, "default")
     
     if not os.path.exists(template_target_path):
