@@ -193,41 +193,46 @@ def add_image_to_draft(
             transform_y=transform_y / image['height']  # 转换为半画布高单位
         )
         
-        # 创建视频素材实例（图片使用VideoMaterial）
-        video_material = draft.VideoMaterial(
-            path=image_path,  # 使用绝对路径以确保文件能被正确解析
-            material_name=os.path.basename(image_path)
-        )
-        
         # 创建视频片段（图片使用VideoSegment）
         video_segment = draft.VideoSegment(
-            material=video_material,  # 使用VideoMaterial实例而不是路径字符串
+            material=image_path,
             target_timerange=trange(start=image['start'], duration=segment_duration),
             clip_settings=clip_settings
         )
         
-        # 在添加到script之前，修改video_material的路径为相对路径
-        # 获取草稿目录，用于计算相对路径
-        draft_dir = os.path.dirname(os.path.dirname(script.save_path)) if script.save_path else draft_image_dir
+        # 3. 添加动画效果（如果指定了）
+        # 注意：由于动画相关的枚举类型较复杂，这里先预留接口
+        if image.get('in_animation'):
+            try:
+                logger.info(f"In animation '{image['in_animation']}' specified but not implemented yet")
+                # 这里可以根据需要添加具体的入场动画
+                # 例如：video_segment.add_animation(IntroType.XXX, duration=image.get('in_animation_duration'))
+            except Exception as e:
+                logger.warning(f"Failed to add in animation '{image['in_animation']}': {str(e)}")
         
-        # 计算相对于草稿目录的相对路径
-        relative_path = os.path.relpath(image_path, draft_dir)
+        if image.get('out_animation'):
+            try:
+                logger.info(f"Out animation '{image['out_animation']}' specified but not implemented yet")
+                # 这里可以根据需要添加具体的出场动画
+                # 例如：video_segment.add_animation(OutroType.XXX, duration=image.get('out_animation_duration'))
+            except Exception as e:
+                logger.warning(f"Failed to add out animation '{image['out_animation']}': {str(e)}")
         
-        # 验证相对路径是否正确（确保文件存在）
-        resolved_path = os.path.join(draft_dir, relative_path) if draft_dir else relative_path
-        # 标准化路径，确保使用正确的分隔符
-        resolved_path = os.path.normpath(resolved_path)
-        relative_path = os.path.normpath(relative_path)  # 标准化相对路径
+        if image.get('loop_animation'):
+            try:
+                logger.info(f"Loop animation '{image['loop_animation']}' specified but not implemented yet")
+                # 循环动画可能需要特殊处理
+            except Exception as e:
+                logger.warning(f"Failed to add loop animation '{image['loop_animation']}': {str(e)}")
         
-        if os.path.exists(resolved_path):
-            # 修改素材实例的路径为相对路径，以确保跨平台兼容
-            # 将反斜杠替换为正斜杠，确保跨平台兼容
-            normalized_relative_path = relative_path.replace(os.sep, '/')
-            video_material.path = normalized_relative_path
-        else:
-            logger.warning(f"Relative path does not resolve to existing file: {resolved_path}, keeping absolute path")
-            # 如果相对路径无法解析到现有文件，则保留绝对路径
-        
+        # 4. 添加转场效果（如果指定了）
+        if image.get('transition'):
+            try:
+                logger.info(f"Transition '{image['transition']}' specified but not implemented yet")
+                # 例如：video_segment.add_transition(TransitionType.XXX, duration=image.get('transition_duration'))
+            except Exception as e:
+                logger.warning(f"Failed to add transition '{image['transition']}': {str(e)}")
+
         logger.info(f"Created image segment, material_id: {video_segment.material_instance.material_id}")
         logger.info(f"Image segment details - start: {image['start']}, duration: {segment_duration}, size: {image['width']}x{image['height']}")
 

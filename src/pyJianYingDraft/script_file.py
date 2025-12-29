@@ -790,43 +790,8 @@ class ScriptFile:
         track_list.sort(key=lambda track: track.render_index)
         self.content["tracks"] = [track.export_json() for track in track_list]
 
-        # 处理平台信息，确保跨平台兼容性
-        self._process_platform_info()
-
         return json.dumps(self.content, ensure_ascii=False, indent=4)
 
-    def _process_platform_info(self) -> None:
-        """处理平台信息，确保跨平台兼容性"""
-        import platform
-        current_os = platform.system().lower()
-        if current_os == "darwin":  # macOS
-            os_name = "mac"
-        elif current_os == "windows":
-            os_name = "windows"
-        else:
-            os_name = "windows"  # 默认为windows
-        
-        # 更新平台信息
-        if "platform" in self.content:
-            self.content["platform"]["os"] = os_name
-        else:
-            self.content["platform"] = {
-                "app_id": 3704,
-                "app_source": "lv",
-                "app_version": "5.9.0",
-                "os": os_name
-            }
-        
-        if "last_modified_platform" in self.content:
-            self.content["last_modified_platform"]["os"] = os_name
-        else:
-            self.content["last_modified_platform"] = {
-                "app_id": 3704,
-                "app_source": "lv",
-                "app_version": "5.9.0",
-                "os": os_name
-            }
-    
     def dump(self, file_path: str) -> None:
         """将草稿文件内容写入文件"""
         with open(file_path, "w", encoding="utf-8") as f:
@@ -838,20 +803,6 @@ class ScriptFile:
         Raises:
             `ValueError`: 没有设置保存路径
         """
-        # 处理素材路径，将绝对路径替换为跨平台兼容的占位符
-        if "materials" in self.content:
-            for material_type in ["videos", "audios"]:
-                if material_type in self.content["materials"]:
-                    for material in self.content["materials"][material_type]:
-                        if "path" in material:
-                            # 生成唯一的占位符ID
-                            import uuid
-                            placeholder_id = uuid.uuid4().hex
-                            # 用占位符替换实际路径
-                            placeholder_path = f"##_draftpath_placeholder_{placeholder_id}_##/{os.path.basename(material['path'])}"
-                            # 保留文件名部分，用占位符替换路径部分
-                            material["path"] = placeholder_path
-        
         if self.save_path is None:
             raise ValueError("没有设置保存路径, 可能不在模板模式下")
         self.dump(self.save_path)
