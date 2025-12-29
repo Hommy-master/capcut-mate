@@ -1,1 +1,58 @@
-{"cloud_draft_cover":false,"cloud_draft_sync":false,"cloud_package_completed_time":"","draft_cloud_capcut_purchase_info":"","draft_cloud_last_action_download":false,"draft_cloud_package_type":"","draft_cloud_purchase_info":"","draft_cloud_template_id":"","draft_cloud_tutorial_info":"","draft_cloud_videocut_purchase_info":"","draft_cover":"draft_cover.jpg","draft_deeplink_url":"","draft_enterprise_info":{"draft_enterprise_extra":"","draft_enterprise_id":"","draft_enterprise_name":"","enterprise_material":[]},"draft_fold_path":"C:/Users/1/AppData/Local/JianyingPro/User Data/Projects/com.lveditor.draft/dabdab61-e6f0-4d81-81ba-fc2517b742c2","draft_id":"340B14D0-4F91-43f3-B34E-730807160194","draft_is_ae_produce":false,"draft_is_ai_packaging_used":false,"draft_is_ai_shorts":false,"draft_is_ai_translate":false,"draft_is_article_video_draft":false,"draft_is_cloud_temp_draft":false,"draft_is_from_deeplink":"false","draft_is_invisible":false,"draft_is_web_article_video":false,"draft_materials":[{"type":0,"value":[]},{"type":1,"value":[]},{"type":2,"value":[]},{"type":3,"value":[]},{"type":6,"value":[]},{"type":7,"value":[]},{"type":8,"value":[]}],"draft_materials_copied_info":[],"draft_name":"dabdab61-e6f0-4d81-81ba-fc2517b742c2","draft_need_rename_folder":false,"draft_new_version":"","draft_removable_storage_device":"","draft_root_path":"C:\\Users\\1\\AppData\\Local\\JianyingPro\\User Data\\Projects\\com.lveditor.draft","draft_segment_extra_info":[],"draft_timeline_materials_size_":2075,"draft_type":"","draft_web_article_video_enter_from":"","tm_draft_cloud_completed":"","tm_draft_cloud_entry_id":-1,"tm_draft_cloud_modified":0,"tm_draft_cloud_parent_entry_id":-1,"tm_draft_cloud_space_id":-1,"tm_draft_cloud_user_id":-1,"tm_draft_create":1686707414251596,"tm_draft_modified":2686707417166183,"tm_draft_removed":0,"tm_duration":0}
+{
+    "draft_cloud_last_action_download": false,
+    "draft_cloud_purchase_info": "",
+    "draft_cloud_tutorial_info": "",
+    "draft_cover": "",
+    "draft_fold_path": "/Users/z4/Movies/JianyingPro/User Data/Projects/com.lveditor.draft/12月29日",
+    "draft_id": "F8B72D13-7BB1-430B-89F1-BBECD092E08D",
+    "draft_materials": [
+        {
+            "type": 0,
+            "value": [
+            ]
+        },
+        {
+            "type": 1,
+            "value": [
+            ]
+        },
+        {
+            "type": 2,
+            "value": [
+            ]
+        },
+        {
+            "type": 3,
+            "value": [
+            ]
+        },
+        {
+            "type": 6,
+            "value": [
+            ]
+        },
+        {
+            "type": 7,
+            "value": [
+            ]
+        },
+        {
+            "type": 8,
+            "value": [
+            ]
+        }
+    ],
+    "draft_materials_copied_info": [
+    ],
+    "draft_name": "12月29日",
+    "draft_removable_storage_device": "",
+    "draft_root_path": "/Users/z4/Movies/JianyingPro/User Data/Projects/com.lveditor.draft",
+    "draft_segment_extra_info": [
+    ],
+    "draft_timeline_materials_size_": 1524,
+    "tm_draft_cloud_completed": "",
+    "tm_draft_cloud_modified": 0,
+    "tm_draft_create": 1767007847131339,
+    "tm_draft_modified": 1767007866760103,
+    "tm_duration": 0
+}

@@ -1,1 +1,131 @@
-{"canvas_config":{"height":0,"ratio":"original","width":0},"color_space":-1,"config":{"adjust_max_index":1,"attachment_info":[],"combination_max_index":1,"export_range":null,"extract_audio_last_index":1,"lyrics_recognition_id":"","lyrics_sync":true,"lyrics_taskinfo":[],"maintrack_adsorb":true,"material_save_mode":0,"original_sound_last_index":1,"record_audio_last_index":1,"sticker_max_index":1,"subtitle_recognition_id":"","subtitle_sync":true,"subtitle_taskinfo":[],"video_mute":false,"zoom_info_params":null},"cover":null,"create_time":0,"duration":0,"extra_info":null,"fps":30,"free_render_index_mode_on":false,"group_container":null,"id":"47095d03-6a91-4482-bbea-5800a23436f7","keyframes":{"adjusts":[],"audios":[],"effects":[],"filters":[],"handwrites":[],"stickers":[],"texts":[],"videos":[]},"last_modified_platform":{"app_id":3704,"app_source":"lv","app_version":"3.9.0","device_id":"ece93fefa6d73d0879f6cf6251e212fd","hard_disk_id":"da04071d52c1f66c291bc2f5b1f0e87f","mac_address":"864b94efa06c9456b10992695eba19c4","os":"mac","os_version":"12.5.1"},"materials":{"audio_balances":[],"audio_effects":[],"audio_fades":[],"audios":[],"beats":[],"canvases":[],"chromas":[],"color_curves":[],"drafts":[],"effects":[],"handwrites":[],"hsl":[],"images":[],"log_color_wheels":[],"manual_deformations":[],"masks":[],"material_animations":[],"placeholders":[],"plugin_effects":[],"primary_color_wheels":[],"realtime_denoises":[],"sound_channel_mappings":[],"speeds":[],"stickers":[],"tail_leaders":[],"text_templates":[],"texts":[],"transitions":[],"video_effects":[],"video_trackings":[],"videos":[]},"mutable_config":null,"name":"","new_version":"69.0.0","platform":{"app_id":3704,"app_source":"lv","app_version":"3.9.0","device_id":"ece93fefa6d73d0879f6cf6251e212fd","hard_disk_id":"da04071d52c1f66c291bc2f5b1f0e87f","mac_address":"864b94efa06c9456b10992695eba19c4","os":"mac","os_version":"12.5.1"},"relationships":[],"render_index_track_mode_on":false,"retouch_cover":null,"source":"default","static_cover_image_path":"","tracks":[],"update_time":0,"version":360000}
+{
+    "canvas_config": {
+        "height": 0,
+        "ratio": "original",
+        "width": 0
+    },
+    "color_space": -1,
+    "config": {
+        "adjust_max_index": 1,
+        "combination_max_index": 1,
+        "export_range": null,
+        "extract_audio_last_index": 1,
+        "lyrics_recognition_id": "",
+        "lyrics_sync": true,
+        "lyrics_taskinfo": [
+        ],
+        "maintrack_adsorb": true,
+        "material_save_mode": 0,
+        "original_sound_last_index": 1,
+        "record_audio_last_index": 1,
+        "sticker_max_index": 1,
+        "subtitle_recognition_id": "",
+        "subtitle_sync": true,
+        "subtitle_taskinfo": [
+        ],
+        "video_mute": false
+    },
+    "cover": null,
+    "create_time": 0,
+    "duration": 0,
+    "extra_info": null,
+    "fps": 30.0,
+    "group_container": null,
+    "id": "1E7B473A-7C58-4FF5-AF38-620EDBEE66DE",
+    "keyframes": {
+        "adjusts": [
+        ],
+        "audios": [
+        ],
+        "filters": [
+        ],
+        "handwrites": [
+        ],
+        "stickers": [
+        ],
+        "texts": [
+        ],
+        "videos": [
+        ]
+    },
+    "last_modified_platform": {
+        "app_id": 3704,
+        "app_version": "3.1.0-beta7",
+        "os": "mac",
+        "os_version": "15.6.1"
+    },
+    "materials": {
+        "audio_balances": [
+        ],
+        "audio_effects": [
+        ],
+        "audio_fades": [
+        ],
+        "audios": [
+        ],
+        "beats": [
+        ],
+        "canvases": [
+        ],
+        "chromas": [
+        ],
+        "color_curves": [
+        ],
+        "drafts": [
+        ],
+        "effects": [
+        ],
+        "handwrites": [
+        ],
+        "hsl": [
+        ],
+        "images": [
+        ],
+        "log_color_wheels": [
+        ],
+        "masks": [
+        ],
+        "material_animations": [
+        ],
+        "placeholders": [
+        ],
+        "primary_color_wheels": [
+        ],
+        "realtime_denoises": [
+        ],
+        "speeds": [
+        ],
+        "stickers": [
+        ],
+        "tail_leaders": [
+        ],
+        "text_templates": [
+        ],
+        "texts": [
+        ],
+        "transitions": [
+        ],
+        "video_effects": [
+        ],
+        "video_trackings": [
+        ],
+        "videos": [
+        ]
+    },
+    "mutable_config": null,
+    "name": "",
+    "new_version": "52.0.0",
+    "platform": {
+        "app_id": 3704,
+        "app_version": "3.1.0-beta7",
+        "os": "mac",
+        "os_version": "15.6.1"
+    },
+    "relationships": [
+    ],
+    "render_index_track_mode_on": true,
+    "tracks": [
+    ],
+    "update_time": 0,
+    "version": 360000
+}
