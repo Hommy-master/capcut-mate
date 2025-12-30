@@ -5,30 +5,6 @@ from src.utils.draft_cache import update_cache
 from exceptions import CustomException, CustomError
 import datetime
 import uuid
-import json
-import os
-
-
-def update_draft_meta_info(draft_id: str):
-    """
-    更新draft_meta_info.json文件中的draft_fold_path字段
-    
-    Args:
-        draft_id: 草稿ID
-    """
-    draft_path = os.path.join(config.DRAFT_DIR, draft_id)
-    meta_info_path = os.path.join(draft_path, "draft_meta_info.json")
-    
-    # 读取现有的draft_meta_info.json文件
-    with open(meta_info_path, 'r', encoding='utf-8') as f:
-        meta_info = json.load(f)
-    
-    # 设置draft_fold_path为草稿文件夹的完整路径
-    meta_info["draft_fold_path"] = draft_path
-    
-    # 写回文件
-    with open(meta_info_path, 'w', encoding='utf-8') as f:
-        json.dump(meta_info, f, ensure_ascii=False, indent=4)
 
 
 def create_draft(width: int, height: int) -> str:
@@ -64,9 +40,6 @@ def create_draft(width: int, height: int) -> str:
         
         # 保存草稿以确保主轨道被创建
         script.save()
-        
-        # 更新draft_meta_info.json中的draft_fold_path字段
-        update_draft_meta_info(draft_id)
         
     except Exception as e:
         logger.error(f"create draft failed: {e}")
