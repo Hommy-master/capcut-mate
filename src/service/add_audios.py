@@ -1,5 +1,5 @@
 from src.utils.logger import logger
-from src.pyJianYingDraft import ScriptFile, trange
+from src.pyJianYingDraft import ScriptFile, trange, AudioSceneEffectType, VideoSceneEffectType, VideoCharacterEffectType
 import src.pyJianYingDraft as draft
 from src.pyJianYingDraft.local_materials import AudioMaterial
 from src.utils.draft_cache import DRAFT_CACHE
@@ -97,6 +97,89 @@ def add_audios(
     return draft_url, track_id, audio_ids
 
 
+def find_audio_effect_type(audio_effect: str):
+    """
+    根据音频效果名称查找对应的效果类型
+    
+    Args:
+        audio_effect: 音频效果名称
+    
+    Returns:
+        effect_type: 对应的效果类型对象，如果未找到则返回None
+    """
+    effect_type = None
+    
+    # 查找对应的音频效果类型
+    for effect_name, effect_meta in AudioSceneEffectType.__members__.items():
+        if effect_meta.value.name == audio_effect:
+            effect_type = effect_meta
+            break
+    
+    # 如果没找到，则尝试在VideoSceneEffectType中查找
+    if effect_type is None:
+        for effect_name, effect_meta in VideoSceneEffectType.__members__.items():
+            if effect_meta.value.name == audio_effect:
+                effect_type = effect_meta
+                break
+    
+    # 如果没找到，则尝试在VideoCharacterEffectType中查找
+    if effect_type is None:
+        for effect_name, effect_meta in VideoCharacterEffectType.__members__.items():
+            if effect_meta.value.name == audio_effect:
+                effect_type = effect_meta
+                break
+    
+    return effect_type
+
+
+def convert_params_to_range(effect_type) -> list:
+    """
+    将效果参数转换为0-100范围内的值列表
+    
+    Args:
+        effect_type: 效果类型对象
+    
+    Returns:
+        params_list: 转换后的参数值列表
+    """
+    params_list = []
+    for param in effect_type.value.params:
+        # 将实际默认值转换为0-100范围内的值
+        if param.min_value != param.max_value:
+            # 计算参数值在0-100范围内的对应值
+            param_value = ((param.default_value - param.min_value) / (param.max_value - param.min_value)) * 100
+        else:
+            # 如果参数范围是固定值，则使用50作为默认值
+            param_value = 50
+        params_list.append(param_value)
+    
+    return params_list
+
+
+def add_audio_effect(audio_segment, audio_effect: str):
+    """
+    为音频片段添加音频效果
+    
+    Args:
+        audio_segment: 音频片段对象
+        audio_effect: 音频效果名称
+    """
+    effect_type = find_audio_effect_type(audio_effect)
+    
+    # 如果找到了对应的效果类型，则添加效果
+    if effect_type:
+        params_list = convert_params_to_range(effect_type)
+        
+        # 添加效果
+        audio_segment.add_effect(
+            effect_type=effect_type,
+            params=params_list
+        )
+        logger.info(f"Added audio effect: {audio_effect} with params: {params_list}")
+    else:
+        logger.warning(f"Unknown audio effect: {audio_effect}")
+
+
 def add_audio_to_draft(
     script: ScriptFile,
     track_name: str,
@@ -136,64 +219,22 @@ def add_audio_to_draft(
             audio['duration'] = temp_material.duration
             logger.info(f"Auto-detected audio duration: {audio['duration']} microseconds")
 
-        # 3. 计算截取时长
+        # 3. 创建音频素材并添加到草稿
         segment_duration = audio['end'] - audio['start']
-        logger.info(f"Audio trimming params - start: {audio['start']} microseconds, end: {audio['end']} microseconds, duration: {segment_duration} microseconds")
-
-        # 5. 创建音频素材并添加到草稿
-        # 使用逻辑截取，通过source_timerange设置音频片段的开始和结束时间
         audio_segment = draft.AudioSegment(
-            material=audio_path,  # 使用原始音频文件
-            source_timerange=trange(start=audio['start'], duration=segment_duration),  # 设置从原始音频的哪个位置开始截取
-            target_timerange=trange(start=0, duration=segment_duration),  # 轨道开始时间从0开始
+            material=audio_path,
+            target_timerange=trange(start=audio['start'], duration=segment_duration),
             volume=audio['volume']
         )
         
-        # 3. 添加音频效果（如果指定了）
+        # 4. 添加音频效果（如果指定了）
         if audio.get('audio_effect'):
-            try:
-                # 添加音频效果
-                audio_effect = audio['audio_effect']
-                effect_type = None
-                
-                # 查找对应的音频效果类型
-                for effect_name, effect_meta in draft.AudioSceneEffectType.__members__.items():
-                    if effect_meta.value.name == audio_effect:
-                        effect_type = effect_meta
-                        break
-                
-                # 如果找到了对应的效果类型，则添加效果
-                if effect_type:
-                    # 获取效果的默认参数，转换为0-100范围内的值列表
-                    # 注意：add_effect方法需要的是0-100范围内的参数值列表
-                    # 而不是直接传递实际值
-                    params_list = []
-                    for param in effect_type.value.params:
-                        # 将实际默认值转换为0-100范围内的值
-                        # 例如：如果参数范围是0-1，默认值是1，则转换为100
-                        if param.min_value != param.max_value:
-                            # 计算参数值在0-100范围内的对应值
-                            param_value = ((param.default_value - param.min_value) / (param.max_value - param.min_value)) * 100
-                        else:
-                            # 如果参数范围是固定值，则使用50作为默认值
-                            param_value = 50
-                        params_list.append(param_value)
-                    
-                    # 添加效果
-                    audio_segment.add_effect(
-                        effect_type=effect_type,
-                        params=params_list
-                    )
-                    logger.info(f"Added audio effect: {audio_effect} with params: {params_list}")
-                else:
-                    logger.warning(f"Unknown audio effect: {audio_effect}")
-            except Exception as e:
-                logger.warning(f"Failed to add audio effect '{audio['audio_effect']}': {str(e)}")
+            add_audio_effect(audio_segment, audio['audio_effect'])
 
         logger.info(f"Created audio segment, material_id: {audio_segment.material_instance.material_id}")
         logger.info(f"Audio segment details - start: {audio['start']}, duration: {segment_duration}, volume: {audio['volume']}")
 
-        # 4. 向指定轨道添加片段
+        # 5. 向指定轨道添加片段
         script.add_segment(audio_segment, track_name)
 
         return audio_segment.material_instance.material_id
