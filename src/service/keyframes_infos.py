@@ -3,6 +3,42 @@ import json
 from typing import List, Dict, Any
 
 
+def calculate_relative_time_offset(offset_percent: int, duration: int) -> int:
+    """
+    根据百分比和持续时间计算相对时间偏移
+    
+    Args:
+        offset_percent: 时间百分比 (0-100)
+        duration: 片段持续时间（微秒）
+        
+    Returns:
+        int: 相对时间偏移（微秒）
+    """
+    return int((offset_percent / 100.0) * duration)
+
+
+def normalize_keyframe_value(ctype: str, value: float, height: int = None, width: int = None) -> float:
+    """
+    根据关键帧类型对值进行归一化处理
+    
+    Args:
+        ctype: 关键帧类型
+        value: 原始值
+        height: 视频高度
+        width: 视频宽度
+        
+    Returns:
+        float: 归一化后的值
+    """
+    normalized_value = value
+    if ctype == "KFTypePositionX" and width is not None and width > 0:
+        normalized_value = value / width
+    elif ctype == "KFTypePositionY" and height is not None and height > 0:
+        normalized_value = value / height
+    
+    return normalized_value
+
+
 def keyframes_infos(
     ctype: str,
     offsets: str,
@@ -50,18 +86,14 @@ def keyframes_infos(
         
         # 为每个offset创建关键帧
         for offset_percent, value in zip(offset_list, value_list):
-            # 计算实际的时间偏移（微秒）
-            time_offset = int(start + (offset_percent / 100.0) * duration)
+            # 计算片段内的相对时间偏移（微秒）
+            relative_time_offset = calculate_relative_time_offset(offset_percent, duration)
             
             # 根据关键帧类型处理值的归一化
-            normalized_value = value
-            if ctype == "KFTypePositionX" and width is not None and width > 0:
-                normalized_value = value / width
-            elif ctype == "KFTypePositionY" and height is not None and height > 0:
-                normalized_value = value / height
+            normalized_value = normalize_keyframe_value(ctype, value, height, width)
             
             keyframe = {
-                "offset": time_offset,
+                "offset": relative_time_offset,  # 使用片段相对时间而不是轨道绝对时间
                 "property": ctype,
                 "segment_id": segment_id,
                 "value": normalized_value
