@@ -3,6 +3,7 @@ from typing import List, Dict, Any, Tuple, Optional, Literal
 
 from src.utils.logger import logger
 from src.pyJianYingDraft import ScriptFile, TrackType, TextSegment, TextStyle, ClipSettings, Timerange, FontType, TextBorder, TextShadow
+from src.pyJianYingDraft.metadata import TextIntro, TextOutro, TextLoopAnim
 from src.utils.draft_cache import DRAFT_CACHE
 from exceptions import CustomException, CustomError
 from src.utils import helper
@@ -340,13 +341,48 @@ def add_caption_to_draft(
             apply_keyword_highlight(text_segment, caption['keyword'], keyword_rgb_color, keyword_font_size)
             logger.info(f"Applied keyword highlighting: {caption['keyword']} with color {keyword_color} and font size {keyword_font_size}")
         
-        # 10. TODO: 处理动画效果（需要导入相应的动画类型）
+        # 10. 处理动画效果
         if caption.get('in_animation'):
-            logger.info(f"In animation specified but not implemented yet: {caption['in_animation']}")
+            in_animation_name = caption['in_animation']
+            in_animation_enum = map_animation_name_to_enum(in_animation_name, "in")
+            if in_animation_enum:
+                # 获取动画时长，优先使用指定时长，否则使用默认时长
+                in_duration = caption.get('in_animation_duration')
+                try:
+                    text_segment.add_animation(in_animation_enum, duration=in_duration)
+                    logger.info(f"Added in animation: {in_animation_name}")
+                except Exception as e:
+                    logger.error(f"Failed to add in animation '{in_animation_name}': {str(e)}")
+            else:
+                logger.warning(f"In animation not found: {in_animation_name}")
+        
         if caption.get('out_animation'):
-            logger.info(f"Out animation specified but not implemented yet: {caption['out_animation']}")
+            out_animation_name = caption['out_animation']
+            out_animation_enum = map_animation_name_to_enum(out_animation_name, "out")
+            if out_animation_enum:
+                # 获取动画时长，优先使用指定时长，否则使用默认时长
+                out_duration = caption.get('out_animation_duration')
+                try:
+                    text_segment.add_animation(out_animation_enum, duration=out_duration)
+                    logger.info(f"Added out animation: {out_animation_name}")
+                except Exception as e:
+                    logger.error(f"Failed to add out animation '{out_animation_name}': {str(e)}")
+            else:
+                logger.warning(f"Out animation not found: {out_animation_name}")
+        
         if caption.get('loop_animation'):
-            logger.info(f"Loop animation specified but not implemented yet: {caption['loop_animation']}")
+            loop_animation_name = caption['loop_animation']
+            loop_animation_enum = map_animation_name_to_enum(loop_animation_name, "loop")
+            if loop_animation_enum:
+                # 获取动画时长，优先使用指定时长，否则使用默认时长
+                loop_duration = caption.get('loop_animation_duration')
+                try:
+                    text_segment.add_animation(loop_animation_enum, duration=loop_duration)
+                    logger.info(f"Added loop animation: {loop_animation_name}")
+                except Exception as e:
+                    logger.error(f"Failed to add loop animation '{loop_animation_name}': {str(e)}")
+            else:
+                logger.warning(f"Loop animation not found: {loop_animation_name}")
 
         # 11. 向指定轨道添加片段
         script.add_segment(text_segment, track_name)
@@ -528,6 +564,48 @@ def parse_captions_data(json_str: str) -> List[Dict[str, Any]]:
     
     logger.info(f"Successfully parsed {len(result)} caption items")
     return result
+
+
+def map_animation_name_to_enum(animation_name: str, animation_type: str):
+    """
+    将动画名称字符串映射到对应的枚举值
+    
+    Args:
+        animation_name: 动画名称字符串
+        animation_type: 动画类型 ("in", "out", "loop")
+    
+    Returns:
+        对应的动画枚举值，如果未找到则返回None
+    """
+    # 入场动画映射
+    in_animation_map = {}
+    for attr_name in dir(TextIntro):
+        attr = getattr(TextIntro, attr_name)
+        if isinstance(attr, TextIntro):
+            in_animation_map[attr.value.title] = attr
+    
+    # 出场动画映射
+    out_animation_map = {}
+    for attr_name in dir(TextOutro):
+        attr = getattr(TextOutro, attr_name)
+        if isinstance(attr, TextOutro):
+            out_animation_map[attr.value.title] = attr
+    
+    # 循环动画映射
+    loop_animation_map = {}
+    for attr_name in dir(TextLoopAnim):
+        attr = getattr(TextLoopAnim, attr_name)
+        if isinstance(attr, TextLoopAnim):
+            loop_animation_map[attr.value.title] = attr
+    
+    if animation_type == "in":
+        return in_animation_map.get(animation_name)
+    elif animation_type == "out":
+        return out_animation_map.get(animation_name)
+    elif animation_type == "loop":
+        return loop_animation_map.get(animation_name)
+    
+    return None
 
 
 def hex_to_rgb(hex_color: str) -> tuple:
