@@ -45,8 +45,8 @@ POST /openapi/capcut-mate/v1/add_videos
 | 字段名 | 类型 | 必填 | 默认值 | 说明 |
 |--------|------|------|--------|------|
 | video_url | string | ✅ | - | 视频文件的URL地址 |
-| width | number | ✅ | - | 视频宽度(像素) |
-| height | number | ✅ | - | 视频高度(像素) |
+| width | number | ❌ | - | 视频宽度(像素)，不传则自动获取视频文件尺寸 |
+| height | number | ❌ | - | 视频高度(像素)，不传则自动获取视频文件尺寸 |
 | start | number | ✅ | - | 视频开始播放时间(微秒) |
 | end | number | ✅ | - | 视频结束播放时间(微秒) |
 | duration | number | ❌ | end-start | 视频总时长(微秒) |
