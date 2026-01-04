@@ -31,8 +31,8 @@ def add_videos(
         video_infos: [ 
             {
                 "video_url": "https://example.com/video1.mp4", // [必选] 视频文件的URL地址
-                "width": 1920, // [必选] 视频宽度 
-                "height": 1080, // [必选] 视频高度 
+                "width": 1920, // [可选] 视频宽度，不传则自动获取视频文件尺寸
+                "height": 1080, // [可选] 视频高度，不传则自动获取视频文件尺寸
                 "start": 0.0, // [必选] 视频在时间轴上的开始时间 (微秒)
                 "end": 12000000.0, // [必选] 视频在时间轴上的结束时间 (微秒)
                 "duration": 12000000.0, // [可选] 视频总时长(微秒)，如果不传则默认为end-start
@@ -154,25 +154,32 @@ def add_video_to_draft(
         # 0. 下载视频
         video_path = download(url=video['video_url'], save_dir=draft_video_dir)
 
-        # 1. 获取视频播放时长（target duration）
+        # 1. 创建视频素材（用于获取尺寸信息）
+        video_material = draft.VideoMaterial(video_path)
+        
+        # 2. 获取视频尺寸（如果未提供则使用视频素材的实际尺寸）
+        video_width = video.get('width')
+        video_height = video.get('height')
+        if video_width is None or video_height is None:
+            video_width = video_material.width
+            video_height = video_material.height
+
+        # 3. 获取视频播放时长（target duration）
         target_duration = video.get('duration', video['end'] - video['start'])
 
-        # 2. 创建图像调节设置
+        # 4. 创建图像调节设置
         clip_settings = draft.ClipSettings(
             alpha=alpha,
             scale_x=scale_x,
             scale_y=scale_y,
-            transform_x=transform_x / video['width'],  # 转换为半画布宽单位
-            transform_y=transform_y / video['height']  # 转换为半画布高单位
+            transform_x=transform_x / video_width,  # 转换为半画布宽单位
+            transform_y=transform_y / video_height  # 转换为半画布高单位
         )
         
-        # 3. 计算在时间轴上的显示时长（source duration）
+        # 5. 计算在时间轴上的显示时长（source duration）
         display_duration = video['end'] - video['start']
         
-        # 4. 创建视频素材
-        video_material = draft.VideoMaterial(video_path)
-        
-        # 5. 创建视频片段
+        # 6. 创建视频片段
         video_segment = draft.VideoSegment(
             material=video_material, 
             target_timerange=trange(start=video['start'], duration=display_duration),
@@ -181,7 +188,7 @@ def add_video_to_draft(
             volume=video.get('volume', 1.0),
             clip_settings=clip_settings
         )
-        logger.info(f"video_path: {video_path}, start: {video['start']}, target_duration: {target_duration}, display_duration: {display_duration}, volume: {video.get('volume', 1.0)}")
+        logger.info(f"video_path: {video_path}, start: {video['start']}, target_duration: {target_duration}, display_duration: {display_duration}, video_size: {video_width}x{video_height}, volume: {video.get('volume', 1.0)}")
 
         # 6. 添加转场效果（如果指定了）
         transition_name = video.get('transition')
@@ -239,8 +246,8 @@ def parse_video_data(json_str: str) -> List[Dict[str, Any]]:
         [ 
             {
                 "video_url": "https://example.com/video1.mp4", // [必选] 视频文件的URL地址
-                "width": 1920, // [必选] 视频宽度 
-                "height": 1080, // [必选] 视频高度 
+                "width": 1920, // [可选] 视频宽度，不传则自动获取视频文件尺寸
+                "height": 1080, // [可选] 视频高度，不传则自动获取视频文件尺寸
                 "start": 0.0, // [必选] 视频在时间轴上的开始时间 
                 "end": 12000000.0, // [必选] 视频在时间轴上的结束时间 
                 "duration": 12000000.0, // [可选] 视频总时长(微秒)，如果不传则默认为end-start
@@ -274,8 +281,8 @@ def parse_video_data(json_str: str) -> List[Dict[str, Any]]:
         if not isinstance(item, dict):
             raise CustomException(CustomError.INVALID_VIDEO_INFO, f"the {i}th item should be a dict")
         
-        # 检查必选字段
-        required_fields = ["video_url", "width", "height", "start", "end"]
+        # 检查必选字段（移除width和height，因为它们现在是可选的）
+        required_fields = ["video_url", "start", "end"]
         missing_fields = [field for field in required_fields if field not in item]
         
         if missing_fields:
@@ -287,8 +294,8 @@ def parse_video_data(json_str: str) -> List[Dict[str, Any]]:
         # 创建处理后的对象，设置默认值
         processed_item = {
             "video_url": item["video_url"],
-            "width": item["width"],
-            "height": item["height"],
+            "width": item.get("width"),  # 可选参数
+            "height": item.get("height"),  # 可选参数
             "start": item["start"],
             "end": item["end"],
             "duration": duration,
