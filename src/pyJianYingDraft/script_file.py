@@ -282,12 +282,12 @@ class ScriptFile:
 
         return next(track for track in self.tracks.values() if track.accept_segment_type == segment_type)
 
-    def add_segment(self, segment: Union[VideoSegment, StickerSegment, AudioSegment, TextSegment],
+    def add_segment(self, segment: Union[VideoSegment, StickerSegment, AudioSegment, TextSegment, EffectSegment],
                     track_name: Optional[str] = None) -> "ScriptFile":
         """向指定轨道中添加一个片段
 
         Args:
-            segment (`VideoSegment`, `StickerSegment`, `AudioSegment`, or `TextSegment`): 要添加的片段
+            segment (`VideoSegment`, `StickerSegment`, `AudioSegment`, `TextSegment`, or `EffectSegment`): 要添加的片段
             track_name (`str`, optional): 添加到的轨道名称. 当此类型的轨道仅有一条时可省略.
 
         Raises:
@@ -348,6 +348,10 @@ class ScriptFile:
                 self.materials.filters.append(segment.effect)
             # 字体样式
             self.materials.texts.append(segment.export_material())
+        elif isinstance(segment, EffectSegment):
+            # 特效素材
+            if segment.effect_inst not in self.materials:
+                self.materials.video_effects.append(segment.effect_inst)
 
         # 添加片段素材
         if isinstance(segment, (VideoSegment, AudioSegment)):
