@@ -4,7 +4,7 @@ import json
 import uuid
 from copy import deepcopy
 
-from typing import Dict, Tuple, Any
+from typing import Dict, Tuple, Any, List
 from typing import Union, Optional, Literal
 
 from .time_util import Timerange, tim
@@ -273,6 +273,8 @@ class TextSegment(VisualSegment):
     """文本气泡效果, 在放入轨道时加入素材列表中"""
     effect: Optional[TextEffect]
     """文本花字效果, 在放入轨道时加入素材列表中, 目前仅支持一部分花字效果"""
+    extra_styles: List[Dict[str, Any]]
+    """额外的文本样式，用于关键词高亮等特殊样式"""
 
     def __init__(self, text: str, timerange: Timerange, *,
                  font: Optional[FontType] = None,
@@ -304,6 +306,7 @@ class TextSegment(VisualSegment):
 
         self.bubble = None
         self.effect = None
+        self.extra_styles = []
 
     @classmethod
     def create_from_template(cls, text: str, timerange: Timerange, template: "TextSegment") -> "TextSegment":
@@ -392,27 +395,31 @@ class TextSegment(VisualSegment):
         if self.shadow:
             check_flag |= 32
 
-        content_json = {
-            "styles": [
-                {
-                    "fill": {
+        # 创建基础样式
+        base_style = {
+            "fill": {
+                "alpha": 1.0,
+                "content": {
+                    "render_type": "solid",
+                    "solid": {
                         "alpha": 1.0,
-                        "content": {
-                            "render_type": "solid",
-                            "solid": {
-                                "alpha": 1.0,
-                                "color": list(self.style.color)
-                            }
-                        }
-                    },
-                    "range": [0, len(self.text)],
-                    "size": self.style.size,
-                    "bold": self.style.bold,
-                    "italic": self.style.italic,
-                    "underline": self.style.underline,
-                    "strokes": [self.border.export_json()] if self.border else []
+                        "color": list(self.style.color)
+                    }
                 }
-            ],
+            },
+            "range": [0, len(self.text)],
+            "size": self.style.size,
+            "bold": self.style.bold,
+            "italic": self.style.italic,
+            "underline": self.style.underline,
+            "strokes": [self.border.export_json()] if self.border else []
+        }
+        
+        # 合并基础样式和额外样式
+        styles = [base_style] + self.extra_styles
+        
+        content_json = {
+            "styles": styles,
             "text": self.text
         }
         if self.font:
