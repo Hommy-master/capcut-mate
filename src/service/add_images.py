@@ -11,6 +11,8 @@ import config
 import json
 from typing import List, Dict, Any, Tuple
 
+from src.pyJianYingDraft.metadata import IntroType, OutroType, GroupAnimationType, TransitionType
+
 
 def add_images(
     draft_url: str, 
@@ -201,35 +203,77 @@ def add_image_to_draft(
         )
         
         # 3. 添加动画效果（如果指定了）
-        # 注意：由于动画相关的枚举类型较复杂，这里先预留接口
         if image.get('in_animation'):
             try:
-                logger.info(f"In animation '{image['in_animation']}' specified but not implemented yet")
-                # 这里可以根据需要添加具体的入场动画
-                # 例如：video_segment.add_animation(IntroType.XXX, duration=image.get('in_animation_duration'))
+                in_duration = image.get('in_animation_duration')
+                if in_duration is not None and in_duration != "":
+                    in_duration = int(in_duration)
+                else:
+                    in_duration = None
+                
+                intro_enum = map_video_animation_name_to_enum(image['in_animation'], 'in')
+                if intro_enum:
+                    video_segment.add_animation(intro_enum, duration=in_duration)
+                    logger.info(f"Successfully added in animation '{image['in_animation']}' to image segment")
+                else:
+                    logger.warning(f"In animation '{image['in_animation']}' not found in available animations")
             except Exception as e:
                 logger.warning(f"Failed to add in animation '{image['in_animation']}': {str(e)}")
         
         if image.get('out_animation'):
             try:
-                logger.info(f"Out animation '{image['out_animation']}' specified but not implemented yet")
-                # 这里可以根据需要添加具体的出场动画
-                # 例如：video_segment.add_animation(OutroType.XXX, duration=image.get('out_animation_duration'))
+                out_duration = image.get('out_animation_duration')
+                if out_duration is not None and out_duration != "":
+                    out_duration = int(out_duration)
+                else:
+                    out_duration = None
+                
+                outro_enum = map_video_animation_name_to_enum(image['out_animation'], 'out')
+                if outro_enum:
+                    video_segment.add_animation(outro_enum, duration=out_duration)
+                    logger.info(f"Successfully added out animation '{image['out_animation']}' to image segment")
+                else:
+                    logger.warning(f"Out animation '{image['out_animation']}' not found in available animations")
             except Exception as e:
                 logger.warning(f"Failed to add out animation '{image['out_animation']}': {str(e)}")
         
+        # 注意：对于图片，循环动画通常不适用，所以这里处理为组合动画
         if image.get('loop_animation'):
             try:
-                logger.info(f"Loop animation '{image['loop_animation']}' specified but not implemented yet")
-                # 循环动画可能需要特殊处理
+                group_duration = image.get('loop_animation_duration')
+                if group_duration is not None and group_duration != "":
+                    group_duration = int(group_duration)
+                else:
+                    group_duration = None
+                
+                group_enum = map_video_animation_name_to_enum(image['loop_animation'], 'group')
+                if group_enum:
+                    video_segment.add_animation(group_enum, duration=group_duration)
+                    logger.info(f"Successfully added group animation '{image['loop_animation']}' to image segment")
+                else:
+                    logger.warning(f"Group animation '{image['loop_animation']}' not found in available animations")
             except Exception as e:
-                logger.warning(f"Failed to add loop animation '{image['loop_animation']}': {str(e)}")
+                logger.warning(f"Failed to add group animation '{image['loop_animation']}': {str(e)}")
         
         # 4. 添加转场效果（如果指定了）
         if image.get('transition'):
             try:
-                logger.info(f"Transition '{image['transition']}' specified but not implemented yet")
-                # 例如：video_segment.add_transition(TransitionType.XXX, duration=image.get('transition_duration'))
+                # 遍历TransitionType中的所有转场效果
+                transition_enum = None
+                for attr_name in dir(TransitionType):
+                    attr = getattr(TransitionType, attr_name)
+                    if isinstance(attr, TransitionType) and attr.value.name == image['transition']:
+                        transition_enum = attr
+                        break
+                
+                if transition_enum:
+                    transition_duration = image.get('transition_duration')
+                    if transition_duration is not None:
+                        transition_duration = int(transition_duration)
+                    video_segment.add_transition(transition_enum, duration=transition_duration)
+                    logger.info(f"Successfully added transition '{image['transition']}' to image segment")
+                else:
+                    logger.warning(f"Transition '{image['transition']}' not found in available transitions")
             except Exception as e:
                 logger.warning(f"Failed to add transition '{image['transition']}': {str(e)}")
 
@@ -254,6 +298,48 @@ def add_image_to_draft(
     except Exception as e:
         logger.error(f"Add image to draft failed, error: {str(e)}")
         raise CustomException(err=CustomError.IMAGE_ADD_FAILED)
+
+
+def map_video_animation_name_to_enum(animation_name: str, animation_type: str):
+    """
+    将视频动画名称字符串映射到对应的枚举值
+    
+    Args:
+        animation_name: 动画名称字符串
+        animation_type: 动画类型 ("in", "out", "group")
+    
+    Returns:
+        对应的动画枚举值，如果未找到则返回None
+    """
+    # 入场动画映射
+    in_animation_map = {}
+    for attr_name in dir(IntroType):
+        attr = getattr(IntroType, attr_name)
+        if isinstance(attr, IntroType):
+            in_animation_map[attr.value.title] = attr
+    
+    # 出场动画映射
+    out_animation_map = {}
+    for attr_name in dir(OutroType):
+        attr = getattr(OutroType, attr_name)
+        if isinstance(attr, OutroType):
+            out_animation_map[attr.value.title] = attr
+    
+    # 组合动画映射
+    group_animation_map = {}
+    for attr_name in dir(GroupAnimationType):
+        attr = getattr(GroupAnimationType, attr_name)
+        if isinstance(attr, GroupAnimationType):
+            group_animation_map[attr.value.title] = attr
+    
+    if animation_type == "in":
+        return in_animation_map.get(animation_name)
+    elif animation_type == "out":
+        return out_animation_map.get(animation_name)
+    elif animation_type == "group":
+        return group_animation_map.get(animation_name)
+    
+    return None
 
 
 def parse_image_data(json_str: str) -> List[Dict[str, Any]]:
