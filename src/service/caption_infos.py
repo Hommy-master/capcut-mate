@@ -82,10 +82,13 @@ def _build_caption_info(text, timeline, index, keywords,
         "text": text
     }
     
-    # 添加关键词信息，如果keywords存在且有足够的关键词，则按索引分配，否则循环分配
+    # 添加关键词信息，如果keywords存在且有足够的关键词，则按索引分配
+    # 如果keywords数量少于文本数量，只有前几个文本有关键词，其余为空字符串
     if keywords is not None and len(keywords) > 0:
-        keyword = keywords[index % len(keywords)]  # 循环使用关键词
-        info["keyword"] = keyword
+        if index < len(keywords):
+            info["keyword"] = keywords[index]
+        else:
+            info["keyword"] = ""  # 当关键词不够时，后续文本关键词设为空字符串
     
     # 添加可选参数
     if keyword_color is not None:
