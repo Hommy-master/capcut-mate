@@ -46,6 +46,19 @@ def imgs_infos(
     if len(imgs) != len(timelines):
         raise ValueError(f"imgs length ({len(imgs)}) does not match timelines length ({len(timelines)})")
     
+    # 处理可能包含多个动画的参数，用 | 分隔
+    in_animations = []
+    if in_animation and isinstance(in_animation, str):
+        in_animations = [anim.strip() for anim in in_animation.split('|') if anim.strip()]
+    
+    out_animations = []
+    if out_animation and isinstance(out_animation, str):
+        out_animations = [anim.strip() for anim in out_animation.split('|') if anim.strip()]
+    
+    loop_animations = []
+    if loop_animation and isinstance(loop_animation, str):
+        loop_animations = [anim.strip() for anim in loop_animation.split('|') if anim.strip()]
+    
     # 构建图片信息列表
     infos = []
     for i, (img_url, timeline) in enumerate(zip(imgs, timelines)):
@@ -62,20 +75,21 @@ def imgs_infos(
         if width is not None:
             info["width"] = width
             
-        if in_animation is not None:
-            info["in_animation"] = in_animation
+        # 循环分配动画，如果动画列表为空则跳过
+        if in_animations:
+            info["in_animation"] = in_animations[i % len(in_animations)]
             
         if in_animation_duration is not None:
             info["in_animation_duration"] = in_animation_duration
             
-        if loop_animation is not None:
-            info["loop_animation"] = loop_animation
+        if loop_animations:
+            info["loop_animation"] = loop_animations[i % len(loop_animations)]
             
         if loop_animation_duration is not None:
             info["loop_animation_duration"] = loop_animation_duration
             
-        if out_animation is not None:
-            info["out_animation"] = out_animation
+        if out_animations:
+            info["out_animation"] = out_animations[i % len(out_animations)]
             
         if out_animation_duration is not None:
             info["out_animation_duration"] = out_animation_duration
