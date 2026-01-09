@@ -212,30 +212,111 @@ def add_audio_to_draft(
         audio_path = download(url=audio['audio_url'], save_dir=draft_audio_dir)
         logger.info(f"Downloaded audio from {audio['audio_url']} to {audio_path}")
 
-        # 2. 如果没有提供duration，则从音频文件中获取实际时长
+        # 2. 获取音频的实际时长
+        temp_material = AudioMaterial(audio_path)
+        actual_duration = temp_material.duration
+        logger.info(f"Actual audio duration: {actual_duration} microseconds")
+        
+        # 3. 如果没有提供duration，则使用实际检测到的时长
         if audio.get('duration') is None:
-            # 创建临时AudioMaterial对象来获取音频时长
-            temp_material = AudioMaterial(audio_path)
-            audio['duration'] = temp_material.duration
-            logger.info(f"Auto-detected audio duration: {audio['duration']} microseconds")
-
-        # 3. 创建音频素材并添加到草稿
-        segment_duration = audio['end'] - audio['start']
+            audio['duration'] = actual_duration
+            logger.info(f"Using detected audio duration: {actual_duration} microseconds")
+        
+        # 4. 根据音频实际时长和指定时长进行智能调整
+        start_time = audio['start']
+        requested_end_time = audio['end']
+        requested_duration = requested_end_time - start_time
+        
+        # 检查并修正开始时间，确保不小于0
+        if start_time < 0:
+            logger.warning(f"Start time {start_time} is negative, setting to 0")
+            start_time = 0
+            
+        # 根据实际音频时长和请求的时长进行智能处理
+        if actual_duration < requested_duration:
+            # 情况1: 音频实际长度不够（小于end - start）时，使用音频实际时长
+            logger.warning(f"Audio actual duration {actual_duration} is less than requested duration {requested_duration}, using actual duration")
+            # 使用音频实际时长，但保持起始时间不变
+            segment_duration = actual_duration
+            end_time = start_time + segment_duration
+        else:
+            # 情况2: 音频实际时长足够时，使用指定的end作为结束时间（但不超过音频实际时长）
+            calculated_end_time = min(requested_end_time, start_time + actual_duration)
+            segment_duration = calculated_end_time - start_time
+            end_time = calculated_end_time
+        
+        # 确保片段至少有最小持续时间，避免0持续时间导致的问题
+        if segment_duration <= 0:
+            logger.warning(f"Segment duration is zero or negative ({segment_duration}), setting to minimum duration")
+            # 设置最小持续时间，比如100微秒，这样可以避免重叠问题
+            segment_duration = 100
+            end_time = start_time + segment_duration
+        
+        # 更新音频对象中的时间参数
+        audio['start'] = start_time
+        audio['end'] = end_time
+        
+        # 5. 计算片段持续时间
+        logger.info(f"Adjusted audio segment: start={start_time}, end={end_time}, duration={segment_duration}, requested_duration={requested_duration}")
+        
+        # 6. 创建音频素材并添加到草稿
         audio_segment = draft.AudioSegment(
             material=audio_path,
-            target_timerange=trange(start=audio['start'], duration=segment_duration),
+            target_timerange=trange(start=start_time, duration=segment_duration),
             volume=audio['volume']
         )
         
-        # 4. 添加音频效果（如果指定了）
+        # 7. 添加音频效果（如果指定了）
         if audio.get('audio_effect'):
             add_audio_effect(audio_segment, audio['audio_effect'])
 
         logger.info(f"Created audio segment, material_id: {audio_segment.material_instance.material_id}")
-        logger.info(f"Audio segment details - start: {audio['start']}, duration: {segment_duration}, volume: {audio['volume']}")
+        logger.info(f"Audio segment details - start: {start_time}, duration: {segment_duration}, volume: {audio['volume']}")
 
-        # 5. 向指定轨道添加片段
-        script.add_segment(audio_segment, track_name)
+        # 8. 向指定轨道添加片段
+        try:
+            script.add_segment(audio_segment, track_name)
+        except Exception as e:
+            # 如果添加片段时出现重叠错误，尝试调整片段位置
+            if "overlaps" in str(e) or "overlap" in str(e).lower():
+                logger.warning(f"Segment overlap detected: {str(e)}, attempting to adjust")
+                # 稍微调整片段的开始时间，避免重叠
+                # 逐步增加偏移量，直到不再重叠
+                offset = 100
+                max_attempts = 10
+                attempts = 0
+                
+                while attempts < max_attempts:
+                    try:
+                        adjusted_start = start_time + offset
+                        logger.info(f"Attempt {attempts + 1}: Adjusting segment start time from {start_time} to {adjusted_start}")
+                        
+                        # 重新创建片段，使用调整后的时间
+                        audio_segment = draft.AudioSegment(
+                            material=audio_path,
+                            target_timerange=trange(start=adjusted_start, duration=segment_duration),
+                            volume=audio['volume']
+                        )
+                        
+                        # 再次尝试添加片段
+                        script.add_segment(audio_segment, track_name)
+                        logger.info(f"Successfully added adjusted segment with start time {adjusted_start}")
+                        break  # 成功添加，跳出循环
+                    except Exception as retry_e:
+                        if "overlaps" in str(retry_e) or "overlap" in str(retry_e).lower():
+                            attempts += 1
+                            offset += 100  # 增加偏移量
+                            logger.info(f"Still overlapping, increasing offset to {offset}")
+                        else:
+                            # 如果不是重叠错误，重新抛出异常
+                            raise
+                
+                if attempts >= max_attempts:
+                    logger.error(f"Failed to add segment after {max_attempts} attempts, giving up")
+                    raise
+            else:
+                # 如果不是重叠错误，重新抛出异常
+                raise
 
         return audio_segment.material_instance.material_id
         
@@ -313,9 +394,8 @@ def parse_audio_data(json_str: str) -> List[Dict[str, Any]]:
             logger.warning(f"Volume value {processed_item['volume']} out of range [0.0, 2.0], using default 1.0")
             processed_item["volume"] = 1.0
         
-        if processed_item["start"] < 0 or processed_item["end"] <= processed_item["start"]:
-            logger.error(f"Invalid time range: start={processed_item['start']}, end={processed_item['end']}")
-            raise CustomException(CustomError.INVALID_AUDIO_INFO, f"the {i}th item has invalid time range")
+        # 不在此处严格验证时间范围，留待后续处理中进行容错调整
+        # 如果开始时间大于结束时间或等于结束时间，我们将在 add_audio_to_draft 函数中进行智能调整
         
         # 如果提供了duration且小于等于0，则报错
         if processed_item["duration"] is not None and processed_item["duration"] <= 0:
