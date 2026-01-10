@@ -4,6 +4,12 @@ module.exports = {
   directories: {
     output: "dist"
   },
+  win: {
+    icon: "assets/icons/logo.ico",
+  },
+  mac: {
+    icon: "assets/icons/logo.icns",
+  },
   files: [
     "!node_modules/**/*",
     "!web/node_modules/**/*",
