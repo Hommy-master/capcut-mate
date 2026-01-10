@@ -6,9 +6,11 @@ module.exports = {
   },
   win: {
     icon: "assets/icons/logo.ico",
+    artifactName: "capcut-mate-\${version}-x64-green.zip",
   },
   mac: {
     icon: "assets/icons/logo.icns",
+    artifactName: "capcut-mate-\${version}-\${arch}-green.zip",
   },
   files: [
     "!node_modules/**/*",
