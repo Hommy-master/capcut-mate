@@ -19,16 +19,19 @@ jobs:
             artifact_name: windows-build
             build_command: build-win
             installer_command: build-win-installer
+            green_command: build-win-green
           - os: macos-latest
             platform: mac
             artifact_name: macos-build
             build_command: build-mac
             installer_command: build-mac-installer
+            green_command: build-mac-green
           - os: macos-15-intel
             platform: mac-x64
             artifact_name: macos-build-x64
             build_command: build-mac-x64
             installer_command: build-mac-x64-installer
+            green_command: build-mac-x64-green
 
     steps:
       - name: 准备代码
@@ -71,6 +74,15 @@ jobs:
           CSC_IDENTITY_AUTO_DISCOVERY: false
           DEBUG: electron-builder
 
+      - name: 构建绿色安装包
+        if: matrix.green_command != 'null'
+        run: npm run ${{ matrix.green_command }}
+        working-directory: ./desktop-client
+        env:
+          # 添加环境变量以解决macOS构建问题
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+          DEBUG: electron-builder
+
       - name: 列出dist目录内容
         run: |
           echo "当前操作系统: ${{ runner.os }}"
@@ -84,6 +96,14 @@ jobs:
           path: desktop-client/dist/
           if-no-files-found: ignore
 
+      - name: 上传绿色安装包构件
+        if: matrix.green_command != 'null'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}-green
+          path: desktop-client/dist/*.zip
+          if-no-files-found: ignore
+
       - name: 发布版本
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v1
@@ -94,6 +114,7 @@ jobs:
             desktop-client/dist/capcut-mate-windows-x64-installer.exe
             desktop-client/dist/capcut-mate-macos-arm64-installer.dmg
             desktop-client/dist/capcut-mate-macos-x64-installer.dmg
+            desktop-client/dist/*.zip
           overwrite: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
