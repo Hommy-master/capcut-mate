@@ -31,7 +31,7 @@ jobs:
             artifact_name: macos-build-x64
             build_command: build-mac-x64
             installer_command: build-mac-x64-installer
-            green_command: null
+            green_command: build-mac-x64-green
 
     steps:
       - name: 准备代码
