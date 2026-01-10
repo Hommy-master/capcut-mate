@@ -18,6 +18,7 @@ module.exports = {
     "!docker-compose.yaml",
     "node_modules/**/*",
     "web/dist/**/*",
+    "nodeapi/**/*",
     "*.js",
     "*.json",
     "assets/**/*"
