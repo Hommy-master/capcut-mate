@@ -2,11 +2,11 @@ name: Docker Image CI Dev
 
 on:
   push:
-    branches: [ "main", "dev" ]
+    branches: [ "main", "lufeixuecheng2" ]
     tags:
       - 'v*'  # 当推送v开头的tag时触发
   pull_request:
-    branches: [ "main", "dev" ]
+    branches: [ "main", "lufeixuecheng2" ]
 
 jobs:
   build:
