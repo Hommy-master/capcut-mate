@@ -14,14 +14,14 @@ function TopHeader({ onTabChange, selectedTab }) {
           className={`top-nav-item logo`}
           onClick={() => handleTabClick("download")}
         >
-          剪映小助手(免费客户端)
+          路飞剪映小助手(免费客户端)
         </div>
         <div className="top-nav-group">
           <div
             className={`top-nav-item`}
             onClick={() => {
               handleTabClick("download");
-              electronService.openExternalUrl("https://jcaigc.cn");
+              electronService.openExternalUrl("https://ai.luffycity.com/");
             }}
           >
             前往官网
