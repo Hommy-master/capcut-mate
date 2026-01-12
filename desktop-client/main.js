@@ -15,10 +15,20 @@ function createWindow() {
     return mainWindow;
   }
 
+  // 根据平台选择合适的图标格式
+  let iconPath;
+  if (process.platform === 'darwin') {
+    iconPath = path.join(__dirname, './assets/icons/logo.icns');
+  } else if (process.platform === 'win32') {
+    iconPath = path.join(__dirname, './assets/icons/logo.ico');
+  } else {
+    iconPath = path.join(__dirname, './assets/icons/logo.png');
+  }
+
   mainWindow = new BrowserWindow({
     width: 1366,
     height: 868,
-    icon: path.join(__dirname, './assets/icons/logo.ico'),
+    icon: iconPath,
     show: false, // 创建窗口但先隐藏，等页面加载完成后再显示
     webPreferences: {
       nodeIntegration: false, // 禁用 Node.js 集成（出于安全考虑，强烈推荐）
@@ -32,7 +42,7 @@ function createWindow() {
 
   
   if (process.platform==='darwin') {
-    app.dock.setIcon(path.join(__dirname, './assets/icons/logo.png'))
+    app.dock.setIcon(path.join(__dirname, './assets/icons/logo.icns'))
   }
 
   // 判断是否为开发模式
