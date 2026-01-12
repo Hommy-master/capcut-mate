@@ -32,7 +32,7 @@ def create_draft(width: int, height: int) -> str:
     # 使用模板创建草稿
     try:
         # 复制模板到新草稿目录
-        template_path = os.path.join(config.TEMPLATE_DIR, "default2")
+        template_path = os.path.join(config.TEMPLATE_DIR, "default")
         draft_path = os.path.join(config.DRAFT_DIR, draft_id)
         if os.path.exists(draft_path): shutil.rmtree(draft_path)
         shutil.copytree(template_path, draft_path)
