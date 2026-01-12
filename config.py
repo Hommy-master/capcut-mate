@@ -22,3 +22,6 @@ TIP_URL = os.getenv("TIP_URL", "https://docs.jcaigc.cn/")
 
 # 贴纸配置文件路径
 STICKER_CONFIG_PATH = os.path.join(os.path.dirname(__file__), "config", "sticker.json")
+
+# 模板目录路径
+TEMPLATE_DIR = os.path.join(os.path.dirname(__file__), "template")
