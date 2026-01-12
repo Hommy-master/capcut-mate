@@ -25,6 +25,11 @@ function createWindow() {
     iconPath = path.join(__dirname, './assets/icons/logo.png');
   }
 
+  // 在 macOS 上设置应用图标
+  if (process.platform === 'darwin') {
+    app.setIcon(iconPath); // 设置应用程序图标
+  }
+
   mainWindow = new BrowserWindow({
     width: 1366,
     height: 868,
@@ -39,11 +44,6 @@ function createWindow() {
       hardwareAcceleration: true // 启用硬件加速
     }
   });
-
-  
-  if (process.platform==='darwin') {
-    app.dock.setIcon(path.join(__dirname, './assets/icons/logo.png'))
-  }
 
   // 判断是否为开发模式
   const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
