@@ -37,13 +37,20 @@ def create_draft(width: int, height: int) -> str:
         if os.path.exists(draft_path): shutil.rmtree(draft_path)
         shutil.copytree(template_path, draft_path)
         
-        # 重命名并加载模板草稿，然后修改配置
-        old_path = os.path.join(draft_path, "draft_info.json")
-        new_path = os.path.join(draft_path, "draft_content.json")
-        os.rename(old_path, new_path)
-        script = draft.ScriptFile.load_template(new_path)
+        # 在创建草稿时，确保两个文件都存在且内容相同
+        draft_info_path = os.path.join(draft_path, "draft_info.json")
+        draft_content_path = os.path.join(draft_path, "draft_content.json")
+        
+        # 加载模板草稿，然后修改配置
+        script = draft.ScriptFile.load_template(draft_info_path)
+        # 启用双文件兼容模式，这样保存时会自动同步两个文件
+        script.dual_file_compatibility = True
         script.width, script.height = width, height
         script.content["canvas_config"]["width"], script.content["canvas_config"]["height"] = width, height
+        
+        # 保存修改后的草稿（会自动同步到两个文件）
+        script.save_path = draft_content_path
+        script.save()
         
         # 添加空的主轨道（仅当没有主轨道时添加）
         main_track_name = "main_track"

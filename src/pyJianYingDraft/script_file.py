@@ -182,6 +182,7 @@ class ScriptFile:
             fps (int, optional): 视频帧率. 默认为30.
         """
         self.save_path = None
+        self.dual_file_compatibility = False  # 控制是否同时保存两个文件
 
         self.width = width
         self.height = height
@@ -809,4 +810,18 @@ class ScriptFile:
         """
         if self.save_path is None:
             raise ValueError("没有设置保存路径, 可能不在模板模式下")
+        
+        # 保存到主要文件
         self.dump(self.save_path)
+        
+        # 如果启用了双文件兼容模式，同时保存到另一个文件
+        if self.dual_file_compatibility:
+            draft_dir = os.path.dirname(self.save_path)
+            if "draft_content.json" in self.save_path and "draft_info.json" not in self.save_path:
+                # 当前保存的是 draft_content.json，同时保存到 draft_info.json
+                alt_path = os.path.join(draft_dir, "draft_info.json")
+                self.dump(alt_path)
+            elif "draft_info.json" in self.save_path and "draft_content.json" not in self.save_path:
+                # 当前保存的是 draft_info.json，同时保存到 draft_content.json
+                alt_path = os.path.join(draft_dir, "draft_content.json")
+                self.dump(alt_path)
