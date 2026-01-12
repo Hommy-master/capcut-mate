@@ -43,7 +43,11 @@ module.exports = {
       }
     ],
     artifactName: "capcut-mate-macos-${arch}-installer.dmg",
-    category: "public.app-category.productivity"
+    category: "public.app-category.productivity",
+    hardenedRuntime: true,
+    gatekeeperAssess: false,
+    entitlements: "assets/entitlements.mac.plist",
+    entitlementsInherit: "assets/entitlements.mac.plist"
   },
   dmg: {
     background: null,

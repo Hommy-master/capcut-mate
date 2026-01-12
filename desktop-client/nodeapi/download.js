@@ -187,6 +187,24 @@ async function updateDraftPath(parentWindow) {
     return { success: false, error: "用户取消了目录选择" };
   }
   try {
+    // 验证目录权限
+    try {
+      await fs.access(targetDir, fs.constants.R_OK | fs.constants.W_OK);
+    } catch (accessError) {
+      logger.error('所选目录无读写权限:', accessError);
+      // 尝试使用 dialog 显示错误消息
+      if (parentWindow) {
+        const { dialog } = require('electron');
+        await dialog.showMessageBox(parentWindow, {
+          type: 'error',
+          title: '权限不足',
+          message: '所选目录没有足够的读写权限，请选择其他目录。',
+          buttons: ['确定']
+        });
+      }
+      return { success: false, error: '所选目录没有足够的读写权限' };
+    }
+
     const configPath = getConfigPath();
     let config = {};
 
@@ -215,15 +233,15 @@ async function getTargetDirectory(parentWindow = null, isUpdate = false) {
   let config = await readConfig();
   if (!isUpdate && config.targetDirectory) {
     try {
-      await fs.access(config.targetDirectory);
+      await fs.access(config.targetDirectory, fs.constants.R_OK | fs.constants.W_OK);
       return config.targetDirectory;
     } catch (accessErr) {
-      logger.warn("配置的目录已不存在，将重新选择。");
+      logger.warn("配置的目录已不存在或无访问权限，将重新选择。", accessErr.message);
     }
   }
 
   const dialogOptions = {
-    properties: ["openDirectory"],
+    properties: ["openDirectory", "createDirectory"], // 允许创建新目录
     title: "请选择目标目录",
     buttonLabel: "选择此目录",
     defaultPath: isUpdate ? config.targetDirectory : undefined
@@ -238,6 +256,24 @@ async function getTargetDirectory(parentWindow = null, isUpdate = false) {
 
   if (!result.canceled && result.filePaths.length > 0) {
     const selectedDir = result.filePaths[0];
+    
+    // 再次验证目录权限
+    try {
+      await fs.access(selectedDir, fs.constants.R_OK | fs.constants.W_OK);
+    } catch (accessErr) {
+      logger.error('所选目录无读写权限:', accessErr);
+      if (parentWindow) {
+        const { dialog } = require('electron');
+        await dialog.showMessageBox(parentWindow, {
+          type: 'error',
+          title: '权限不足',
+          message: '所选目录没有足够的读写权限，请重新选择。',
+          buttons: ['确定']
+        });
+      }
+      return ''; // 返回空字符串表示失败
+    }
+    
     config.targetDirectory = selectedDir;
     await writeConfig(config);
     return selectedDir;
@@ -477,7 +513,16 @@ async function downloadFiles(
         logger.info("[log] targetDir: " + targetDir);
 
         // 3. 确保目标目录存在
-        await fs.mkdir(targetDir, { recursive: true }); // recursive: true 可以创建多级目录
+        try {
+          await fs.mkdir(targetDir, { recursive: true }); // recursive: true 可以创建多级目录
+        } catch (mkdirError) {
+          logger.error(`创建目录失败: ${targetDir}`, mkdirError);
+          await appendDownloadLog(
+            { level: "error", message: `创建目录失败: ${targetDir} - ${mkdirError.message}` },
+            parentWindow
+          );
+          throw mkdirError;
+        }
         // return { success: true, message: targetDir };
 
         // 4. 下载文件

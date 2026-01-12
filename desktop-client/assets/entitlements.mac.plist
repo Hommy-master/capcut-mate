@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <!-- Enable app sandbox -->
+    <key>com.apple.security.app-sandbox</key>
+    <true/>
+    
+    <!-- File access permissions -->
+    <key>com.apple.security.files.user-selected.read-write</key>
+    <true/>
+    
+    <!-- Access to user's Downloads folder -->
+    <key>com.apple.security.files.downloads.read-write</key>
+    <true/>
+    
+    <!-- Access to user's Documents folder -->
+    <key>com.apple.security.files.documents.read-write</key>
+    <true/>
+    
+    <!-- Access to user's Pictures folder -->
+    <key>com.apple.security.files.pictures.read-write</key>
+    <true/>
+    
+    <!-- Access to user's Music folder -->
+    <key>com.apple.security.files.music.read-write</key>
+    <true/>
+    
+    <!-- Access to user's Movies folder -->
+    <key>com.apple.security.files.movies.read-write</key>
+    <true/>
+    
+    <!-- Network access -->
+    <key>com.apple.security.network.client</key>
+    <true/>
+    
+    <!-- Hardware access for media files -->
+    <key>com.apple.security.device.audio-input</key>
+    <false/>
+    <key>com.apple.security.device.camera</key>
+    <false/>
+  </dict>
+</plist>

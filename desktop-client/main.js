@@ -1,4 +1,4 @@
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, dialog } = require('electron');
 const path = require('path');
 const logger = require('./nodeapi/logger');
 
@@ -66,6 +66,23 @@ function createWindow() {
 
   return mainWindow;
 }
+
+// 处理未捕获的异常，特别是与文件权限相关的错误
+process.on('uncaughtException', (error) => {
+  logger.error('未捕获的异常:', error);
+  
+  // 在 macOS 沙箱环境下，某些权限错误可能在这里捕获
+  if (process.platform === 'darwin' && error.message && 
+      (error.message.includes('Operation not permitted') || error.message.includes('EPERM'))) {
+    dialog.showMessageBoxSync({
+      type: 'error',
+      title: '权限错误',
+      message: '应用缺少必要的文件访问权限，请检查系统偏好设置中的隐私与安全性设置。',
+      detail: '请在 系统偏好设置 > 安全性与隐私 > 隐私 > 文件夹访问 中允许本应用访问相关文件夹。',
+      buttons: ['确定']
+    });
+  }
+});
 
 // 当Electron完成初始化并准备创建浏览器窗口时调用此方法
 app.whenReady().then(() => {
