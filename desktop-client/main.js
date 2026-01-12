@@ -42,7 +42,7 @@ function createWindow() {
 
   
   if (process.platform==='darwin') {
-    app.dock.setIcon(path.join(__dirname, './assets/icons/logo.icns'))
+    app.dock.setIcon(path.join(__dirname, './assets/icons/logo.png'))
   }
 
   // 判断是否为开发模式
