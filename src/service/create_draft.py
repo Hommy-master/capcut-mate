@@ -44,6 +44,12 @@ def create_draft(width: int, height: int) -> str:
         script = draft.ScriptFile.load_template(new_path)
         script.width, script.height = width, height
         script.content["canvas_config"]["width"], script.content["canvas_config"]["height"] = width, height
+        
+        # 添加空的主轨道（仅当没有主轨道时添加）
+        main_track_name = "main_track"
+        script.add_track(track_type=draft.TrackType.video, track_name=main_track_name, relative_index=0)
+        logger.info(f"Added empty main track: {main_track_name}")
+        
         script.save()
         
     except Exception as e:
