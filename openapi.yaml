@@ -16,8 +16,8 @@ components:
                     alignment: 1
                     alpha: 1
                     bold: false
-                    captions: '[{"start":0,"end":10000000,"text":"你好，剪映","keyword":"好","keyword_color":"#457616","keyword_font_size":15,"font_size":15}]'
-                    draft_url: https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025120615531620e864b1
+                    captions: '[{"start":0,"end":10000000,"text":"你好，剪映","keyword":"好","keyword_color":"#457616","keyword_font_size":15}]'
+                    draft_url: https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=20251216104033617e9734
                     font_size: 15
                     has_shadow: false
                     italic: false
@@ -25,23 +25,22 @@ components:
                     line_spacing: 0
                     scale_x: 1
                     scale_y: 1
-                    shadow_info: '{}'
                     style_text: 0
                     text_color: '#ffffff'
                     transform_x: 0
                     transform_y: 0
                     underline: false
                 RespExample:
-                    draft_url: https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025120615531620e864b1
+                    draft_url: https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=20251216104033617e9734
                     segment_ids:
-                        - 64af24de7d554170a35e164715a02d56
+                        - 1b1102e3d2d14b9eabac064bbe64d2bf
                     segment_infos:
                         - end: 10000000
-                          id: 64af24de7d554170a35e164715a02d56
+                          id: 1b1102e3d2d14b9eabac064bbe64d2bf
                           start: 0
                     text_ids:
-                        - d3d852b619834d68982d80f9c69c23c9
-                    track_id: 7eaa2b726a9c40cf9136ef4ae1f9e28e
+                        - 52ae035e01584adf8d052533d83948ed
+                    track_id: 7ffdf0f7d67e4d8caff5531f5873d26f
         add_effects:
             value:
                 ReqExample:
@@ -78,13 +77,10 @@ components:
         add_keyframes:
             value:
                 ReqExample:
-                    draft_url: https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=202511262337379d98b90e
-                    keyframes: '[{"segment_id":"81e787883bc14dbda144c4a0f49262c2","property":"KFTypePositionX","offset":0.5,"value":-0.1}]'
+                    draft_url: https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=20251210224255e23f7146
+                    keyframes: '[{"segment_id":"e1933f126437421bb52abdc56f062266","property":"KFTypePositionX","offset":0.5,"value":-0.1}]'
                 RespExample:
-                    affected_segments:
-                        - 81e787883bc14dbda144c4a0f49262c2
-                    draft_url: https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=202511262337379d98b90e
-                    keyframes_added: 1
+                    draft_url: https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=20251210224255e23f7146
         add_masks:
             value:
                 ReqExample:
@@ -137,13 +133,54 @@ components:
                     track_id: 720274203a11442280b64570caf362c4
                     video_ids:
                         - 9b9f47126f384a6f95434cdc3fed5b7c
+        audio_infos:
+            value:
+                ReqExample:
+                    mp3_urls:
+                        - https://assets.jcaigc.cn/test1.mp3
+                        - https://assets.jcaigc.cn/test2.mp3
+                    timelines:
+                        - end: 284891428
+                          start: 0
+                        - end: 579578774
+                          start: 284891428
+                RespExample:
+                    infos: '[{"audio_url": "https://assets.jcaigc.cn/test1.mp3", "start": 0, "end": 284891428}, {"audio_url": "https://assets.jcaigc.cn/test2.mp3", "start": 284891428, "end": 579578774}]'
+        audio_timelines:
+            value:
+                ReqExample:
+                    links:
+                        - https://assets.jcaigc.cn/test1.mp3
+                        - https://assets.jcaigc.cn/test2.mp3
+                RespExample:
+                    all_timelines:
+                        - end: 579578776
+                          start: 0
+                    timelines:
+                        - end: 284891429
+                          start: 0
+                        - end: 579578776
+                          start: 284891429
+        caption_infos:
+            value:
+                ReqExample:
+                    texts:
+                        - 床前明月光
+                        - 明天我发光
+                    timelines:
+                        - end: 284891428
+                          start: 0
+                        - end: 579578774
+                          start: 284891428
+                RespExample:
+                    infos: '[{"start": 0, "end": 284891428, "text": "床前明月光"}, {"start": 284891428, "end": 579578774, "text": "明天我发光"}]'
         create_draft:
             value:
                 ReqExample:
                     height: 1920
                     width: 1080
                 RespExample:
-                    draft_url: https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=202511262111301f5fceff
+                    draft_url: https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=20251230140504254f511b
                     tip_url: ""
         easy_create_material:
             value:
@@ -159,12 +196,26 @@ components:
                 RespExample:
                     draft_url: https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=202511262348074813d881
                     message: 成功
+        effect_infos:
+            value:
+                ReqExample:
+                    effects:
+                        - 红包来了
+                        - 雪花
+                    timelines:
+                        - end: 284891428
+                          start: 0
+                        - end: 579578774
+                          start: 284891428
+                RespExample:
+                    infos: '[{"effect_title": "红包来了", "start": 0, "end": 284891428}, {"effect_title": "雪花", "start": 284891428, "end": 579578774}]'
         get_audio_duration:
             value:
                 ReqExample:
-                    mp3_url: https://assets.jcaigc.cn/min.mp4
+                    mp3_url: https://assets.jcaigc.cn/test1.mp3
                 RespExample:
-                    duration: 6900000
+                    duration: 284891429
+                    message: 成功
         get_image_animations:
             value:
                 ReqExample:
@@ -277,6 +328,51 @@ components:
                           resource_id: "7298765432109876543"
                           start: 0
                           type: in
+        get_url:
+            value:
+                ReqExample:
+                    output: 中国人https://assets.jcaigc.cn/test1.mp3
+                RespExample:
+                    output: 中国人https://assets.jcaigc.cn/test1.mp3
+        imgs_infos:
+            value:
+                ReqExample:
+                    height: 1024
+                    imgs:
+                        - https://assets.jcaigc.cn/demo.png
+                        - https://assets.jcaigc.cn/demo1.png
+                    timelines:
+                        - end: 284891428
+                          start: 0
+                        - end: 579578774
+                          start: 284891428
+                    width: 1024
+                RespExample:
+                    infos: '[{"image_url": "https://assets.jcaigc.cn/demo.png", "start": 0, "end": 284891428, "height": 1024, "width": 1024}, {"image_url": "https://assets.jcaigc.cn/demo1.png", "start": 284891428, "end": 579578774, "height": 1024, "width": 1024}]'
+        keyframes_infos:
+            value:
+                ReqExample:
+                    ctype: KFTypePositionX
+                    height: 1080
+                    offsets: 0|100
+                    segment_infos:
+                        - end: 5000000
+                          id: c1369c795ca64fe38bac1f2a93e8a811
+                          start: 0
+                    values: 1|2
+                    width: 1920
+                RespExample:
+                    keyframes_infos: '[{"offset": 0, "property": "KFTypePositionX", "segment_id": "c1369c795ca64fe38bac1f2a93e8a811", "value": 0.0005208333333333333}, {"offset": 5000000, "property": "KFTypePositionX", "segment_id": "c1369c795ca64fe38bac1f2a93e8a811", "value": 0.0010416666666666667}]'
+        objs_to_str_list:
+            value:
+                ReqExample:
+                    outputs:
+                        - output: https://assets.jcaigc.cn/max.mp4
+                        - output: https://assets.jcaigc.cn/min.mp4
+                RespExample:
+                    infos:
+                        - https://assets.jcaigc.cn/max.mp4
+                        - https://assets.jcaigc.cn/min.mp4
         save_draft:
             value:
                 ReqExample:
@@ -284,6 +380,161 @@ components:
                 RespExample:
                     draft_url: https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=20251126220753b7e35362
                     message: 成功
+        search_sticker:
+            value:
+                ReqExample:
+                    keyword: 人
+                RespExample:
+                    data:
+                        - sticker:
+                            large_image:
+                                image_url: https://p3-heycan-jy-sign.byteimg.com/tos-cn-i-3jr8j4ixpe/91ada02f8fec440798fbce5b6c8052f4~tplv-3jr8j4ixpe-image.image?x-expires=1797257777&x-signature=JGLXAdKzUC1SNFOG1DBIj7deSm0%3D
+                            preview_cover: ""
+                            sticker_package:
+                                height_per_frame: 128
+                                size: 2233
+                                width_per_frame: 128
+                            sticker_type: 1
+                            track_thumbnail: https://p3-heycan-jy-sign.byteimg.com/tos-cn-i-3jr8j4ixpe/91ada02f8fec440798fbce5b6c8052f4~tplv-3jr8j4ixpe-resize:120:120.png?x-expires=1797257777&x-signature=OlE4ZjEFzZ0%2BZE2hx984dtqX1JY%3D&format=.png
+                          sticker_id: "7128787497496120613"
+                          title: '人物剪影 '
+                        - sticker:
+                            large_image:
+                                image_url: https://p3-heycan-jy-sign.byteimg.com/tos-cn-i-3jr8j4ixpe/dde1931edf4e4026b24b52bdf83cdcc0~tplv-3jr8j4ixpe-resize:1920:1920.png?x-expires=1797257777&x-signature=C69yhUjUgvAfbKC%2B3lnqRj4d4Mo%3D
+                            preview_cover: ""
+                            sticker_package:
+                                height_per_frame: 512
+                                size: 34542
+                                width_per_frame: 512
+                            sticker_type: 1
+                            track_thumbnail: https://p3-heycan-jy-sign.byteimg.com/tos-cn-i-3jr8j4ixpe/dde1931edf4e4026b24b52bdf83cdcc0~tplv-3jr8j4ixpe-resize:120:120.png?x-expires=1797257777&x-signature=4zY6CNDljdwTfxWGCcNdI7VX54U%3D&format=.png
+                          sticker_id: "7075169384330726663"
+                          title: 男性卡通手绘人物
+                        - sticker:
+                            large_image:
+                                image_url: https://p3-heycan-jy-sign.byteimg.com/tos-cn-i-3jr8j4ixpe/edbd487bfbe347b49183ac297dece704~tplv-3jr8j4ixpe-resize:1920:1920.png?x-expires=1797257777&x-signature=w%2FYtiqgjYd89ZRiBz0CmlhPaYWg%3D
+                            preview_cover: ""
+                            sticker_package:
+                                height_per_frame: 452
+                                size: 172903
+                                width_per_frame: 256
+                            sticker_type: 1
+                            track_thumbnail: https://p3-heycan-jy-sign.byteimg.com/tos-cn-i-3jr8j4ixpe/edbd487bfbe347b49183ac297dece704~tplv-3jr8j4ixpe-resize:120:120.png?x-expires=1797257777&x-signature=GAb5g%2B0hERhVIOqy9HG%2BGzvBR2E%3D&format=.png
+                          sticker_id: "7141375321454021922"
+                          title: 3d 人物
+                        - sticker:
+                            large_image:
+                                image_url: https://p3-heycan-jy-sign.byteimg.com/tos-cn-i-3jr8j4ixpe/e42cb5d3d37146738d2b9b714c9a0ce3~tplv-3jr8j4ixpe-resize:1920:1920.gif?x-expires=1797257777&x-signature=5%2BKU1MAEkt4E6uRzqBiqpG6GPKw%3D
+                            preview_cover: ""
+                            sticker_package:
+                                height_per_frame: 280
+                                size: 122700
+                                width_per_frame: 280
+                            sticker_type: 2
+                            track_thumbnail: https://p3-heycan-jy-sign.byteimg.com/tos-cn-i-3jr8j4ixpe/e42cb5d3d37146738d2b9b714c9a0ce3~tplv-3jr8j4ixpe-resize:120:120.png?x-expires=1797257777&x-signature=uF1QWPpgsM62Jc%2BgIpKFkH0PwwM%3D&format=.png
+                          sticker_id: "7002854862090210590"
+                          title: 人挤人
+                        - sticker:
+                            large_image:
+                                image_url: https://p3-heycan-jy-sign.byteimg.com/tos-cn-i-3jr8j4ixpe/d05c664aceba49d2896660562ae5fe4d~tplv-3jr8j4ixpe-resize:1920:1920.png?x-expires=1797257777&x-signature=dTV36p4iN055SxRvTcovbiq9QEs%3D
+                            preview_cover: ""
+                            sticker_package:
+                                height_per_frame: 490
+                                size: 126967
+                                width_per_frame: 463
+                            sticker_type: 1
+                            track_thumbnail: https://p3-heycan-jy-sign.byteimg.com/tos-cn-i-3jr8j4ixpe/d05c664aceba49d2896660562ae5fe4d~tplv-3jr8j4ixpe-resize:120:120.png?x-expires=1797257777&x-signature=jmY7LUydyEJr9vVpGFBPQFhYp7Y%3D&format=.png
+                          sticker_id: "6989061706173500703"
+                          title: 人物背影
+                        - sticker:
+                            large_image:
+                                image_url: https://p3-heycan-jy-sign.byteimg.com/tos-cn-i-3jr8j4ixpe/adff9a9ac6b14db291eb1da1964b140f~tplv-3jr8j4ixpe-resize:1920:1920.png?x-expires=1797257777&x-signature=ISDIKQ6grSn9cyZW0TFq%2BF86y5M%3D
+                            preview_cover: ""
+                            sticker_package:
+                                height_per_frame: 419
+                                size: 91220
+                                width_per_frame: 540
+                            sticker_type: 1
+                            track_thumbnail: https://p3-heycan-jy-sign.byteimg.com/tos-cn-i-3jr8j4ixpe/adff9a9ac6b14db291eb1da1964b140f~tplv-3jr8j4ixpe-resize:120:120.png?x-expires=1797257777&x-signature=OQokcDqdpZrfjbbJ5I2miMz9vF8%3D&format=.png
+                          sticker_id: "6972844711287524621"
+                          title: 商务人物工作会议人员扁平化职场 (28)
+                        - sticker:
+                            large_image:
+                                image_url: https://p3-heycan-jy-sign.byteimg.com/tos-cn-i-3jr8j4ixpe/656e900a0bb6415db5199c58e8148b55~tplv-3jr8j4ixpe-resize:1920:1920.png?x-expires=1797257777&x-signature=MLWZQjACxbpcUkQyznGMzpyHn9I%3D
+                            preview_cover: ""
+                            sticker_package:
+                                height_per_frame: 512
+                                size: 33884
+                                width_per_frame: 512
+                            sticker_type: 1
+                            track_thumbnail: https://p3-heycan-jy-sign.byteimg.com/tos-cn-i-3jr8j4ixpe/656e900a0bb6415db5199c58e8148b55~tplv-3jr8j4ixpe-resize:120:120.png?x-expires=1797257777&x-signature=
+                          sticker_id: "6972844711287524622"
+                          title: 商务人物工作会议人员扁平化职场 (29)
+                        - sticker:
+                            large_image:
+                                image_url: https://p3-heycan-jy-sign.byteimg.com/tos-cn-i-3jr8j4ixpe/4f77f60ad9924712baa4e32d534e342c~tplv-3jr8j4ixpe-resize:1920:1920.png?x-expires=1797258668&x-signature=Co7%2B81Xhn880nPNA7UBRlI2UPyE%3D
+                            preview_cover: ""
+                            sticker_package:
+                                height_per_frame: 540
+                                size: 104066
+                                width_per_frame: 540
+                            sticker_type: 1
+                            track_thumbnail: https://p3-heycan-jy-sign.byteimg.com/tos-cn-i-3jr8j4ixpe/4f77f60ad9924712baa4e32d534e342c~tplv-3jr8j4ixpe-resize:120:120.png?x-expires=1797258668&x-signature=V7SlC36041lGmBHWsvY3lYgEuRk%3D&format=.png
+                          sticker_id: "7243670138606718265"
+                          title: 人气爆款标签
+                    message: 成功
+        str_list_to_objs:
+            value:
+                ReqExample:
+                    infos:
+                        - https://assets.jcaigc.cn/min.mp4
+                        - https://assets.jcaigc.cn/max.mp4
+                RespExample:
+                    infos:
+                        - output: https://assets.jcaigc.cn/min.mp4
+                        - output: https://assets.jcaigc.cn/max.mp4
+        str_to_list:
+            value:
+                ReqExample:
+                    obj: '{   "infos": [     "https://assets.jcaigc.cn/min.mp4",     "https://assets.jcaigc.cn/max.mp4"   ] }'
+                RespExample:
+                    infos:
+                        - '{   "infos": [     "https://assets.jcaigc.cn/min.mp4",     "https://assets.jcaigc.cn/max.mp4"   ] }'
+        timelines:
+            value:
+                ReqExample:
+                    duration: 10000000
+                    num: 2
+                    start: 0
+                    type: 0
+                RespExample:
+                    all_timelines:
+                        - end: 10000000
+                          start: 0
+                    timelines:
+                        - end: 5000000
+                          start: 0
+                        - end: 10000000
+                          start: 5000000
+        video_infos:
+            value:
+                ReqExample:
+                    height: "1080"
+                    mask: 爱心
+                    timelines:
+                        - end: 284891428
+                          start: 0
+                        - end: 579578774
+                          start: 284891428
+                    transition: 推近
+                    transition_duration: 1
+                    video_urls:
+                        - https://assets.jcaigc.cn/min.mp4
+                        - https://assets.jcaigc.cn/max.mp4
+                    volume: 1
+                    width: 1920
+                RespExample:
+                    infos: '[{"video_url": "https://assets.jcaigc.cn/min.mp4", "start": 0, "end": 284891428, "duration": 284891428, "width": 1920, "height": 1080, "mask": "爱心", "transition": "推近", "transition_duration": 1, "volume": 1.0}, {"video_url": "https://assets.jcaigc.cn/max.mp4", "start": 284891428, "end": 579578774, "duration": 294687346, "width": 1920, "height": 1080, "mask": "爱心", "transition": "推近", "transition_duration": 1, "volume": 1.0}]'
 info:
     description: 剪映小助手一个开源且免费的剪映插件，兼容剪映V5.9及以上所有版本。
     title: 开源剪映小助手
@@ -394,9 +645,24 @@ paths:
                                     description: 垂直缩放
                                     type: number
                                 shadow_info:
-                                    default: '{}'
                                     description: 文本阴影
-                                    type: string
+                                    properties:
+                                        shadow_alpha:
+                                            description: 阴影不透明度, 取值范围为[0, 1]
+                                            type: number
+                                        shadow_angle:
+                                            description: 阴影角度, 取值范围为[-180, 180]
+                                            type: number
+                                        shadow_color:
+                                            description: 阴影颜色（十六进制）
+                                            type: string
+                                        shadow_diffuse:
+                                            description: 阴影扩散程度, 取值范围为[0, 100]
+                                            type: number
+                                        shadow_distance:
+                                            description: 阴影距离, 取值范围为[0, 100]
+                                            type: number
+                                    type: object
                                 style_text:
                                     default: 0
                                     description: 是否使用样式文本
@@ -617,6 +883,7 @@ paths:
                                         items:
                                             type: string
                                         type: array
+                                        x-global-disable: true
                                     code:
                                         type: number
                                         x-global-disable: true
@@ -624,6 +891,7 @@ paths:
                                         type: string
                                     keyframes_added:
                                         type: number
+                                        x-global-disable: true
                                     message:
                                         type: string
                                         x-global-disable: true
@@ -910,6 +1178,203 @@ paths:
                 default:
                     description: ""
             summary: 批量添加视频
+    /audio_infos:
+        post:
+            operationId: audio_infos
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            properties:
+                                audio_effect:
+                                    description: 特效音，eg：教堂，默认无
+                                    type: string
+                                mp3_urls:
+                                    description: 音频列表
+                                    items:
+                                        description: 音频连接地址
+                                        type: string
+                                    type: array
+                                timelines:
+                                    description: 时间线
+                                    items:
+                                        description: 时间线对象
+                                        properties:
+                                            end:
+                                                description: 结束时间
+                                                type: integer
+                                            start:
+                                                description: 开始时间
+                                                type: integer
+                                        required:
+                                            - start
+                                            - end
+                                        type: object
+                                    type: array
+                                volume:
+                                    description: 音量大小，0-10,默认1
+                                    type: number
+                            required:
+                                - mp3_urls
+                                - timelines
+                            type: object
+            responses:
+                "200":
+                    content:
+                        application/json:
+                            schema:
+                                properties:
+                                    code:
+                                        type: number
+                                        x-global-disable: true
+                                    infos:
+                                        type: string
+                                    message:
+                                        type: string
+                                        x-global-disable: true
+                                type: object
+                    description: new desc
+                default:
+                    description: ""
+            summary: 根据时间线制作音频数据
+    /audio_timelines:
+        post:
+            operationId: audio_timelines
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            properties:
+                                links:
+                                    description: 音频链接列表
+                                    items:
+                                        description: 音频链接
+                                        type: string
+                                    type: array
+                            required:
+                                - links
+                            type: object
+            responses:
+                "200":
+                    content:
+                        application/json:
+                            schema:
+                                properties:
+                                    all_timelines:
+                                        items:
+                                            properties:
+                                                end:
+                                                    type: number
+                                                start:
+                                                    type: number
+                                            type: object
+                                        type: array
+                                    code:
+                                        type: number
+                                        x-global-disable: true
+                                    message:
+                                        type: string
+                                        x-global-disable: true
+                                    timelines:
+                                        items:
+                                            properties:
+                                                end:
+                                                    type: number
+                                                start:
+                                                    type: number
+                                            type: object
+                                        type: array
+                                type: object
+                    description: new desc
+                default:
+                    description: ""
+            summary: 从音频列表中获取时间线列表
+    /caption_infos:
+        post:
+            operationId: caption_infos
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            properties:
+                                font_size:
+                                    description: 字体大小
+                                    type: integer
+                                in_animation:
+                                    description: 入场动画名称
+                                    type: string
+                                in_animation_duration:
+                                    description: 入场动画时长
+                                    type: integer
+                                keyword_color:
+                                    description: 关键词颜色
+                                    type: string
+                                keyword_font_size:
+                                    description: 关键词字大小
+                                    type: integer
+                                keywords:
+                                    description: 文本里面的重点词列表
+                                    items:
+                                        description: 重点词
+                                        type: string
+                                    type: array
+                                loop_animation:
+                                    description: 对应剪映的循环动画名字，多个动画请用英文|分割，比如：扫光|晃动
+                                    type: string
+                                loop_animation_duration:
+                                    description: 循环动画时长
+                                    type: integer
+                                out_animation:
+                                    description: 对应剪映的出场动画名字，多个动画请用英文|分割，比如：消散|闭幕
+                                    type: string
+                                out_animation_duration:
+                                    description: 出场动画时长
+                                    type: integer
+                                texts:
+                                    description: 文本列表
+                                    items:
+                                        description: 文本
+                                        type: string
+                                    type: array
+                                timelines:
+                                    description: 时间节点，只接收结构：[{"start":0,"end":4612}]，一般从audio_timeline节点的输出获取
+                                    items:
+                                        description: 时间线
+                                        properties:
+                                            end:
+                                                description: 结束时间
+                                                type: integer
+                                            start:
+                                                description: 开始时间
+                                                type: integer
+                                        required:
+                                            - start
+                                            - end
+                                        type: object
+                                    type: array
+                            required:
+                                - texts
+                                - timelines
+                            type: object
+            responses:
+                "200":
+                    content:
+                        application/json:
+                            schema:
+                                properties:
+                                    code:
+                                        type: number
+                                        x-global-disable: true
+                                    infos:
+                                        type: string
+                                    message:
+                                        type: string
+                                        x-global-disable: true
+                                type: object
+                    description: new desc
+                default:
+                    description: ""
+            summary: 根据时间线制作字幕数据
     /create_draft:
         post:
             operationId: create_draft
@@ -1007,6 +1472,59 @@ paths:
             summary: |-
                 快速上手，简易创建素材轨道
                 create_draft+easy_create_material即可
+    /effect_infos:
+        post:
+            operationId: effect_infos
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            properties:
+                                effects:
+                                    description: 特效名字列表
+                                    items:
+                                        description: 特效名
+                                        type: string
+                                    type: array
+                                timelines:
+                                    description: 时间节点，只接收结构：[{"start":0,"end":4612}]，一般从audio_timeline节点的输出获取
+                                    items:
+                                        description: 时间线
+                                        properties:
+                                            end:
+                                                description: 结束时间
+                                                type: integer
+                                            start:
+                                                description: 开始时间
+                                                type: integer
+                                        required:
+                                            - start
+                                            - end
+                                        type: object
+                                    type: array
+                            required:
+                                - effects
+                                - timelines
+                            type: object
+            responses:
+                "200":
+                    content:
+                        application/json:
+                            schema:
+                                properties:
+                                    code:
+                                        type: number
+                                        x-global-disable: true
+                                    infos:
+                                        type: string
+                                    message:
+                                        type: string
+                                        x-global-disable: true
+                                type: object
+                    description: new desc
+                default:
+                    description: ""
+            summary: 根据时间线关联特效
     /get_audio_duration:
         post:
             operationId: get_audio_duration
@@ -1031,10 +1549,9 @@ paths:
                                         type: number
                                         x-global-disable: true
                                     duration:
-                                        type: number
+                                        type: integer
                                     message:
                                         type: string
-                                        x-global-disable: true
                                 type: object
                     description: new desc
                 default:
@@ -1174,6 +1691,236 @@ paths:
                 default:
                     description: ""
             summary: 获取文字出入场动画
+    /get_url:
+        post:
+            operationId: get_url
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            properties:
+                                output:
+                                    description: 提取内容
+                                    type: string
+                            required:
+                                - output
+                            type: object
+            responses:
+                "200":
+                    content:
+                        application/json:
+                            schema:
+                                properties:
+                                    code:
+                                        type: number
+                                        x-global-disable: true
+                                    message:
+                                        type: string
+                                        x-global-disable: true
+                                    output:
+                                        type: string
+                                type: object
+                    description: new desc
+                default:
+                    description: ""
+            summary: 提取链接，用于多值返回变成单值返回
+    /imgs_infos:
+        post:
+            operationId: imgs_infos
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            properties:
+                                height:
+                                    default: 1024
+                                    description: 图片高
+                                    type: integer
+                                imgs:
+                                    description: 图片列表
+                                    items:
+                                        description: 图片地址
+                                        type: string
+                                    type: array
+                                in_animation:
+                                    description: 对应剪映的入场动画名字 可选，多个动画请用英文|分割，比如：动画1|动画2
+                                    type: string
+                                in_animation_duration:
+                                    description: 对应剪映的入场动画时长 可选
+                                    type: integer
+                                loop_animation:
+                                    description: 对应剪映的组合动画名字 可选，多个动画请用英文|分割，比如：动画1|动画2
+                                    type: string
+                                loop_animation_duration:
+                                    description: ' 组合动画时长'
+                                    type: integer
+                                out_animation:
+                                    description: 对应剪映的出场动画名字。可选，多个动画请用英文|分割，比如：动画1|动画2
+                                    type: string
+                                out_animation_duration:
+                                    description: 对应剪映的出场动画时长 可选
+                                    type: integer
+                                timelines:
+                                    description: 时间节点，只接收结构：[{"start":0,"end":4612}]，一般从audio_timeline节点的输出获取
+                                    items:
+                                        description: 时间线
+                                        properties:
+                                            end:
+                                                description: 结束时间
+                                                type: integer
+                                            start:
+                                                description: 开始时间
+                                                type: integer
+                                        required:
+                                            - start
+                                            - end
+                                        type: object
+                                    type: array
+                                transition:
+                                    description: 对应剪映的转场动画名字 可选
+                                    type: string
+                                transition_duration:
+                                    description: 对应剪映的转场动画时长 ，范围是500000-2500000 可选
+                                    type: string
+                                width:
+                                    default: 1024
+                                    description: 图片宽
+                                    type: integer
+                            required:
+                                - imgs
+                                - timelines
+                            type: object
+            responses:
+                "200":
+                    content:
+                        application/json:
+                            schema:
+                                properties:
+                                    code:
+                                        type: number
+                                        x-global-disable: true
+                                    infos:
+                                        type: string
+                                    message:
+                                        type: string
+                                        x-global-disable: true
+                                type: object
+                    description: new desc
+                default:
+                    description: ""
+            summary: 根据时间线制作图片数据
+    /keyframes_infos:
+        post:
+            operationId: keyframes_infos
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            properties:
+                                ctype:
+                                    description: '关键帧类型： KFTypePositionX: X轴移动，需要提供width参数，值会被除以width进行归一化 KFTypePositionY: Y轴移动，需要提供height参数，值会被除以height进行归一化 KFTypeRotation: 旋转角度，值范围必须在0-360度之间 UNIFORM_SCALE: 均匀缩放，值范围必须在0.01-5之间 KFTypeAlpha: 透明度，值范围必须在0-1之间'
+                                    type: string
+                                height:
+                                    description: 视频高度
+                                    type: integer
+                                offsets:
+                                    description: 需要放置关键帧的位置比例，eg：0|100 这个就是代表在开始和结尾放置，0|50|100代表在开头，中间，结尾放置3个关键帧
+                                    type: string
+                                segment_infos:
+                                    description: 轨道数据，add_images节点输出
+                                    items:
+                                        description: 轨道数据
+                                        properties:
+                                            end:
+                                                description: 结束时间
+                                                type: integer
+                                            id:
+                                                description: 轨道id
+                                                type: string
+                                            start:
+                                                description: 开始时间
+                                                type: integer
+                                        required:
+                                            - id
+                                            - start
+                                            - end
+                                        type: object
+                                    type: array
+                                values:
+                                    description: 对应offsets的值，长度要一致，比如1|2，或者1|2|1
+                                    type: string
+                                width:
+                                    description: 视频宽度
+                                    type: integer
+                            required:
+                                - ctype
+                                - offsets
+                                - segment_infos
+                                - values
+                            type: object
+            responses:
+                "200":
+                    content:
+                        application/json:
+                            schema:
+                                properties:
+                                    code:
+                                        type: number
+                                        x-global-disable: true
+                                    keyframes_infos:
+                                        type: string
+                                    message:
+                                        type: string
+                                        x-global-disable: true
+                                type: object
+                    description: new desc
+                default:
+                    description: ""
+            summary: 关键帧数据生成器
+    /objs_to_str_list:
+        post:
+            operationId: objs_to_str_list
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            properties:
+                                outputs:
+                                    description: 数据对象，接收get_outputs节点的输出
+                                    items:
+                                        description: 内容
+                                        properties:
+                                            output:
+                                                description: 内容
+                                                type: string
+                                        required:
+                                            - output
+                                        type: object
+                                    type: array
+                            required:
+                                - outputs
+                            type: object
+            responses:
+                "200":
+                    content:
+                        application/json:
+                            schema:
+                                properties:
+                                    code:
+                                        type: number
+                                        x-global-disable: true
+                                    infos:
+                                        items:
+                                            type: string
+                                        type: array
+                                    message:
+                                        type: string
+                                        x-global-disable: true
+                                type: object
+                    description: new desc
+                default:
+                    description: ""
+            summary: 对象列表转化成字符串列表
     /save_draft:
         post:
             operationId: save_draft
@@ -1206,5 +1953,275 @@ paths:
                 default:
                     description: ""
             summary: 保存剪映草稿
+    /search_sticker:
+        post:
+            operationId: search_sticker
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            properties:
+                                keyword:
+                                    description: 关键词
+                                    type: string
+                            required:
+                                - keyword
+                            type: object
+            responses:
+                "200":
+                    content:
+                        application/json:
+                            schema:
+                                properties:
+                                    code:
+                                        type: number
+                                        x-global-disable: true
+                                    data:
+                                        items:
+                                            properties:
+                                                sticker:
+                                                    properties:
+                                                        large_image:
+                                                            properties:
+                                                                image_url:
+                                                                    type: string
+                                                            type: object
+                                                        preview_cover:
+                                                            type: string
+                                                        sticker_package:
+                                                            properties:
+                                                                height_per_frame:
+                                                                    type: number
+                                                                size:
+                                                                    type: number
+                                                                width_per_frame:
+                                                                    type: number
+                                                            type: object
+                                                        sticker_type:
+                                                            type: number
+                                                        track_thumbnail:
+                                                            type: string
+                                                    type: object
+                                                sticker_id:
+                                                    type: string
+                                                title:
+                                                    type: string
+                                            type: object
+                                        type: array
+                                    message:
+                                        type: string
+                                type: object
+                    description: new desc
+                default:
+                    description: ""
+            summary: 查找贴纸
+    /str_list_to_objs:
+        post:
+            operationId: str_list_to_objs
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            properties:
+                                infos:
+                                    description: 列表内容
+                                    items:
+                                        description: 内容
+                                        type: string
+                                    type: array
+                            required:
+                                - infos
+                            type: object
+            responses:
+                "200":
+                    content:
+                        application/json:
+                            schema:
+                                properties:
+                                    code:
+                                        type: number
+                                        x-global-disable: true
+                                    infos:
+                                        items:
+                                            properties:
+                                                output:
+                                                    type: string
+                                            type: object
+                                        type: array
+                                    message:
+                                        type: string
+                                        x-global-disable: true
+                                type: object
+                    description: new desc
+                default:
+                    description: ""
+            summary: 字符串列表转化成对象列表
+    /str_to_list:
+        post:
+            operationId: str_to_list
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            properties:
+                                obj:
+                                    description: 对象内容
+                                    type: string
+                            required:
+                                - obj
+                            type: object
+            responses:
+                "200":
+                    content:
+                        application/json:
+                            schema:
+                                properties:
+                                    code:
+                                        type: number
+                                        x-global-disable: true
+                                    infos:
+                                        items:
+                                            type: string
+                                        type: array
+                                    message:
+                                        type: string
+                                        x-global-disable: true
+                                type: object
+                    description: new desc
+                default:
+                    description: ""
+            summary: 字符转列表
+    /timelines:
+        post:
+            operationId: timelines
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            properties:
+                                duration:
+                                    description: 总长度，单位微秒，eg：10000000
+                                    type: integer
+                                num:
+                                    description: 时间线上的个数
+                                    type: integer
+                                start:
+                                    default: 0
+                                    description: 默认开始0，如果设置了，就从start开始
+                                    type: integer
+                                type:
+                                    default: 0
+                                    description: 方式，0平均分，1 随机，默认0
+                                    type: integer
+                            required:
+                                - duration
+                                - num
+                            type: object
+            responses:
+                "200":
+                    content:
+                        application/json:
+                            schema:
+                                properties:
+                                    all_timelines:
+                                        items:
+                                            properties:
+                                                end:
+                                                    type: number
+                                                start:
+                                                    type: number
+                                            type: object
+                                        type: array
+                                    code:
+                                        type: number
+                                        x-global-disable: true
+                                    message:
+                                        type: string
+                                        x-global-disable: true
+                                    timelines:
+                                        items:
+                                            properties:
+                                                end:
+                                                    type: number
+                                                start:
+                                                    type: number
+                                            type: object
+                                        type: array
+                                type: object
+                    description: new desc
+                default:
+                    description: ""
+            summary: 自定义创建时间线列表
+    /video_infos:
+        post:
+            operationId: video_infos
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            properties:
+                                height:
+                                    description: 视频高度
+                                    type: string
+                                mask:
+                                    description: 视频蒙版，可填写值：圆形，矩形，爱心，星形
+                                    type: string
+                                timelines:
+                                    description: 时间节点，只接收结构：[{"start":0,"end":4612}]，一般从audio_timeline节点的输出获取
+                                    items:
+                                        description: 时间线
+                                        properties:
+                                            end:
+                                                description: 结束时间
+                                                type: integer
+                                            start:
+                                                description: 开始时间
+                                                type: integer
+                                        required:
+                                            - start
+                                            - end
+                                        type: object
+                                    type: array
+                                transition:
+                                    description: 转场
+                                    type: string
+                                transition_duration:
+                                    description: 转场的时长
+                                    type: integer
+                                video_urls:
+                                    description: 视频列表
+                                    items:
+                                        description: 视频链接
+                                        type: string
+                                    type: array
+                                volume:
+                                    description: 音量大小，0-10,默认1
+                                    type: number
+                                width:
+                                    description: 视频宽度
+                                    type: integer
+                            required:
+                                - video_urls
+                                - timelines
+                            type: object
+            responses:
+                "200":
+                    content:
+                        application/json:
+                            schema:
+                                properties:
+                                    code:
+                                        type: number
+                                        x-global-disable: true
+                                    infos:
+                                        type: string
+                                    message:
+                                        type: string
+                                        x-global-disable: true
+                                type: object
+                    description: new desc
+                default:
+                    description: ""
+            summary: 根据时间线制作视频数据
 servers:
     - url: https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1
