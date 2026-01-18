@@ -36,7 +36,9 @@ function HistoryPage() {
     setIsLoading(true);
     try {
       // 从electronService获取完整历史记录
-      const allHistory = await electronService.getHistoryRecord() || [];
+      let allHistory = await electronService.getHistoryRecord() || [];
+      // 按时间倒序排列，使最新的草稿在最前面
+      allHistory = allHistory.sort((a, b) => new Date(b.time) - new Date(a.time));
       setHistoryList(allHistory);
       setTotalCount(allHistory.length || 0);
       setPaginationItems(getPaginatedData(1, allHistory));
