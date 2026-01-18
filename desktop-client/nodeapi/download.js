@@ -325,6 +325,7 @@ function recursivelyUpdatePaths(obj, targetDir, targetId) {
   }
 }
 
+// 带错误处理的JSON文件下载
 async function downloadJsonFile(
   { fileUrl, filePath, targetDir, targetId },
   parentWindow
@@ -369,7 +370,8 @@ async function downloadJsonFile(
     const jsonString = JSON.stringify(jsonData, null, 2); // 使用 2 个空格进行缩进，美化输出
     await fs.writeFile(filePath, jsonString, "utf8"); // 指定编码为 utf8
   } catch (error) {
-    errorHandler(error, fileUrl);
+    logger.error(`下载JSON文件失败: ${fileUrl}`, error);
+    throw error;
   }
 }
 
@@ -421,7 +423,9 @@ async function downloadNotJsonFile(
       });
     });
   } catch (error) {
-    errorHandler(error, fileUrl);
+    logger.error(`下载非JSON文件失败: ${fileUrl}`, error);
+    // 不使用errorHandler，直接抛出错误以便上层进行重试
+    throw error;
   }
 }
 
@@ -458,6 +462,84 @@ async function openDraftDirectory(dirPath) {
   }
 }
 
+// 获取目标文件路径
+// 解析URL并创建必要的目录结构
+async function getTargetFilePath(fileUrl, baseTargetDir, targetId) {
+  const urlObj = new URL(fileUrl);
+  let fullPath = urlObj.pathname;
+
+  // 找到ID在路径中的位置
+  const idIndex = fullPath.indexOf(targetId);
+  if (idIndex === -1) return null;
+
+  // 提取ID及之后的部分作为将要下载的路径
+  const relativePath = fullPath.substring(idIndex).replaceAll("/", path.sep); // 替换为系统路径分隔符
+  const fullTargetPath = path.join(baseTargetDir, relativePath);
+  const targetDir = path.dirname(fullTargetPath);
+
+  logger.info("[log] fullTargetPath: " + fullTargetPath);
+  logger.info("[log] targetDir: " + targetDir);
+
+  // 确保目标目录存在
+  try {
+    await fs.mkdir(targetDir, { recursive: true }); // recursive: true 可以创建多级目录
+  } catch (mkdirError) {
+    logger.error(`创建目录失败: ${targetDir}`, mkdirError);
+    throw mkdirError;
+  }
+
+  return { fullTargetPath, targetDir };
+}
+
+// 带重试机制的单个文件下载
+// 实现最多3次重试，失败后跳过该文件的功能
+async function downloadFileWithRetry(config, parentWindow, fileIndex) {
+  const maxRetries = 3;
+  let retryCount = 0;
+
+  // 获取文件名用于日志显示
+  const fileName = path.basename(config.filePath);
+
+  while (retryCount <= maxRetries) {
+    try {
+      await appendDownloadLog(
+        {
+          level: "loading",
+          message: `正在下载草稿内容文件: ${fileName} (第${fileIndex}个文件) ${retryCount > 0 ? `(重试第${retryCount}次)` : ''}`,
+        },
+        parentWindow
+      );
+
+      logger.info(`[log] start get file context : ${config.fileUrl}, retry: ${retryCount}`);
+      
+      await downloadSingleFile(config, parentWindow);
+      
+      logger.info(`[log] file saved to : ${config.filePath}`);
+      await appendDownloadLog(
+        { level: "success", message: `第 ${fileIndex} 个草稿信息文件保存成功` },
+        parentWindow
+      );
+      return true; // 下载成功
+    } catch (error) {
+      retryCount++;
+      logger.error(`[error] download file ${config.fileUrl} failed (attempt ${retryCount}/${maxRetries}):`, error);
+
+      if (retryCount >= maxRetries) {
+        // 达到最大重试次数，记录失败并跳过
+        await appendDownloadLog(
+          { level: "error", message: `第 ${fileIndex} 个草稿信息文件下载失败，已达到最大重试次数(${maxRetries})` },
+          parentWindow
+        );
+        return false; // 下载失败
+      } else {
+        // 等待一段时间再重试
+        await new Promise(resolve => setTimeout(resolve, 1000)); // 等待1秒再重试
+      }
+    }
+  }
+}
+
+// 批量下载文件主函数
 async function downloadFiles(
   { sourceUrl, remoteFileUrls, targetId, isOpenDir },
   parentWindow
@@ -474,7 +556,7 @@ async function downloadFiles(
 
     if (!baseTargetDir) {
       await appendDownloadLog(
-        { level: "error", message: `获取目录失败：${error}` },
+        { level: "error", message: `获取目录失败` },
         parentWindow
       );
       return;
@@ -487,80 +569,57 @@ async function downloadFiles(
       parentWindow
     );
 
-    let i = 0;
-    let relativePath = "";
+    let successCount = 0;
+    let failureCount = 0;
+    
     // 2. 遍历远程文件URL数组
-    for (const fileUrl of remoteFileUrls) {
+    for (let i = 0; i < remoteFileUrls.length; i++) {
+      const fileUrl = remoteFileUrls[i];
+      const fileIndex = i + 1; // 文件索引从1开始
+      
       try {
-        // 从URL中提取相对路径部分
-        // 假设你的URL结构固定，可以从特定部分之后开始提取
-        const urlObj = new URL(fileUrl);
-        // 提取路径名中可能包含的部分路径（根据你的URL结构调整）
-        let fullPath = urlObj.pathname;
-
-        // 找到ID在路径中的位置
-        const idIndex = fullPath.indexOf(targetId);
-        if (idIndex === -1) continue;
-
-        // 提取ID及之后的部分作为将要下载的路径
-        relativePath = fullPath.substring(idIndex).replaceAll("/", path.sep); // 替换为系统路径分隔符
-
-        const fullTargetPath = path.join(baseTargetDir, relativePath);
-        const targetDir = path.dirname(fullTargetPath);
-
-        logger.info("[log] fullTargetPath: " + fullTargetPath);
-
-        logger.info("[log] targetDir: " + targetDir);
-
-        // 3. 确保目标目录存在
-        try {
-          await fs.mkdir(targetDir, { recursive: true }); // recursive: true 可以创建多级目录
-        } catch (mkdirError) {
-          logger.error(`创建目录失败: ${targetDir}`, mkdirError);
+        // 获取目标文件路径
+        const targetPaths = await getTargetFilePath(fileUrl, baseTargetDir, targetId);
+        
+        if (!targetPaths) {
+          logger.error(`[error] 无法获取第 ${fileIndex} 个文件的目标路径: ${fileUrl}`);
           await appendDownloadLog(
-            { level: "error", message: `创建目录失败: ${targetDir} - ${mkdirError.message}` },
+            { level: "error", message: `第 ${fileIndex} 个草稿信息文件路径解析失败` },
             parentWindow
           );
-          throw mkdirError;
+          failureCount++;
+          continue; // 跳过当前文件
         }
-        // return { success: true, message: targetDir };
-
-        // 4. 下载文件
-
-        logger.info(`[log] start get file context : ${fileUrl}`);
-        await appendDownloadLog(
-          {
-            level: "loading",
-            message: `正在下载草稿内容文件: ${relativePath}`,
-          },
-          parentWindow
-        );
-
-        await downloadSingleFile(
+        
+        const { fullTargetPath, targetDir } = targetPaths;
+        
+        // 带重试机制的下载文件
+        const downloadSuccess = await downloadFileWithRetry(
           { fileUrl, filePath: fullTargetPath, targetDir, targetId },
-          parentWindow
+          parentWindow,
+          fileIndex
         );
-
-        logger.info(`[log] file saved to : ${fullTargetPath}`);
-        await appendDownloadLog(
-          { level: "success", message: `第 ${++i} 个草稿信息文件保存成功` },
-          parentWindow
-        );
+        
+        if (downloadSuccess) {
+          successCount++;
+        } else {
+          failureCount++;
+        }
       } catch (error) {
-        logger.error(`[error] download file ${fileUrl} failed:`, error);
-
+        logger.error(`[error] 处理第 ${fileIndex} 个文件时发生错误:`, error);
         await appendDownloadLog(
-          { level: "error", message: `第 ${++i} 个草稿信息文件保存失败` },
+          { level: "error", message: `第 ${fileIndex} 个草稿信息文件处理失败` },
           parentWindow
         );
-        // 你可以决定是继续下载其他文件还是直接抛出错误
-        // 这里记录错误但继续尝试下载下一个文件
+        failureCount++;
       }
     }
+    
+    // 输出最终统计结果
     await appendDownloadLog(
       {
         level: "all",
-        message: `下载完成：所有 ${targetId} 中的剪映草稿已下载！`,
+        message: `下载完成：共 ${remoteFileUrls.length} 个文件，成功 ${successCount} 个，失败 ${failureCount} 个`
       },
       parentWindow
     );
@@ -575,9 +634,10 @@ async function downloadFiles(
     const jointPath = path.join(baseTargetDir, targetId);
     logger.info(`[finish] all download: ${jointPath}`);
     if (isOpenDir) await openDraftDirectory(jointPath);
+    
     return {
       success: true,
-      message: `文件批量保存完成，保存至目录: ${jointPath}`,
+      message: `文件批量保存完成，保存至目录: ${jointPath}，成功 ${successCount} 个，失败 ${failureCount} 个`,
     };
   } catch (error) {
     logger.error(`[error] 批量保存过程发生错误:`, error);
