@@ -25,3 +25,6 @@ STICKER_CONFIG_PATH = os.path.join(os.path.dirname(__file__), "config", "sticker
 
 # 模板目录路径
 TEMPLATE_DIR = os.path.join(os.path.dirname(__file__), "template")
+
+# 剪映草稿保存路径（下载剪映草稿保存位置）
+DRAFT_SAVE_PATH = "C:\\Users\\1\\AppData\\Local\\JianyingPro\\User Data\\Projects\\com.lveditor.draft"
