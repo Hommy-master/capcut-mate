@@ -28,11 +28,6 @@ for r in app.routes:
 
 logger.info("CapCut Mate API")
 
-# 测试下载单个草稿
-test_url = "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=20251204214904ccb1af38"
-success = download_draft(test_url)
-print(f"下载结果: {'成功' if success else '失败'}")
-
 # 5. 启动
 if __name__ == "__main__":
     import uvicorn
