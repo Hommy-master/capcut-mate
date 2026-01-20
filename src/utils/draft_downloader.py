@@ -191,6 +191,10 @@ def download_single_file(file_url: str, target_dir: str) -> bool:
         with open(full_file_path, 'wb') as f:
             f.write(response.content)
         
+        # 如果是JSON文件，修改其中的路径
+        if full_file_path.endswith(('draft_info.json', 'draft_content.json')):
+            update_json_file_paths(full_file_path, target_dir, url_draft_id)
+        
         logger.debug(f"文件下载成功: {full_file_path}")
         return True
     
@@ -203,6 +207,129 @@ def download_single_file(file_url: str, target_dir: str) -> bool:
     except Exception as e:
         logger.error(f"下载文件时发生未知错误: {e}, URL: {file_url}")
         return False
+
+
+def update_json_file_paths(json_file_path: str, target_dir: str, draft_id: str) -> bool:
+    """
+    更新JSON文件中的路径，解析JSON并更新以/app/output/draft/draft_id开头的路径为本地路径
+    
+    Args:
+        json_file_path: JSON文件路径
+        target_dir: 目标目录
+        draft_id: 草稿ID
+        
+    Returns:
+        bool: 是否更新成功
+    """
+    try:
+        # 读取JSON文件
+        with open(json_file_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        
+        # 构造替换路径
+        remote_prefix = f"/app/output/draft/{draft_id}/"
+        local_prefix = os.path.join(config.DRAFT_SAVE_PATH, draft_id).replace('/', os.sep) + os.sep
+        
+        # 更新数据中的路径
+        updated_data = update_material_paths(data, remote_prefix, local_prefix)
+        
+        # 写回JSON文件
+        with open(json_file_path, 'w', encoding='utf-8') as f:
+            json.dump(updated_data, f, ensure_ascii=False, indent=2)
+        
+        logger.debug(f"更新了JSON文件中的路径: {json_file_path}")
+        return True
+    
+    except json.JSONDecodeError as e:
+        logger.error(f"JSON解析错误: {e}, 文件: {json_file_path}")
+        return False
+    except Exception as e:
+        logger.error(f"更新JSON文件路径失败: {e}, 文件: {json_file_path}")
+        return False
+
+
+def update_material_paths(data, remote_prefix: str, local_prefix: str):
+    """
+    更新材料路径，处理JSON中materials下的音频和视频路径
+    
+    Args:
+        data: JSON数据
+        remote_prefix: 远程路径前缀
+        local_prefix: 本地路径前缀
+        
+    Returns:
+        更新后的数据
+    """
+    if isinstance(data, dict):
+        # 检查是否是materials结构
+        if 'materials' in data:
+            materials = data.get('materials', {})
+            if isinstance(materials, dict):
+                # 处理音频和视频路径
+                audios = materials.get('audios', [])
+                videos = materials.get('videos', [])
+                
+                # 更新音频路径
+                for audio in audios:
+                    if isinstance(audio, dict) and 'path' in audio:
+                        audio['path'] = update_single_path(audio['path'], remote_prefix, local_prefix)
+                
+                # 更新视频路径
+                for video in videos:
+                    if isinstance(video, dict) and 'path' in video:
+                        video['path'] = update_single_path(video['path'], remote_prefix, local_prefix)
+
+        # 递归处理其他键值
+        updated_dict = {}
+        for key, value in data.items():
+            updated_dict[key] = update_material_paths(value, remote_prefix, local_prefix)
+        return updated_dict
+    elif isinstance(data, list):
+        # 处理列表中的每个元素
+        return [update_material_paths(item, remote_prefix, local_prefix) for item in data]
+    elif isinstance(data, str):
+        # 检查是否是以远程路径开头的路径
+        if data.startswith(remote_prefix):
+            # 提取远程前缀后的相对路径部分
+            relative_path = data[len(remote_prefix):]
+            # 将相对路径部分从Linux风格转换为Windows风格
+            relative_path_windows = relative_path.replace('/', os.sep)
+            # 组合成本地路径
+            new_path = local_prefix + relative_path_windows
+            # 验证文件是否存在
+            if not os.path.exists(new_path):
+                logger.warning(f"路径更新后的文件不存在: {new_path}")
+            return new_path
+        return data
+    else:
+        # 其他类型的数据保持不变
+        return data
+
+
+def update_single_path(path: str, remote_prefix: str, local_prefix: str) -> str:
+    """
+    更新单个路径值
+    
+    Args:
+        path: 原始路径
+        remote_prefix: 远程路径前缀
+        local_prefix: 本地路径前缀
+        
+    Returns:
+        更新后的路径
+    """
+    if isinstance(path, str) and path.startswith(remote_prefix):
+        # 提取远程前缀后的相对路径部分
+        relative_path = path[len(remote_prefix):]
+        # 将相对路径部分从Linux风格转换为Windows风格
+        relative_path_windows = relative_path.replace('/', os.sep)
+        # 组合成本地路径
+        new_path = local_prefix + relative_path_windows
+        # 验证文件是否存在
+        if not os.path.exists(new_path):
+            logger.warning(f"路径更新后的文件不存在: {new_path}")
+        return new_path
+    return path
 
 
 def prepare_target_directory(save_path: str, draft_id: str) -> str:
