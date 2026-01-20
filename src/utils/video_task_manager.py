@@ -111,8 +111,8 @@ class VideoGenTaskManager:
         # 存储任务
         self.tasks[draft_url] = task
         
-        # 添加到队列
-        asyncio.create_task(self._add_to_queue(task))
+        # 添加到队列 - 使用线程安全的方式
+        self._add_task_to_queue_sync(task)
         
         # 启动工作线程（如果还没启动）
         self._ensure_worker_running()
@@ -123,6 +123,36 @@ class VideoGenTaskManager:
         """将任务添加到队列"""
         await self.task_queue.put(task)
         logger.info(f"Task added to queue: {task.draft_url}")
+    
+    def _add_task_to_queue_sync(self, task: VideoGenTask):
+        """
+        同步方式将任务添加到队列
+        使用线程安全的方式提交任务
+        """
+        # 由于队列是asyncio.Queue，我们需要从主线程安全地添加任务
+        try:
+            # 获取当前事件循环
+            loop = asyncio.get_running_loop()
+            # 如果当前有运行的事件循环，就创建任务
+            if loop.is_running():
+                asyncio.run_coroutine_threadsafe(self._add_to_queue(task), loop)
+            else:
+                # 如果没有运行的事件循环，启动一个
+                if not loop.is_closed():
+                    loop.create_task(self._add_to_queue(task))
+        except RuntimeError:
+            # 如果没有事件循环，创建一个新的
+            def run_in_new_loop():
+                new_loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(new_loop)
+                try:
+                    new_loop.run_until_complete(self._add_to_queue(task))
+                finally:
+                    new_loop.close()
+            
+            # 在新线程中运行事件循环
+            thread = threading.Thread(target=run_in_new_loop, daemon=True)
+            thread.start()
     
     def get_task_status(self, draft_url: str) -> Optional[Dict[str, Any]]:
         """
