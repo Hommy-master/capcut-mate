@@ -28,3 +28,5 @@ TEMPLATE_DIR = os.path.join(os.path.dirname(__file__), "template")
 
 # 剪映草稿保存路径（下载剪映草稿保存位置）
 DRAFT_SAVE_PATH = "C:\\Users\\1\\AppData\\Local\\JianyingPro\\User Data\\Projects\\com.lveditor.draft"
+# 剪映专业版可执行文件路径
+JIAN_YING_EXE = "C:\\Users\\1\\AppData\\Local\\JianyingPro\\剪映专业版.exe"
