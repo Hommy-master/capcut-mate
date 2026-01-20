@@ -5,6 +5,7 @@
 import os
 import re
 import json
+import time
 import requests
 from urllib.parse import urlparse, parse_qs, urljoin
 from typing import Optional
@@ -145,68 +146,77 @@ def download_single_file(file_url: str, target_dir: str) -> bool:
     Returns:
         bool: 是否下载成功
     """
-    try:
-        # 发起请求下载文件
-        response = requests.get(file_url)
-        
-        if response.status_code != 200:
-            logger.error(f"下载文件失败，状态码: {response.status_code}, URL: {file_url}")
-            return False
-        
-        # 解析文件URL以获得相对路径
-        parsed_url = urlparse(file_url)
-        path_parts = parsed_url.path.split('/')
-        
-        # 从文件URL中提取draft_id（通过路径部分）
-        url_draft_id = None
-        for part in path_parts:
-            # 匹配类似20251204214904ccb1af38的格式，即以年份开头的长字符串
-            if re.match(r'^\d{8,}.*$', part) and len(part) >= 10:  # 匹配以至少8位数字开头的字符串
-                url_draft_id = part
-                break
-        
-        # 找到包含draft_id的路径部分，然后保留其后的路径结构
-        draft_id_index = -1
-        if url_draft_id:
-            for i, part in enumerate(path_parts):
-                if url_draft_id in part:
-                    draft_id_index = i
-                    break
-        
-        if draft_id_index != -1:
-            # 使用从包含draft_id部分的下一个位置开始的路径（跳过draft_id本身）
-            rel_path_parts = path_parts[draft_id_index + 1:]  # 跳过draft_id本身
-            rel_path = os.path.join(*rel_path_parts)
-        else:
-            # 如果没找到draft_id，使用整个路径（去除第一个空字符串）
-            rel_path = os.path.join(*path_parts[1:])  # 跳过第一个空字符串
-        
-        # 构建完整的目标文件路径
-        full_file_path = os.path.join(target_dir, rel_path)
-        
-        # 创建目录
-        os.makedirs(os.path.dirname(full_file_path), exist_ok=True)
-        
-        # 写入文件
-        with open(full_file_path, 'wb') as f:
-            f.write(response.content)
-        
-        # 如果是JSON文件，修改其中的路径
-        if full_file_path.endswith(('draft_info.json', 'draft_content.json')):
-            update_json_file_paths(full_file_path, target_dir, url_draft_id)
-        
-        logger.debug(f"文件下载成功: {full_file_path}")
-        return True
+    max_retries = 3
+    retry_count = 0
     
-    except requests.exceptions.RequestException as e:
-        logger.error(f"网络请求错误，下载文件失败: {e}, URL: {file_url}")
-        return False
-    except IOError as e:
-        logger.error(f"文件写入错误，下载文件失败: {e}, URL: {file_url}")
-        return False
-    except Exception as e:
-        logger.error(f"下载文件时发生未知错误: {e}, URL: {file_url}")
-        return False
+    while retry_count <= max_retries:
+        try:
+            # 发起请求下载文件
+            response = requests.get(file_url)
+            
+            if response.status_code != 200:
+                logger.error(f"下载文件失败，状态码: {response.status_code}, URL: {file_url}")
+                return False
+            
+            # 解析文件URL以获得相对路径
+            parsed_url = urlparse(file_url)
+            path_parts = parsed_url.path.split('/')
+            
+            # 从文件URL中提取draft_id（通过路径部分）
+            url_draft_id = None
+            for part in path_parts:
+                # 匹配类似20251204214904ccb1af38的格式，即以年份开头的长字符串
+                if re.match(r'^\d{8,}.*$', part) and len(part) >= 10:  # 匹配以至少8位数字开头的字符串
+                    url_draft_id = part
+                    break
+            
+            # 找到包含draft_id的路径部分，然后保留其后的路径结构
+            draft_id_index = -1
+            if url_draft_id:
+                for i, part in enumerate(path_parts):
+                    if url_draft_id in part:
+                        draft_id_index = i
+                        break
+            
+            if draft_id_index != -1:
+                # 使用从包含draft_id部分的下一个位置开始的路径（跳过draft_id本身）
+                rel_path_parts = path_parts[draft_id_index + 1:]  # 跳过draft_id本身
+                rel_path = os.path.join(*rel_path_parts)
+            else:
+                # 如果没找到draft_id，使用整个路径（去除第一个空字符串）
+                rel_path = os.path.join(*path_parts[1:])  # 跳过第一个空字符串
+            
+            # 构建完整的目标文件路径
+            full_file_path = os.path.join(target_dir, rel_path)
+            
+            # 创建目录
+            os.makedirs(os.path.dirname(full_file_path), exist_ok=True)
+            
+            # 写入文件
+            with open(full_file_path, 'wb') as f:
+                f.write(response.content)
+            
+            # 如果是JSON文件，修改其中的路径
+            if full_file_path.endswith(('draft_info.json', 'draft_content.json')):
+                update_json_file_paths(full_file_path, target_dir, url_draft_id)
+            
+            logger.debug(f"文件下载成功: {full_file_path}")
+            return True
+        
+        except requests.exceptions.RequestException as e:
+            retry_count += 1
+            if retry_count > max_retries:
+                logger.error(f"网络请求错误，下载文件失败，已重试{max_retries}次: {e}, URL: {file_url}")
+                return False
+            else:
+                logger.warning(f"网络请求错误，准备重试({retry_count}/{max_retries}): {e}, URL: {file_url}")
+                time.sleep(1 * retry_count)  # 递增延迟
+        except IOError as e:
+            logger.error(f"文件写入错误，下载文件失败: {e}, URL: {file_url}")
+            return False
+        except Exception as e:
+            logger.error(f"下载文件时发生未知错误: {e}, URL: {file_url}")
+            return False
 
 
 def update_json_file_paths(json_file_path: str, target_dir: str, draft_id: str) -> bool:
@@ -325,9 +335,6 @@ def update_single_path(path: str, remote_prefix: str, local_prefix: str) -> str:
         relative_path_windows = relative_path.replace('/', os.sep)
         # 组合成本地路径
         new_path = local_prefix + relative_path_windows
-        # 验证文件是否存在
-        if not os.path.exists(new_path):
-            logger.warning(f"路径更新后的文件不存在: {new_path}")
         return new_path
     return path
 
