@@ -16,6 +16,8 @@ services:
       - DOWNLOAD_URL=http://127.0.0.1/
       # 草稿提示URL
       - TIP_URL=
+    networks:
+      - capcut-mate-network
     mem_limit: 2G     # 内存限制
     memswap_limit: 2G # 总内存（物理内存 + Swap）限制
     cpus: '2'       # CPU使用率限制为150%，即容器最多可以使用1.5个完整的CPU核心
@@ -31,6 +33,8 @@ services:
       - "80:80"
     volumes:
       - ./output:/app/www/output
+    networks:
+      - capcut-mate-network
     mem_limit: 2G     # 内存限制
     memswap_limit: 2G # 总内存（物理内存 + Swap）限制
     cpus: '2.0'       # CPU使用率限制为150%，即容器最多可以使用1.5个完整的CPU核心
@@ -38,3 +42,7 @@ services:
     restart: unless-stopped  # 除非手动停止，否则总是重启容器
     container_name: linux # 这里指容器名称，非必需，不指定时，名称为：<项目名称>-<服务名称>-<序号>
     #entrypoint: ["/bin/sh", "-c", "sleep 10000"]
+
+networks:
+  capcut-mate-network:
+    driver: bridge
