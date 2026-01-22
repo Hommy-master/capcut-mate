@@ -10,7 +10,7 @@ services:
       - /etc/timezone:/etc/timezone:ro    # 挂载时区名称（可选）
     environment:
       # 草稿下载URL
-      - DRAFT_URL=https://capcut-mate.jcaigc.cn/openapi/v1/get_draft
+      - DRAFT_URL=https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft
       # 用于将容器内部的文件路径转成URL，本质是将/app/替换成DOWNLOAD_URL得到下载路径
       - DOWNLOAD_URL=https://capcut-mate.jcaigc.cn/
       # 草稿提示URL
