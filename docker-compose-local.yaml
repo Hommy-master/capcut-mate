@@ -1,0 +1,40 @@
+services:
+  capcut-mate:
+    image: gogoshine/capcut-mate:latest
+    #image: gogoshine/capcut-mate:sha-190a61f
+    platform: linux/amd64
+    ports:
+      - "30000:30000"
+    volumes:
+      - ./output:/app/output  # 挂载配置文件目录
+      - /etc/localtime:/etc/localtime:ro  # 挂载主机时区
+      - /etc/timezone:/etc/timezone:ro    # 挂载时区名称（可选）
+    environment:
+      # 草稿下载URL
+      - DRAFT_URL=http://127.0.0.1/openapi/v1/get_draft
+      # 用于将容器内部的文件路径转成URL，本质是将/app/替换成DOWNLOAD_URL得到下载路径
+      - DOWNLOAD_URL=http://127.0.0.1/
+      # 草稿提示URL
+      - TIP_URL=
+    mem_limit: 2G     # 内存限制
+    memswap_limit: 2G # 总内存（物理内存 + Swap）限制
+    cpus: '2'       # CPU使用率限制为150%，即容器最多可以使用1.5个完整的CPU核心
+    oom_score_adj: -500  # 调整 OOM 杀手优先级
+    restart: unless-stopped  # 除非手动停止，否则总是重启容器
+    container_name: capcut-mate # 这里指容器名称，非必需，不指定时，名称为：<项目名称>-<服务名称>-<序号>
+    #entrypoint: ["/bin/sh", "-c", "sleep 10000"]
+  
+  linux: # nginx服务器
+    image: gogoshine/linux:latest
+    platform: linux/amd64
+    ports:
+      - "80:80"
+    volumes:
+      - ./output:/app/www/output
+    mem_limit: 2G     # 内存限制
+    memswap_limit: 2G # 总内存（物理内存 + Swap）限制
+    cpus: '2.0'       # CPU使用率限制为150%，即容器最多可以使用1.5个完整的CPU核心
+    oom_score_adj: -500  # 调整 OOM 杀手优先级
+    restart: unless-stopped  # 除非手动停止，否则总是重启容器
+    container_name: linux # 这里指容器名称，非必需，不指定时，名称为：<项目名称>-<服务名称>-<序号>
+    #entrypoint: ["/bin/sh", "-c", "sleep 10000"]
