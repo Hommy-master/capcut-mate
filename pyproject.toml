@@ -11,6 +11,7 @@ dependencies = [
     "email-validator>=2.2.0",
     "fastapi>=0.100.0",
     "pymediainfo>=7.0.1",
+    "pywin32>=311",
     "requests>=2.32.5",
     "uiautomation>=2.0.29",
     "uvicorn[standard]>=0.35.0",

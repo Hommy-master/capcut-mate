@@ -11,6 +11,8 @@ from urllib.parse import urlparse, parse_qs, urljoin
 from typing import Optional
 from src.utils.logger import logger
 import config
+import win32file
+import win32con
 
 
 def extract_draft_id_from_url(url: str) -> Optional[str]:
@@ -200,6 +202,9 @@ def download_single_file(file_url: str, target_dir: str) -> bool:
             if full_file_path.endswith(('draft_info.json', 'draft_content.json')):
                 update_json_file_paths(full_file_path, target_dir, url_draft_id)
             
+            # 触发文件通知
+            trigger_file_notification(full_file_path)
+
             logger.debug(f"文件下载成功: {full_file_path}")
             return True
         
@@ -526,3 +531,35 @@ def finalize_batch_results(results: dict, draft_urls: list) -> None:
     }
     
     logger.info(f"批量下载完成: 总计{total}, 成功{success_count}, 失败{failure_count}")
+
+def trigger_file_notification(file_path):
+    """
+    触发Windows文件系统变更通知，让剪映感知到文件变化
+    """
+    try:
+        dir_path = os.path.dirname(file_path)
+        # 打开目录并触发"文件修改"通知（剪映会监听这个通知）
+        handle = win32file.CreateFile(
+            dir_path,
+            win32file.FILE_LIST_DIRECTORY,
+            win32con.FILE_SHARE_READ | win32con.FILE_SHARE_WRITE | win32con.FILE_SHARE_DELETE,
+            None,
+            win32con.OPEN_EXISTING,
+            win32con.FILE_FLAG_BACKUP_SEMANTICS,  # 打开目录的关键标志
+            None
+        )
+        # 主动触发一次目录变更通知（无需读取结果，仅触发）
+        win32file.ReadDirectoryChangesW(
+            handle,
+            4096,
+            True,
+            win32con.FILE_NOTIFY_CHANGE_FILE_NAME | win32con.FILE_NOTIFY_CHANGE_LAST_WRITE,
+            None,
+            None
+        )
+        handle.Close()
+        # 额外：修改文件的最后写入时间（强化通知）
+        os.utime(file_path, None)
+        logger.debug(f"已触发文件通知: {file_path}")
+    except Exception as e:
+        logger.warning(f"触发文件通知失败: {e}")
