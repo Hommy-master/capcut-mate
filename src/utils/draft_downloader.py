@@ -436,7 +436,7 @@ def copy_with_robocopy(src: str, dst: str, verbose: bool = False) -> bool:
     
     # 检查源目录是否存在
     if not os.path.exists(src):
-        print(f"错误：源目录不存在 - {src}")
+        logger.error(f"Source directory does not exist - {src}")
         return False
     
     # 构建robocopy命令 - 使用已验证的参数组合
@@ -454,15 +454,15 @@ def copy_with_robocopy(src: str, dst: str, verbose: bool = False) -> bool:
     ]
     
     if verbose:
-        print(f"执行命令: {' '.join(cmd)}")
+        logger.info(f"Executing command: {' '.join(cmd)}")
         # 在verbose模式下，不添加静默参数，以便看到输出
         cmd = cmd[:-3]  # 移除/NP, /NJH, /NJS参数
     
     try:
         if verbose:
             # 详细模式下，实时输出结果
-            print(f"开始复制: {src} → {dst}")
-            print("-" * 50)
+            logger.info(f"Starting copy: {src} → {dst}")
+            logger.info("-" * 50)
             
             result = subprocess.run(
                 cmd, 
@@ -475,7 +475,7 @@ def copy_with_robocopy(src: str, dst: str, verbose: bool = False) -> bool:
             # 获取返回码
             return_code = result.returncode
             
-            print("-" * 50)
+            logger.info("-" * 50)
         else:
             # 静默模式下，捕获输出但不显示
             result = subprocess.run(
@@ -489,56 +489,56 @@ def copy_with_robocopy(src: str, dst: str, verbose: bool = False) -> bool:
             
             # 即使静默模式，如果出错也要显示错误
             if return_code >= 8:
-                print(f"复制失败！返回码: {return_code}")
+                logger.error(f"Copy failed! Return code: {return_code}")
                 if result.stderr:
-                    print(f"错误信息: {result.stderr}")
+                    logger.error(f"Error message: {result.stderr}")
                 elif result.stdout:
-                    print(f"输出信息: {result.stdout}")
+                    logger.error(f"Output message: {result.stdout}")
         
         # robocopy返回码处理:
         # 0-7: 成功或部分成功（0=无变化，1-7=有文件操作）
         # 8+: 严重错误
         if return_code <= 7:
             if verbose:
-                print(f"复制完成！返回码: {return_code}")
+                logger.info(f"Copy completed! Return code: {return_code}")
                 if return_code == 0:
-                    print("提示: 返回码0表示没有文件需要复制（源和目标内容相同）")
+                    logger.info("Return code 0 means no files need to be copied (source and target are the same)")
                 elif return_code == 1:
-                    print("提示: 返回码1表示成功复制了一些文件")
+                    logger.info("Return code 1 means some files were successfully copied")
                 elif return_code == 2:
-                    print("提示: 返回码2表示有文件被跳过（可能是临时文件或无法访问）")
+                    logger.info("Return code 2 means some files were skipped (may be temporary files or inaccessible)")
                 elif return_code == 3:
-                    print("提示: 返回码3表示复制了一些文件，也跳过了一些文件")
+                    logger.info("Return code 3 means some files were copied and some were skipped")
             return True
         else:
             # 返回码8+表示有严重错误
             error_messages = {
-                8: "有文件/目录复制失败",
-                9: "参数错误",
-                10: "源目录不存在或无访问权限",
-                11: "目标目录创建失败",
-                12: "文件被使用中无法复制",
-                13: "磁盘空间不足",
-                14: "源目录是文件而不是目录",
-                15: "目标目录是文件而不是目录",
-                16: "常规错误"
+                8: "Files/directories copy failed",
+                9: "Parameter error",
+                10: "Source directory does not exist or no access permission",
+                11: "Target directory creation failed",
+                12: "File is in use and cannot be copied",
+                13: "Insufficient disk space",
+                14: "Source is a file instead of a directory",
+                15: "Target is a file instead of a directory",
+                16: "General error"
             }
             
-            error_msg = error_messages.get(return_code, f"未知错误 (返回码: {return_code})")
-            print(f"复制失败！{error_msg}")
+            error_msg = error_messages.get(return_code, f"Unknown error (return code: {return_code})")
+            logger.error(f"Copy failed! {error_msg}")
             
             # 显示更多信息（如果有）
             if not verbose and result.stderr:
-                print(f"详细错误: {result.stderr}")
+                logger.error(f"Detailed error: {result.stderr}")
                 
             return False
             
     except FileNotFoundError:
-        print("错误：robocopy命令未找到。请确保在Windows系统上运行。")
-        print("提示：robocopy是Windows Vista及之后版本的内置工具。")
+        logger.error("Error: robocopy command not found. Please ensure running on Windows system.")
+        logger.info("Hint: robocopy is a built-in tool for Windows Vista and later versions.")
         return False
     except Exception as e:
-        print(f"执行过程中发生未知错误: {e}")
+        logger.error(f"An unknown error occurred during execution: {e}")
         return False
 
 
