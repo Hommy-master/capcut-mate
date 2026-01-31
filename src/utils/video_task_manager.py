@@ -338,6 +338,17 @@ class VideoGenTaskManager:
                 raise RuntimeError("剪映导出结束但目标文件未生成，请检查磁盘空间或剪映版本")
             
             logger.info(f"Export draft success: {outfile}")
+            
+            # 视频导出成功后，清理下载的草稿文件
+            try:
+                import shutil
+                draft_path = os.path.join(config.DRAFT_SAVE_PATH, task.draft_id)
+                if os.path.exists(draft_path):
+                    shutil.rmtree(draft_path)
+                    logger.info(f"Cleaned up draft directory: {draft_path}")
+            except Exception as cleanup_error:
+                logger.warning(f"Failed to clean up draft directory {draft_path}: {cleanup_error}")
+            
             return outfile, ""
             
         except Exception as exc:

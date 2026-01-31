@@ -28,3 +28,9 @@ TEMPLATE_DIR = os.path.join(os.path.dirname(__file__), "template")
 
 # 剪映草稿保存路径（下载剪映草稿保存位置）
 DRAFT_SAVE_PATH = "C:/Users/1/AppData/Local/JianyingPro/User Data/Projects/com.lveditor.draft"
+
+# 腾讯云对象存储配置
+COS_SECRET_ID = os.getenv("COS_SECRET_ID", "")
+COS_SECRET_KEY = os.getenv("COS_SECRET_KEY", "")
+COS_BUCKET_NAME = os.getenv("COS_BUCKET_NAME", "")
+COS_REGION = os.getenv("COS_REGION", "")

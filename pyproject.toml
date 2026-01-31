@@ -15,4 +15,5 @@ dependencies = [
     "requests>=2.32.5",
     "uiautomation>=2.0.29",
     "uvicorn[standard]>=0.35.0",
+    "cos-python-sdk-v5>=1.9.38",
 ]
