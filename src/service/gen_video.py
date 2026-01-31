@@ -1,22 +1,34 @@
 from src.utils.logger import logger
 from src.utils.video_task_manager import task_manager
+from src.utils.points import get_user_points
 from exceptions import CustomException, CustomError
 from typing import Tuple
+import config
 
 
-def gen_video(draft_url: str) -> str:
+def gen_video(draft_url: str, api_key: str = None) -> str:
     """
     提交视频生成任务（异步处理）
     
     Args:
         draft_url: 草稿URL
+        api_key: 可选的API密钥，必须是合法的UUID格式，可以为空
     
     Returns:
         message: 响应消息
     """
-    logger.info(f"gen_video called with draft_url: {draft_url}")
+    logger.info(f"gen_video called with draft_url: {draft_url}, api_key provided: {api_key is not None}")
     
     try:
+        if config.ENABLE_APIKEY == "true" and api_key is not None:
+            # 查询用户积分
+            user_points = get_user_points(api_key)
+        
+            # 检查积分是否足够（需要大于1）
+            if user_points <= 1:
+                logger.error(f"Insufficient account balance: {user_points} for API key: {api_key[:8]}***")
+                raise CustomException(CustomError.INSUFFICIENT_ACCOUNT_BALANCE)
+        
         # 验证草稿URL格式
         validate_draft_url(draft_url)
         
@@ -26,12 +38,16 @@ def gen_video(draft_url: str) -> str:
         logger.info(f"Video generation task submitted for draft_url: {draft_url}")
         return "视频生成任务已提交，请使用draft_url查询进度"
         
+    except CustomException as e:
+        # 如果是自定义异常，直接抛出
+        raise e
     except ValueError as e:
         logger.error(f"Invalid draft_url: {draft_url}, error: {e}")
         raise CustomException(CustomError.INVALID_DRAFT_URL)
     except Exception as e:
         logger.error(f"Submit video generation task failed: {e}")
-        raise CustomException(CustomError.VIDEO_GENERATION_SUBMIT_FAILED)
+        # 如果get_user_points失败，也抛出系统内部错误
+        raise CustomException(CustomError.INTERNAL_SERVER_ERROR)
 
 
 def validate_draft_url(draft_url: str) -> None:

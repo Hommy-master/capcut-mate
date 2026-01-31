@@ -366,6 +366,7 @@ def gen_video(request: Request, gvr: GenVideoRequest) -> GenVideoResponse:
     # 调用service层处理业务逻辑
     message = service.gen_video(
         draft_url=gvr.draft_url,
+        apiKey=gvr.apiKey
     )
 
     return GenVideoResponse(message=message)
