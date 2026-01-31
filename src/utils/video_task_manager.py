@@ -344,7 +344,7 @@ class VideoGenTaskManager:
             upload_failed = False
             
             try:
-                from src.utils.helper import cos_upload_file
+                from src.utils.cos import cos_upload_file
                 logger.info(f"Uploading video to COS: {outfile}")
                 upload_url = cos_upload_file(outfile)
                 logger.info(f"Video uploaded to COS successfully: {upload_url}")
