@@ -339,17 +339,41 @@ class VideoGenTaskManager:
             
             logger.info(f"Export draft success: {outfile}")
             
-            # 视频导出成功后，清理下载的草稿文件
+            # 上传视频到COS
+            upload_url = ""
+            upload_failed = False
+            
             try:
+                from src.utils.helper import cos_upload_file
+                logger.info(f"Uploading video to COS: {outfile}")
+                upload_url = cos_upload_file(outfile)
+                logger.info(f"Video uploaded to COS successfully: {upload_url}")
+            except Exception as upload_error:
+                logger.error(f"Failed to upload video to COS: {upload_error}")
+                upload_failed = True
+            
+            # 无论上传成功与否，都清理本地文件
+            try:
+                # 清理本地视频文件
+                if os.path.exists(outfile):
+                    os.remove(outfile)
+                    logger.info(f"Cleaned up local video file: {outfile}")
+                
+                # 清理下载的草稿文件
                 import shutil
                 draft_path = os.path.join(config.DRAFT_SAVE_PATH, task.draft_id)
                 if os.path.exists(draft_path):
                     shutil.rmtree(draft_path)
                     logger.info(f"Cleaned up draft directory: {draft_path}")
             except Exception as cleanup_error:
-                logger.warning(f"Failed to clean up draft directory {draft_path}: {cleanup_error}")
+                logger.warning(f"Failed to clean up files: {cleanup_error}")
             
-            return outfile, ""
+            # 如果上传失败，返回错误信息
+            if upload_failed:
+                return "", "视频上传失败"
+            
+            # 返回上传后的URL
+            return upload_url, ""
             
         except Exception as exc:
             logger.exception(f"Export draft failed: draft_id={task.draft_id}, error={exc}")
