@@ -81,9 +81,7 @@ class VideoGenTaskManager:
         # 停止标志
         self.stop_flag = threading.Event()
         
-        logger.info("VideoGenTaskManager initialized")
-    
-
+        logger.info("VideoGenTaskManager initialized")   
     
     def submit_task(self, draft_url: str, api_key: str = None) -> None:
         """
@@ -326,14 +324,14 @@ class VideoGenTaskManager:
             # 上传视频到COS
             upload_url, upload_failed = self._upload_video_to_cos(outfile)
             
-            # 计算并扣除费用
-            charge_success = self._calculate_and_charge(task, outfile)
+            # 计算并扣除费用（必需执行但不关心结果）
+            self._calculate_and_charge(task, outfile)
             
             # 清理临时文件
             self._cleanup_files(outfile, task.draft_id)
             
             # 返回结果
-            return self._handle_result(upload_url, upload_failed, charge_success)
+            return self._handle_result(upload_url, upload_failed)
             
         except Exception as exc:
             logger.exception(f"Export draft failed: draft_id={task.draft_id}, error={exc}")
@@ -419,18 +417,17 @@ class VideoGenTaskManager:
         
         return upload_url, upload_failed
     
-    def _calculate_and_charge(self, task: VideoGenTask, outfile: str) -> bool:
+    def _calculate_and_charge(self, task: VideoGenTask, outfile: str) -> None:
         """
-        计算并扣除费用
+        计算并扣除费用（必需执行但不关心结果）
         
         Args:
             task: 视频生成任务
             outfile: 输出文件路径
         
         Returns:
-            bool: 扣费是否成功
+            None: 无返回值
         """
-        charge_success = True
         if task.api_key:  # 如果有API密钥才进行收费
             try:
                 # 导入获取媒体时长的函数
@@ -449,24 +446,21 @@ class VideoGenTaskManager:
                     # 导入扣费函数
                     from src.utils.points import deduct_user_points
                     
-                    # 扣除用户积分
+                    # 扣除用户积分（必需执行但不关心结果）
                     charge_success = deduct_user_points(
                         api_key=task.api_key,
                         points=cost,
-                        desc=f"视频生成，时长{video_duration:.2f}秒，费用{cost:.2f}积分"
+                        desc=f"剪映草稿导出视频，时长{video_duration:.2f}秒，费用{cost:.2f}积分"
                     )
                     
                     if charge_success:
                         logger.info(f"Successfully charged {cost:.2f} points for video duration {video_duration:.2f}s, API key: {task.api_key[:8]}***")
                     else:
-                        logger.error(f"Failed to charge {cost:.2f} points for video duration {video_duration:.2f}s, API key: {task.api_key[:8]}***")
+                        logger.warning(f"Failed to charge {cost:.2f} points for video duration {video_duration:.2f}s, API key: {task.api_key[:8]}***")
                 else:
                     logger.warning(f"Could not determine video duration for charging: {outfile}")
             except Exception as charge_error:
                 logger.error(f"Error calculating or charging for video duration: {charge_error}")
-                charge_success = False
-        
-        return charge_success
     
     def _cleanup_files(self, outfile: str, draft_id: str) -> None:
         """
@@ -491,25 +485,22 @@ class VideoGenTaskManager:
         except Exception as cleanup_error:
             logger.warning(f"Failed to clean up files: {cleanup_error}")
     
-    def _handle_result(self, upload_url: str, upload_failed: bool, charge_success: bool) -> Tuple[str, str]:
+    def _handle_result(self, upload_url: str, upload_failed: bool) -> Tuple[str, str]:
         """
         处理最终结果
         
         Args:
             upload_url: 上传后的URL
             upload_failed: 上传是否失败
-            charge_success: 扣费是否成功
         
         Returns:
             (video_url, error_message): 视频URL和错误信息
         """
-        # 如果上传失败或扣费失败，返回错误信息
+        # 如果上传失败，返回错误信息；扣费结果不关心
         if upload_failed:
             return "", "视频上传失败"
-        elif not charge_success:
-            return "", "视频生成成功但扣费失败"
         
-        # 返回上传后的URL
+        # 返回上传后的URL，扣费结果不阻塞视频生成
         return upload_url, ""
     
     def stop(self):

@@ -34,3 +34,6 @@ COS_SECRET_ID = os.getenv("COS_SECRET_ID", "")
 COS_SECRET_KEY = os.getenv("COS_SECRET_KEY", "")
 COS_BUCKET_NAME = os.getenv("COS_BUCKET_NAME", "")
 COS_REGION = os.getenv("COS_REGION", "")
+
+# APIKEY启用配置-默认启用
+ENABLE_APIKEY = os.getenv("ENABLE_APIKEY", "true")
