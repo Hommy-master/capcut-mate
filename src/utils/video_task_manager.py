@@ -299,6 +299,21 @@ class VideoGenTaskManager:
             # 更新进度
             task.progress = 30
             
+            # 在导出视频前，先下载草稿
+            logger.info(f"Start downloading draft before export: {task.draft_url}")
+            from src.utils.draft_downloader import download_draft
+            download_success = download_draft(task.draft_url)
+            
+            if not download_success:
+                error_message = f"草稿下载失败: {task.draft_url}"
+                logger.error(error_message)
+                return "", error_message
+            
+            logger.info(f"Draft downloaded successfully: {task.draft_url}")
+            
+            # 更新进度
+            task.progress = 40
+            
             with UIAutomationInitializerInThread():
                 logger.info(f"Begin to export draft: {task.draft_id} -> {outfile}")
                 
