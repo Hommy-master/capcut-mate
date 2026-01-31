@@ -15,6 +15,7 @@ import src.pyJianYingDraft as draft
 import config
 import os
 import sys
+import subprocess
 
 # 如果是Linux系统，则不导入uiautomation，并避免执行相关代码
 if sys.platform.startswith('win'):
@@ -48,6 +49,7 @@ class VideoGenTask:
     video_url: str = ""
     error_message: str = ""
     progress: int = 0  # 进度百分比 0-100
+    api_key: Optional[str] = None  # 存储API密钥用于计费
 
 
 class VideoGenTaskManager:
@@ -81,12 +83,15 @@ class VideoGenTaskManager:
         
         logger.info("VideoGenTaskManager initialized")
     
-    def submit_task(self, draft_url: str) -> None:
+
+    
+    def submit_task(self, draft_url: str, api_key: str = None) -> None:
         """
         提交视频生成任务
         
         Args:
             draft_url: 草稿URL
+            api_key: API密钥，用于计费
         """
         # 提取草稿ID
         draft_id = helper.get_url_param(draft_url, "draft_id")
@@ -105,7 +110,8 @@ class VideoGenTaskManager:
             draft_url=draft_url,
             draft_id=draft_id,
             status=TaskStatus.PENDING,
-            created_at=datetime.now()
+            created_at=datetime.now(),
+            api_key=api_key  # 存储API密钥用于计费
         )
         
         # 存储任务
@@ -299,85 +305,212 @@ class VideoGenTaskManager:
             # 更新进度
             task.progress = 30
             
-            # 在导出视频前，先下载草稿
-            logger.info(f"Start downloading draft before export: {task.draft_url}")
-            from src.utils.draft_downloader import download_draft
-            download_success = download_draft(task.draft_url)
-            
+            # 下载草稿
+            download_success = self._download_draft(task)
             if not download_success:
                 error_message = f"草稿下载失败: {task.draft_url}"
                 logger.error(error_message)
                 return "", error_message
             
-            logger.info(f"Draft downloaded successfully: {task.draft_url}")
-            
             # 更新进度
             task.progress = 40
             
-            with UIAutomationInitializerInThread():
-                logger.info(f"Begin to export draft: {task.draft_id} -> {outfile}")
-                
-                # 更新进度
-                task.progress = 50
-                
-                # 此前需要将剪映打开，并位于目录页
-                ctrl = draft.JianyingController()
-                
-                # 更新进度
-                task.progress = 70
-                
-                # 导出指定名称的草稿
-                ctrl.export_draft(task.draft_id, outfile)
-                
-                # 更新进度
-                task.progress = 90
+            # 导出视频
+            export_success = self._export_video(task, outfile)
+            if not export_success:
+                return "", "导出草稿失败"
             
-            # 检查文件是否生成
-            if not os.path.exists(outfile):
-                # 个别版本剪映不会抛异常，但文件未生成
-                raise RuntimeError("剪映导出结束但目标文件未生成，请检查磁盘空间或剪映版本")
-            
-            logger.info(f"Export draft success: {outfile}")
+            # 更新进度
+            task.progress = 95
             
             # 上传视频到COS
-            upload_url = ""
-            upload_failed = False
+            upload_url, upload_failed = self._upload_video_to_cos(outfile)
             
-            try:
-                from src.utils.cos import cos_upload_file
-                logger.info(f"Uploading video to COS: {outfile}")
-                upload_url = cos_upload_file(outfile)
-                logger.info(f"Video uploaded to COS successfully: {upload_url}")
-            except Exception as upload_error:
-                logger.error(f"Failed to upload video to COS: {upload_error}")
-                upload_failed = True
+            # 计算并扣除费用
+            charge_success = self._calculate_and_charge(task, outfile)
             
-            # 无论上传成功与否，都清理本地文件
-            try:
-                # 清理本地视频文件
-                if os.path.exists(outfile):
-                    os.remove(outfile)
-                    logger.info(f"Cleaned up local video file: {outfile}")
-                
-                # 清理下载的草稿文件
-                import shutil
-                draft_path = os.path.join(config.DRAFT_SAVE_PATH, task.draft_id)
-                if os.path.exists(draft_path):
-                    shutil.rmtree(draft_path)
-                    logger.info(f"Cleaned up draft directory: {draft_path}")
-            except Exception as cleanup_error:
-                logger.warning(f"Failed to clean up files: {cleanup_error}")
+            # 清理临时文件
+            self._cleanup_files(outfile, task.draft_id)
             
-            # 如果上传失败，返回错误信息
-            if upload_failed:
-                return "", "视频上传失败"
-            
-            # 返回上传后的URL
-            return upload_url, ""
+            # 返回结果
+            return self._handle_result(upload_url, upload_failed, charge_success)
             
         except Exception as exc:
             logger.exception(f"Export draft failed: draft_id={task.draft_id}, error={exc}")
             return "", f"导出草稿失败: {exc}"
+    
+    def _download_draft(self, task: VideoGenTask) -> bool:
+        """
+        下载草稿
+        
+        Args:
+            task: 视频生成任务
+        
+        Returns:
+            bool: 下载是否成功
+        """
+        logger.info(f"Start downloading draft before export: {task.draft_url}")
+        from src.utils.draft_downloader import download_draft
+        download_success = download_draft(task.draft_url)
+        
+        if download_success:
+            logger.info(f"Draft downloaded successfully: {task.draft_url}")
+        else:
+            logger.error(f"Failed to download draft: {task.draft_url}")
+        
+        return download_success
+    
+    def _export_video(self, task: VideoGenTask, outfile: str) -> bool:
+        """
+        导出视频
+        
+        Args:
+            task: 视频生成任务
+            outfile: 输出文件路径
+        
+        Returns:
+            bool: 导出是否成功
+        """
+        logger.info(f"Begin to export draft: {task.draft_id} -> {outfile}")
+        
+        # 更新进度
+        task.progress = 50
+        
+        with UIAutomationInitializerInThread():
+            # 此前需要将剪映打开，并位于目录页
+            ctrl = draft.JianyingController()
+
+            # 更新进度
+            task.progress = 70
+
+            # 导出指定名称的草稿
+            ctrl.export_draft(task.draft_id, outfile)
+
+        # 检查文件是否生成
+        if not os.path.exists(outfile):
+            # 个别版本剪映不会抛异常，但文件未生成
+            logger.error("剪映导出结束但目标文件未生成，请检查磁盘空间或剪映版本")
+            return False
+
+        logger.info(f"Export draft success: {outfile}")
+        return True
+    
+    def _upload_video_to_cos(self, outfile: str) -> Tuple[str, bool]:
+        """
+        上传视频到COS
+        
+        Args:
+            outfile: 输出文件路径
+        
+        Returns:
+            (upload_url, upload_failed): 上传后的URL和是否上传失败
+        """
+        upload_url = ""
+        upload_failed = False
+        
+        try:
+            from src.utils.cos import cos_upload_file
+            logger.info(f"Uploading video to COS: {outfile}")
+            upload_url = cos_upload_file(outfile)
+            logger.info(f"Video uploaded to COS successfully: {upload_url}")
+        except Exception as upload_error:
+            logger.error(f"Failed to upload video to COS: {upload_error}")
+            upload_failed = True
+        
+        return upload_url, upload_failed
+    
+    def _calculate_and_charge(self, task: VideoGenTask, outfile: str) -> bool:
+        """
+        计算并扣除费用
+        
+        Args:
+            task: 视频生成任务
+            outfile: 输出文件路径
+        
+        Returns:
+            bool: 扣费是否成功
+        """
+        charge_success = True
+        if task.api_key:  # 如果有API密钥才进行收费
+            try:
+                # 导入获取媒体时长的函数
+                from src.utils.media import get_media_duration
+                
+                # 获取视频时长（返回的是微秒）
+                duration_us = get_media_duration(outfile)
+                
+                if duration_us and duration_us > 0:
+                    # 将微秒转换为秒
+                    video_duration = duration_us / 1_000_000  # 微秒转秒
+                    
+                    # 计算费用：0.01积分/秒
+                    cost = video_duration * 0.01
+                    
+                    # 导入扣费函数
+                    from src.utils.points import deduct_user_points
+                    
+                    # 扣除用户积分
+                    charge_success = deduct_user_points(
+                        api_key=task.api_key,
+                        points=cost,
+                        desc=f"视频生成，时长{video_duration:.2f}秒，费用{cost:.2f}积分"
+                    )
+                    
+                    if charge_success:
+                        logger.info(f"Successfully charged {cost:.2f} points for video duration {video_duration:.2f}s, API key: {task.api_key[:8]}***")
+                    else:
+                        logger.error(f"Failed to charge {cost:.2f} points for video duration {video_duration:.2f}s, API key: {task.api_key[:8]}***")
+                else:
+                    logger.warning(f"Could not determine video duration for charging: {outfile}")
+            except Exception as charge_error:
+                logger.error(f"Error calculating or charging for video duration: {charge_error}")
+                charge_success = False
+        
+        return charge_success
+    
+    def _cleanup_files(self, outfile: str, draft_id: str) -> None:
+        """
+        清理临时文件
+        
+        Args:
+            outfile: 输出文件路径
+            draft_id: 草稿ID
+        """
+        try:
+            # 清理本地视频文件
+            if os.path.exists(outfile):
+                os.remove(outfile)
+                logger.info(f"Cleaned up local video file: {outfile}")
+            
+            # 清理下载的草稿文件
+            import shutil
+            draft_path = os.path.join(config.DRAFT_SAVE_PATH, draft_id)
+            if os.path.exists(draft_path):
+                shutil.rmtree(draft_path)
+                logger.info(f"Cleaned up draft directory: {draft_path}")
+        except Exception as cleanup_error:
+            logger.warning(f"Failed to clean up files: {cleanup_error}")
+    
+    def _handle_result(self, upload_url: str, upload_failed: bool, charge_success: bool) -> Tuple[str, str]:
+        """
+        处理最终结果
+        
+        Args:
+            upload_url: 上传后的URL
+            upload_failed: 上传是否失败
+            charge_success: 扣费是否成功
+        
+        Returns:
+            (video_url, error_message): 视频URL和错误信息
+        """
+        # 如果上传失败或扣费失败，返回错误信息
+        if upload_failed:
+            return "", "视频上传失败"
+        elif not charge_success:
+            return "", "视频生成成功但扣费失败"
+        
+        # 返回上传后的URL
+        return upload_url, ""
     
     def stop(self):
         """停止任务管理器"""

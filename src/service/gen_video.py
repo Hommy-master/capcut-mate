@@ -35,8 +35,8 @@ def gen_video(draft_url: str, apiKey: str = None) -> str:
         # 验证草稿URL格式
         validate_draft_url(draft_url)
         
-        # 提交任务到队列
-        task_manager.submit_task(draft_url)
+        # 提交任务到队列，传递API密钥用于计费
+        task_manager.submit_task(draft_url, apiKey)
         
         logger.info(f"Video generation task submitted for draft_url: {draft_url}")
         return "视频生成任务已提交，请使用draft_url查询进度"
