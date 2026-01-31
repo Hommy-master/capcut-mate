@@ -181,7 +181,7 @@ def download_all_files(files: list, target_dir: str, draft_id: str) -> bool:
         else:
             logger.error(f"下载单个文件失败: {file_url}")
 
-    copy_with_robocopy(target_dir, target_dir + ".bak")
+    trigger_directory_scan_with_robocopy(target_dir)
     
     logger.info(f"草稿 {draft_id} 下载完成: 总计{total_files}, 成功{success_count}, 失败{total_files-success_count}")
     return success_count == total_files
@@ -389,6 +389,159 @@ def update_single_path(path: str, remote_prefix: str, local_prefix: str) -> str:
         return new_path
     return path
 
+def trigger_directory_scan_with_robocopy(target_dir: str):
+    """
+    使用robocopy触发目录扫描，专门用于激活剪映的目录发现机制
+    
+    Args:
+        target_dir: 目录路径
+    """
+    if target_dir and os.path.exists(target_dir):
+        # 使用robocopy复制目录以触发剪映的目录扫描机制
+        copy_with_robocopy(target_dir, target_dir + ".tmp")
+        # 清理临时目录
+        tmp_dir = target_dir + ".tmp"
+        if os.path.exists(tmp_dir):
+            try:
+                import shutil
+                shutil.rmtree(tmp_dir)
+            except Exception as e:
+                logger.warning(f"清理临时目录失败 {tmp_dir}: {e}")
+
+def copy_with_robocopy(src: str, dst: str, verbose: bool = False) -> bool:
+    """
+    使用robocopy复制目录，参数已验证可用
+    
+    参数:
+        src: 源目录路径
+        dst: 目标目录路径
+        verbose: 是否显示详细输出，默认为False
+    
+    返回:
+        成功返回True，失败返回False
+    
+    robocopy参数说明:
+        /E: 复制所有子目录，包括空目录（递归复制）
+        /COPY:DAT: 复制数据、属性和时间戳（无需管理员权限）
+        /R:1: 失败重试1次
+        /W:1: 重试等待1秒
+        /NP: 不显示进度百分比（静默模式）
+        /NJH: 不显示作业头（静默模式）
+        /NJS: 不显示作业摘要（静默模式）
+    """
+    
+    # 确保路径是字符串类型
+    src = str(src)
+    dst = str(dst)
+    
+    # 检查源目录是否存在
+    if not os.path.exists(src):
+        print(f"错误：源目录不存在 - {src}")
+        return False
+    
+    # 构建robocopy命令 - 使用已验证的参数组合
+    cmd = [
+        "robocopy",
+        src,
+        dst,
+        "/E",          # 递归复制所有子目录
+        "/COPY:DAT",   # 复制数据、属性和时间戳（无需管理员权限）
+        "/R:1",        # 失败重试1次
+        "/W:1",        # 重试等待1秒
+        "/NP",         # 不显示进度百分比
+        "/NJH",        # 不显示作业头
+        "/NJS",        # 不显示作业摘要
+    ]
+    
+    if verbose:
+        print(f"执行命令: {' '.join(cmd)}")
+        # 在verbose模式下，不添加静默参数，以便看到输出
+        cmd = cmd[:-3]  # 移除/NP, /NJH, /NJS参数
+    
+    try:
+        if verbose:
+            # 详细模式下，实时输出结果
+            print(f"开始复制: {src} → {dst}")
+            print("-" * 50)
+            
+            result = subprocess.run(
+                cmd, 
+                capture_output=False,  # 实时显示输出
+                text=True, 
+                check=False,
+                encoding='gbk'  # Windows命令行通常使用GBK编码
+            )
+            
+            # 获取返回码
+            return_code = result.returncode
+            
+            print("-" * 50)
+        else:
+            # 静默模式下，捕获输出但不显示
+            result = subprocess.run(
+                cmd, 
+                capture_output=True, 
+                text=True, 
+                check=False,
+                encoding='gbk'
+            )
+            return_code = result.returncode
+            
+            # 即使静默模式，如果出错也要显示错误
+            if return_code >= 8:
+                print(f"复制失败！返回码: {return_code}")
+                if result.stderr:
+                    print(f"错误信息: {result.stderr}")
+                elif result.stdout:
+                    print(f"输出信息: {result.stdout}")
+        
+        # robocopy返回码处理:
+        # 0-7: 成功或部分成功（0=无变化，1-7=有文件操作）
+        # 8+: 严重错误
+        if return_code <= 7:
+            if verbose:
+                print(f"复制完成！返回码: {return_code}")
+                if return_code == 0:
+                    print("提示: 返回码0表示没有文件需要复制（源和目标内容相同）")
+                elif return_code == 1:
+                    print("提示: 返回码1表示成功复制了一些文件")
+                elif return_code == 2:
+                    print("提示: 返回码2表示有文件被跳过（可能是临时文件或无法访问）")
+                elif return_code == 3:
+                    print("提示: 返回码3表示复制了一些文件，也跳过了一些文件")
+            return True
+        else:
+            # 返回码8+表示有严重错误
+            error_messages = {
+                8: "有文件/目录复制失败",
+                9: "参数错误",
+                10: "源目录不存在或无访问权限",
+                11: "目标目录创建失败",
+                12: "文件被使用中无法复制",
+                13: "磁盘空间不足",
+                14: "源目录是文件而不是目录",
+                15: "目标目录是文件而不是目录",
+                16: "常规错误"
+            }
+            
+            error_msg = error_messages.get(return_code, f"未知错误 (返回码: {return_code})")
+            print(f"复制失败！{error_msg}")
+            
+            # 显示更多信息（如果有）
+            if not verbose and result.stderr:
+                print(f"详细错误: {result.stderr}")
+                
+            return False
+            
+    except FileNotFoundError:
+        print("错误：robocopy命令未找到。请确保在Windows系统上运行。")
+        print("提示：robocopy是Windows Vista及之后版本的内置工具。")
+        return False
+    except Exception as e:
+        print(f"执行过程中发生未知错误: {e}")
+        return False
+
+
 
 def prepare_target_directory(save_path: str, draft_id: str) -> str:
     """
@@ -577,136 +730,4 @@ def finalize_batch_results(results: dict, draft_urls: list) -> None:
     
     logger.info(f"批量下载完成: 总计{total}, 成功{success_count}, 失败{failure_count}")
 
-def copy_with_robocopy(src: str, dst: str, verbose: bool = False) -> bool:
-    """
-    使用robocopy复制目录，参数已验证可用
-    
-    参数:
-        src: 源目录路径
-        dst: 目标目录路径
-        verbose: 是否显示详细输出，默认为False
-    
-    返回:
-        成功返回True，失败返回False
-    
-    robocopy参数说明:
-        /E: 复制所有子目录，包括空目录（递归复制）
-        /COPY:DAT: 复制数据、属性和时间戳（无需管理员权限）
-        /R:1: 失败重试1次
-        /W:1: 重试等待1秒
-        /NP: 不显示进度百分比（静默模式）
-        /NJH: 不显示作业头（静默模式）
-        /NJS: 不显示作业摘要（静默模式）
-    """
-    
-    # 确保路径是字符串类型
-    src = str(src)
-    dst = str(dst)
-    
-    # 检查源目录是否存在
-    if not os.path.exists(src):
-        print(f"错误：源目录不存在 - {src}")
-        return False
-    
-    # 构建robocopy命令 - 使用已验证的参数组合
-    cmd = [
-        "robocopy",
-        src,
-        dst,
-        "/E",          # 递归复制所有子目录
-        "/COPY:DAT",   # 复制数据、属性和时间戳（无需管理员权限）
-        "/R:1",        # 失败重试1次
-        "/W:1",        # 重试等待1秒
-        "/NP",         # 不显示进度百分比
-        "/NJH",        # 不显示作业头
-        "/NJS",        # 不显示作业摘要
-    ]
-    
-    if verbose:
-        print(f"执行命令: {' '.join(cmd)}")
-        # 在verbose模式下，不添加静默参数，以便看到输出
-        cmd = cmd[:-3]  # 移除/NP, /NJH, /NJS参数
-    
-    try:
-        if verbose:
-            # 详细模式下，实时输出结果
-            print(f"开始复制: {src} → {dst}")
-            print("-" * 50)
-            
-            result = subprocess.run(
-                cmd, 
-                capture_output=False,  # 实时显示输出
-                text=True, 
-                check=False,
-                encoding='gbk'  # Windows命令行通常使用GBK编码
-            )
-            
-            # 获取返回码
-            return_code = result.returncode
-            
-            print("-" * 50)
-        else:
-            # 静默模式下，捕获输出但不显示
-            result = subprocess.run(
-                cmd, 
-                capture_output=True, 
-                text=True, 
-                check=False,
-                encoding='gbk'
-            )
-            return_code = result.returncode
-            
-            # 即使静默模式，如果出错也要显示错误
-            if return_code >= 8:
-                print(f"复制失败！返回码: {return_code}")
-                if result.stderr:
-                    print(f"错误信息: {result.stderr}")
-                elif result.stdout:
-                    print(f"输出信息: {result.stdout}")
-        
-        # robocopy返回码处理：
-        # 0-7: 成功或部分成功（0=无变化，1-7=有文件操作）
-        # 8+: 严重错误
-        if return_code <= 7:
-            if verbose:
-                print(f"复制完成！返回码: {return_code}")
-                if return_code == 0:
-                    print("提示: 返回码0表示没有文件需要复制（源和目标内容相同）")
-                elif return_code == 1:
-                    print("提示: 返回码1表示成功复制了一些文件")
-                elif return_code == 2:
-                    print("提示: 返回码2表示有文件被跳过（可能是临时文件或无法访问）")
-                elif return_code == 3:
-                    print("提示: 返回码3表示复制了一些文件，也跳过了一些文件")
-            return True
-        else:
-            # 返回码8+表示有严重错误
-            error_messages = {
-                8: "有文件/目录复制失败",
-                9: "参数错误",
-                10: "源目录不存在或无访问权限",
-                11: "目标目录创建失败",
-                12: "文件被使用中无法复制",
-                13: "磁盘空间不足",
-                14: "源目录是文件而不是目录",
-                15: "目标目录是文件而不是目录",
-                16: "常规错误"
-            }
-            
-            error_msg = error_messages.get(return_code, f"未知错误 (返回码: {return_code})")
-            print(f"复制失败！{error_msg}")
-            
-            # 显示更多信息（如果有）
-            if not verbose and result.stderr:
-                print(f"详细错误: {result.stderr}")
-                
-            return False
-            
-    except FileNotFoundError:
-        print("错误：robocopy命令未找到。请确保在Windows系统上运行。")
-        print("提示：robocopy是Windows Vista及之后版本的内置工具。")
-        return False
-    except Exception as e:
-        print(f"执行过程中发生未知错误: {e}")
-        return False
 
