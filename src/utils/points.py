@@ -10,6 +10,7 @@ API_HEADERS = {
     'Accept': 'application/json',
     'Content-Type': 'application/json'
 }
+DEFAULT_API_TIMEOUT = 30  # 默认API超时时间为30秒
 
 def get_user_points(api_key: str) -> float:
     """

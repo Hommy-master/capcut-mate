@@ -46,6 +46,8 @@ class CustomError(Enum):
     VIDEO_STATUS_QUERY_FAILED = (2032, "视频任务状态查询失败", "Video task status query failed")
     IMAGE_ANIMATION_GET_FAILED = (2033, "获取图片动画失败", "Get image animation failed")
     AUDIO_DURATION_GET_FAILED = (2034, "获取音频时长失败", "Get audio duration failed")
+    INSUFFICIENT_ACCOUNT_BALANCE = (2035, "账户余额不足，当前积分需大于 1 才可继续使用服务，请完成充值后重试", "Insufficient account balance. A minimum of 1 point is required to continue using the service. Please recharge and try again.")
+    INVALID_APIKEY = (2036, "无效的apiKey", "Invalid apiKey")
 
     # ===== 系统错误码 (9000-9999) =====
     INTERNAL_SERVER_ERROR = (9998, "系统内部错误", "Internal server error")
