@@ -6,27 +6,30 @@ from typing import Tuple
 import config
 
 
-def gen_video(draft_url: str, api_key: str = None) -> str:
+def gen_video(draft_url: str, apiKey: str = None) -> str:
     """
     提交视频生成任务（异步处理）
     
     Args:
         draft_url: 草稿URL
-        api_key: 可选的API密钥，必须是合法的UUID格式，可以为空
+        apiKey: 可选的API密钥，必须是合法的UUID格式，可以为空
     
     Returns:
         message: 响应消息
     """
-    logger.info(f"gen_video called with draft_url: {draft_url}, api_key provided: {api_key is not None}")
+    logger.info(f"gen_video called with draft_url: {draft_url}, apiKey provided: {apiKey is not None}")
     
     try:
-        if config.ENABLE_APIKEY == "true" and api_key is not None:
+        if config.ENABLE_APIKEY == "true":
+            if apiKey == "": # 开启API密钥验证
+                raise CustomException(CustomError.INVALID_APIKEY)
+
             # 查询用户积分
-            user_points = get_user_points(api_key)
+            user_points = get_user_points(apiKey)
         
             # 检查积分是否足够（需要大于1）
             if user_points <= 1:
-                logger.error(f"Insufficient account balance: {user_points} for API key: {api_key[:8]}***")
+                logger.error(f"Insufficient account balance: {user_points} for API key: {apiKey[:8]}***")
                 raise CustomException(CustomError.INSUFFICIENT_ACCOUNT_BALANCE)
         
         # 验证草稿URL格式
