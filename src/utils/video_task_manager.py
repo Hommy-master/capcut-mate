@@ -53,7 +53,11 @@ class VideoGenTask:
 
 
 class VideoGenTaskManager:
-    """视频生成任务管理器 - 单例模式"""
+    """视频生成任务管理器 - 单例模式
+    
+    注意：_export_video 方法使用 export_video_lock 确保任何时候只有一个线程执行导出操作
+    这是为了防止剪映应用在同时导出多个视频时可能出现的问题
+    """
     
     _instance = None
     _lock = threading.Lock()
@@ -76,6 +80,8 @@ class VideoGenTaskManager:
         self.task_queue: asyncio.Queue = asyncio.Queue()
         # 工作线程锁（确保同时只有一个视频生成任务在执行）
         self.processing_lock = threading.Lock()
+        # 导出视频专用锁（确保任何时候只有一个线程执行导出视频操作）
+        self.export_video_lock = threading.Lock()
         # 工作线程
         self.worker_thread: Optional[threading.Thread] = None
         # 停止标志
@@ -369,29 +375,31 @@ class VideoGenTaskManager:
         Returns:
             bool: 导出是否成功
         """
-        logger.info(f"Begin to export draft: {task.draft_id} -> {outfile}")
-        
-        # 更新进度
-        task.progress = 50
-        
-        with UIAutomationInitializerInThread():
-            # 此前需要将剪映打开，并位于目录页
-            ctrl = draft.JianyingController()
-
+        # 使用专用锁确保任何时候只有一个线程执行导出视频操作
+        with self.export_video_lock:
+            logger.info(f"Begin to export draft: {task.draft_id} -> {outfile}")
+            
             # 更新进度
-            task.progress = 70
+            task.progress = 50
+            
+            with UIAutomationInitializerInThread():
+                # 此前需要将剪映打开，并位于目录页
+                ctrl = draft.JianyingController()
 
-            # 导出指定名称的草稿
-            ctrl.export_draft(task.draft_id, outfile)
+                # 更新进度
+                task.progress = 70
 
-        # 检查文件是否生成
-        if not os.path.exists(outfile):
-            # 个别版本剪映不会抛异常，但文件未生成
-            logger.error("剪映导出结束但目标文件未生成，请检查磁盘空间或剪映版本")
-            return False
+                # 导出指定名称的草稿
+                ctrl.export_draft(task.draft_id, outfile)
 
-        logger.info(f"Export draft success: {outfile}")
-        return True
+            # 检查文件是否生成
+            if not os.path.exists(outfile):
+                # 个别版本剪映不会抛异常，但文件未生成
+                logger.error("剪映导出结束但目标文件未生成，请检查磁盘空间或剪映版本")
+                return False
+
+            logger.info(f"Export draft success: {outfile}")
+            return True
     
     def _upload_video_to_cos(self, outfile: str) -> Tuple[str, bool]:
         """
