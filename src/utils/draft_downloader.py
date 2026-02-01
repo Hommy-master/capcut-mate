@@ -251,7 +251,6 @@ def download_single_file(file_url: str, target_dir: str) -> bool:
             if full_file_path.endswith(('draft_info.json', 'draft_content.json')):
                 update_json_file_paths(full_file_path, target_dir, url_draft_id)
 
-            logger.info(f"文件下载成功: {full_file_path}")
             return True
         
         except requests.exceptions.RequestException as e:
