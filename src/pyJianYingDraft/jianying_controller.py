@@ -63,6 +63,167 @@ class JianyingController:
         """初始化剪映控制器, 此时剪映应该处于目录页"""
         self.get_window()
 
+    def find_and_click_draft(self, draft_name: str) -> None:
+        """查找并点击指定名称的草稿
+        
+        Args:
+            draft_name (str): 要查找的草稿名称
+            
+        Raises:
+            DraftNotFound: 未找到指定名称的剪映草稿
+        """
+        # 点击对应草稿
+        draft_name_text = self.app.TextControl(
+            searchDepth=2,
+            Compare=ControlFinder.desc_matcher(f"HomePageDraftTitle:{draft_name}", exact=True)
+        )
+        if not draft_name_text.Exists(0):
+            raise exceptions.DraftNotFound(f"未找到名为{draft_name}的剪映草稿")
+        draft_btn = draft_name_text.GetParentControl()
+        assert draft_btn is not None
+        draft_btn.Click(simulateMove=False)
+        time.sleep(10)
+        self.get_window()
+
+    def click_export_button(self) -> None:
+        """点击编辑页面的导出按钮
+        
+        Raises:
+            AutomationError: 未找到导出按钮
+        """
+        export_btn = self.app.TextControl(searchDepth=2, Compare=ControlFinder.desc_matcher("MainWindowTitleBarExportBtn"))
+        if not export_btn.Exists(0):
+            raise AutomationError("未在编辑窗口中找到导出按钮")
+        export_btn.Click(simulateMove=False)
+        time.sleep(10)
+        self.get_window()
+
+    def get_original_export_path(self) -> str:
+        """获取原始导出路径
+        
+        Returns:
+            str: 原始导出路径
+            
+        Raises:
+            AutomationError: 未找到导出路径框
+        """
+        # 获取原始导出路径（带后缀名）
+        export_path_sib = self.app.TextControl(searchDepth=2, Compare=ControlFinder.desc_matcher("ExportPath"))
+        if not export_path_sib.Exists(0):
+            raise AutomationError("未找到导出路径框")
+        export_path_text = export_path_sib.GetSiblingControl(lambda ctrl: True)
+        assert export_path_text is not None
+        export_path = export_path_text.GetPropertyValue(30159)
+        return export_path
+
+    def set_export_resolution(self, resolution: Optional[ExportResolution]) -> None:
+        """设置导出分辨率
+        
+        Args:
+            resolution (Optional[ExportResolution]): 导出分辨率，如果为None则不设置
+            
+        Raises:
+            AutomationError: 未找到相关控件
+        """
+        if resolution is not None:
+            setting_group = self.app.GroupControl(searchDepth=1,
+                                          Compare=ControlFinder.class_name_matcher("PanelSettingsGroup_QMLTYPE"))
+            if not setting_group.Exists(0):
+                raise AutomationError("未找到导出设置组")
+            resolution_btn = setting_group.TextControl(searchDepth=2, Compare=ControlFinder.desc_matcher("ExportSharpnessInput"))
+            if not resolution_btn.Exists(0.5):
+                raise AutomationError("未找到导出分辨率下拉框")
+            resolution_btn.Click(simulateMove=False)
+            time.sleep(0.5)
+            resolution_item = self.app.TextControl(
+                searchDepth=2, Compare=ControlFinder.desc_matcher(resolution.value)
+            )
+            if not resolution_item.Exists(0.5):
+                raise AutomationError(f"未找到{resolution.value}分辨率选项")
+            resolution_item.Click(simulateMove=False)
+            time.sleep(0.5)
+
+    def set_export_framerate(self, framerate: Optional[ExportFramerate]) -> None:
+        """设置导出帧率
+        
+        Args:
+            framerate (Optional[ExportFramerate]): 导出帧率，如果为None则不设置
+            
+        Raises:
+            AutomationError: 未找到相关控件
+        """
+        if framerate is not None:
+            setting_group = self.app.GroupControl(searchDepth=1,
+                                          Compare=ControlFinder.class_name_matcher("PanelSettingsGroup_QMLTYPE"))
+            if not setting_group.Exists(0):
+                raise AutomationError("未找到导出设置组")
+            framerate_btn = setting_group.TextControl(searchDepth=2, Compare=ControlFinder.desc_matcher("FrameRateInput"))
+            if not framerate_btn.Exists(0.5):
+                raise AutomationError("未找到导出帧率下拉框")
+            framerate_btn.Click(simulateMove=False)
+            time.sleep(0.5)
+            framerate_item = self.app.TextControl(
+                searchDepth=2, Compare=ControlFinder.desc_matcher(framerate.value)
+            )
+            if not framerate_item.Exists(0.5):
+                raise AutomationError(f"未找到{framerate.value}帧率选项")
+            framerate_item.Click(simulateMove=False)
+            time.sleep(0.5)
+
+    def click_final_export_button(self) -> None:
+        """点击导出窗口的最终导出按钮
+        
+        Raises:
+            AutomationError: 未找到导出按钮
+        """
+        export_btn = self.app.TextControl(searchDepth=2, Compare=ControlFinder.desc_matcher("ExportOkBtn", exact=True))
+        if not export_btn.Exists(0):
+            raise AutomationError("未在导出窗口中找到导出按钮")
+        export_btn.Click(simulateMove=False)
+        time.sleep(5)
+
+    def wait_for_export_completion(self, timeout: float) -> None:
+        """等待导出完成
+        
+        Args:
+            timeout (float): 超时时间（秒）
+            
+        Raises:
+            AutomationError: 导出超时
+        """
+        # 等待导出完成
+        st = time.time()
+        while True:
+            self.get_window()
+            if self.app_status != "pre_export": continue
+
+            succeed_close_btn = self.app.TextControl(searchDepth=2, Compare=ControlFinder.desc_matcher("ExportSucceedCloseBtn"))
+            if succeed_close_btn.Exists(0):
+                succeed_close_btn.Click(simulateMove=False)
+                break
+
+            if time.time() - st > timeout:
+                raise AutomationError("导出超时, 时限为%d秒" % timeout)
+
+            time.sleep(1)
+        time.sleep(2)
+
+    def return_to_home(self) -> None:
+        """回到目录页并稍作延迟"""
+        self.get_window()
+        self.switch_to_home()
+        time.sleep(2)
+
+    def move_exported_file(self, original_path: str, output_path: Optional[str]) -> None:
+        """移动导出的文件到指定位置
+        
+        Args:
+            original_path (str): 原始导出路径
+            output_path (Optional[str]): 目标输出路径，如果为None则不移动
+        """
+        if output_path is not None:
+            shutil.move(original_path, output_path)
+
     def export_draft(self, draft_name: str, output_path: Optional[str] = None, *,
                      resolution: Optional[ExportResolution] = None,
                      framerate: Optional[ExportFramerate] = None,
@@ -83,110 +244,37 @@ class JianyingController:
             `AutomationError`: 剪映操作失败
         """
         print(f"开始导出 {draft_name} 至 {output_path}")
+        # 初始化准备
         self.get_window()
         self.switch_to_home()
-
-        # 点击对应草稿
-        draft_name_text = self.app.TextControl(
-            searchDepth=2,
-            Compare=ControlFinder.desc_matcher(f"HomePageDraftTitle:{draft_name}", exact=True)
-        )
-        if not draft_name_text.Exists(0):
-            raise exceptions.DraftNotFound(f"未找到名为{draft_name}的剪映草稿")
-        draft_btn = draft_name_text.GetParentControl()
-        assert draft_btn is not None
-        draft_btn.Click(simulateMove=False)
-        time.sleep(10)
-        self.get_window()
-
-        # 点击导出按钮
-        export_btn = self.app.TextControl(searchDepth=2, Compare=ControlFinder.desc_matcher("MainWindowTitleBarExportBtn"))
-        if not export_btn.Exists(0):
-            raise AutomationError("未在编辑窗口中找到导出按钮")
-        export_btn.Click(simulateMove=False)
-        time.sleep(10)
-        self.get_window()
-
-        # 获取原始导出路径（带后缀名）
-        export_path_sib = self.app.TextControl(searchDepth=2, Compare=ControlFinder.desc_matcher("ExportPath"))
-        if not export_path_sib.Exists(0):
-            raise AutomationError("未找到导出路径框")
-        export_path_text = export_path_sib.GetSiblingControl(lambda ctrl: True)
-        assert export_path_text is not None
-        export_path = export_path_text.GetPropertyValue(30159)
-
-        # 设置分辨率
-        if resolution is not None:
-            setting_group = self.app.GroupControl(searchDepth=1,
-                                                  Compare=ControlFinder.class_name_matcher("PanelSettingsGroup_QMLTYPE"))
-            if not setting_group.Exists(0):
-                raise AutomationError("未找到导出设置组")
-            resolution_btn = setting_group.TextControl(searchDepth=2, Compare=ControlFinder.desc_matcher("ExportSharpnessInput"))
-            if not resolution_btn.Exists(0.5):
-                raise AutomationError("未找到导出分辨率下拉框")
-            resolution_btn.Click(simulateMove=False)
-            time.sleep(0.5)
-            resolution_item = self.app.TextControl(
-                searchDepth=2, Compare=ControlFinder.desc_matcher(resolution.value)
-            )
-            if not resolution_item.Exists(0.5):
-                raise AutomationError(f"未找到{resolution.value}分辨率选项")
-            resolution_item.Click(simulateMove=False)
-            time.sleep(0.5)
-
-        # 设置帧率
-        if framerate is not None:
-            setting_group = self.app.GroupControl(searchDepth=1,
-                                                  Compare=ControlFinder.class_name_matcher("PanelSettingsGroup_QMLTYPE"))
-            if not setting_group.Exists(0):
-                raise AutomationError("未找到导出设置组")
-            framerate_btn = setting_group.TextControl(searchDepth=2, Compare=ControlFinder.desc_matcher("FrameRateInput"))
-            if not framerate_btn.Exists(0.5):
-                raise AutomationError("未找到导出帧率下拉框")
-            framerate_btn.Click(simulateMove=False)
-            time.sleep(0.5)
-            framerate_item = self.app.TextControl(
-                searchDepth=2, Compare=ControlFinder.desc_matcher(framerate.value)
-            )
-            if not framerate_item.Exists(0.5):
-                raise AutomationError(f"未找到{framerate.value}帧率选项")
-            framerate_item.Click(simulateMove=False)
-            time.sleep(0.5)
-
-
-        # 点击导出
-        export_btn = self.app.TextControl(searchDepth=2, Compare=ControlFinder.desc_matcher("ExportOkBtn", exact=True))
-        if not export_btn.Exists(0):
-            raise AutomationError("未在导出窗口中找到导出按钮")
-        export_btn.Click(simulateMove=False)
-        time.sleep(5)
-
+        
+        # 查找并点击目标草稿
+        self.find_and_click_draft(draft_name)
+        
+        # 点击导出按钮进入导出界面
+        self.click_export_button()
+        
+        # 获取原始导出路径
+        original_path = self.get_original_export_path()
+        
+        # 设置分辨率（如果指定）
+        self.set_export_resolution(resolution)
+        
+        # 设置帧率（如果指定）
+        self.set_export_framerate(framerate)
+        
+        # 点击最终导出按钮
+        self.click_final_export_button()
+        
         # 等待导出完成
-        st = time.time()
-        while True:
-            self.get_window()
-            if self.app_status != "pre_export": continue
-
-            succeed_close_btn = self.app.TextControl(searchDepth=2, Compare=ControlFinder.desc_matcher("ExportSucceedCloseBtn"))
-            if succeed_close_btn.Exists(0):
-                succeed_close_btn.Click(simulateMove=False)
-                break
-
-            if time.time() - st > timeout:
-                raise AutomationError("导出超时, 时限为%d秒" % timeout)
-
-            time.sleep(1)
-        time.sleep(2)
-
-        # 回到目录页
-        self.get_window()
-        self.switch_to_home()
-        time.sleep(2)
-
-        # 复制导出的文件到指定目录
-        if output_path is not None:
-            shutil.move(export_path, output_path)
-
+        self.wait_for_export_completion(timeout)
+        
+        # 返回主页
+        self.return_to_home()
+        
+        # 移动导出文件到指定路径（如果指定）
+        self.move_exported_file(original_path, output_path)
+        
         print(f"导出 {draft_name} 至 {output_path} 完成")
 
     def switch_to_home(self) -> None:
