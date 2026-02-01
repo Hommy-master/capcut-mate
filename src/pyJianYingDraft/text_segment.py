@@ -407,7 +407,7 @@ class TextSegment(VisualSegment):
                     }
                 }
             },
-            "range": [0, len(self.text)],
+            "range": [0, len(self.text.encode('utf-16-le'))],
             "size": self.style.size,
             "bold": self.style.bold,
             "italic": self.style.italic,
