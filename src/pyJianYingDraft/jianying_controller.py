@@ -10,6 +10,9 @@ from typing import Optional, Literal, Callable
 from . import exceptions
 from .exceptions import AutomationError
 
+# 添加logger导入
+from src.utils.logger import logger
+
 class ExportResolution(Enum):
     """导出分辨率"""
     RES_8K = "8K"
@@ -91,23 +94,12 @@ class JianyingController:
         Raises:
             AutomationError: 未找到导出按钮
         """
-        # 尝试查找并点击导出按钮，最多重试10次
-        retry_count = 0
-        max_retries = 10
-        
-        while retry_count < max_retries:
-            export_btn = self.app.TextControl(searchDepth=2, Compare=ControlFinder.desc_matcher("MainWindowTitleBarExportBtn"))
-            if export_btn.Exists(0):
-                export_btn.Click(simulateMove=False)
-                time.sleep(10)
-                self.get_window()
-                return  # 成功找到并点击按钮，退出循环
-            
-            retry_count += 1
-            time.sleep(3)  # 等待3秒后重试
-        
-        # 如果重试次数超过限制仍未找到按钮，则抛出异常
-        raise AutomationError("未在编辑窗口中找到导出按钮")
+        export_btn = self.app.TextControl(searchDepth=2, Compare=ControlFinder.desc_matcher("MainWindowTitleBarExportBtn"))
+        if not export_btn.Exists(0):
+            raise AutomationError("未在编辑窗口中找到导出按钮")
+        export_btn.Click(simulateMove=False)
+        time.sleep(10)
+        self.get_window()
 
     def get_original_export_path(self) -> str:
         """获取原始导出路径
@@ -210,14 +202,36 @@ class JianyingController:
 
             succeed_close_btn = self.app.TextControl(searchDepth=2, Compare=ControlFinder.desc_matcher("ExportSucceedCloseBtn"))
             if succeed_close_btn.Exists(0):
-                succeed_close_btn.Click(simulateMove=False)
-                break
-
+                # 尝试点击成功关闭按钮，最多重试5次
+                max_click_retries = 5
+                click_retry_count = 0
+                
+                while click_retry_count < max_click_retries:
+                    succeed_close_btn.Click(simulateMove=False)
+                    
+                    # 等待一段时间让点击生效
+                    time.sleep(2)
+                    
+                    # 重新获取窗口状态，检查是否已离开导出成功界面
+                    self.get_window()
+                    
+                    # 如果状态不再是pre_export，说明点击成功，成功关闭了导出界面
+                    if self.app_status != "pre_export":
+                        logger.info("成功点击导出完成关闭按钮，已离开导出界面")
+                        return  # 成功完成导出，退出函数
+                    
+                    # 如果仍然在导出界面，说明点击可能没有生效，继续重试
+                    click_retry_count += 1
+                    logger.info(f"导出完成关闭按钮点击未生效，正在进行第 {click_retry_count} 次重试")
+                    time.sleep(2)  # 等待后再试
+                
+                # 如果重试多次后仍然无法关闭导出界面，则抛出异常
+                raise AutomationError(f"导出完成关闭按钮点击失败，已重试 {max_click_retries} 次，无法离开导出界面")
+                
             if time.time() - st > timeout:
                 raise AutomationError("导出超时, 时限为%d秒" % timeout)
 
             time.sleep(1)
-        time.sleep(2)
 
     def return_to_home(self) -> None:
         """回到目录页并稍作延迟"""
@@ -326,4 +340,6 @@ class JianyingController:
         if "MainWindow".lower() in control.ClassName.lower():
             self.app_status = "edit"
             return True
+
+        logger.info(f"ClassName: {control.ClassName.lower()}, Name: {control.Name.lower()}")
         return False
