@@ -91,12 +91,23 @@ class JianyingController:
         Raises:
             AutomationError: 未找到导出按钮
         """
-        export_btn = self.app.TextControl(searchDepth=2, Compare=ControlFinder.desc_matcher("MainWindowTitleBarExportBtn"))
-        if not export_btn.Exists(0):
-            raise AutomationError("未在编辑窗口中找到导出按钮")
-        export_btn.Click(simulateMove=False)
-        time.sleep(10)
-        self.get_window()
+        # 尝试查找并点击导出按钮，最多重试10次
+        retry_count = 0
+        max_retries = 10
+        
+        while retry_count < max_retries:
+            export_btn = self.app.TextControl(searchDepth=2, Compare=ControlFinder.desc_matcher("MainWindowTitleBarExportBtn"))
+            if export_btn.Exists(0):
+                export_btn.Click(simulateMove=False)
+                time.sleep(10)
+                self.get_window()
+                return  # 成功找到并点击按钮，退出循环
+            
+            retry_count += 1
+            time.sleep(3)  # 等待3秒后重试
+        
+        # 如果重试次数超过限制仍未找到按钮，则抛出异常
+        raise AutomationError("未在编辑窗口中找到导出按钮")
 
     def get_original_export_path(self) -> str:
         """获取原始导出路径
