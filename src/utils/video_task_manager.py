@@ -1,4 +1,4 @@
-"""
+""" 
 视频生成异步任务队列管理器
 支持任务排队、状态跟踪和结果查询
 """
@@ -16,6 +16,7 @@ import config
 import os
 import sys
 import subprocess
+import json
 
 # 如果是Linux系统，则不导入uiautomation，并避免执行相关代码
 if sys.platform.startswith('win'):
@@ -286,6 +287,47 @@ class VideoGenTaskManager:
         # 在线程池中执行同步的视频生成逻辑
         return await loop.run_in_executor(None, self._sync_generate_video, task)
     
+    def _check_draft_duration(self, task: VideoGenTask) -> bool:
+        """
+        检查草稿中的视频时长是否大于0
+        
+        Args:
+            task: 视频生成任务
+            
+        Returns:
+            bool: 时长是否大于0
+        """
+        try:
+            # 构建草稿内容文件路径
+            draft_content_path = os.path.join(config.DRAFT_SAVE_PATH, task.draft_id, "draft_content.json")
+            
+            # 检查文件是否存在
+            if not os.path.exists(draft_content_path):
+                logger.error(f"草稿内容文件不存在: {draft_content_path}")
+                return False
+            
+            # 读取并解析JSON文件
+            with open(draft_content_path, 'r', encoding='utf-8') as f:
+                draft_content = json.load(f)
+            
+            # 获取时长
+            duration = draft_content.get("duration", 0)
+            
+            # 检查时长是否大于0
+            if duration <= 0:
+                logger.error(f"草稿中视频时长不大于0: {duration}, 草稿ID: {task.draft_id}")
+                return False
+            
+            logger.info(f"草稿视频时长检查通过: {duration} 微秒, 草稿ID: {task.draft_id}")
+            return True
+            
+        except json.JSONDecodeError as e:
+            logger.error(f"解析草稿内容文件失败: {e}, 草稿ID: {task.draft_id}")
+            return False
+        except Exception as e:
+            logger.error(f"检查草稿时长时发生错误: {e}, 草稿ID: {task.draft_id}")
+            return False
+
     def _sync_generate_video(self, task: VideoGenTask) -> Tuple[str, str]:
         """
         同步的视频生成逻辑（原有逻辑）
@@ -313,6 +355,13 @@ class VideoGenTaskManager:
             download_success = self._download_draft(task)
             if not download_success:
                 error_message = f"草稿下载失败: {task.draft_url}"
+                logger.error(error_message)
+                return "", error_message
+            
+            # 检查草稿中的视频时长（必需大于0）
+            duration_valid = self._check_draft_duration(task)
+            if not duration_valid:
+                error_message = f"草稿中视频时长不大于0，请检查草稿内容: {task.draft_id}"
                 logger.error(error_message)
                 return "", error_message
             
