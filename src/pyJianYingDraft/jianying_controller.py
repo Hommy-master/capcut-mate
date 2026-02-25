@@ -61,6 +61,8 @@ class JianyingController:
     app: uia.WindowControl
     """剪映窗口"""
     app_status: Literal["home", "edit", "pre_export"]
+    """当app_status为pre_export时，app_sub_status表示导出过程中的子状态"""
+    app_sub_status: Literal["none", "export_start", "exporting", "export_succeed"]
 
     def __init__(self):
         """初始化剪映控制器, 此时剪映应该处于目录页"""
@@ -198,7 +200,7 @@ class JianyingController:
         st = time.time()
         while True:
             self.get_window()
-            if self.app_status != "pre_export": continue
+            if self.app_status != "pre_export": break
 
             succeed_close_btn = self.app.TextControl(searchDepth=2, Compare=ControlFinder.desc_matcher("ExportSucceedCloseBtn"))
             if succeed_close_btn.Exists(0):
@@ -246,44 +248,63 @@ class JianyingController:
             `DraftNotFound`: 未找到指定名称的剪映草稿
             `AutomationError`: 剪映操作失败
         """
-        print(f"开始导出 {draft_name} 至 {output_path}")
+        logger.info(f"start export {draft_name} to {output_path}")
+
         # 初始化准备
         self.get_window()
         self.switch_to_home()
-        
-        # 查找并点击目标草稿
-        self.find_and_click_draft(draft_name)
-        
-        # 点击导出按钮进入导出界面
-        self.click_export_button()
-        
-        # 获取原始导出路径
-        original_path = self.get_original_export_path()
-        
-        # 设置分辨率（如果指定）
-        self.set_export_resolution(resolution)
-        
-        # 设置帧率（如果指定）
-        self.set_export_framerate(framerate)
-        
-        # 点击最终导出按钮
-        self.click_final_export_button()
-        
-        # 等待导出完成
-        self.wait_for_export_completion(timeout)
-        
-        # 返回主页
-        self.return_to_home()
+
+        original_path = None
+
+        for i in range(20):      # 0 到 20
+            if self.app_status == "home":
+                logger.info("[%d]app is already in home page", i)
+                self.find_and_click_draft(draft_name)
+            elif self.app_status == "edit":
+                logger.info("[%d]app is already in edit page", i)
+                # 点击导出按钮进入导出界面
+                self.click_export_button()                
+            elif self.app_status == "pre_export":                
+                if self.app_sub_status == "export_start":
+                    logger.info("[%d]app is already in pre_export[export_start] page", i)
+                    # 获取原始导出路径
+                    original_path = self.get_original_export_path()
+                    # 设置分辨率（如果指定）
+                    self.set_export_resolution(resolution)                    
+                    # 设置帧率（如果指定）
+                    self.set_export_framerate(framerate)                    
+                    # 点击最终导出按钮
+                    self.click_final_export_button()
+                    # 获取窗口状态
+                    self.get_window()
+                elif self.app_sub_status == "exporting":
+                    logger.info("[%d]app is already in pre_export[exporting] page", i)
+                    self.wait_for_export_completion(timeout)                    
+                elif self.app_sub_status == "export_succeed":
+                    logger.info("[%d]app is already in pre_export[export_succeed] page", i)
+                    self.return_to_home()
+                    break
+                else:
+                    raise AutomationError("[%d]app is in unknown sub-status: %s" % (i, self.app_sub_status))
+            else:
+                raise AutomationError("[%d]app is in unknown status: %s" % (i, self.app_status))
         
         # 移动导出文件到指定路径（如果指定）
         self.move_exported_file(original_path, output_path)
         
-        print(f"导出 {draft_name} 至 {output_path} 完成")
+        logger.info(f"export {draft_name} to {output_path} completed")
 
     def switch_to_home(self) -> None:
         """切换到剪映主页"""
         if self.app_status == "home":
             return
+        if self.app_status == "pre_export":
+            if self.app_sub_status == "export_succeed":
+                succeed_close_btn = self.app.TextControl(searchDepth=2, Compare=ControlFinder.desc_matcher("ExportSucceedCloseBtn"))
+                if succeed_close_btn.Exists(0):
+                    succeed_close_btn.Click(simulateMove=False)
+                    time.sleep(2)
+                    self.get_window()
         if self.app_status != "edit":
             raise AutomationError("仅支持从编辑模式切换到主页")
         close_btn = self.app.GroupControl(searchDepth=1, ClassName="TitleBarButton", foundIndex=3)
@@ -306,8 +327,33 @@ class JianyingController:
             self.app = export_window
             self.app_status = "pre_export"
 
+        # 初始化导出子状态
+        self.init_export_sub_status()
+
+        logger.info("app_status: %s, app_sub_status: %s", self.app_status, self.app_sub_status)
+
         self.app.SetActive()
         self.app.SetTopmost()
+
+    # 初始化导出子状态
+    def init_export_sub_status(self) -> None:
+        if self.app_status == "pre_export":
+            # 0. 初始化默认值为导出中
+            self.app_sub_status = "exporting"
+            
+            # 1. 检查窗口是否停留在导出开始页面
+            export_ok_btn = self.app.TextControl(searchDepth=2, Compare=ControlFinder.desc_matcher("ExportOkBtn", exact=True))
+            if export_ok_btn.Exists(0):
+                self.app_sub_status = "export_start"
+                return
+
+            # 2. 检查窗口是否停留在导出完成页面
+            succeed_close_btn = self.app.TextControl(searchDepth=2, Compare=ControlFinder.desc_matcher("ExportSucceedCloseBtn"))
+            if succeed_close_btn.Exists(0):
+                self.app_sub_status = "export_succeed"
+                return
+        else:
+            self.app_sub_status = "none"
 
     def __jianying_window_cmp(self, control: uia.WindowControl, depth: int) -> bool:
         if control.Name != "剪映专业版":
