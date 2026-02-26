@@ -187,6 +187,23 @@ class JianyingController:
         export_btn.Click(simulateMove=False)
         time.sleep(5)
 
+    def __ensure_window_focus(self) -> None:
+        """在点击前确保窗口有焦点"""
+        # 1. 确保窗口激活
+        self.app.SetActive()
+        time.sleep(1)
+        
+        # 2. 确保窗口置顶
+        self.app.SetTopmost()
+        time.sleep(1)
+        
+        # 3. 强制获取焦点
+        try:
+            self.app.SetFocus()
+        except:
+            pass  # 某些情况下可能失败，但继续执行
+        time.sleep(1)
+
     def wait_for_export_completion(self, timeout: float) -> None:
         """等待导出完成
         
@@ -255,7 +272,9 @@ class JianyingController:
 
         original_path = None
 
-        for i in range(64):
+        for i in range(16):
+            # 确保窗口有焦点
+            self.__ensure_window_focus()
             if self.app_status == "home":
                 logger.info("[%d]app is already in home page", i)
                 self.find_and_click_draft(draft_name)
@@ -295,7 +314,7 @@ class JianyingController:
 
     def switch_to_home(self) -> None:
         """切换到剪映主页"""
-        for i in range(32):
+        for i in range(8):
             if self.app_status == "home":
                 return
             elif self.app_status == "pre_export":
