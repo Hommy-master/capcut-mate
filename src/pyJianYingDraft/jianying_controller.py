@@ -204,7 +204,6 @@ class JianyingController:
 
             succeed_close_btn = self.app.TextControl(searchDepth=2, Compare=ControlFinder.desc_matcher("ExportSucceedCloseBtn"))
             if succeed_close_btn.Exists(0):
-                succeed_close_btn.Click(simulateMove=False)
                 break
 
             if time.time() - st > timeout:
@@ -256,14 +255,14 @@ class JianyingController:
 
         original_path = None
 
-        for i in range(20):      # 0 到 20
+        for i in range(64):
             if self.app_status == "home":
                 logger.info("[%d]app is already in home page", i)
                 self.find_and_click_draft(draft_name)
             elif self.app_status == "edit":
                 logger.info("[%d]app is already in edit page", i)
                 # 点击导出按钮进入导出界面
-                self.click_export_button()                
+                self.click_export_button()
             elif self.app_status == "pre_export":                
                 if self.app_sub_status == "export_start":
                     logger.info("[%d]app is already in pre_export[export_start] page", i)
@@ -296,21 +295,25 @@ class JianyingController:
 
     def switch_to_home(self) -> None:
         """切换到剪映主页"""
-        if self.app_status == "home":
-            return
-        if self.app_status == "pre_export":
-            if self.app_sub_status == "export_succeed":
-                succeed_close_btn = self.app.TextControl(searchDepth=2, Compare=ControlFinder.desc_matcher("ExportSucceedCloseBtn"))
-                if succeed_close_btn.Exists(0):
-                    succeed_close_btn.Click(simulateMove=False)
-                    time.sleep(2)
-                    self.get_window()
-        if self.app_status != "edit":
-            raise AutomationError("仅支持从编辑模式切换到主页")
-        close_btn = self.app.GroupControl(searchDepth=1, ClassName="TitleBarButton", foundIndex=3)
-        close_btn.Click(simulateMove=False)
-        time.sleep(2)
-        self.get_window()
+        for i in range(32):
+            if self.app_status == "home":
+                return
+            elif self.app_status == "pre_export":
+                if self.app_sub_status == "export_succeed":
+                    succeed_close_btn = self.app.TextControl(searchDepth=2, Compare=ControlFinder.desc_matcher("ExportSucceedCloseBtn"))
+                    if succeed_close_btn.Exists(0):
+                        succeed_close_btn.Click(simulateMove=False)
+                        time.sleep(2)
+                        self.get_window()
+            elif self.app_status == "edit":
+                close_btn = self.app.GroupControl(searchDepth=1, ClassName="TitleBarButton", foundIndex=3)
+                close_btn.Click(simulateMove=False)
+                time.sleep(2)
+                self.get_window()
+            else:
+                raise AutomationError("invalid app status: %s" % self.app_status)
+        
+        logger.info("can not switch to home page after 32 attempts")
 
     def get_window(self) -> None:
         """寻找剪映窗口并置顶"""
