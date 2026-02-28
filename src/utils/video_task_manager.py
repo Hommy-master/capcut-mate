@@ -19,10 +19,10 @@ import subprocess
 import json
 
 # 如果是Linux系统，则不导入uiautomation，并避免执行相关代码
-if sys.platform.startswith('win'):
+try:
     from uiautomation import UIAutomationInitializerInThread  # type: ignore
-else:
-    # 在非Windows系统上创建一个占位符
+except ImportError:
+    # 在缺少依赖的系统上创建一个占位符
     class UIAutomationInitializerInThread:  # type: ignore
         def __enter__(self):
             pass

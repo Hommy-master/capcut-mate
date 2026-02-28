@@ -34,10 +34,14 @@ dependencies = [
     { name = "email-validator" },
     { name = "fastapi" },
     { name = "pymediainfo" },
-    { name = "pywin32" },
     { name = "requests" },
-    { name = "uiautomation" },
     { name = "uvicorn", extra = ["standard"] },
+]
+
+[package.optional-dependencies]
+windows = [
+    { name = "pywin32" },
+    { name = "uiautomation" },
 ]
 
 [package.metadata]
@@ -46,11 +50,12 @@ requires-dist = [
     { name = "email-validator", specifier = ">=2.2.0" },
     { name = "fastapi", specifier = ">=0.100.0" },
     { name = "pymediainfo", specifier = ">=7.0.1" },
-    { name = "pywin32", specifier = ">=311" },
+    { name = "pywin32", marker = "extra == 'windows'", specifier = ">=311" },
     { name = "requests", specifier = ">=2.32.5" },
-    { name = "uiautomation", specifier = ">=2.0.29" },
+    { name = "uiautomation", marker = "extra == 'windows'", specifier = ">=2.0.29" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.35.0" },
 ]
+provides-extras = ["windows"]
 
 [[package]]
 name = "certifi"

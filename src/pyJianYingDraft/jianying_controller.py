@@ -2,7 +2,16 @@
 
 import time
 import shutil
-import uiautomation as uia
+import sys
+
+# 平台检查和依赖导入
+if sys.platform != "win32":
+    raise ImportError("JianyingController is only available on Windows platform")
+
+try:
+    import uiautomation as uia
+except ImportError as e:
+    raise ImportError(f"Missing required Windows dependencies: {e}. Please install with: pip install capcut-mate[windows]")
 
 from enum import Enum
 from typing import Optional, Literal, Callable
