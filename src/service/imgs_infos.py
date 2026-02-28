@@ -25,11 +25,11 @@ def imgs_infos(
         timelines: 时间线数组
         height: 视频高度（可选）
         width: 视频宽度（可选）
-        in_animation: 入场动画名称（可选）
+        in_animation: 入场动画名称（可选），支持多个动画用|分隔
         in_animation_duration: 入场动画时长（可选）
-        loop_animation: 组合动画名称（可选）
+        loop_animation: 组合动画名称（可选），支持多个动画用|分隔
         loop_animation_duration: 组合动画时长（可选）
-        out_animation: 出场动画名称（可选）
+        out_animation: 出场动画名称（可选），支持多个动画用|分隔
         out_animation_duration: 出场动画时长（可选）
         transition: 转场名称（可选）
         transition_duration: 转场时长（可选）
@@ -68,7 +68,7 @@ def imgs_infos(
 
 
 def _parse_animation_params(in_animation, out_animation, loop_animation, transition):
-    """解析动画参数，将用|分隔的字符串转换为列表"""
+    """解析动画参数，将用|分隔的字符串转换为列表，并处理扩展逻辑"""
     def parse_single_param(param):
         if param is not None and isinstance(param, str):
             return [anim.strip() for anim in param.split('|') if anim.strip()]
@@ -99,19 +99,27 @@ def _build_image_info(img_url, timeline, height, width, i,
     if width is not None:
         info["width"] = width
     
-    # 添加动画参数，只有当动画存在时才添加对应的duration
-    _add_animation_if_exists(info, "in_animation", in_animations, i, in_animation_duration)
-    _add_animation_if_exists(info, "out_animation", out_animations, i, out_animation_duration)
-    _add_animation_if_exists(info, "loop_animation", loop_animations, i, loop_animation_duration)
-    _add_animation_if_exists(info, "transition", transition_animations, i, transition_duration)
+    # 添加动画参数，支持多动画分配逻辑
+    _add_animation_with_extension_logic(info, "in_animation", in_animations, i, in_animation_duration)
+    _add_animation_with_extension_logic(info, "out_animation", out_animations, i, out_animation_duration)
+    _add_animation_with_extension_logic(info, "loop_animation", loop_animations, i, loop_animation_duration)
+    _add_animation_with_extension_logic(info, "transition", transition_animations, i, transition_duration)
     
     return info
 
 
-def _add_animation_if_exists(info, animation_key, animations, index, duration):
-    """如果动画存在，则添加动画和对应的duration"""
-    if animations and index < len(animations):
-        info[animation_key] = animations[index]
+def _add_animation_with_extension_logic(info, animation_key, animations, index, duration):
+    """添加动画参数，支持扩展逻辑：动画不足时使用最后一个，动画过多时忽略多余"""
+    if animations:
+        # 如果索引超出动画列表长度，使用最后一个动画
+        if index < len(animations):
+            selected_animation = animations[index]
+        else:
+            selected_animation = animations[-1]  # 使用最后一个动画
+            logger.info(f"Index {index} exceeds animation list length {len(animations)}, using last animation: {selected_animation}")
+        
+        info[animation_key] = selected_animation
+        
         # 只有当动画存在时才添加对应的duration
         if duration is not None:
             duration_key = animation_key + "_duration"
