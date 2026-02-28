@@ -234,8 +234,12 @@ def add_text_material(
         script.add_track(track_type=TrackType.text, track_name=track_name)
         
         # 创建图像调节设置
+        # 获取草稿的高用于transform坐标转换
+        draft_height = script.height
+        logger.info(f"draft height: {draft_height}, text_transform_y: {text_transform_y}")
+        
         clip_settings = ClipSettings(
-            transform_y=text_transform_y / 540  # 转换为半画布高单位
+            transform_y=text_transform_y / draft_height  # 转换为半画布高单位
         )
         
         # 创建文本样式

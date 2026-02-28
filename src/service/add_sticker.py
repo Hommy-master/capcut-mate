@@ -72,13 +72,18 @@ def add_sticker(
         raise CustomException(CustomError.STICKER_ADD_FAILED)
 
     # 5. 创建图像调节设置
+    # 获取草稿的宽高用于transform坐标转换
+    draft_width = script.width
+    draft_height = script.height
+    logger.info(f"draft size: {draft_width}x{draft_height}, transform_x: {transform_x}, transform_y: {transform_y}")
+    
     clip_settings = ClipSettings(
         scale_x=scale,
         scale_y=scale,
-        transform_x=transform_x / 960,  # 转换为半画布宽单位（假设画布宽度1920）
-        transform_y=transform_y / 540   # 转换为半画布高单位（假设画布高度1080）
+        transform_x=transform_x / draft_width,  # 转换为半画布宽单位
+        transform_y=transform_y / draft_height   # 转换为半画布高单位
     )
-    logger.info(f"Created clip settings - scale: {scale}, transform_x: {transform_x/960}, transform_y: {transform_y/540}")
+    logger.info(f"Created clip settings - scale: {scale}, transform_x: {transform_x/draft_width}, transform_y: {transform_y/draft_height}")
 
     # 6. 创建贴纸片段
     try:
