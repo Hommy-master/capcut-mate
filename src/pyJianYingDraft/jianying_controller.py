@@ -251,6 +251,7 @@ class JianyingController:
             original_path (str): 原始导出路径
             output_path (Optional[str]): 目标输出路径，如果为None则不移动
         """
+        logger.info(f"move {original_path} to {output_path}")
         if output_path is not None:
             shutil.move(original_path, output_path)
 
