@@ -431,6 +431,15 @@ class VideoGenTaskManager:
             # 更新进度
             task.progress = 50
             
+            # 检查JianyingController是否可用
+            if draft.JianyingController is None:
+                if sys.platform != "win32":
+                    error_msg = "剪映自动导出功能仅在Windows平台可用"
+                else:
+                    error_msg = "缺少Windows依赖，请安装: pip install capcut-mate[windows]"
+                logger.error(error_msg)
+                raise RuntimeError(error_msg)
+            
             with UIAutomationInitializerInThread():
                 # 此前需要将剪映打开，并位于目录页
                 ctrl = draft.JianyingController()

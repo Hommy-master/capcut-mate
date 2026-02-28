@@ -28,8 +28,8 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: 安装依赖（含开发工具）
-        run: uv sync --all-extras  # 安装生产+开发依赖
+      - name: 安装基础依赖
+        run: uv sync  #只安装基础依赖，避免平台特定依赖
 
       - name: 查看文件和目录结构
         run: ls -lha  

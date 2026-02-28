@@ -54,6 +54,9 @@ cd capcut-mate
 ```bash
 # 安装依赖
 uv sync
+
+# windows额外执行
+uv pip install -e .[windows]
 ```
 
 3. 启动服务器
