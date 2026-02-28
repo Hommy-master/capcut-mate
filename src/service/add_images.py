@@ -185,14 +185,19 @@ def add_image_to_draft(
 
         # 2. 创建图片素材并添加到草稿
         segment_duration = image['end'] - image['start']
-        
+                
+        # 获取草稿的宽高用于transform坐标转换
+        draft_width = script.width
+        draft_height = script.height
+        logger.info(f"draft size: {draft_width}x{draft_height}, image size: {image['width']}x{image['height']}, transform_x: {transform_x}, transform_y: {transform_y}")
+                
         # 创建图像调节设置
         clip_settings = draft.ClipSettings(
             alpha=alpha,
             scale_x=scale_x,
             scale_y=scale_y,
-            transform_x=transform_x / image['width'],  # 转换为半画布宽单位
-            transform_y=transform_y / image['height']  # 转换为半画布高单位
+            transform_x=transform_x / draft_width,  # 转为半画布宽单位
+            transform_y=transform_y / draft_height  # 转换为半画布高单位
         )
         
         # 创建视频片段（图片使用VideoSegment）
