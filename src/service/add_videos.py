@@ -154,26 +154,24 @@ def add_video_to_draft(
         # 0. 下载视频
         video_path = download(url=video['video_url'], save_dir=draft_video_dir)
 
-        # 1. 创建视频素材（用于获取尺寸信息）
+        # 1. 创建视频素材
         video_material = draft.VideoMaterial(video_path)
         
-        # 2. 获取视频尺寸（如果未提供则使用视频素材的实际尺寸）
-        video_width = video.get('width')
-        video_height = video.get('height')
-        if video_width is None or video_height is None:
-            video_width = video_material.width
-            video_height = video_material.height
-
-        # 3. 获取视频播放时长（target duration）
+        # 2. 获取视频播放时长（target duration）
         target_duration = video.get('duration', video['end'] - video['start'])
+        
+        # 获取草稿的宽高用于transform坐标转换
+        draft_width = script.width
+        draft_height = script.height
+        logger.info(f"draft size: {draft_width}x{draft_height}, transform_x: {transform_x}, transform_y: {transform_y}")
 
         # 4. 创建图像调节设置
         clip_settings = draft.ClipSettings(
             alpha=alpha,
             scale_x=scale_x,
             scale_y=scale_y,
-            transform_x=transform_x / video_width,  # 转换为半画布宽单位
-            transform_y=transform_y / video_height  # 转换为半画布高单位
+            transform_x=transform_x / draft_width,  #半画布宽单位
+            transform_y=transform_y / draft_height  #为半画布高单位
         )
         
         # 5. 计算在时间轴上的显示时长（source duration）
@@ -188,7 +186,7 @@ def add_video_to_draft(
             volume=video.get('volume', 1.0),
             clip_settings=clip_settings
         )
-        logger.info(f"video_path: {video_path}, start: {video['start']}, target_duration: {target_duration}, display_duration: {display_duration}, video_size: {video_width}x{video_height}, volume: {video.get('volume', 1.0)}")
+        logger.info(f"video_path: {video_path}, start: {video['start']}, target_duration: {target_duration}, display_duration: {display_duration}, volume: {video.get('volume', 1.0)}")
 
         # 6. 添加转场效果（如果指定了）
         transition_name = video.get('transition')
