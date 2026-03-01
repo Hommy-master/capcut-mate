@@ -1,25 +1,25 @@
-# ADD_VIDEOS API 接口文档
+# ADD_VIDEOS API Documentation
 
-## 接口信息
+## Interface Information
 
 ```
 POST /openapi/capcut-mate/v1/add_videos
 ```
 
-## 功能描述
+## Function Description
 
-批量向现有草稿中添加视频素材。该接口是一个功能强大的视频添加工具，支持多个视频的批量处理，包括时间范围控制、透明度调整、遮罩效果、转场动画、音量控制、缩放变换等高级功能。特别适合创建复杂的多视频组合场景，如画中画效果、视频拼接、过渡动画等。
+Batch add video materials to existing drafts. This interface is a powerful video addition tool that supports batch processing of multiple videos, including time range control, transparency adjustment, mask effects, transition animations, volume control, scaling transformations, and other advanced features. Particularly suitable for creating complex multi-video combination scenes, such as picture-in-picture effects, video splicing, transition animations, etc.
 
-## 更多文档
+## More Documentation
 
-📖 更多详细文档和教程请访问：[https://docs.jcaigc.cn](https://docs.jcaigc.cn)
+📖 For more detailed documentation and tutorials, please visit: [https://docs.jcaigc.cn](https://docs.jcaigc.cn)
 
-## 请求参数
+## Request Parameters
 
 ```json
 {
   "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
-  "video_infos": "[{\"video_url\":\"https://assets.jcaigc.cn/video1.mp4\",\"width\":1024,\"height\":1024,\"start\":0,\"end\":5000000,\"duration\":5000000,\"mask\":\"圆形\",\"transition\":\"淡入淡出\",\"transition_duration\":500000,\"volume\":0.8}]",
+  "video_infos": "[{\"video_url\":\"https://assets.jcaigc.cn/video1.mp4\",\"width\":1024,\"height\":1024,\"start\":0,\"end\":5000000,\"duration\":5000000,\"mask\":\"circle\",\"transition\":\"fade\",\"transition_duration\":500000,\"volume\":0.8}]",
   "alpha": 0.5,
   "scale_x": 1.0,
   "scale_y": 1.0,
@@ -28,91 +28,91 @@ POST /openapi/capcut-mate/v1/add_videos
 }
 ```
 
-### 参数说明
+### Parameter Description
 
-| 参数名 | 类型 | 必填 | 默认值 | 说明 |
-|--------|------|------|--------|------|
-| draft_url | string | ✅ | - | 目标草稿的完整URL |
-| video_infos | string | ✅ | - | 视频信息数组的JSON字符串 |
-| alpha | number | ❌ | 1.0 | 全局透明度(0-1) |
-| scale_x | number | ❌ | 1.0 | X轴缩放比例 |
-| scale_y | number | ❌ | 1.0 | Y轴缩放比例 |
-| transform_x | number | ❌ | 0 | X轴位置偏移(像素) |
-| transform_y | number | ❌ | 0 | Y轴位置偏移(像素) |
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| draft_url | string | ✅ | - | Complete URL of the target draft |
+| video_infos | string | ✅ | - | JSON string of video information array |
+| alpha | number | ❌ | 1.0 | Global transparency (0-1) |
+| scale_x | number | ❌ | 1.0 | X-axis scaling ratio |
+| scale_y | number | ❌ | 1.0 | Y-axis scaling ratio |
+| transform_x | number | ❌ | 0 | X-axis position offset (pixels) |
+| transform_y | number | ❌ | 0 | Y-axis position offset (pixels) |
 
-### video_infos 数组结构
+### video_infos Array Structure
 
-| 字段名 | 类型 | 必填 | 默认值 | 说明 |
-|--------|------|------|--------|------|
-| video_url | string | ✅ | - | 视频文件的URL地址 |
-| width | number | ❌ | - | 视频宽度(像素)，不传则自动获取视频文件尺寸 |
-| height | number | ❌ | - | 视频高度(像素)，不传则自动获取视频文件尺寸 |
-| start | number | ✅ | - | 视频开始播放时间(微秒) |
-| end | number | ✅ | - | 视频结束播放时间(微秒) |
-| duration | number | ❌ | end-start | 视频总时长(微秒) |
-| mask | string | ❌ | - | 遮罩类型 |
-| transition | string | ❌ | - | 转场效果名称 |
-| transition_duration | number | ❌ | 500000 | 转场持续时间(微秒) |
-| volume | number | ❌ | 1.0 | 音量大小(0-1) |
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| video_url | string | ✅ | - | URL address of the video file |
+| width | number | ❌ | - | Video width (pixels), automatically obtained if not provided |
+| height | number | ❌ | - | Video height (pixels), automatically obtained if not provided |
+| start | number | ✅ | - | Video start playback time (microseconds) |
+| end | number | ✅ | - | Video end playback time (microseconds) |
+| duration | number | ❌ | end-start | Total video duration (microseconds) |
+| mask | string | ❌ | - | Mask type |
+| transition | string | ❌ | - | Transition effect name |
+| transition_duration | number | ❌ | 500000 | Transition duration (microseconds) |
+| volume | number | ❌ | 1.0 | Volume size (0-1) |
 
-### 参数详解
+### Parameter Details
 
-#### 时间参数
+#### Time Parameters
 
-- **start**: 视频在时间轴上的开始时间，单位微秒（1秒 = 1,000,000微秒）
-- **end**: 视频在时间轴上的结束时间，单位微秒
-- **duration**: 视频文件的总时长，用于素材创建（可选参数，如果不传则默认为end-start）
-- **播放时长**: 实际播放时长 = end - start
+- **start**: Start time of the video on the timeline, unit microseconds (1 second = 1,000,000 microseconds)
+- **end**: End time of the video on the timeline, unit microseconds
+- **duration**: Total duration of the video file, used for material creation (optional parameter, defaults to end-start if not provided)
+- **Playback Duration**: Actual playback duration = end - start
 
-#### 透明度参数
+#### Transparency Parameters
 
-- **alpha**: 全局透明度，应用于所有添加的视频
-  - 1.0 = 完全不透明
-  - 0.5 = 半透明
-  - 0.0 = 完全透明
-  - 范围：0.0 - 1.0
+- **alpha**: Global transparency, applied to all added videos
+  - 1.0 = Fully opaque
+  - 0.5 = Semi-transparent
+  - 0.0 = Fully transparent
+  - Range: 0.0 - 1.0
 
-#### 缩放参数
+#### Scaling Parameters
 
-- **scale_x/scale_y**: X/Y轴方向的缩放比例
-- 1.0 = 原始大小，0.5 = 缩小一半，2.0 = 放大两倍
-- 建议范围：0.1 - 5.0
+- **scale_x/scale_y**: Scaling ratios in X/Y axis directions
+- 1.0 = Original size, 0.5 = Half size, 2.0 = Double size
+- Recommended range: 0.1 - 5.0
 
-#### 位置参数
+#### Position Parameters
 
-- **transform_x/transform_y**: X/Y轴方向的位置偏移，单位像素
-- 正值向右/下移动，负值向左/上移动
-- 以画布中心为原点
+- **transform_x/transform_y**: Position offsets in X/Y axis directions, unit pixels
+- Positive values move right/down, negative values move left/up
+- Canvas center as origin
 
-#### 遮罩类型
+#### Mask Types
 
-支持的遮罩类型：
-- `圆形` - 圆形遮罩效果
-- `爱心` - 爱心形状遮罩
-- `星形` - 星形遮罩
-- `矩形` - 矩形遮罩
-- `线性` - 线性渐变遮罩
-- `镜面` - 镜面反射遮罩
+Supported mask types:
+- `circle` - Circular mask effect
+- `heart` - Heart-shaped mask
+- `star` - Star-shaped mask
+- `rectangle` - Rectangular mask
+- `linear` - Linear gradient mask
+- `mirror` - Mirror reflection mask
 
-#### 转场效果
+#### Transition Effects
 
-- **transition**: 转场效果名称
-- **transition_duration**: 转场持续时间
-  - 最小值：100,000微秒（0.1秒）
-  - 最大值：2,500,000微秒（2.5秒）
-  - 推荐值：500,000微秒（0.5秒）
+- **transition**: Transition effect name
+- **transition_duration**: Transition duration
+  - Minimum: 100,000 microseconds (0.1 seconds)
+  - Maximum: 2,500,000 microseconds (2.5 seconds)
+  - Recommended: 500,000 microseconds (0.5 seconds)
 
-#### 音量控制
+#### Volume Control
 
-- **volume**: 视频音量大小
-  - 1.0 = 原始音量
-  - 0.5 = 一半音量
-  - 0.0 = 静音
-  - 范围：0.0 - 1.0
+- **volume**: Video volume size
+  - 1.0 = Original volume
+  - 0.5 = Half volume
+  - 0.0 = Mute
+  - Range: 0.0 - 1.0
 
-## 响应格式
+## Response Format
 
-### 成功响应 (200)
+### Success Response (200)
 
 ```json
 {
@@ -123,20 +123,20 @@ POST /openapi/capcut-mate/v1/add_videos
 }
 ```
 
-### 响应字段说明
+### Response Field Description
 
-| 字段名 | 类型 | 说明 |
-|--------|------|------|
-| draft_url | string | 更新后的草稿URL |
-| track_id | string | 视频轨道ID |
-| video_ids | array | 添加的视频ID列表 |
-| segment_ids | array | 片段ID列表 |
+| Field | Type | Description |
+|-------|------|-------------|
+| draft_url | string | Updated draft URL |
+| track_id | string | Video track ID |
+| video_ids | array | List of added video IDs |
+| segment_ids | array | List of segment IDs |
 
-## 使用示例
+## Usage Examples
 
-### cURL 示例
+### cURL Examples
 
-#### 1. 基本视频添加
+#### 1. Basic Video Addition
 
 ```bash
 curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_videos \
@@ -147,7 +147,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_videos \
   }'
 ```
 
-#### 2. 多视频批量添加
+#### 2. Batch Adding Multiple Videos
 
 ```bash
 curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_videos \
@@ -159,21 +159,21 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_videos \
   }'
 ```
 
-#### 3. 带遮罩和转场的视频
+#### 3. Video with Mask and Transition
 
 ```bash
 curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_videos \
   -H "Content-Type: application/json" \
   -d '{
     "draft_url": "YOUR_DRAFT_URL",
-    "video_infos": "[{\"video_url\":\"https://assets.jcaigc.cn/video1.mp4\",\"width\":1024,\"height\":1024,\"start\":0,\"end\":5000000,\"duration\":10000000,\"mask\":\"圆形\",\"transition\":\"淡入淡出\",\"transition_duration\":500000,\"volume\":0.8}]",
+    "video_infos": "[{\"video_url\":\"https://assets.jcaigc.cn/video1.mp4\",\"width\":1024,\"height\":1024,\"start\":0,\"end\":5000000,\"duration\":10000000,\"mask\":\"circle\",\"transition\":\"fade\",\"transition_duration\":500000,\"volume\":0.8}]",
     "alpha": 1.0,
     "scale_x": 1.2,
     "scale_y": 1.2
   }'
 ```
 
-#### 4. 画中画效果
+#### 4. Picture-in-Picture Effect
 
 ```bash
 curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_videos \
@@ -188,60 +188,63 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_videos \
   }'
 ```
 
-## 错误码说明
+## Error Code Description
 
-| 错误码 | 错误信息 | 说明 | 解决方案 |
-|--------|----------|------|----------|
-| 400 | draft_url是必填项 | 缺少草稿URL参数 | 提供有效的草稿URL |
-| 400 | video_infos是必填项 | 缺少视频信息参数 | 提供有效的视频信息JSON |
-| 400 | video_infos格式错误 | JSON格式不正确 | 检查JSON字符串格式 |
-| 400 | video_url是必填项 | 视频URL缺失 | 为每个视频提供URL |
-| 400 | 视频尺寸无效 | width或height无效 | 提供正数的宽度和高度 |
-| 400 | 时间范围无效 | end必须大于start | 确保结束时间大于开始时间 |
-| 400 | 透明度值无效 | alpha不在0-1范围内 | 使用0-1之间的透明度值 |
-| 404 | 草稿不存在 | 指定的草稿URL无效 | 检查草稿URL是否正确 |
-| 404 | 视频资源不存在 | 视频URL无法访问 | 检查视频URL是否可访问 |
-| 500 | 视频处理失败 | 内部处理错误 | 联系技术支持 |
+| Error Code | Error Message | Description | Solution |
+|------------|---------------|-------------|----------|
+| 400 | draft_url is required | Missing draft URL parameter | Provide a valid draft URL |
+| 400 | video_infos is required | Missing video information parameter | Provide valid video information JSON |
+| 400 | video_infos format error | JSON format is incorrect | Check JSON string format |
+| 400 | video_url is required | Video URL missing | Provide URL for each video |
+| 400 | Video dimensions invalid | width or height invalid | Provide positive width and height |
+| 400 | Time range invalid | end must be greater than start | Ensure end time is greater than start time |
+| 400 | Transparency value invalid | alpha not in 0-1 range | Use transparency value between 0-1 |
+| 404 | Draft does not exist | Specified draft URL invalid | Check if draft URL is correct |
+| 404 | Video resource does not exist | Video URL inaccessible | Check if video URL is accessible |
+| 500 | Video processing failed | Internal processing error | Contact technical support |
 
-## 注意事项
+## Notes
 
-1. **JSON格式**: video_infos必须是合法的JSON字符串
-2. **时间单位**: 所有时间参数使用微秒（1秒 = 1,000,000微秒）
-3. **视频格式**: 确保视频文件格式被支持（如MP4、AVI等）
-4. **文件大小**: 大视频文件可能影响处理速度
-5. **网络访问**: 视频URL必须可以正常访问
-6. **遮罩限制**: 只支持预定义的遮罩类型
-7. **转场限制**: 转场时长有固定范围限制
-8. **性能考虑**: 批量添加大量视频可能影响性能
+1. **JSON Format**: video_infos must be a valid JSON string
+2. **Time Unit**: All time parameters use microseconds (1 second = 1,000,000 microseconds)
+3. **Video Format**: Ensure video file format is supported (e.g., MP4, AVI, etc.)
+4. **File Size**: Large video files may affect processing speed
+5. **Network Access**: Video URL must be accessible
+6. **Mask Limitation**: Only predefined mask types are supported
+7. **Transition Limitation**: Transition duration has fixed range limitations
+8. **Performance Consideration**: Batch adding a large number of videos may affect performance
 
-## 工作流程
+## Workflow
 
-1. 验证必填参数（draft_url, video_infos）
-2. 解析video_infos JSON字符串
-3. 验证每个视频的参数配置
-4. 获取并解密草稿内容
-5. 创建视频轨道
-6. 添加视频片段到轨道
-7. 应用透明度、缩放和位置变换
-8. 添加遮罩和转场效果
-9. 设置音量
-10. 保存并加密草稿
-11. 返回处理结果
+1. Validate required parameters (draft_url, video_infos)
+2. Parse video_infos JSON string
+3. Validate parameter configuration for each video
+4. Obtain and decrypt draft content
+5. Create video track
+6. Add video segments to track
+7. Apply transparency, scaling and position transformation
+8. Add mask and transition effects
+9. Set volume
+10. Save and encrypt draft
+11. Return processing result
 
-## 相关接口
+## Related Interfaces
 
-- [创建草稿](./create_draft.md)
-- [添加音频](./add_audios.md)
-- [添加图片](./add_images.md)
-- [保存草稿](./save_draft.md)
-- [生成视频](./gen_video.md)
+- [Create Draft](./create_draft.md)
+- [Add Audios](./add_audios.md)
+- [Add Images](./add_images.md)
+- [Save Draft](./save_draft.md)
+- [Generate Video](./gen_video.md)
 
 ---
 
 <div align="right">
 
-📚 **项目资源**  
+📚 **Project Resources**  
 **GitHub**: [https://github.com/Hommy-master/capcut-mate](https://github.com/Hommy-master/capcut-mate)  
 **Gitee**: [https://gitee.com/taohongmin-gitee/capcut-mate](https://gitee.com/taohongmin-gitee/capcut-mate)
 
 </div>
+
+### Language Switch
+[中文版](./add_videos.zh.md) | [English](./add_videos.md)

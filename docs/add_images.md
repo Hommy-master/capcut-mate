@@ -1,20 +1,20 @@
-# ADD_IMAGES API 接口文档
+# ADD_IMAGES API Documentation
 
-## 接口信息
+## Interface Information
 
 ```
 POST /openapi/capcut-mate/v1/add_images
 ```
 
-## 功能描述
+## Function Description
 
-向现有草稿中添加图片。该接口用于在指定的时间段内添加图片素材到剪映草稿中，支持图片的透明度、缩放和位置调整。图片可以用于增强视频的视觉效果，如背景图、水印、装饰图等。
+Add images to existing drafts. This interface is used to add image materials to Jianying drafts within specified time periods, supporting transparency, scaling and position adjustments for images. Images can be used to enhance video visual effects, such as background images, watermarks, decorative images, etc.
 
-## 更多文档
+## More Documentation
 
-📖 更多详细文档和教程请访问：[https://docs.jcaigc.cn](https://docs.jcaigc.cn)
+📖 For more detailed documentation and tutorials, please visit: [https://docs.jcaigc.cn](https://docs.jcaigc.cn)
 
-## 请求参数
+## Request Parameters
 
 ```json
 {
@@ -28,84 +28,84 @@ POST /openapi/capcut-mate/v1/add_images
 }
 ```
 
-### 参数说明
+### Parameter Description
 
-| 参数名 | 类型 | 必填 | 默认值 | 说明 |
-|--------|------|------|--------|------|
-| draft_url | string | ✅ | - | 目标草稿的完整URL |
-| image_infos | string | ✅ | - | 图片信息数组的JSON字符串 |
-| alpha | number | ❌ | 1.0 | 图片透明度，建议范围[0.0, 1.0] |
-| scale_x | number | ❌ | 1.0 | 图片X轴缩放比例 |
-| scale_y | number | ❌ | 1.0 | 图片Y轴缩放比例 |
-| transform_x | number | ❌ | 0 | X轴位置偏移（像素） |
-| transform_y | number | ❌ | 0 | Y轴位置偏移（像素） |
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| draft_url | string | ✅ | - | Complete URL of the target draft |
+| image_infos | string | ✅ | - | JSON string of image information array |
+| alpha | number | ❌ | 1.0 | Image transparency, recommended range [0.0, 1.0] |
+| scale_x | number | ❌ | 1.0 | Image X-axis scaling ratio |
+| scale_y | number | ❌ | 1.0 | Image Y-axis scaling ratio |
+| transform_x | number | ❌ | 0 | X-axis position offset (pixels) |
+| transform_y | number | ❌ | 0 | Y-axis position offset (pixels) |
 
-### image_infos 数组结构
+### image_infos Array Structure
 
-| 字段名 | 类型 | 必填 | 默认值 | 说明 |
-|--------|------|------|--------|------|
-| image_url | string | ✅ | - | 图片文件的URL地址 |
-| width | number | ✅ | - | 图片宽度(像素) |
-| height | number | ✅ | - | 图片高度(像素) |
-| start | number | ✅ | - | 图片开始显示时间(微秒) |
-| end | number | ✅ | - | 图片结束显示时间(微秒) |
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| image_url | string | ✅ | - | URL address of the image file |
+| width | number | ✅ | - | Image width (pixels) |
+| height | number | ✅ | - | Image height (pixels) |
+| start | number | ✅ | - | Image start display time (microseconds) |
+| end | number | ✅ | - | Image end display time (microseconds) |
 
-### 参数详解
+### Parameter Details
 
-#### 时间参数
+#### Time Parameters
 
-- **start**: 图片在时间轴上的开始时间，单位为微秒（1秒 = 1,000,000微秒）
-- **end**: 图片在时间轴上的结束时间，单位为微秒
-- **duration**: 图片显示时长 = end - start
+- **start**: Start time of the image on the timeline, unit microseconds (1 second = 1,000,000 microseconds)
+- **end**: End time of the image on the timeline, unit microseconds
+- **duration**: Image display duration = end - start
 
-#### 透明度参数
+#### Transparency Parameters
 
-- **alpha**: 图片的透明度
-  - 1.0 = 完全不透明
-  - 0.5 = 半透明
-  - 0.0 = 完全透明
-  - 建议范围：0.0 - 1.0
+- **alpha**: Image transparency
+  - 1.0 = Fully opaque
+  - 0.5 = Semi-transparent
+  - 0.0 = Fully transparent
+  - Recommended range: 0.0 - 1.0
 
-#### 缩放参数
+#### Scaling Parameters
 
-- **scale_x**: 图片在X轴方向的缩放比例
-  - 1.0 = 原始大小
-  - 0.5 = 缩小到一半
-  - 2.0 = 放大到两倍
+- **scale_x**: Image scaling ratio in X-axis direction
+  - 1.0 = Original size
+  - 0.5 = Shrink to half
+  - 2.0 = Enlarge to double
 
-- **scale_y**: 图片在Y轴方向的缩放比例
-  - 1.0 = 原始大小
-  - 0.5 = 缩小到一半
-  - 2.0 = 放大到两倍
+- **scale_y**: Image scaling ratio in Y-axis direction
+  - 1.0 = Original size
+  - 0.5 = Shrink to half
+  - 2.0 = Enlarge to double
 
-#### 位置参数
+#### Position Parameters
 
-- **transform_x**: 图片在X轴方向的位置偏移，单位为像素
-  - 正值向右移动
-  - 负值向左移动
-  - 以画布中心为原点
-  - 实际存储时会转换为半画布宽单位（假设画布宽度1920，即除以960）
+- **transform_x**: Image position offset in X-axis direction, unit pixels
+  - Positive value moves right
+  - Negative value moves left
+  - Canvas center as origin
+  - Actually stored as half-canvas-width units (assuming canvas width 1920, divided by 960)
 
-- **transform_y**: 图片在Y轴方向的位置偏移，单位为像素
-  - 正值向下移动
-  - 负值向上移动
-  - 以画布中心为原点
-  - 实际存储时会转换为半画布高单位（假设画布高度1080，即除以540）
+- **transform_y**: Image position offset in Y-axis direction, unit pixels
+  - Positive value moves down
+  - Negative value moves up
+  - Canvas center as origin
+  - Actually stored as half-canvas-height units (assuming canvas height 1080, divided by 540)
 
-#### 图片信息说明
+#### Image Information Description
 
-- **image_url**: 图片的URL地址
-  - 格式：有效的图片URL
-  - 示例：`"https://assets.jcaigc.cn/image1.jpg"`
-  - 支持格式：JPG、PNG等常见图片格式
+- **image_url**: URL address of the image
+  - Format: Valid image URL
+  - Example: `"https://assets.jcaigc.cn/image1.jpg"`
+  - Supported formats: JPG, PNG and other common image formats
 
-- **width/height**: 图片的原始尺寸
-  - 用于计算位置偏移的转换比例
-  - 单位：像素
+- **width/height**: Original size of the image
+  - Used to calculate conversion ratio for position offset
+  - Unit: pixels
 
-## 响应格式
+## Response Format
 
-### 成功响应 (200)
+### Success Response (200)
 
 ```json
 {
@@ -123,29 +123,29 @@ POST /openapi/capcut-mate/v1/add_images
 }
 ```
 
-### 响应字段说明
+### Response Field Description
 
-| 字段名 | 类型 | 说明 |
-|--------|------|------|
-| draft_url | string | 更新后的草稿URL |
-| track_id | string | 视频轨道ID |
-| image_ids | array | 图片ID列表 |
-| segment_ids | array | 片段ID列表 |
-| segment_infos | array | 片段信息列表，包含每个片段的ID、开始时间和结束时间 |
+| Field | Type | Description |
+|-------|------|-------------|
+| draft_url | string | Updated draft URL |
+| track_id | string | Video track ID |
+| image_ids | array | List of image IDs |
+| segment_ids | array | List of segment IDs |
+| segment_infos | array | List of segment information, containing ID, start time and end time for each segment |
 
-### 错误响应 (4xx/5xx)
+### Error Response (4xx/5xx)
 
 ```json
 {
-  "detail": "错误信息描述"
+  "detail": "Error message description"
 }
 ```
 
-## 使用示例
+## Usage Examples
 
-### cURL 示例
+### cURL Examples
 
-#### 1. 基本图片添加
+#### 1. Basic Image Addition
 
 ```bash
 curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_images \
@@ -156,7 +156,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_images \
   }'
 ```
 
-#### 2. 带透明度的图片
+#### 2. Image with Transparency
 
 ```bash
 curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_images \
@@ -168,7 +168,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_images \
   }'
 ```
 
-#### 3. 带缩放和位置偏移的图片
+#### 3. Image with Scaling and Position Offset
 
 ```bash
 curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_images \
@@ -183,59 +183,62 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_images \
   }'
 ```
 
-## 错误码说明
+## Error Code Description
 
-| 错误码 | 错误信息 | 说明 | 解决方案 |
-|--------|----------|------|----------|
-| 400 | draft_url是必填项 | 缺少草稿URL参数 | 提供有效的draft_url |
-| 400 | image_infos是必填项 | 缺少图片信息参数 | 提供有效的image_infos |
-| 400 | image_url是必填项 | 图片URL缺失 | 为每个图片提供URL |
-| 400 | 图片尺寸无效 | width或height无效 | 提供正数的宽度和高度 |
-| 400 | 时间范围无效 | end必须大于start | 确保结束时间大于开始时间 |
-| 400 | 透明度无效 | alpha超出建议范围 | 使用0.0-1.0范围内的透明度值 |
-| 404 | 草稿不存在 | 指定的草稿URL无效 | 检查草稿URL是否正确 |
-| 404 | 图片不存在 | 指定的图片URL无效 | 确认图片URL是否正确 |
-| 500 | 图片添加失败 | 内部处理错误 | 联系技术支持 |
+| Error Code | Error Message | Description | Solution |
+|------------|---------------|-------------|----------|
+| 400 | draft_url is required | Missing draft URL parameter | Provide a valid draft_url |
+| 400 | image_infos is required | Missing image information parameter | Provide valid image_infos |
+| 400 | image_url is required | Image URL missing | Provide URL for each image |
+| 400 | Image dimensions invalid | width or height invalid | Provide positive width and height |
+| 400 | Time range invalid | end must be greater than start | Ensure end time is greater than start time |
+| 400 | Transparency invalid | alpha exceeds recommended range | Use transparency value within 0.0-1.0 range |
+| 404 | Draft does not exist | Specified draft URL invalid | Check if draft URL is correct |
+| 404 | Image does not exist | Specified image URL invalid | Confirm if image URL is correct |
+| 500 | Image addition failed | Internal processing error | Contact technical support |
 
-## 注意事项
+## Notes
 
-1. **时间单位**: 所有时间参数使用微秒（1秒 = 1,000,000微秒）
-2. **图片URL**: 确保使用有效的图片URL
-3. **时间范围**: end必须大于start
-4. **透明度范围**: alpha建议在0.0-1.0范围内
-5. **位置参数**: transform_x和transform_y单位为像素，但内部会转换为半画布单位存储
-   - transform_x转换公式：实际值 / 960（假设画布宽度1920）
-   - transform_y转换公式：实际值 / 540（假设画布高度1080）
-6. **轨道管理**: 系统自动创建视频轨道
-7. **性能考虑**: 避免同时添加大量图片
+1. **Time Unit**: All time parameters use microseconds (1 second = 1,000,000 microseconds)
+2. **Image URL**: Ensure using valid image URL
+3. **Time Range**: end must be greater than start
+4. **Transparency Range**: alpha recommended within 0.0-1.0 range
+5. **Position Parameters**: transform_x and transform_y unit is pixels, but internally converted to half-canvas units for storage
+   - transform_x conversion formula: actual value / 960 (assuming canvas width 1920)
+   - transform_y conversion formula: actual value / 540 (assuming canvas height 1080)
+6. **Track Management**: System automatically creates video track
+7. **Performance Consideration**: Avoid adding large number of images simultaneously
 
-## 工作流程
+## Workflow
 
-1. 验证必填参数（draft_url, image_infos）
-2. 检查时间范围的有效性
-3. 从缓存中获取草稿
-4. 创建视频轨道（图片作为VideoSegment）
-5. 创建图像调节设置
-6. 创建图片片段
-7. 添加片段到轨道
-8. 保存草稿
-9. 返回图片信息
+1. Validate required parameters (draft_url, image_infos)
+2. Check validity of time ranges
+3. Get draft from cache
+4. Create video track (images as VideoSegment)
+5. Create image adjustment settings
+6. Create image segments
+7. Add segments to track
+8. Save draft
+9. Return image information
 
-## 相关接口
+## Related Interfaces
 
-- [创建草稿](./create_draft.md)
-- [添加视频](./add_videos.md)
-- [添加音频](./add_audios.md)
-- [添加贴纸](./add_sticker.md)
-- [保存草稿](./save_draft.md)
-- [生成视频](./gen_video.md)
+- [Create Draft](./create_draft.md)
+- [Add Videos](./add_videos.md)
+- [Add Audios](./add_audios.md)
+- [Add Stickers](./add_sticker.md)
+- [Save Draft](./save_draft.md)
+- [Generate Video](./gen_video.md)
 
 ---
 
 <div align="right">
 
-📚 **项目资源**  
+📚 **Project Resources**  
 **GitHub**: [https://github.com/Hommy-master/capcut-mate](https://github.com/Hommy-master/capcut-mate)  
 **Gitee**: [https://gitee.com/taohongmin-gitee/capcut-mate](https://gitee.com/taohongmin-gitee/capcut-mate)
 
 </div>
+
+### Language Switch
+[中文版](./add_images.zh.md) | [English](./add_images.md)

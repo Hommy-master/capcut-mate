@@ -1,20 +1,20 @@
-# CREATE_DRAFT API 接口文档
+# CREATE_DRAFT API Documentation
 
-## 接口信息
+## Interface Information
 
 ```
 POST /openapi/capcut-mate/v1/create_draft
 ```
 
-## 功能描述
+## Function Description
 
-创建剪映草稿。该接口用于创建一个新的剪映草稿项目，可以自定义视频的宽度和高度。创建成功后会返回草稿URL和帮助文档URL，为后续的视频编辑操作提供基础。
+Create a Jianying draft. This interface is used to create a new Jianying draft project, allowing customization of video width and height. After successful creation, it returns the draft URL and help document URL, providing the foundation for subsequent video editing operations.
 
-## 更多文档
+## More Documentation
 
-📖 更多详细文档和教程请访问：[https://docs.jcaigc.cn](https://docs.jcaigc.cn)
+📖 For more detailed documentation and tutorials, please visit: [https://docs.jcaigc.cn](https://docs.jcaigc.cn)
 
-## 请求参数
+## Request Parameters
 
 ```json
 {
@@ -23,40 +23,40 @@ POST /openapi/capcut-mate/v1/create_draft
 }
 ```
 
-### 参数说明
+### Parameter Description
 
-| 参数名 | 类型 | 必填 | 默认值 | 说明 |
-|--------|------|------|--------|------|
-| width | number | ❌ | 1920 | 视频宽度(像素)，必须大于等于1 |
-| height | number | ❌ | 1080 | 视频高度(像素)，必须大于等于1 |
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| width | number | ❌ | 1920 | Video width (pixels), must be greater than or equal to 1 |
+| height | number | ❌ | 1080 | Video height (pixels), must be greater than or equal to 1 |
 
-### 参数详解
+### Parameter Details
 
-#### 尺寸参数
+#### Size Parameters
 
-- **width**: 草稿视频的宽度
-  - 最小值：1像素
-  - 建议常用值：1920、1280、720
-  - 支持自定义尺寸
+- **width**: Width of the draft video
+  - Minimum: 1 pixel
+  - Recommended common values: 1920, 1280, 720
+  - Supports custom sizes
 
-- **height**: 草稿视频的高度
-  - 最小值：1像素
-  - 建议常用值：1080、720、480
-  - 支持自定义尺寸
+- **height**: Height of the draft video
+  - Minimum: 1 pixel
+  - Recommended common values: 1080, 720, 480
+  - Supports custom sizes
 
-#### 常用分辨率
+#### Common Resolutions
 
-| 分辨率名称 | 宽度 | 高度 | 适用场景 |
-|------------|------|------|----------|
-| 1080P | 1920 | 1080 | 高清视频制作 |
-| 720P | 1280 | 720 | 标清视频制作 |
-| 4K | 3840 | 2160 | 超高清视频制作 |
-| 竖屏短视频 | 1080 | 1920 | 手机短视频 |
-| 正方形 | 1080 | 1080 | 社交媒体内容 |
+| Resolution Name | Width | Height | Application Scenario |
+|-----------------|-------|--------|---------------------|
+| 1080P | 1920 | 1080 | HD video production |
+| 720P | 1280 | 720 | SD video production |
+| 4K | 3840 | 2160 | Ultra HD video production |
+| Vertical Short Video | 1080 | 1920 | Mobile short videos |
+| Square | 1080 | 1080 | Social media content |
 
-## 响应格式
+## Response Format
 
-### 成功响应 (200)
+### Success Response (200)
 
 ```json
 {
@@ -65,26 +65,26 @@ POST /openapi/capcut-mate/v1/create_draft
 }
 ```
 
-### 响应字段说明
+### Response Field Description
 
-| 字段名 | 类型 | 说明 |
-|--------|------|------|
-| draft_url | string | 新创建的草稿URL，用于后续的编辑操作 |
-| tip_url | string | 草稿使用帮助文档URL |
+| Field | Type | Description |
+|-------|------|-------------|
+| draft_url | string | Newly created draft URL, used for subsequent editing operations |
+| tip_url | string | Draft usage help documentation URL |
 
-### 错误响应 (4xx/5xx)
+### Error Response (4xx/5xx)
 
 ```json
 {
-  "detail": "错误信息描述"
+  "detail": "Error message description"
 }
 ```
 
-## 💻 使用示例
+## 💻 Usage Examples
 
-### cURL 示例
+### cURL Examples
 
-#### 1. 创建默认分辨率草稿
+#### 1. Create Draft with Default Resolution
 
 ```bash
 curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/create_draft \
@@ -92,7 +92,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/create_draft \
   -d '{}'
 ```
 
-#### 2. 创建自定义分辨率草稿
+#### 2. Create Draft with Custom Resolution
 
 ```bash
 curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/create_draft \
@@ -103,7 +103,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/create_draft \
   }'
 ```
 
-#### 3. 创建竖屏短视频草稿
+#### 3. Create Vertical Short Video Draft
 
 ```bash
 curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/create_draft \
@@ -115,47 +115,49 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/create_draft \
 ```
 
 
+## Error Code Description
 
-## 错误码说明
+| Error Code | Error Message | Description | Solution |
+|------------|---------------|-------------|----------|
+| 400 | width must be greater than or equal to 1 | Invalid width parameter | Provide a width value greater than or equal to 1 |
+| 400 | height must be greater than or equal to 1 | Invalid height parameter | Provide a height value greater than or equal to 1 |
+| 400 | Parameter type error | Parameter type is incorrect | Ensure width and height are numeric types |
+| 500 | Draft creation failed | Internal service error | Contact technical support |
+| 503 | Service unavailable | System maintenance | Retry later |
 
-| 错误码 | 错误信息 | 说明 | 解决方案 |
-|--------|----------|------|----------|
-| 400 | width必须大于等于1 | 宽度参数无效 | 提供大于等于1的宽度值 |
-| 400 | height必须大于等于1 | 高度参数无效 | 提供大于等于1的高度值 |
-| 400 | 参数类型错误 | 参数类型不正确 | 确保width和height为数字类型 |
-| 500 | 草稿创建失败 | 内部服务错误 | 联系技术支持 |
-| 503 | 服务不可用 | 系统维护中 | 稍后重试 |
+## Notes
 
-## 注意事项
+1. **Parameter Validation**: width and height must be positive integers
+2. **Resolution Recommendation**: Suggest using common video resolutions to ensure compatibility
+3. **Performance Consideration**: Ultra-high resolution may affect subsequent processing performance
+4. **Storage Usage**: High-resolution drafts will occupy more storage space
+5. **URL Validity**: The returned draft_url has a certain validity period
 
-1. **参数验证**: width和height必须为正整数
-2. **分辨率建议**: 建议使用常见的视频分辨率以确保兼容性
-3. **性能考虑**: 超高分辨率可能影响后续处理性能
-4. **存储占用**: 高分辨率草稿会占用更多存储空间
-5. **URL有效期**: 返回的draft_url具有一定的有效期
+## Workflow
 
-## 工作流程
+1. Receive and validate request parameters
+2. Create draft basic structure
+3. Set canvas size
+4. Generate draft URL
+5. Return draft information and help document link
 
-1. 接收并验证请求参数
-2. 创建草稿基础结构
-3. 设置画布尺寸
-4. 生成草稿URL
-5. 返回草稿信息和帮助文档链接
+## Related Interfaces
 
-## 相关接口
-
-- [添加视频](./add_videos.md)
-- [添加音频](./add_audios.md)
-- [添加图片](./add_images.md)
-- [保存草稿](./save_draft.md)
-- [生成视频](./gen_video.md)
+- [Add Videos](./add_videos.md)
+- [Add Audios](./add_audios.md)
+- [Add Images](./add_images.md)
+- [Save Draft](./save_draft.md)
+- [Generate Video](./gen_video.md)
 
 ---
 
 <div align="right">
 
-📚 **项目资源**  
+📚 **Project Resources**  
 **GitHub**: [https://github.com/Hommy-master/capcut-mate](https://github.com/Hommy-master/capcut-mate)  
 **Gitee**: [https://gitee.com/taohongmin-gitee/capcut-mate](https://gitee.com/taohongmin-gitee/capcut-mate)
 
 </div>
+
+### Language Switch
+[中文版](./create_draft.zh.md) | [English](./create_draft.md)

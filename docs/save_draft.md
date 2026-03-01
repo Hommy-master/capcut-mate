@@ -1,20 +1,20 @@
-# SAVE_DRAFT API 接口文档
+# SAVE_DRAFT API Documentation
 
-## 接口信息
+## Interface Information
 
 ```
 POST /openapi/capcut-mate/v1/save_draft
 ```
 
-## 功能描述
+## Function Description
 
-保存剪映草稿。该接口用于保存当前的草稿状态，确保编辑的内容得到持久化存储。通常在完成一系列编辑操作后调用此接口，以防止编辑内容丢失。
+Save Jianying draft. This interface is used to save the current draft state, ensuring that edited content is persistently stored. Usually called after completing a series of editing operations to prevent loss of edited content.
 
-## 更多文档
+## More Documentation
 
-📖 更多详细文档和教程请访问：[https://docs.jcaigc.cn](https://docs.jcaigc.cn)
+📖 For more detailed documentation and tutorials, please visit: [https://docs.jcaigc.cn](https://docs.jcaigc.cn)
 
-## 请求参数
+## Request Parameters
 
 ```json
 {
@@ -22,24 +22,24 @@ POST /openapi/capcut-mate/v1/save_draft
 }
 ```
 
-### 参数说明
+### Parameter Description
 
-| 参数名 | 类型 | 必填 | 默认值 | 说明 |
-|--------|------|------|--------|------|
-| draft_url | string | ✅ | - | 要保存的草稿URL |
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| draft_url | string | ✅ | - | Draft URL to be saved |
 
-### 参数详解
+### Parameter Details
 
 #### draft_url
 
-- **类型**: 字符串
-- **必填**: 是
-- **格式**: 完整的草稿URL，通常由create_draft接口返回
-- **示例**: `https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258`
+- **Type**: String
+- **Required**: Yes
+- **Format**: Complete draft URL, usually returned by create_draft interface
+- **Example**: `https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258`
 
-## 响应格式
+## Response Format
 
-### 成功响应 (200)
+### Success Response (200)
 
 ```json
 {
@@ -47,25 +47,25 @@ POST /openapi/capcut-mate/v1/save_draft
 }
 ```
 
-### 响应字段说明
+### Response Field Description
 
-| 字段名 | 类型 | 说明 |
-|--------|------|------|
-| draft_url | string | 保存后的草稿URL，通常与请求中的URL相同 |
+| Field | Type | Description |
+|-------|------|-------------|
+| draft_url | string | Saved draft URL, usually the same as the URL in the request |
 
-### 错误响应 (4xx/5xx)
+### Error Response (4xx/5xx)
 
 ```json
 {
-  "detail": "错误信息描述"
+  "detail": "Error message description"
 }
 ```
 
-## 使用示例
+## Usage Examples
 
-### cURL 示例
+### cURL Examples
 
-#### 1. 基本保存草稿
+#### 1. Basic Save Draft
 
 ```bash
 curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/save_draft \
@@ -75,45 +75,48 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/save_draft \
   }'
 ```
 
-## 错误码说明
+## Error Code Description
 
-| 错误码 | 错误信息 | 说明 | 解决方案 |
-|--------|----------|------|----------|
-| 400 | draft_url是必填项 | 缺少草稿URL参数 | 提供有效的draft_url |
-| 400 | draft_url格式无效 | URL格式不正确 | 检查URL格式是否正确 |
-| 404 | 草稿不存在 | 指定的草稿无法找到 | 确认草稿URL是否正确且存在 |
-| 500 | 保存失败 | 内部服务错误 | 联系技术支持或稍后重试 |
-| 503 | 服务不可用 | 系统维护中 | 稍后重试 |
+| Error Code | Error Message | Description | Solution |
+|------------|---------------|-------------|----------|
+| 400 | draft_url is required | Missing draft URL parameter | Provide a valid draft_url |
+| 400 | Invalid draft_url format | URL format is incorrect | Check if URL format is correct |
+| 404 | Draft does not exist | Specified draft cannot be found | Confirm that draft URL is correct and exists |
+| 500 | Save failed | Internal service error | Contact technical support or retry later |
+| 503 | Service unavailable | System maintenance | Retry later |
 
-## 注意事项
+## Notes
 
-1. **URL有效性**: 确保传入的draft_url是有效且存在的
-2. **网络稳定性**: 保存操作需要稳定的网络连接
-3. **频率控制**: 避免过于频繁的保存操作
-4. **并发安全**: 同一草稿的并发保存可能导致冲突
+1. **URL Validity**: Ensure the passed draft_url is valid and exists
+2. **Network Stability**: Save operation requires stable network connection
+3. **Frequency Control**: Avoid overly frequent save operations
+4. **Concurrency Safety**: Concurrent saves of the same draft may cause conflicts
 
-## 工作流程
+## Workflow
 
-1. 验证draft_url参数
-2. 检查草稿是否存在
-3. 获取当前草稿状态
-4. 持久化保存草稿数据
-5. 返回保存结果
+1. Validate draft_url parameter
+2. Check if draft exists
+3. Get current draft state
+4. Persistently save draft data
+5. Return save result
 
-## 相关接口
+## Related Interfaces
 
-- [创建草稿](./create_draft.md)
-- [添加视频](./add_videos.md)
-- [添加音频](./add_audios.md)
-- [添加图片](./add_images.md)
-- [生成视频](./gen_video.md)
+- [Create Draft](./create_draft.md)
+- [Add Videos](./add_videos.md)
+- [Add Audios](./add_audios.md)
+- [Add Images](./add_images.md)
+- [Generate Video](./gen_video.md)
 
 ---
 
 <div align="right">
 
-📚 **项目资源**  
+📚 **Project Resources**  
 **GitHub**: [https://github.com/Hommy-master/capcut-mate](https://github.com/Hommy-master/capcut-mate)  
 **Gitee**: [https://gitee.com/taohongmin-gitee/capcut-mate](https://gitee.com/taohongmin-gitee/capcut-mate)
 
 </div>
+
+### Language Switch
+[中文版](./save_draft.zh.md) | [English](./save_draft.md)

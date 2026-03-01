@@ -1,20 +1,20 @@
-# ADD_AUDIOS API 接口文档
+# ADD_AUDIOS API Documentation
 
-## 接口信息
+## Interface Information
 
 ```
 POST /openapi/capcut-mate/v1/add_audios
 ```
 
-## 功能描述
+## Function Description
 
-批量向现有草稿中添加音频素材。该接口支持添加多个音频文件到剪映草稿，为视频创建背景音乐、音效、旁白等音频内容。音频将被添加到独立的音频轨道中，不会影响视频内容。
+Batch add audio materials to existing drafts. This interface supports adding multiple audio files to Jianying drafts, creating background music, sound effects, narration and other audio content for videos. Audio will be added to separate audio tracks without affecting video content.
 
-## 更多文档
+## More Documentation
 
-📖 更多详细文档和教程请访问：[https://docs.jcaigc.cn](https://docs.jcaigc.cn)
+📖 For more detailed documentation and tutorials, please visit: [https://docs.jcaigc.cn](https://docs.jcaigc.cn)
 
-## 请求参数
+## Request Parameters
 
 ```json
 {
@@ -23,52 +23,52 @@ POST /openapi/capcut-mate/v1/add_audios
 }
 ```
 
-### 参数说明
+### Parameter Description
 
-| 参数名 | 类型 | 必填 | 默认值 | 说明 |
-|--------|------|------|--------|------|
-| draft_url | string | ✅ | - | 目标草稿的完整URL |
-| audio_infos | string | ✅ | - | 音频信息数组的JSON字符串 |
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| draft_url | string | ✅ | - | Complete URL of the target draft |
+| audio_infos | string | ✅ | - | JSON string of audio information array |
 
-### audio_infos 数组结构
+### audio_infos Array Structure
 
-audio_infos是一个JSON字符串，解析后为数组，每个元素包含以下字段：
+audio_infos is a JSON string that resolves to an array, with each element containing the following fields:
 
-| 字段名 | 类型 | 必填 | 默认值 | 说明 |
-|--------|------|------|--------|------|
-| audio_url | string | ✅ | - | 音频文件的URL地址 |
-| start | number | ✅ | - | 音频开始播放时间(微秒) |
-| end | number | ✅ | - | 音频结束播放时间(微秒) |
-| duration | number | ❌ | 自动获取 | 音频总时长(微秒)，如果不提供将自动获取 |
-| volume | number | ❌ | 1.0 | 音量大小(0.0-2.0) |
-| audio_effect | string | ❌ | None | 音频效果名称 |
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| audio_url | string | ✅ | - | URL address of the audio file |
+| start | number | ✅ | - | Audio start playback time (microseconds) |
+| end | number | ✅ | - | Audio end playback time (microseconds) |
+| duration | number | ❌ | Automatically obtained | Total audio duration (microseconds), automatically obtained if not provided |
+| volume | number | ❌ | 1.0 | Volume size (0.0-2.0) |
+| audio_effect | string | ❌ | None | Audio effect name |
 
-### 参数详解
+### Parameter Details
 
-#### 时间参数
+#### Time Parameters
 
-- **start**: 音频在时间轴上的开始时间，单位为微秒（1秒 = 1,000,000微秒）
-- **end**: 音频在时间轴上的结束时间，单位为微秒
-- **duration**: 音频文件的总时长，用于素材创建，单位为微秒，如果不提供将自动获取
-- **播放时长**: 实际播放时长 = end - start
+- **start**: Start time of the audio on the timeline, unit microseconds (1 second = 1,000,000 microseconds)
+- **end**: End time of the audio on the timeline, unit microseconds
+- **duration**: Total duration of the audio file, used for material creation, unit microseconds, automatically obtained if not provided
+- **Playback Duration**: Actual playback duration = end - start
 
-#### 音量控制
+#### Volume Control
 
-- **volume**: 音频音量大小
-  - 1.0 = 原始音量
-  - 0.5 = 一半音量
-  - 0.0 = 静音
-  - 范围：0.0 - 2.0
+- **volume**: Audio volume size
+  - 1.0 = Original volume
+  - 0.5 = Half volume
+  - 0.0 = Mute
+  - Range: 0.0 - 2.0
 
-#### 音频效果
+#### Audio Effects
 
-- **audio_effect**: 音频效果名称
-  - None = 无音频效果
-  - 示例：`"reverb"`（混响效果）
+- **audio_effect**: Audio effect name
+  - None = No audio effect
+  - Example: `"reverb"` (reverb effect)
 
-## 响应格式
+## Response Format
 
-### 成功响应 (200)
+### Success Response (200)
 
 ```json
 {
@@ -78,27 +78,27 @@ audio_infos是一个JSON字符串，解析后为数组，每个元素包含以�
 }
 ```
 
-### 响应字段说明
+### Response Field Description
 
-| 字段名 | 类型 | 说明 |
-|--------|------|------|
-| draft_url | string | 更新后的草稿URL |
-| track_id | string | 音频轨道ID |
-| audio_ids | array | 添加的音频ID列表 |
+| Field | Type | Description |
+|-------|------|-------------|
+| draft_url | string | Updated draft URL |
+| track_id | string | Audio track ID |
+| audio_ids | array | List of added audio IDs |
 
-### 错误响应 (4xx/5xx)
+### Error Response (4xx/5xx)
 
 ```json
 {
-  "detail": "错误信息描述"
+  "detail": "Error message description"
 }
 ```
 
-## 使用示例
+## Usage Examples
 
-### cURL 示例
+### cURL Examples
 
-#### 1. 基本音频添加
+#### 1. Basic Audio Addition
 
 ```bash
 curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_audios \
@@ -109,7 +109,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_audios \
   }'
 ```
 
-#### 2. 多音频批量添加
+#### 2. Batch Adding Multiple Audios
 
 ```bash
 curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_audios \
@@ -120,7 +120,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_audios \
   }'
 ```
 
-#### 3. 带淡入淡出效果的音频
+#### 3. Audio with Fade In/Out Effects
 
 ```bash
 curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_audios \
@@ -131,57 +131,60 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_audios \
   }'
 ```
 
-## 错误码说明
+## Error Code Description
 
-| 错误码 | 错误信息 | 说明 | 解决方案 |
-|--------|----------|------|----------|
-| 400 | draft_url是必填项 | 缺少草稿URL参数 | 提供有效的草稿URL |
-| 400 | audio_infos是必填项 | 缺少音频信息参数 | 提供有效的音频信息JSON |
-| 400 | audio_infos格式错误 | JSON格式不正确 | 检查JSON字符串格式 |
-| 400 | 音频配置验证失败 | 音频参数不符合要求 | 检查每个音频的参数 |
-| 400 | audio_url是必填项 | 音频URL缺失 | 为每个音频提供URL |
-| 400 | 时间范围无效 | end必须大于start | 确保结束时间大于开始时间 |
-| 400 | 音量值无效 | volume不在0.0-2.0范围内 | 使用0.0-2.0之间的音量值 |
-| 404 | 草稿不存在 | 指定的草稿URL无效 | 检查草稿URL是否正确 |
-| 404 | 音频资源不存在 | 音频URL无法访问 | 检查音频URL是否可访问 |
-| 500 | 音频处理失败 | 内部处理错误 | 联系技术支持 |
+| Error Code | Error Message | Description | Solution |
+|------------|---------------|-------------|----------|
+| 400 | draft_url is required | Missing draft URL parameter | Provide a valid draft URL |
+| 400 | audio_infos is required | Missing audio information parameter | Provide valid audio information JSON |
+| 400 | audio_infos format error | JSON format is incorrect | Check JSON string format |
+| 400 | Audio configuration validation failed | Audio parameters do not meet requirements | Check parameters for each audio |
+| 400 | audio_url is required | Audio URL missing | Provide URL for each audio |
+| 400 | Time range invalid | end must be greater than start | Ensure end time is greater than start time |
+| 400 | Volume value invalid | volume not in 0.0-2.0 range | Use volume value between 0.0-2.0 |
+| 404 | Draft does not exist | Specified draft URL invalid | Check if draft URL is correct |
+| 404 | Audio resource does not exist | Audio URL inaccessible | Check if audio URL is accessible |
+| 500 | Audio processing failed | Internal processing error | Contact technical support |
 
-## 注意事项
+## Notes
 
-1. **JSON格式**: audio_infos必须是合法的JSON字符串
-2. **时间单位**: 所有时间参数使用微秒（1秒 = 1,000,000微秒）
-3. **音频格式**: 确保音频文件格式被支持（如MP3、WAV、AAC等）
-4. **文件大小**: 大音频文件可能影响处理速度
-5. **网络访问**: 音频URL必须可以正常访问
-6. **音量范围**: 音量值必须在0.0-2.0范围内
-7. **轨道限制**: 同一时间段可能存在音频重叠
+1. **JSON Format**: audio_infos must be a valid JSON string
+2. **Time Unit**: All time parameters use microseconds (1 second = 1,000,000 microseconds)
+3. **Audio Format**: Ensure audio file format is supported (e.g., MP3, WAV, AAC, etc.)
+4. **File Size**: Large audio files may affect processing speed
+5. **Network Access**: Audio URL must be accessible
+6. **Volume Range**: Volume value must be within 0.0-2.0 range
+7. **Track Limitation**: Audio overlap may occur in the same time period
 
-## 工作流程
+## Workflow
 
-1. 验证必填参数（draft_url, audio_infos）
-2. 解析audio_infos JSON字符串
-3. 验证每个音频的参数配置
-4. 获取并解密草稿内容
-5. 创建音频轨道
-6. 添加音频片段到轨道
-7. 应用音量和音频效果
-8. 保存并加密草稿
-9. 返回处理结果
+1. Validate required parameters (draft_url, audio_infos)
+2. Parse audio_infos JSON string
+3. Validate parameter configuration for each audio
+4. Obtain and decrypt draft content
+5. Create audio track
+6. Add audio segments to track
+7. Apply volume and audio effects
+8. Save and encrypt draft
+9. Return processing result
 
-## 相关接口
+## Related Interfaces
 
-- [创建草稿](./create_draft.md)
-- [添加视频](./add_videos.md)
-- [添加图片](./add_images.md)
-- [保存草稿](./save_draft.md)
-- [生成视频](./gen_video.md)
+- [Create Draft](./create_draft.md)
+- [Add Videos](./add_videos.md)
+- [Add Images](./add_images.md)
+- [Save Draft](./save_draft.md)
+- [Generate Video](./gen_video.md)
 
 ---
 
 <div align="right">
 
-📚 **项目资源**  
+📚 **Project Resources**  
 **GitHub**: [https://github.com/Hommy-master/capcut-mate](https://github.com/Hommy-master/capcut-mate)  
 **Gitee**: [https://gitee.com/taohongmin-gitee/capcut-mate](https://gitee.com/taohongmin-gitee/capcut-mate)
 
 </div>
+
+### Language Switch
+[中文版](./add_audios.zh.md) | [English](./add_audios.md)

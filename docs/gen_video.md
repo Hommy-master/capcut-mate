@@ -1,20 +1,20 @@
-# GEN_VIDEO API 接口文档
+# GEN_VIDEO API Documentation
 
-## 接口信息
+## Interface Information
 
 ```
 POST /openapi/capcut-mate/v1/gen_video
 ```
 
-## 功能描述
+## Function Description
 
-提交视频生成任务。该接口采用异步处理模式，立即返回任务提交状态，视频生成在后台进行。支持任务排队，确保系统稳定性。
+Submit video generation task. This interface uses asynchronous processing mode, immediately returning task submission status, with video generation performed in the background. Supports task queuing to ensure system stability.
 
-## 更多文档
+## More Documentation
 
-📖 更多详细文档和教程请访问：[https://docs.jcaigc.cn](https://docs.jcaigc.cn)
+📖 For more detailed documentation and tutorials, please visit: [https://docs.jcaigc.cn](https://docs.jcaigc.cn)
 
-## 请求参数
+## Request Parameters
 
 ```json
 {
@@ -22,50 +22,50 @@ POST /openapi/capcut-mate/v1/gen_video
 }
 ```
 
-### 参数说明
+### Parameter Description
 
-| 参数名 | 类型 | 必填 | 默认值 | 说明 |
-|--------|------|------|--------|------|
-| draft_url | string | ✅ | - | 目标草稿的完整URL |
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| draft_url | string | ✅ | - | Complete URL of the target draft |
 
-### 参数详解
+### Parameter Details
 
-#### 草稿URL参数
+#### Draft URL Parameter
 
-- **draft_url**: 草稿的完整URL地址
-  - 格式：`https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id={草稿ID}`
-  - 示例：`"https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258"`
-  - 获取方式：通过[创建草稿](./create_draft.md)或[保存草稿](./save_draft.md)接口获取
+- **draft_url**: Complete URL address of the draft
+  - Format: `https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id={draft_ID}`
+  - Example: `"https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258"`
+  - Acquisition Method: Obtained via [Create Draft](./create_draft.md) or [Save Draft](./save_draft.md) interfaces
 
-## 响应格式
+## Response Format
 
-### 成功响应 (200)
-
-```json
-{
-  "message": "视频生成任务已提交，请使用draft_url查询进度"
-}
-```
-
-### 响应字段说明
-
-| 字段名 | 类型 | 说明 |
-|--------|------|------|
-| message | string | 响应消息 |
-
-### 错误响应 (4xx/5xx)
+### Success Response (200)
 
 ```json
 {
-  "detail": "错误信息描述"
+  "message": "Video generation task submitted, please use draft_url to check progress"
 }
 ```
 
-## 使用示例
+### Response Field Description
 
-### cURL 示例
+| Field | Type | Description |
+|-------|------|-------------|
+| message | string | Response message |
 
-#### 1. 基本视频生成
+### Error Response (4xx/5xx)
+
+```json
+{
+  "detail": "Error message description"
+}
+```
+
+## Usage Examples
+
+### cURL Examples
+
+#### 1. Basic Video Generation
 
 ```bash
 curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/gen_video \
@@ -75,61 +75,64 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/gen_video \
   }'
 ```
 
-## 错误码说明
+## Error Code Description
 
-| 错误码 | 错误信息 | 说明 | 解决方案 |
-|--------|----------|------|----------|
-| 400 | draft_url是必填项 | 缺少草稿URL参数 | 提供有效的draft_url |
-| 400 | draft_url格式无效 | URL格式不正确 | 检查URL格式是否正确 |
-| 404 | 草稿不存在 | 指定的草稿无法找到 | 确认草稿URL是否正确且存在 |
-| 400 | 草稿内容为空 | 草稿中没有可导出的内容 | 确保草稿包含视频、音频或图片素材 |
-| 400 | 素材无法访问 | 草稿中的素材文件无法下载 | 检查素材URL是否有效 |
-| 500 | 视频渲染失败 | 视频处理过程中出错 | 检查草稿内容或联系技术支持 |
-| 500 | 音频处理失败 | 音频混合过程中出错 | 检查音频格式或联系技术支持 |
-| 500 | 编码失败 | 最终视频编码失败 | 联系技术支持 |
-| 503 | 服务繁忙 | 渲染服务器负载过高 | 稍后重试 |
-| 504 | 处理超时 | 视频生成超时 | 简化草稿内容或稍后重试 |
-| 500 | 视频生成任务提交失败 | 内部处理错误 | 联系技术支持 |
+| Error Code | Error Message | Description | Solution |
+|------------|---------------|-------------|----------|
+| 400 | draft_url is required | Missing draft URL parameter | Provide a valid draft_url |
+| 400 | Invalid draft_url format | URL format is incorrect | Check if URL format is correct |
+| 404 | Draft does not exist | Specified draft cannot be found | Confirm that draft URL is correct and exists |
+| 400 | Draft content is empty | Draft contains no exportable content | Ensure draft contains video, audio or image materials |
+| 400 | Material inaccessible | Material files in draft cannot be downloaded | Check if material URLs are valid |
+| 500 | Video rendering failed | Error occurred during video processing | Check draft content or contact technical support |
+| 500 | Audio processing failed | Error occurred during audio mixing | Check audio format or contact technical support |
+| 500 | Encoding failed | Final video encoding failed | Contact technical support |
+| 503 | Service busy | Rendering server overloaded | Retry later |
+| 504 | Processing timeout | Video generation timed out | Simplify draft content or retry later |
+| 500 | Video generation task submission failed | Internal processing error | Contact technical support |
 
-## 注意事项
+## Notes
 
-1. **处理时间**: 视频生成是耗时操作，可能需要几分钟到几十分钟
-2. **文件大小**: 草稿复杂度和素材数量会影响处理时间
-3. **网络稳定**: 确保素材URL可以稳定访问
-4. **超时设置**: 建议设置较长的超时时间或使用轮询机制
-5. **并发限制**: 避免同时生成大量视频
-6. **存储空间**: 生成的视频文件可能很大，注意存储空间
-7. **URL有效期**: 生成的video_url可能有时效性限制
-8. **系统要求**: 视频生成功能仅在Windows系统上可用
+1. **Processing Time**: Video generation is time-consuming, may take minutes to tens of minutes
+2. **File Size**: Draft complexity and number of materials affect processing time
+3. **Network Stability**: Ensure material URLs are stably accessible
+4. **Timeout Settings**: Suggest setting longer timeout or using polling mechanism
+5. **Concurrency Limit**: Avoid generating large numbers of videos simultaneously
+6. **Storage Space**: Generated video files may be large, pay attention to storage space
+7. **URL Validity**: Generated video_url may have time-based restrictions
+8. **System Requirements**: Video generation feature only available on Windows systems
 
-## 工作流程
+## Workflow
 
-1. 验证draft_url参数
-2. 解析草稿配置文件
-3. 下载所有必需的素材文件
-4. 按时间轴排列和处理素材
-5. 应用视觉效果和转场
-6. 混合音频轨道
-7. 渲染最终视频
-8. 编码并上传视频文件
-9. 返回视频URL
+1. Validate draft_url parameter
+2. Parse draft configuration file
+3. Download all required material files
+4. Arrange and process materials according to timeline
+5. Apply visual effects and transitions
+6. Mix audio tracks
+7. Render final video
+8. Encode and upload video file
+9. Return video URL
 
-## 相关接口
+## Related Interfaces
 
-- [创建草稿](./create_draft.md)
-- [保存草稿](./save_draft.md)
-- [添加视频](./add_videos.md)
-- [添加音频](./add_audios.md)
-- [添加图片](./add_images.md)
-- [获取草稿](./get_draft.md)
-- [查询视频生成状态](./gen_video_status.md)
+- [Create Draft](./create_draft.md)
+- [Save Draft](./save_draft.md)
+- [Add Videos](./add_videos.md)
+- [Add Audios](./add_audios.md)
+- [Add Images](./add_images.md)
+- [Get Draft](./get_draft.md)
+- [Query Video Generation Status](./gen_video_status.md)
 
 ---
 
 <div align="right">
 
-📚 **项目资源**  
+📚 **Project Resources**  
 **GitHub**: [https://github.com/Hommy-master/capcut-mate](https://github.com/Hommy-master/capcut-mate)  
 **Gitee**: [https://gitee.com/taohongmin-gitee/capcut-mate](https://gitee.com/taohongmin-gitee/capcut-mate)
 
 </div>
+
+### Language Switch
+[中文版](./gen_video.zh.md) | [English](./gen_video.md)
