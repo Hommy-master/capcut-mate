@@ -4,7 +4,8 @@
 [中文版](README.zh.md) | [English](README.md)
 
 ## Project Introduction
-CapCut Mate API is a Jianying draft automation assistant built on FastAPI, providing rich API interfaces to create and edit Jianying drafts. It supports creating drafts, adding materials such as videos/audio/images/subtitles/effects, saving drafts, and cloud rendering. It can be deployed as a Coze plugin with one-click setup.
+CapCut Mate API is a completely open-source and free Jianying draft automation assistant built on FastAPI, supporting independent deployment. This project focuses on empowering large models with basic video editing capabilities, providing out-of-the-box video editing Skills, and has fully automated the entire Jianying core functionality workflow. It can directly connect with large models to achieve diverse intelligent video editing, enabling ordinary users to quickly create professional and advanced video works.
+Flexible project usage: Can be independently deployed, or combined with Coze or n8n to build automated workflows, and can also connect with Jianying to achieve cloud rendering, directly generating final videos from drafts.
 
 ## Project Resources
 - [Jianying Assistant](https://github.com/Hommy-master/capcut-mate)
