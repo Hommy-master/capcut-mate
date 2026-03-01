@@ -151,6 +151,8 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_effects \
 4. **Time Overlap**: Multiple effects can be applied to the same time period
 5. **Effect Priority**: Effects are applied in the order they appear in the array
 6. **Performance**: Complex effects may affect video processing performance
+7. **Supported Effects**: System currently supports transition effects like "Fade In", "Fade Out", color filters, etc.
+8. **Preview Limitation**: Effects may not be visible in preview but will be applied during final video generation
 
 ## Workflow
 

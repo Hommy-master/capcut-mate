@@ -89,7 +89,7 @@ Batch add video materials to existing drafts. This interface is a powerful video
 
 #### Mask Types
 
-Supported mask types:
+Supported mask types (all optional, default is no mask):
 - `circle` - Circular mask effect
 - `heart` - Heart-shaped mask
 - `star` - Star-shaped mask

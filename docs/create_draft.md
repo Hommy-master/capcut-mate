@@ -1,5 +1,8 @@
 # CREATE_DRAFT API Documentation
 
+### 🌐 Language Switch
+[中文版](./create_draft.zh.md) | [English](./create_draft.md)
+
 ## Interface Information
 
 ```
@@ -159,5 +162,4 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/create_draft \
 
 </div>
 
-### Language Switch
-[中文版](./create_draft.zh.md) | [English](./create_draft.md)
+---
