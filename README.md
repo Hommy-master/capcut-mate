@@ -165,6 +165,15 @@ The following are the core interfaces provided by CapCut Mate API, supporting a 
 |-----------|----------|-------------|-------------------|
 | **easy_create_material** | Quick Creation | Add multiple types of materials at once, simplify creation process | [📖 View Documentation](./docs/easy_create_material.md) |
 
+### 🛠️ Utility Tools
+| Interface | Function | Description | Documentation Link |
+|-----------|----------|-------------|-------------------|
+| **get_url** | Extract URL | Extract URL information from input content | [📖 View Documentation](./docs/get_url.md) |
+| **search_sticker** | Search Sticker | Search sticker materials by keyword | [📖 View Documentation](./docs/search_sticker.md) |
+| **objs_to_str_list** | Objects to String List | Convert object list to string list format | [📖 View Documentation](./docs/objs_to_str_list.md) |
+| **str_list_to_objs** | String List to Objects | Convert string list to object list format | [📖 View Documentation](./docs/str_list_to_objs.md) |
+| **str_to_list** | String to List | Convert string to list format | [📖 View Documentation](./docs/str_to_list.md) |
+
 ## API Usage Examples
 
 ### Create Draft
