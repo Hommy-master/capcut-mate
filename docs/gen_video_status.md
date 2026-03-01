@@ -1,6 +1,6 @@
 # GEN_VIDEO_STATUS API Documentation
 
-### 🌐 Language Switch
+## 🌐 Language Switch
 [中文版](./gen_video_status.zh.md) | [English](./gen_video_status.md)
 
 ## Interface Information

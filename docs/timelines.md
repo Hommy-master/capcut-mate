@@ -1,6 +1,6 @@
 # TIMELINES API Documentation
 
-### 🌐 Language Switch
+## 🌐 Language Switch
 [中文版](./timelines.zh.md) | [English](./timelines.md)
 
 ## Interface Information

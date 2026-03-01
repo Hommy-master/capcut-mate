@@ -1,6 +1,6 @@
 # EFFECT_INFOS API Documentation
 
-###🌐 Language Switch
+## 🌐 Language Switch
 [中文版](./effect_infos.zh.md) | [English](./effect_infos.md)
 
 ## Interface Information

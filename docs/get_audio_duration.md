@@ -1,6 +1,6 @@
 # GET_AUDIO_DURATION API Documentation
 
-### 🌐 Language Switch
+## 🌐 Language Switch
 [中文版](./get_audio_duration.zh.md) | [English](./get_audio_duration.md)
 
 ## Interface Information

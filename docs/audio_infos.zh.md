@@ -1,15 +1,15 @@
 # AUDIO_INFOS API 接口文档
 
-### 🌐 语言切换
+## 🌐 语言切换
 [中文版](./audio_infos.zh.md) | [English](./audio_infos.md)
 
-##接口信息
+## 接口信息
 
 ```
 POST /openapi/capcut-mate/v1/audio_infos
 ```
 
-##功能描述
+## 功能描述
 
 根据音频URL和时间线生成音频信息。该接口将音频文件URL和时间线配置转换为剪映草稿所需的音频信息格式，支持音量控制和音频效果设置。
 

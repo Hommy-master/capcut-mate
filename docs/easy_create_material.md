@@ -1,6 +1,6 @@
 # EASY_CREATE_MATERIAL API Documentation
 
-### 🌐 Language Switch
+## 🌐 Language Switch
 [中文版](./easy_create_material.zh.md) | [English](./easy_create_material.md)
 
 ## Interface Information

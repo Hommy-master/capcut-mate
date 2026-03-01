@@ -1,6 +1,6 @@
 # ADD_STICKER API Documentation
 
-### 🌐 Language Switch
+## 🌐 Language Switch
 [中文版](./add_sticker.zh.md) | [English](./add_sticker.md)
 
 ## Interface Information

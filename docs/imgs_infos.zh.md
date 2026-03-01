@@ -1,15 +1,15 @@
 # IMGS_INFOS API 接口文档
 
-### 🌐 语言切换
+## 🌐 语言切换
 [中文版](./imgs_infos.zh.md) | [English](./imgs_infos.md)
 
-##接口信息
+## 接口信息
 
 ```
 POST /openapi/capcut-mate/v1/imgs_infos
 ```
 
-##功能描述
+## 功能描述
 
 根据图片URL和时间线生成图片信息。该接口将图片文件URL和时间线配置转换为剪映草稿所需的图片信息格式，支持动画效果和转场设置。
 

@@ -1,6 +1,6 @@
 # ADD_TEXT_STYLE API Documentation
 
-###🌐 Language Switch
+## 🌐 Language Switch
 [中文版](./add_text_style.zh.md) | [English](./add_text_style.md)
 
 ## Interface Information

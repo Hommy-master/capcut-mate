@@ -1,6 +1,6 @@
 # ADD_VIDEOS API Documentation
 
-### 🌐 Language Switch
+## 🌐 Language Switch
 [中文版](./add_videos.zh.md) | [English](./add_videos.md)
 
 ## Interface Information

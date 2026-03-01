@@ -1,6 +1,6 @@
 # SAVE_DRAFT API Documentation
 
-### 🌐 Language Switch
+## 🌐 Language Switch
 [中文版](./save_draft.zh.md) | [English](./save_draft.md)
 
 ## Interface Information

@@ -1,6 +1,6 @@
 # ADD_EFFECTS API Documentation
 
-### 🌐 Language Switch
+## 🌐 Language Switch
 [中文版](./add_effects.zh.md) | [English](./add_effects.md)
 
 ## Interface Information

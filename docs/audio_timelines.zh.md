@@ -1,6 +1,6 @@
 # AUDIO_TIMELINES API 接口文档
 
-### 🌐 语言切换
+## 🌐 语言切换
 [中文版](./audio_timelines.zh.md) | [English](./audio_timelines.md)
 
 ## 接口信息

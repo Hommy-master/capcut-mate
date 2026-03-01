@@ -1,6 +1,6 @@
 # SEARCH_STICKER API Documentation
 
-### 🌐 Language Switch
+## 🌐 Language Switch
 [中文版](./search_sticker.zh.md) | [English](./search_sticker.md)
 
 ## Interface Information

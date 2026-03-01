@@ -1,6 +1,6 @@
 # GEN_VIDEO_STATUS API 接口文档
 
-### 🌐 语言切换
+## 🌐 语言切换
 [中文版](./gen_video_status.zh.md) | [English](./gen_video_status.md)
 
 ## 接口信息

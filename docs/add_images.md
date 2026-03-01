@@ -1,6 +1,6 @@
 # ADD_IMAGES API Documentation
 
-### 🌐 Language Switch
+## 🌐 Language Switch
 [中文版](./add_images.zh.md) | [English](./add_images.md)
 
 ## Interface Information

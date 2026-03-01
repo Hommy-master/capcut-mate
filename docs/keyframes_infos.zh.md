@@ -1,15 +1,15 @@
 # KEYFRAMES_INFOS API 接口文档
 
-### 🌐 语言切换
+## 🌐 语言切换
 [中文版](./keyframes_infos.zh.md) | [English](./keyframes_infos.md)
 
-##接口信息
+## 接口信息
 
 ```
 POST /openapi/capcut-mate/v1/keyframes_infos
 ```
 
-##功能描述
+## 功能描述
 
 根据关键帧类型、位置比例和值生成关键帧信息。该接口将关键帧配置转换为剪映草稿所需的关键帧信息格式。
 

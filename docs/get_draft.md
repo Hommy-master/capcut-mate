@@ -1,6 +1,6 @@
 # GET_DRAFT API Documentation
 
-### 🌐 Language Switch
+## 🌐 Language Switch
 [中文版](./get_draft.zh.md) | [English](./get_draft.md)
 
 ## Interface Information

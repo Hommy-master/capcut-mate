@@ -1,6 +1,6 @@
 # GET_TEXT_ANIMATIONS API Documentation
 
-### 🌐 Language Switch
+## 🌐 Language Switch
 [中文版](./get_text_animations.zh.md) | [English](./get_text_animations.md)
 
 ## Interface Information

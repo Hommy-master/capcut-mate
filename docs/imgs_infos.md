@@ -1,6 +1,6 @@
 # IMGS_INFOS API Documentation
 
-###🌐 Language Switch
+## 🌐 Language Switch
 [中文版](./imgs_infos.zh.md) | [English](./imgs_infos.md)
 
 ## Interface Information

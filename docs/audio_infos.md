@@ -1,6 +1,6 @@
 # AUDIO_INFOS API Documentation
 
-### 🌐 Language Switch
+## 🌐 Language Switch
 [中文版](./audio_infos.zh.md) | [English](./audio_infos.md)
 
 ## Interface Information

@@ -1,9 +1,9 @@
 # TIMELINES API 接口文档
 
-### 🌐 语言切换
+## 🌐 语言切换
 [中文版](./timelines.zh.md) | [English](./timelines.md)
 
-##接口信息
+## 接口信息
 
 ```
 POST /openapi/capcut-mate/v1/timelines

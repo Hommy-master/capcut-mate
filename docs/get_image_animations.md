@@ -1,6 +1,6 @@
 # GET_IMAGE_ANIMATIONS API Documentation
 
-###🌐 Language Switch
+## 🌐 Language Switch
 [中文版](./get_image_animations.zh.md) | [English](./get_image_animations.md)
 
 ## Interface Information

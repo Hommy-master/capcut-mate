@@ -1,6 +1,6 @@
 # GET_URL API Documentation
 
-### 🌐 Language Switch
+## 🌐 Language Switch
 [中文版](./get_url.zh.md) | [English](./get_url.md)
 
 ## Interface Information

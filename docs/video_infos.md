@@ -1,6 +1,6 @@
 # VIDEO_INFOS API Documentation
 
-###🌐 Language Switch
+## 🌐 Language Switch
 [中文版](./video_infos.zh.md) | [English](./video_infos.md)
 
 ## Interface Information

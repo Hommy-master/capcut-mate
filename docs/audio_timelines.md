@@ -1,6 +1,6 @@
 # AUDIO_TIMELINES API Documentation
 
-### 🌐 Language Switch
+## 🌐 Language Switch
 [中文版](./audio_timelines.zh.md) | [English](./audio_timelines.md)
 
 ## Interface Information

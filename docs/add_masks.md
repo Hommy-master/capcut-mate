@@ -1,6 +1,6 @@
 # ADD_MASKS API Documentation
 
-### 🌐 Language Switch
+## 🌐 Language Switch
 [中文版](./add_masks.zh.md) | [English](./add_masks.md)
 
 ## Interface Information

@@ -1,15 +1,15 @@
 # VIDEO_INFOS API 接口文档
 
-### 🌐 语言切换
+## 🌐 语言切换
 [中文版](./video_infos.zh.md) | [English](./video_infos.md)
 
-##接口信息
+## 接口信息
 
 ```
 POST /openapi/capcut-mate/v1/video_infos
 ```
 
-##功能描述
+## 功能描述
 
 根据视频URL和时间线生成视频信息。该接口将视频文件URL和时间线配置转换为剪映草稿所需的视频信息格式，支持遮罩和转场设置。
 

@@ -1,6 +1,6 @@
 # CAPTION_INFOS API Documentation
 
-###🌐 Language Switch
+## 🌐 Language Switch
 [中文版](./caption_infos.zh.md) | [English](./caption_infos.md)
 
 ## Interface Information

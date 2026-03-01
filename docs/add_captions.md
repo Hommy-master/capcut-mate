@@ -1,6 +1,6 @@
 # ADD_CAPTIONS API Documentation
 
-### 🌐 Language Switch
+## 🌐 Language Switch
 [中文版](./add_captions.zh.md) | [English](./add_captions.md)
 
 ## Interface Information
