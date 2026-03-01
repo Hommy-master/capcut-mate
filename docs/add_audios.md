@@ -1,5 +1,8 @@
 # ADD_AUDIOS API Documentation
 
+### 🌐 Language Switch
+[中文版](./add_audios.zh.md) | [English](./add_audios.md)
+
 ## Interface Information
 
 ```
@@ -185,6 +188,3 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_audios \
 **Gitee**: [https://gitee.com/taohongmin-gitee/capcut-mate](https://gitee.com/taohongmin-gitee/capcut-mate)
 
 </div>
-
-### Language Switch
-[中文版](./add_audios.zh.md) | [English](./add_audios.md)

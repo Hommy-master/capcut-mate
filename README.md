@@ -1,5 +1,8 @@
 # CapCut Mate API
 
+### 🌐 Language Switch
+[中文版](README.zh.md) | [English](README.md)
+
 ## Project Introduction
 CapCut Mate API is a Jianying draft automation assistant built on FastAPI, providing rich API interfaces to create and edit Jianying drafts. It supports creating drafts, adding materials such as videos/audio/images/subtitles/effects, saving drafts, and cloud rendering. It can be deployed as a Coze plugin with one-click setup.
 
@@ -238,5 +241,3 @@ npm start
 - Email: taohongmin51@gmail.com
 
 ---
-### Language Switch
-[中文版](README.zh.md) | [English](README.md)

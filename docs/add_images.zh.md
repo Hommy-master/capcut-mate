@@ -1,5 +1,8 @@
 # ADD_IMAGES API 接口文档
 
+### 🌐 语言切换
+[中文版](./add_images.zh.md) | [English](./add_images.md)
+
 ## 接口信息
 
 ```

@@ -1,5 +1,8 @@
 # GET_DRAFT API 接口文档
 
+### 🌐 语言切换
+[中文版](./get_draft.zh.md) | [English](./get_draft.md)
+
 ## 接口信息
 
 ```

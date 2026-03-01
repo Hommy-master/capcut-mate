@@ -1,5 +1,8 @@
 # CapCut Mate API
 
+### 🌐 语言切换
+[中文版](README.zh.md) | [English](README.md)
+
 ## 项目简介
 CapCut Mate API 是一个基于 FastAPI 构建的剪映草稿自动化助手，提供丰富的API接口来创建和编辑剪映草稿。支持创建草稿、添加视频/音频/图片/字幕/特效等素材、保存草稿及云端渲染等功能，可作为扣子插件一键部署使用。
 
@@ -238,5 +241,3 @@ npm start
 - 邮箱：taohongmin51@gmail.com
 
 ---
-### 语言切换
-[中文版](README.zh.md) | [English](README.md)

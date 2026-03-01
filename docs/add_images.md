@@ -1,5 +1,8 @@
 # ADD_IMAGES API Documentation
 
+### 🌐 Language Switch
+[中文版](./add_images.zh.md) | [English](./add_images.md)
+
 ## Interface Information
 
 ```
@@ -239,6 +242,3 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_images \
 **Gitee**: [https://gitee.com/taohongmin-gitee/capcut-mate](https://gitee.com/taohongmin-gitee/capcut-mate)
 
 </div>
-
-### Language Switch
-[中文版](./add_images.zh.md) | [English](./add_images.md)

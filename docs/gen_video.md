@@ -1,5 +1,8 @@
 # GEN_VIDEO API Documentation
 
+### 🌐 Language Switch
+[中文版](./gen_video.zh.md) | [English](./gen_video.md)
+
 ## Interface Information
 
 ```

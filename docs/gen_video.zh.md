@@ -1,5 +1,8 @@
 # GEN_VIDEO API 接口文档
 
+### 🌐 语言切换
+[中文版](./gen_video.zh.md) | [English](./gen_video.md)
+
 ## 接口信息
 
 ```
