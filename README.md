@@ -165,7 +165,7 @@ The following are the core interfaces provided by CapCut Mate API, supporting a 
 |-----------|----------|-------------|-------------------|
 | **easy_create_material** | Quick Creation | Add multiple types of materials at once, simplify creation process | [📖 View Documentation](./docs/easy_create_material.md) |
 
-### 🛠️ Utility Tools
+###🛠️ Utility Tools
 | Interface | Function | Description | Documentation Link |
 |-----------|----------|-------------|-------------------|
 | **get_url** | Extract URL | Extract URL information from input content | [📖 View Documentation](./docs/get_url.md) |
@@ -173,6 +173,14 @@ The following are the core interfaces provided by CapCut Mate API, supporting a 
 | **objs_to_str_list** | Objects to String List | Convert object list to string list format | [📖 View Documentation](./docs/objs_to_str_list.md) |
 | **str_list_to_objs** | String List to Objects | Convert string list to object list format | [📖 View Documentation](./docs/str_list_to_objs.md) |
 | **str_to_list** | String to List | Convert string to list format | [📖 View Documentation](./docs/str_to_list.md) |
+| **timelines** | Create Timelines | Generate timeline configurations for video editing | [📖 View Documentation](./docs/timelines.md) |
+| **audio_timelines** | Audio Timelines | Calculate timelines based on audio durations | [📖 View Documentation](./docs/audio_timelines.md) |
+| **audio_infos** | Audio Information | Generate audio information from URLs and timelines | [📖 View Documentation](./docs/audio_infos.md) |
+| **imgs_infos** | Image Information | Generate image information from URLs and timelines | [📖 View Documentation](./docs/imgs_infos.md) |
+| **caption_infos** | Caption Information | Generate caption information from text and timelines | [📖 View Documentation](./docs/caption_infos.md) |
+| **effect_infos** | Effect Information | Generate effect information from names and timelines | [📖 View Documentation](./docs/effect_infos.md) |
+| **keyframes_infos** | Keyframe Information | Generate keyframe information from configurations | [📖 View Documentation](./docs/keyframes_infos.md) |
+| **video_infos** | Video Information | Generate video information from URLs and timelines | [📖 View Documentation](./docs/video_infos.md) |
 
 ## API Usage Examples
 
