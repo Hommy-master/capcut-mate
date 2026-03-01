@@ -5,6 +5,7 @@
 
 ## Project Introduction
 CapCut Mate API is a completely open-source and free Jianying draft automation assistant built on FastAPI, supporting independent deployment. This project focuses on empowering large models with basic video editing capabilities, providing out-of-the-box video editing Skills, and has fully automated the entire Jianying core functionality workflow. It can directly connect with large models to achieve diverse intelligent video editing, enabling ordinary users to quickly create professional and advanced video works.
+
 Flexible project usage: Can be independently deployed, or combined with Coze or n8n to build automated workflows, and can also connect with Jianying to achieve cloud rendering, directly generating final videos from drafts.
 
 ## Project Resources
