@@ -1,20 +1,23 @@
-# SEARCH_STICKER API 接口文档
+# SEARCH_STICKER API Documentation
 
-## 接口信息
+### 🌐 Language Switch
+[中文版](./search_sticker.zh.md) | [English](./search_sticker.md)
+
+## Interface Information
 
 ```
 POST /openapi/capcut-mate/v1/search_sticker
 ```
 
-## 功能描述
+## Function Description
 
-根据关键词搜索贴纸。该接口用于根据用户提供的关键词搜索相关的贴纸素材，返回匹配的贴纸列表，包括贴纸的详细信息如图片URL、尺寸、类型等。
+Search stickers by keywords. This interface is used to search for related sticker materials based on keywords provided by users, returning a list of matching stickers, including detailed information such as image URLs, dimensions, types, etc.
 
-## 更多文档
+## More Documentation
 
-📖 更多详细文档和教程请访问：[https://docs.jcaigc.cn](https://docs.jcaigc.cn)
+📖 For more detailed documentation and tutorials, please visit: [https://docs.jcaigc.cn](https://docs.jcaigc.cn)
 
-## 请求参数
+## Request Parameters
 
 ```json
 {
@@ -22,23 +25,23 @@ POST /openapi/capcut-mate/v1/search_sticker
 }
 ```
 
-### 参数说明
+### Parameter Description
 
-| 参数名 | 类型 | 必填 | 默认值 | 说明 |
-|--------|------|------|--------|------|
-| keyword | string | ✅ | - | 搜索关键词 |
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| keyword | string |✅ | - | Search keyword |
 
-### 参数详解
+### Parameter Details
 
 #### keyword
 
-- **类型**: string
-- **说明**: 搜索贴纸的关键词
-- **示例**: "人", "花", "动物"
+- **Type**: string
+- **Description**: Keyword to search for stickers
+- **Example**: "人", "花", "动物"
 
-## 响应格式
+## Response Format
 
-### 成功响应 (200)
+### Success Response (200)
 
 ```json
 {
@@ -64,37 +67,37 @@ POST /openapi/capcut-mate/v1/search_sticker
 }
 ```
 
-### 响应字段说明
+### Response Field Description
 
-| 字段名 | 类型 | 说明 |
-|--------|------|------|
-| data | array | 贴纸数据列表 |
-| sticker | object | 贴纸详细信息 |
-| large_image | object | 大图信息 |
-| image_url | string | 图片URL |
-| preview_cover | string | 预览封面 |
-| sticker_package | object | 贴纸包信息 |
-| height_per_frame | number | 每帧高度 |
-| size | number | 贴纸包大小 |
-| width_per_frame | number | 每帧宽度 |
-| sticker_type | number | 贴纸类型 |
-| track_thumbnail | string | 轨道缩略图 |
-| sticker_id | string | 贴纸ID |
-| title | string | 贴纸标题 |
+| Field | Type | Description |
+|-------|------|-------------|
+| data | array | Sticker data list |
+| sticker | object | Detailed sticker information |
+| large_image | object | Large image information |
+| image_url | string | Image URL |
+| preview_cover | string | Preview cover |
+| sticker_package | object | Sticker package information |
+| height_per_frame | number | Height per frame |
+| size | number | Sticker package size |
+| width_per_frame | number | Width per frame |
+| sticker_type | number | Sticker type |
+| track_thumbnail | string | Track thumbnail |
+| sticker_id | string | Sticker ID |
+| title | string | Sticker title |
 
-### 错误响应 (4xx/5xx)
+### Error Response (4xx/5xx)
 
 ```json
 {
-  "detail": "错误信息描述"
+  "detail": "Error message description"
 }
 ```
 
-## 使用示例
+## Usage Examples
 
-### cURL 示例
+### cURL Examples
 
-#### 1. 搜索关键词为"人"的贴纸
+#### 1. Search Stickers with Keyword "人"
 
 ```bash
 curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/search_sticker \
@@ -104,7 +107,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/search_sticker
   }'
 ```
 
-#### 2. 搜索关键词为"动物"的贴纸
+#### 2. Search Stickers with Keyword "动物"
 
 ```bash
 curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/search_sticker \
@@ -114,34 +117,34 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/search_sticker
   }'
 ```
 
-## 错误码说明
+## Error Code Description
 
-| 错误码 | 错误信息 | 说明 | 解决方案 |
-|--------|----------|------|----------|
-| 400 | keyword是必填项 | 缺少关键词参数 | 提供有效的keyword参数 |
+| Error Code | Error Message | Description | Solution |
+|------------|---------------|-------------|----------|
+| 400 | keyword is required | Missing keyword parameter | Provide a valid keyword parameter |
 
-## 注意事项
+## Notes
 
-1. **关键词匹配**: 当前实现为简单的标题匹配，实际应用中可以扩展为全文搜索
-2. **数据来源**: 当前返回的是模拟数据，实际应用中应该连接贴纸数据库或调用外部API
-3. **性能考虑**: 对于大量贴纸数据，应考虑分页和缓存机制
+1. **Keyword Matching**: Current implementation uses simple title matching, can be extended to full-text search in actual applications
+2. **Data Source**: Currently returns mock data, in actual applications should connect to sticker database or call external APIs
+3. **Performance Consideration**: For large sticker datasets, should consider pagination and caching mechanisms
 
-## 工作流程
+## Workflow
 
-1. 验证必填参数（keyword）
-2. 调用服务层搜索贴纸
-3. 返回匹配的贴纸列表
+1. Validate required parameter (keyword)
+2. Call service layer to search for stickers
+3. Return matching sticker list
 
-## 相关接口
+## Related Interfaces
 
-- [添加贴纸](./add_sticker.md)
-- [创建草稿](./create_draft.md)
+- [Add Sticker](./add_sticker.md)
+- [Create Draft](./create_draft.md)
 
 ---
 
 <div align="right">
 
-📚 **项目资源**  
+📚 **Project Resources**  
 **GitHub**: [https://github.com/Hommy-master/capcut-mate](https://github.com/Hommy-master/capcut-mate)  
 **Gitee**: [https://gitee.com/taohongmin-gitee/capcut-mate](https://gitee.com/taohongmin-gitee/capcut-mate)
 

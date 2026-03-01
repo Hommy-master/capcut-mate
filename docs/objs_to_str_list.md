@@ -1,20 +1,23 @@
-# OBJS_TO_STR_LIST API 接口文档
+# OBJS_TO_STR_LIST API Documentation
 
-## 接口信息
+### 🌐 Language Switch
+[中文版](./objs_to_str_list.zh.md) | [English](./objs_to_str_list.md)
+
+## Interface Information
 
 ```
 POST /openapi/capcut-mate/v1/objs_to_str_list
 ```
 
-## 功能描述
+## Function Description
 
-对象列表转化成字符串列表。该接口用于将输入的对象列表转换为字符串列表格式。
+Convert object list to string list. This interface is used to convert input object list to string list format.
 
-## 更多文档
+## More Documentation
 
-📖 更多详细文档和教程请访问：[https://docs.jcaigc.cn](https://docs.jcaigc.cn)
+📖 For more detailed documentation and tutorials, please visit: [https://docs.jcaigc.cn](https://docs.jcaigc.cn)
 
-## 请求参数
+## Request Parameters
 
 ```json
 {
@@ -29,23 +32,23 @@ POST /openapi/capcut-mate/v1/objs_to_str_list
 }
 ```
 
-### 参数说明
+### Parameter Description
 
-| 参数名 | 类型 | 必填 | 默认值 | 说明 |
-|--------|------|------|--------|------|
-| outputs | array[object] | ✅ | - | 数据对象 |
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| outputs | array[object] |✅ | - | Data objects |
 
-### 参数详解
+### Parameter Details
 
 #### outputs
 
-- **类型**: array[object]
-- **说明**: 需要转换的对象列表
-- **示例**: `[{"output": "https://assets.jcaigc.cn/min.mp4"}, {"output": "https://assets.jcaigc.cn/max.mp4"}]`
+- **Type**: array[object]
+- **Description**: Object list to convert
+- **Example**: `[{"output": "https://assets.jcaigc.cn/min.mp4"}, {"output": "https://assets.jcaigc.cn/max.mp4"}]`
 
-## 响应格式
+## Response Format
 
-### 成功响应 (200)
+### Success Response (200)
 
 ```json
 {
@@ -56,25 +59,25 @@ POST /openapi/capcut-mate/v1/objs_to_str_list
 }
 ```
 
-### 响应字段说明
+### Response Field Description
 
-| 字段名 | 类型 | 说明 |
-|--------|------|------|
-| infos | array[string] | 字符串列表 |
+| Field | Type | Description |
+|-------|------|-------------|
+| infos | array[string] | String list |
 
-### 错误响应 (4xx/5xx)
+### Error Response (4xx/5xx)
 
 ```json
 {
-  "detail": "错误信息描述"
+  "detail": "Error message description"
 }
 ```
 
-## 使用示例
+## Usage Examples
 
-### cURL 示例
+### cURL Examples
 
-#### 1. 基本使用
+#### 1. Basic Usage
 
 ```bash
 curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/objs_to_str_list \
@@ -91,33 +94,33 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/objs_to_str_li
   }'
 ```
 
-## 错误码说明
+## Error Code Description
 
-| 错误码 | 错误信息 | 说明 | 解决方案 |
-|--------|----------|------|----------|
-| 400 | outputs是必填项 | 缺少outputs参数 | 提供有效的outputs参数 |
-| 500 | 对象列表转换失败 | 内部处理错误 | 联系技术支持 |
+| Error Code | Error Message | Description | Solution |
+|------------|---------------|-------------|----------|
+| 400 | outputs is required | Missing outputs parameter | Provide a valid outputs parameter |
+| 500 | Object list conversion failed | Internal processing error | Contact technical support |
 
-## 注意事项
+## Notes
 
-1. **参数要求**: outputs参数为必填项
-2. **返回值**: 将输入的对象列表中的output字段提取出来组成字符串列表
+1. **Parameter Requirements**: outputs parameter is required
+2. **Return Value**: Extract output fields from input object list to form string list
 
-## 工作流程
+## Workflow
 
-1. 验证必填参数（outputs）
-2. 调用服务层处理业务逻辑
-3. 返回转换后的字符串列表
+1. Validate required parameter (outputs)
+2. Call service layer to handle business logic
+3. Return converted string list
 
-## 相关接口
+## Related Interfaces
 
-- [创建草稿](./create_draft.md)
+- [Create Draft](./create_draft.md)
 
 ---
 
 <div align="right">
 
-📚 **项目资源**  
+📚 **Project Resources**  
 **GitHub**: [https://github.com/Hommy-master/capcut-mate](https://github.com/Hommy-master/capcut-mate)  
 **Gitee**: [https://gitee.com/taohongmin-gitee/capcut-mate](https://gitee.com/taohongmin-gitee/capcut-mate)
 

@@ -1,24 +1,27 @@
-# GET_AUDIO_DURATION API 接口文档
+# GET_AUDIO_DURATION API Documentation
 
-## 接口信息
+### 🌐 Language Switch
+[中文版](./get_audio_duration.zh.md) | [English](./get_audio_duration.md)
+
+## Interface Information
 
 ```
 POST /openapi/capcut-mate/v1/get_audio_duration
 ```
 
-## 更多文档
+## More Documentation
 
-📖 更多详细文档和教程请访问：[https://docs.jcaigc.cn](https://docs.jcaigc.cn)
+📖 For more detailed documentation and tutorials, please visit: [https://docs.jcaigc.cn](https://docs.jcaigc.cn)
 
-## 功能描述
+## Function Description
 
-获取音频文件的时长，支持各种常见的音频格式。使用FFprobe工具进行精确的音频分析，返回音频文件的准确时长，单位为微秒。
+Get the duration of audio files, supporting various common audio formats. Use FFprobe tool for precise audio analysis, returning the accurate duration of audio files in microseconds.
 
-## 更多文档
+## More Documentation
 
-📖 更多详细文档和教程请访问：[https://docs.jcaigc.cn](https://docs.jcaigc.cn)
+📖 For more detailed documentation and tutorials, please visit: [https://docs.jcaigc.cn](https://docs.jcaigc.cn)
 
-## 请求参数
+## Request Parameters
 
 ```json
 {
@@ -26,23 +29,23 @@ POST /openapi/capcut-mate/v1/get_audio_duration
 }
 ```
 
-### 参数说明
+### Parameter Description
 
-| 参数名 | 类型 | 必填 | 默认值 | 说明 |
-|--------|------|------|--------|------|
-| mp3_url | string | ✅ | - | 音频文件URL，支持mp3、wav、m4a等常见音频格式 |
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| mp3_url | string |✅ | - | Audio file URL, supporting mp3, wav, m4a and other common audio formats |
 
-### 参数详解
+### Parameter Details
 
-#### 音频URL参数
+#### Audio URL Parameter
 
-- **mp3_url**: 音频文件的完整URL地址
-  - 支持格式：mp3、wav、aac、flac、m4a等常见音频格式
-  - 需要确保URL可访问且文件完整
+- **mp3_url**: Complete URL address of the audio file
+  - Supported formats: mp3, wav, aac, flac, m4a and other common audio formats
+  - Need to ensure URL is accessible and file is complete
 
-## 响应格式
+## Response Format
 
-### 成功响应 (200)
+### Success Response (200)
 
 ```json
 {
@@ -50,25 +53,25 @@ POST /openapi/capcut-mate/v1/get_audio_duration
 }
 ```
 
-### 响应字段说明
+### Response Field Description
 
-| 字段名 | 类型 | 说明 |
-|--------|------|------|
-| duration | number | 音频时长，单位：微秒 |
+| Field | Type | Description |
+|-------|------|-------------|
+| duration | number | Audio duration, unit: microseconds |
 
-### 错误响应 (4xx/5xx)
+### Error Response (4xx/5xx)
 
 ```json
 {
-  "detail": "错误信息描述"
+  "detail": "Error message description"
 }
 ```
 
-## 使用示例
+## Usage Examples
 
-### cURL 示例
+### cURL Examples
 
-#### 1. 基本获取音频时长
+#### 1. Basic Audio Duration Retrieval
 
 ```bash
 curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_audio_duration \
@@ -78,48 +81,40 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_audio_dura
   }'
 ```
 
-## 错误码说明
+## Error Code Description
 
-| 错误码 | 错误信息 | 说明 | 解决方案 |
-|--------|----------|------|----------|
-| 400 | mp3_url是必填项 | 缺少音频URL参数 | 提供有效的mp3_url |
-| 404 | 音频文件无法访问 | 指定的音频URL无效 | 检查音频URL是否正确 |
-| 500 | 音频时长获取失败 | 内部处理错误 | 联系技术支持 |
+| Error Code | Error Message | Description | Solution |
+|------------|---------------|-------------|----------|
+| 400 | mp3_url is required | Missing audio URL parameter | Provide a valid mp3_url |
+| 404 | Audio file cannot be accessed | Specified audio URL invalid | Check if audio URL is correct |
+| 500 | Audio duration retrieval failed | Internal processing error | Contact technical support |
 
-## 注意事项
+## Notes
 
-1. **时间单位**: 返回的时长使用微秒（1秒 = 1,000,000微秒）
-2. **音频格式**: 支持mp3、wav、aac、flac、m4a等常见音频格式
-3. **文件大小**: 建议控制在合理范围内，过大的文件可能导致处理超时
-4. **网络访问**: 确保提供的音频URL可以正常访问
+1. **Time Unit**: Returned duration uses microseconds (1 second = 1,000,000 microseconds)
+2. **Audio Formats**: Support mp3, wav, aac, flac, m4a and other common audio formats
+3. **File Size**: Recommended to control within reasonable range, overly large files may cause timeout
+4. **Network Access**: Ensure provided audio URL can be accessed normally
 
-## 工作流程
+## Workflow
 
-1. 验证必填参数（mp3_url）
-2. 下载音频文件到临时目录
-3. 使用ffprobe分析音频文件获取时长
-4. 清理临时文件
-5. 返回音频时长信息
+1. Validate required parameter (mp3_url)
+2. Download audio file to temporary directory
+3. Use ffprobe to analyze audio file and get duration
+4. Clean up temporary files
+5. Return audio duration information
 
-## 相关接口
+## Related Interfaces
 
-- [添加音频](./add_audios.md)
-- [添加视频](./add_videos.md)
-- [创建草稿](./create_draft.md)
+- [Add Audios](./add_audios.md)
+- [Add Videos](./add_videos.md)
+- [Create Draft](./create_draft.md)
 
 ---
 
 <div align="right">
 
-📚 **项目资源**  
-**GitHub**: [https://github.com/Hommy-master/capcut-mate](https://github.com/Hommy-master/capcut-mate)  
-**Gitee**: [https://gitee.com/taohongmin-gitee/capcut-mate](https://gitee.com/taohongmin-gitee/capcut-mate)
-
-</div>
-
-<div align="right">
-
-📚 **项目资源**  
+📚 **Project Resources**  
 **GitHub**: [https://github.com/Hommy-master/capcut-mate](https://github.com/Hommy-master/capcut-mate)  
 **Gitee**: [https://gitee.com/taohongmin-gitee/capcut-mate](https://gitee.com/taohongmin-gitee/capcut-mate)
 

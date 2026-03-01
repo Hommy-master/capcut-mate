@@ -1,20 +1,23 @@
-# ADD_STICKER API 接口文档
+# ADD_STICKER API Documentation
 
-## 接口信息
+### 🌐 Language Switch
+[中文版](./add_sticker.zh.md) | [English](./add_sticker.md)
+
+## Interface Information
 
 ```
 POST /openapi/capcut-mate/v1/add_sticker
 ```
 
-## 功能描述
+## Function Description
 
-向现有草稿中添加贴纸。该接口用于在指定的时间段内添加贴纸素材到剪映草稿中，支持贴纸的缩放和位置调整。贴纸可以用于增强视频的视觉效果，如表情、装饰、文字等。
+Add stickers to existing drafts. This interface is used to add sticker materials to Jianying drafts within specified time periods, supporting sticker scaling and position adjustments. Stickers can be used to enhance the visual effects of videos, such as expressions, decorations, text, etc.
 
-## 更多文档
+## More Documentation
 
-📖 更多详细文档和教程请访问：[https://docs.jcaigc.cn](https://docs.jcaigc.cn)
+📖 For more detailed documentation and tutorials, please visit: [https://docs.jcaigc.cn](https://docs.jcaigc.cn)
 
-## 请求参数
+## Request Parameters
 
 ```json
 {
@@ -28,58 +31,58 @@ POST /openapi/capcut-mate/v1/add_sticker
 }
 ```
 
-### 参数说明
+### Parameter Description
 
-| 参数名 | 类型 | 必填 | 默认值 | 说明 |
-|--------|------|------|--------|------|
-| draft_url | string | ✅ | - | 目标草稿的完整URL |
-| sticker_id | string | ✅ | - | 贴纸的唯一标识ID |
-| start | number | ✅ | - | 贴纸开始时间（微秒） |
-| end | number | ✅ | - | 贴纸结束时间（微秒） |
-| scale | number | ❌ | 1.0 | 贴纸缩放比例，建议范围[0.1, 5.0] |
-| transform_x | number | ❌ | 0 | X轴位置偏移（像素） |
-| transform_y | number | ❌ | 0 | Y轴位置偏移（像素） |
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| draft_url | string |✅ | - | Complete URL of the target draft |
+| sticker_id | string |✅ | - | Unique ID of the sticker |
+| start | number |✅ | - | Sticker start time (microseconds) |
+| end | number | ✅ | - | Sticker end time (microseconds) |
+| scale | number |❌ | 1.0 | Sticker scale ratio, recommended range [0.1, 5.0] |
+| transform_x | number | ❌ | 0 | X-axis position offset (pixels) |
+| transform_y | number | ❌ | 0 | Y-axis position offset (pixels) |
 
-### 参数详解
+### Parameter Details
 
-#### 时间参数
+#### Time Parameters
 
-- **start**: 贴纸在时间轴上的开始时间，单位为微秒（1秒 = 1,000,000微秒）
-- **end**: 贴纸在时间轴上的结束时间，单位为微秒
-- **duration**: 贴纸显示时长 = end - start
+- **start**: Start time of the sticker on the timeline, unit microseconds (1 second = 1,000,000 microseconds)
+- **end**: End time of the sticker on the timeline, unit microseconds
+- **duration**: Sticker display duration = end - start
 
-#### 缩放参数
+#### Scale Parameters
 
-- **scale**: 贴纸的缩放比例
-  - 1.0 = 原始大小
-  - 0.5 = 缩小到一半
-  - 2.0 = 放大到两倍
-  - 建议范围：0.1 - 5.0
+- **scale**: Scale ratio of the sticker
+  - 1.0 = Original size
+  - 0.5 = Half size
+  - 2.0 = Double size
+  - Recommended range: 0.1 - 5.0
 
-#### 位置参数
+#### Position Parameters
 
-- **transform_x**: 贴纸在X轴方向的位置偏移，单位为像素
-  - 正值向右移动
-  - 负值向左移动
-  - 以画布中心为原点
-  - 实际存储时会转换为半画布宽单位（假设画布宽度1920，即除以960）
+- **transform_x**: X-axis position offset of the sticker, unit pixels
+  - Positive values move right
+  - Negative values move left
+  - Origin at canvas center
+  - Actually stored in half canvas width units (assuming canvas width 1920, i.e., divided by 960)
 
-- **transform_y**: 贴纸在Y轴方向的位置偏移，单位为像素
-  - 正值向下移动
-  - 负值向上移动
-  - 以画布中心为原点
-  - 实际存储时会转换为半画布高单位（假设画布高度1080，即除以540）
+- **transform_y**: Y-axis position offset of the sticker, unit pixels
+  - Positive values move down
+  - Negative values move up
+  - Origin at canvas center
+  - Actually stored in half canvas height units (assuming canvas height 1080, i.e., divided by 540)
 
-#### 贴纸ID说明
+#### Sticker ID Description
 
-- **sticker_id**: 贴纸的唯一标识符
-  - 格式：通常为数字字符串
-  - 示例：`"7326810673609018675"`
-  - 获取方式：通过剪映贴纸库或相关API获取
+- **sticker_id**: Unique identifier of the sticker
+  - Format: Usually numeric string
+  - Example: `"7326810673609018675"`
+  - Acquisition: Through Jianying sticker library or related APIs
 
-## 响应格式
+## Response Format
 
-### 成功响应 (200)
+### Success Response (200)
 
 ```json
 {
@@ -91,29 +94,29 @@ POST /openapi/capcut-mate/v1/add_sticker
 }
 ```
 
-### 响应字段说明
+### Response Field Description
 
-| 字段名 | 类型 | 说明 |
-|--------|------|------|
-| draft_url | string | 更新后的草稿URL |
-| sticker_id | string | 贴纸的唯一标识ID |
-| track_id | string | 贴纸轨道ID |
-| segment_id | string | 贴纸片段ID |
-| duration | number | 贴纸显示时长（微秒） |
+| Field | Type | Description |
+|-------|------|-------------|
+| draft_url | string | Updated draft URL |
+| sticker_id | string | Unique ID of the sticker |
+| track_id | string | Sticker track ID |
+| segment_id | string | Sticker segment ID |
+| duration | number | Sticker display duration (microseconds) |
 
-### 错误响应 (4xx/5xx)
+### Error Response (4xx/5xx)
 
 ```json
 {
-  "detail": "错误信息描述"
+  "detail": "Error message description"
 }
 ```
 
-## 使用示例
+## Usage Examples
 
-### cURL 示例
+### cURL Examples
 
-#### 1. 基本贴纸添加
+#### 1. Basic Sticker Addition
 
 ```bash
 curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_sticker \
@@ -126,7 +129,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_sticker \
   }'
 ```
 
-#### 2. 带缩放的贴纸
+#### 2. Sticker with Scaling
 
 ```bash
 curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_sticker \
@@ -140,7 +143,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_sticker \
   }'
 ```
 
-#### 3. 带位置偏移的贴纸
+#### 3. Sticker with Position Offset
 
 ```bash
 curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_sticker \
@@ -156,59 +159,59 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_sticker \
   }'
 ```
 
-## 错误码说明
+## Error Code Description
 
-| 错误码 | 错误信息 | 说明 | 解决方案 |
-|--------|----------|------|----------|
-| 400 | draft_url是必填项 | 缺少草稿URL参数 | 提供有效的draft_url |
-| 400 | sticker_id是必填项 | 缺少贴纸ID参数 | 提供有效的sticker_id |
-| 400 | start是必填项 | 缺少开始时间参数 | 提供有效的start时间 |
-| 400 | end是必填项 | 缺少结束时间参数 | 提供有效的end时间 |
-| 400 | 时间范围无效 | end必须大于start | 确保结束时间大于开始时间 |
-| 400 | 缩放比例无效 | scale超出建议范围 | 使用0.1-5.0范围内的缩放值 |
-| 400 | 无效的贴纸信息，请检查贴纸参数是否正确 | 贴纸参数校验失败 | 检查贴纸参数是否符合要求 |
-| 404 | 草稿不存在 | 指定的草稿URL无效 | 检查草稿URL是否正确 |
-| 404 | 贴纸不存在 | 指定的贴纸ID无效 | 确认贴纸ID是否正确 |
-| 500 | 贴纸添加失败 | 内部处理错误 | 联系技术支持 |
+| Error Code | Error Message | Description | Solution |
+|------------|---------------|-------------|----------|
+| 400 | draft_url is required | Missing draft URL parameter | Provide a valid draft_url |
+| 400 | sticker_id is required | Missing sticker ID parameter | Provide a valid sticker_id |
+| 400 | start is required | Missing start time parameter | Provide a valid start time |
+| 400 | end is required | Missing end time parameter | Provide a valid end time |
+| 400 | Time range invalid | end must be greater than start | Ensure end time is greater than start time |
+| 400 | Scale ratio invalid | scale out of recommended range | Use scale values within 0.1-5.0 range |
+| 400 | Invalid sticker information, please check sticker parameters | Sticker parameter validation failed | Check if sticker parameters meet requirements |
+| 404 | Draft does not exist | Specified draft URL invalid | Check if draft URL is correct |
+| 404 | Sticker does not exist | Specified sticker ID invalid | Confirm if sticker ID is correct |
+| 500 | Sticker addition failed | Internal processing error | Contact technical support |
 
-## 注意事项
+## Notes
 
-1. **时间单位**: 所有时间参数使用微秒（1秒 = 1,000,000微秒）
-2. **贴纸ID**: 确保使用有效的贴纸ID
-3. **时间范围**: end必须大于start
-4. **缩放范围**: scale建议在0.1-5.0范围内
-5. **位置参数**: transform_x和transform_y单位为像素，但内部会转换为半画布单位存储
-   - transform_x转换公式：实际值 / 960（假设画布宽度1920）
-   - transform_y转换公式：实际值 / 540（假设画布高度1080）
-6. **轨道管理**: 系统自动创建贴纸轨道
-7. **性能考虑**: 避免同时添加大量贴纸
+1. **Time Unit**: All time parameters use microseconds (1 second = 1,000,000 microseconds)
+2. **Sticker ID**: Ensure using valid sticker ID
+3. **Time Range**: end must be greater than start
+4. **Scale Range**: scale recommended within 0.1-5.0 range
+5. **Position Parameters**: transform_x and transform_y units are pixels, but internally converted to half canvas units for storage
+   - transform_x conversion formula: actual value / 960 (assuming canvas width 1920)
+   - transform_y conversion formula: actual value / 540 (assuming canvas height 1080)
+6. **Track Management**: System automatically creates sticker track
+7. **Performance Consideration**: Avoid adding large numbers of stickers simultaneously
 
-## 工作流程
+## Workflow
 
-1. 验证必填参数（draft_url, sticker_id, start, end）
-2. 检查时间范围的有效性
-3. 从缓存中获取草稿
-4. 创建贴纸轨道（如果不存在）
-5. 创建图像调节设置
-6. 创建贴纸片段
-7. 添加片段到轨道
-8. 保存草稿
-9. 返回贴纸信息
+1. Validate required parameters (draft_url, sticker_id, start, end)
+2. Check validity of time range
+3. Get draft from cache
+4. Create sticker track (if not exists)
+5. Create image adjustment settings
+6. Create sticker segment
+7. Add segment to track
+8. Save draft
+9. Return sticker information
 
-## 相关接口
+## Related Interfaces
 
-- [创建草稿](./create_draft.md)
-- [添加视频](./add_videos.md)
-- [添加音频](./add_audios.md)
-- [添加图片](./add_images.md)
-- [保存草稿](./save_draft.md)
-- [生成视频](./gen_video.md)
+- [Create Draft](./create_draft.md)
+- [Add Videos](./add_videos.md)
+- [Add Audios](./add_audios.md)
+- [Add Images](./add_images.md)
+- [Save Draft](./save_draft.md)
+- [Generate Video](./gen_video.md)
 
 ---
 
 <div align="right">
 
-📚 **项目资源**  
+📚 **Project Resources**  
 **GitHub**: [https://github.com/Hommy-master/capcut-mate](https://github.com/Hommy-master/capcut-mate)  
 **Gitee**: [https://gitee.com/taohongmin-gitee/capcut-mate](https://gitee.com/taohongmin-gitee/capcut-mate)
 
