@@ -12,8 +12,7 @@
         "extract_audio_last_index": 1,
         "lyrics_recognition_id": "",
         "lyrics_sync": true,
-        "lyrics_taskinfo": [
-        ],
+        "lyrics_taskinfo": [],
         "maintrack_adsorb": true,
         "material_save_mode": 0,
         "original_sound_last_index": 1,
@@ -21,8 +20,7 @@
         "sticker_max_index": 1,
         "subtitle_recognition_id": "",
         "subtitle_sync": true,
-        "subtitle_taskinfo": [
-        ],
+        "subtitle_taskinfo": [],
         "video_mute": false
     },
     "cover": null,
@@ -33,20 +31,13 @@
     "group_container": null,
     "id": "1E7B473A-7C58-4FF5-AF38-620EDBEE66DE",
     "keyframes": {
-        "adjusts": [
-        ],
-        "audios": [
-        ],
-        "filters": [
-        ],
-        "handwrites": [
-        ],
-        "stickers": [
-        ],
-        "texts": [
-        ],
-        "videos": [
-        ]
+        "adjusts": [],
+        "audios": [],
+        "filters": [],
+        "handwrites": [],
+        "stickers": [],
+        "texts": [],
+        "videos": []
     },
     "last_modified_platform": {
         "app_id": 3704,
@@ -55,62 +46,34 @@
         "os_version": "15.6.1"
     },
     "materials": {
-        "audio_balances": [
-        ],
-        "audio_effects": [
-        ],
-        "audio_fades": [
-        ],
-        "audios": [
-        ],
-        "beats": [
-        ],
-        "canvases": [
-        ],
-        "chromas": [
-        ],
-        "color_curves": [
-        ],
-        "drafts": [
-        ],
-        "effects": [
-        ],
-        "handwrites": [
-        ],
-        "hsl": [
-        ],
-        "images": [
-        ],
-        "log_color_wheels": [
-        ],
-        "masks": [
-        ],
-        "material_animations": [
-        ],
-        "placeholders": [
-        ],
-        "primary_color_wheels": [
-        ],
-        "realtime_denoises": [
-        ],
-        "speeds": [
-        ],
-        "stickers": [
-        ],
-        "tail_leaders": [
-        ],
-        "text_templates": [
-        ],
-        "texts": [
-        ],
-        "transitions": [
-        ],
-        "video_effects": [
-        ],
-        "video_trackings": [
-        ],
-        "videos": [
-        ]
+        "audio_balances": [],
+        "audio_effects": [],
+        "audio_fades": [],
+        "audios": [],
+        "beats": [],
+        "canvases": [],
+        "chromas": [],
+        "color_curves": [],
+        "drafts": [],
+        "effects": [],
+        "handwrites": [],
+        "hsl": [],
+        "images": [],
+        "log_color_wheels": [],
+        "masks": [],
+        "material_animations": [],
+        "placeholders": [],
+        "primary_color_wheels": [],
+        "realtime_denoises": [],
+        "speeds": [],
+        "stickers": [],
+        "tail_leaders": [],
+        "text_templates": [],
+        "texts": [],
+        "transitions": [],
+        "video_effects": [],
+        "video_trackings": [],
+        "videos": []
     },
     "mutable_config": null,
     "name": "",
@@ -121,11 +84,9 @@
         "os": "mac",
         "os_version": "15.6.1"
     },
-    "relationships": [
-    ],
+    "relationships": [],
     "render_index_track_mode_on": true,
-    "tracks": [
-    ],
+    "tracks": [],
     "update_time": 0,
     "version": 360000
 }

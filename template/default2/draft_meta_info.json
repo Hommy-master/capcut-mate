@@ -2,8 +2,7 @@
     "cloud_package_completed_time": "",
     "draft_cloud_capcut_purchase_info": "",
     "draft_cloud_last_action_download": false,
-    "draft_cloud_materials": [
-    ],
+    "draft_cloud_materials": [],
     "draft_cloud_purchase_info": "",
     "draft_cloud_template_id": "",
     "draft_cloud_tutorial_info": "",
@@ -14,8 +13,7 @@
         "draft_enterprise_extra": "",
         "draft_enterprise_id": "",
         "draft_enterprise_name": "",
-        "enterprise_material": [
-        ]
+        "enterprise_material": []
     },
     "draft_fold_path": "C:/Users/1/AppData/Local/JianyingPro/User Data/Projects/com.lveditor.draft/035ae208-ec69-4068-b479-777cb3bab17a",
     "draft_id": "9977D3AA-CA25-4c52-B049-0D135322A1B8",
@@ -28,48 +26,39 @@
     "draft_materials": [
         {
             "type": 0,
-            "value": [
-            ]
+            "value": []
         },
         {
             "type": 1,
-            "value": [
-            ]
+            "value": []
         },
         {
             "type": 2,
-            "value": [
-            ]
+            "value": []
         },
         {
             "type": 3,
-            "value": [
-            ]
+            "value": []
         },
         {
             "type": 6,
-            "value": [
-            ]
+            "value": []
         },
         {
             "type": 7,
-            "value": [
-            ]
+            "value": []
         },
         {
             "type": 8,
-            "value": [
-            ]
+            "value": []
         }
     ],
-    "draft_materials_copied_info": [
-    ],
+    "draft_materials_copied_info": [],
     "draft_name": "035ae208-ec69-4068-b479-777cb3bab17a",
     "draft_new_version": "",
     "draft_removable_storage_device": "",
     "draft_root_path": "C:\\Users\\1\\AppData\\Local\\JianyingPro\\User Data\\Projects\\com.lveditor.draft",
-    "draft_segment_extra_info": [
-    ],
+    "draft_segment_extra_info": [],
     "draft_timeline_materials_size_": 2075,
     "draft_type": "",
     "tm_draft_cloud_completed": "",
