@@ -408,10 +408,10 @@ def parse_image_data(json_str: str) -> List[Dict[str, Any]]:
         # 创建处理后的对象，设置默认值
         processed_item = {
             "image_url": item["image_url"],
-            "width": item["width"],
-            "height": item["height"],
-            "start": item["start"],
-            "end": item["end"],
+            "width": int(item["width"]),
+            "height": int(item["height"]),
+            "start": int(item["start"]),
+            "end": int(item["end"]),
             "in_animation": item.get("in_animation", None),  # 默认无入场动画
             "out_animation": item.get("out_animation", None),  # 默认无出场动画
             "loop_animation": item.get("loop_animation", None),  # 默认无循环动画
