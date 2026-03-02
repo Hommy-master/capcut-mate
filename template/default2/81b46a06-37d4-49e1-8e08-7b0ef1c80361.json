@@ -1,15 +1,13 @@
 {
     "canvas_config": {
-        "background": null,
-        "height": 1080,
+        "height": 1920,
         "ratio": "original",
-        "width": 1920
+        "width": 1080
     },
     "color_space": -1,
     "config": {
         "adjust_max_index": 1,
         "attachment_info": [
-
         ],
         "combination_max_index": 1,
         "export_range": null,
@@ -17,13 +15,11 @@
         "lyrics_recognition_id": "",
         "lyrics_sync": true,
         "lyrics_taskinfo": [
-
         ],
-        "maintrack_adsorb": true,
+        "maintrack_adsorb": false,
         "material_save_mode": 0,
         "multi_language_current": "none",
         "multi_language_list": [
-
         ],
         "multi_language_main": "none",
         "multi_language_mode": "none",
@@ -34,12 +30,9 @@
         "subtitle_recognition_id": "",
         "subtitle_sync": true,
         "subtitle_taskinfo": [
-
         ],
         "system_font_list": [
-
         ],
-        "use_float_render": false,
         "video_mute": false,
         "zoom_info_params": null
     },
@@ -50,212 +43,131 @@
     "fps": 30,
     "free_render_index_mode_on": false,
     "group_container": null,
-    "id": "26FDE5CD-364C-45A3-8930-A40DF2F7EB2B",
+    "id": "a45b7687-c846-4296-a35d-e4f0e18e28dc",
     "is_drop_frame_timecode": false,
     "keyframe_graph_list": [
-
     ],
     "keyframes": {
         "adjusts": [
-
         ],
         "audios": [
-
         ],
         "effects": [
-
         ],
         "filters": [
-
         ],
         "handwrites": [
-
         ],
         "stickers": [
-
         ],
         "texts": [
-
         ],
         "videos": [
-
         ]
     },
-    "last_modified_platform": {
-        "app_id": 359289,
-        "app_source": "cc",
-        "app_version": "6.5.0",
-        "device_id": "c4ca4238a0b923820dcc509a6f75849b",
-        "hard_disk_id": "307563e0192a94465c0e927fbc482942",
-        "mac_address": "c3371f2d4fb02791c067ce44d8fb4ed5",
-        "os": "mac",
-        "os_version": "15.5"
-    },
     "lyrics_effects": [
-
     ],
     "materials": {
         "ai_translates": [
-
         ],
         "audio_balances": [
-
         ],
         "audio_effects": [
-
         ],
         "audio_fades": [
-
         ],
         "audio_track_indexes": [
-
         ],
         "audios": [
-
         ],
         "beats": [
-
         ],
         "canvases": [
-
         ],
         "chromas": [
-
         ],
         "color_curves": [
-
         ],
-        "common_mask": [
-
-        ],
-        "digital_human_model_dressing": [
-
+        "masks": [
         ],
         "digital_humans": [
-
         ],
         "drafts": [
-
         ],
         "effects": [
-
         ],
         "flowers": [
-
         ],
         "green_screens": [
-
         ],
         "handwrites": [
-
         ],
         "hsl": [
-
+        ],
+        "huazi": [
         ],
         "images": [
-
         ],
         "log_color_wheels": [
-
         ],
         "loudnesses": [
-
-        ],
-        "manual_beautys": [
-
         ],
         "manual_deformations": [
-
         ],
         "material_animations": [
-
         ],
         "material_colors": [
-
         ],
         "multi_language_refs": [
-
         ],
         "placeholder_infos": [
-
         ],
         "placeholders": [
-
         ],
         "plugin_effects": [
-
         ],
         "primary_color_wheels": [
-
         ],
         "realtime_denoises": [
-
         ],
         "shapes": [
-
         ],
         "smart_crops": [
-
         ],
         "smart_relights": [
-
         ],
         "sound_channel_mappings": [
-
         ],
         "speeds": [
-
         ],
         "stickers": [
-
         ],
         "tail_leaders": [
-
         ],
         "text_templates": [
-
         ],
         "texts": [
-
         ],
         "time_marks": [
-
         ],
         "transitions": [
-
         ],
         "video_effects": [
-
         ],
         "video_trackings": [
-
         ],
         "videos": [
-
         ],
         "vocal_beautifys": [
-
         ],
         "vocal_separations": [
-
         ]
     },
     "mutable_config": null,
     "name": "",
-    "new_version": "138.0.0",
+    "new_version": "110.0.0",
     "path": "",
-    "platform": {
-        "app_id": 359289,
-        "app_source": "cc",
-        "app_version": "6.5.0",
-        "device_id": "c4ca4238a0b923820dcc509a6f75849b",
-        "hard_disk_id": "307563e0192a94465c0e927fbc482942",
-        "mac_address": "c3371f2d4fb02791c067ce44d8fb4ed5",
-        "os": "mac",
-        "os_version": "15.5"
-    },
     "relationships": [
-
     ],
     "render_index_track_mode_on": true,
     "retouch_cover": null,
@@ -263,16 +175,35 @@
     "static_cover_image_path": "",
     "time_marks": null,
     "tracks": [
-
+        {
+            "attribute": 0,
+            "flag": 0,
+            "id": "2D0629D7-BC55-4A90-867A-C078CFEEE0D2",
+            "segments": [
+            ],
+            "type": "video"
+        }
     ],
-    "uneven_animation_template_info": {
-        "composition": "",
-        "content": "",
-        "order": "",
-        "sub_template_info_list": [
-
-        ]
-    },
     "update_time": 0,
-    "version": 360000
+    "version": 360000,
+    "platform": {
+        "app_id": 3704,
+        "app_source": "lv",
+        "app_version": "5.9.0",
+        "device_id": "9d624d7e23dc4e43a0ed4020b8e3e90e",
+        "hard_disk_id": "f242a67014ec01ecdc2a9280da37adb1",
+        "mac_address": "0c233adaa327abd93e3d6b5dae6d75e2",
+        "os": "mac",
+        "os_version": "14.5"
+    },
+    "last_modified_platform": {
+        "app_id": 3704,
+        "app_source": "cc",
+        "app_version": "5.9.0",
+        "device_id": "9d624d7e23dc4e43a0ed4020b8e3e90e",
+        "hard_disk_id": "f242a67014ec01ecdc2a9280da37adb1",
+        "mac_address": "0c233adaa327abd93e3d6b5dae6d75e2",
+        "os": "mac",
+        "os_version": "14.5"
+    }
 }
