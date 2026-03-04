@@ -475,6 +475,9 @@ def _check_range_support_with_retry(url: str, max_retries: int = 2) -> bool:
     """
     带重试的范围请求支持检测
     
+    某些服务器（如Pixabay CDN）对HEAD请求返回403，但对GET请求正常响应。
+    当HEAD请求失败时，尝试使用GET请求检测Range支持。
+    
     Args:
         url: 文件URL
         max_retries: 最大重试次数
@@ -482,6 +485,7 @@ def _check_range_support_with_retry(url: str, max_retries: int = 2) -> bool:
     Returns:
         bool: 是否支持Range请求
     """
+    # 首先尝试HEAD请求
     for attempt in range(max_retries + 1):
         try:
             response = requests.head(
@@ -494,16 +498,47 @@ def _check_range_support_with_retry(url: str, max_retries: int = 2) -> bool:
             accept_ranges = response.headers.get('Accept-Ranges', '').lower()
             supports_ranges = accept_ranges == 'bytes'
             
-            logger.info(f"Range support check attempt {attempt + 1}: Accept-Ranges={accept_ranges}, supports={supports_ranges}")
+            logger.info(f"Range support check (HEAD) attempt {attempt + 1}: Accept-Ranges={accept_ranges}, supports={supports_ranges}")
             return supports_ranges
             
         except Exception as e:
             if attempt < max_retries:
-                logger.warning(f"Range support check attempt {attempt + 1} failed: {e}, retrying...")
+                logger.warning(f"Range support check (HEAD) attempt {attempt + 1} failed: {e}, retrying...")
                 time.sleep(1)
             else:
-                logger.warning(f"Failed to check range support after {max_retries + 1} attempts: {e}")
-                return False
+                logger.warning(f"HEAD request failed after {max_retries + 1} attempts: {e}, trying GET request...")
+    
+    # HEAD请求失败，尝试使用GET请求检测（只读取响应头，不下载内容）
+    try:
+        session = _create_optimized_session()
+        session.headers.update(DOWNLOAD_HEADERS)
+        # 使用Range请求测试服务器是否支持断点续传
+        headers = DOWNLOAD_HEADERS.copy()
+        headers['Range'] = 'bytes=0-0'
+        
+        response = session.get(
+            url,
+            headers=headers,
+            stream=True,
+            timeout=(DEFAULT_CONNECT_TIMEOUT, DEFAULT_READ_TIMEOUT)
+        )
+        
+        # 如果返回206 Partial Content，说明支持Range请求
+        if response.status_code == 206:
+            logger.info("Range support check (GET): Server supports Range requests (status 206)")
+            response.close()
+            return True
+        elif response.status_code == 200:
+            # 返回200说明服务器忽略Range头，不支持断点续传
+            logger.info("Range support check (GET): Server does not support Range requests (status 200)")
+            response.close()
+            return False
+        else:
+            response.raise_for_status()
+            
+    except Exception as e:
+        logger.warning(f"Range support check (GET) failed: {e}, assuming no range support")
+        return False
     
     return False
 
@@ -700,6 +735,11 @@ def _download_file_with_enhanced_stability(
     last_progress_time = start_time
     stall_count = 0  # 停滞计数器
     
+    # 调试日志：打印超时配置
+    logger.info(f"Download timeouts config: total={timeouts.get('total_timeout')}, "
+                f"connect={timeouts.get('connect_timeout')}, read={timeouts.get('read_timeout')}, "
+                f"chunk={timeouts.get('chunk_timeout')}")
+    
     file_mode = 'ab' if is_resume else 'wb'
     
     try:
@@ -711,7 +751,7 @@ def _download_file_with_enhanced_stability(
                 if current_time - start_time > timeouts['total_timeout']:
                     logger.error(f"Download total timeout: {current_time - start_time:.1f}s > {timeouts['total_timeout']}s")
                     raise CustomException(
-                        CustomError.DOWNLOAD_FILE_TIMEOUT, 
+                        CustomError.DOWNLOAD_FILE_FAILED, 
                         detail=f"Download timeout, total time {current_time - start_time:.1f}s"
                     )
                 
@@ -781,7 +821,7 @@ def _classify_download_error(error: Exception) -> str:
     if isinstance(error, CustomException):
         if error.err == CustomError.FILE_SIZE_LIMIT_EXCEEDED:
             return 'fatal'
-        elif error.err == CustomError.DOWNLOAD_FILE_TIMEOUT:
+        elif error.err == CustomError.DOWNLOAD_FILE_FAILED:
             return 'network'
         else:
             return 'server'
