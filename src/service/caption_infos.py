@@ -42,13 +42,16 @@ def caption_infos(
         str: JSON字符串格式的字幕信息
         
     Raises:
-        ValueError: 当texts和timelines长度不匹配时
+        无异常抛出，长度不匹配时以最短的为准
     """
     logger.info(f"caption_infos called with {len(texts)} texts and {len(timelines)} timelines")
     
-    # 检查参数长度是否匹配
+    # 长度不相等时以最短的为准
     if len(texts) != len(timelines):
-        raise ValueError(f"texts length ({len(texts)}) does not match timelines length ({len(timelines)})")
+        min_len = min(len(texts), len(timelines))
+        logger.warning(f"texts length ({len(texts)}) does not match timelines length ({len(timelines)}), using shorter length: {min_len}")
+        texts = texts[:min_len]
+        timelines = timelines[:min_len]
     
     # 构建字幕信息列表
     infos = []

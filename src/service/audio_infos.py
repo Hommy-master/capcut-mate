@@ -22,13 +22,16 @@ def audio_infos(
         str: JSON字符串格式的音频信息
         
     Raises:
-        ValueError: 当mp3_urls和timelines长度不匹配时
+        无异常抛出，长度不匹配时以最短的为准
     """
     logger.info(f"audio_infos called with {len(mp3_urls)} audio files and {len(timelines)} timelines")
     
-    # 检查参数长度是否匹配
+    # 长度不相等时以最短的为准
     if len(mp3_urls) != len(timelines):
-        raise ValueError(f"mp3_urls length ({len(mp3_urls)}) does not match timelines length ({len(timelines)})")
+        min_len = min(len(mp3_urls), len(timelines))
+        logger.warning(f"mp3_urls length ({len(mp3_urls)}) does not match timelines length ({len(timelines)}), using shorter length: {min_len}")
+        mp3_urls = mp3_urls[:min_len]
+        timelines = timelines[:min_len]
     
     # 构建音频信息列表
     infos = []
