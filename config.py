@@ -37,3 +37,6 @@ COS_REGION = os.getenv("COS_REGION", "")
 
 # APIKEY启用配置-默认启用 -- 云渲染必需配置
 ENABLE_APIKEY = os.getenv("ENABLE_APIKEY", "true")
+
+# 文件下载大小限制（字节），默认200MB
+DOWNLOAD_FILE_SIZE_LIMIT = int(os.getenv("DOWNLOAD_FILE_SIZE_LIMIT", str(200 * 1024 * 1024)))
