@@ -30,13 +30,16 @@ def video_infos(
         str: JSON字符串格式的视频信息
         
     Raises:
-        ValueError: 当video_urls和timelines长度不匹配时
+        无异常抛出，长度不匹配时以最短的为准
     """
     logger.info(f"video_infos called with {len(video_urls)} videos and {len(timelines)} timelines")
     
-    # 检查参数长度是否匹配
+    # 长度不相等时以最短的为准
     if len(video_urls) != len(timelines):
-        raise ValueError(f"video_urls length ({len(video_urls)}) does not match timelines length ({len(timelines)})")
+        min_len = min(len(video_urls), len(timelines))
+        logger.warning(f"video_urls length ({len(video_urls)}) does not match timelines length ({len(timelines)}), using shorter length: {min_len}")
+        video_urls = video_urls[:min_len]
+        timelines = timelines[:min_len]
     
     # 构建视频信息列表
     infos = []
