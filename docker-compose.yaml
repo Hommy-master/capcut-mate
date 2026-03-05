@@ -15,6 +15,8 @@ services:
       - DOWNLOAD_URL=https://capcut-mate.jcaigc.cn/
       # 草稿提示URL
       - TIP_URL=
+      # 文件下载大小限制（字节），默认200MB（209715200）
+      - DOWNLOAD_FILE_SIZE_LIMIT=209715200
     mem_limit: 2G     # 内存限制
     memswap_limit: 2G # 总内存（物理内存 + Swap）限制
     cpus: '2'       # CPU使用率限制为150%，即容器最多可以使用1.5个完整的CPU核心

@@ -6,9 +6,10 @@ from typing import Dict, Any, Optional
 from src.utils import helper
 from src.utils.logger import logger
 from exceptions import CustomException, CustomError
+import config
 
 # 常量配置
-DEFAULT_FILE_SIZE_LIMIT = 200 * 1024 * 1024  # 200MB
+DEFAULT_FILE_SIZE_LIMIT = config.DOWNLOAD_FILE_SIZE_LIMIT  # 文件下载大小限制，默认200MB，可通过环境变量DOWNLOAD_FILE_SIZE_LIMIT配置
 DEFAULT_DOWNLOAD_TIMEOUT = 90  # 总下载超时时间90秒（用户要求）
 DEFAULT_CONNECT_TIMEOUT = 10  # 连接超时10秒，快速失败
 DEFAULT_READ_TIMEOUT = 15  # 读取超时15秒，平衡稳定性和速度

@@ -16,6 +16,8 @@ services:
       - DOWNLOAD_URL=http://127.0.0.1/
       # 草稿提示URL
       - TIP_URL=
+      # 文件下载大小限制（字节），默认200MB（209715200）
+      - DOWNLOAD_FILE_SIZE_LIMIT=209715200
     networks:
       - capcut-mate-network
     mem_limit: 2G     # 内存限制
