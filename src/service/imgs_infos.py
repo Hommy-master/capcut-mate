@@ -38,13 +38,16 @@ def imgs_infos(
         str: JSON字符串格式的图片信息
         
     Raises:
-        ValueError: 当imgs和timelines长度不匹配时
+        无异常抛出，长度不匹配时以最短的为准
     """
     logger.info(f"imgs_infos called with {len(imgs)} images and {len(timelines)} timelines")
     
-    # 检查参数长度是否匹配
+    # 长度不相等时以最短的为准
     if len(imgs) != len(timelines):
-        raise ValueError(f"imgs length ({len(imgs)}) does not match timelines length ({len(timelines)})")
+        min_len = min(len(imgs), len(timelines))
+        logger.warning(f"imgs length ({len(imgs)}) does not match timelines length ({len(timelines)}), using shorter length: {min_len}")
+        imgs = imgs[:min_len]
+        timelines = timelines[:min_len]
     
     # 解析动画参数
     parsed_animations = _parse_animation_params(in_animation, out_animation, loop_animation, transition)
