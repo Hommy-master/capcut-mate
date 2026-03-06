@@ -39,7 +39,7 @@ def add_videos(
                 "mask": "", // 遮罩类型[可选]，默认值为None
                 "transition": "", // 转场效果名称[可选]，默认值为None
                 "transition_duration": 500000.0, // 转场持续时间(微秒)[可选]，默认值为500000
-                "volume": 1.0, // 音量大小[0, 1][可选]，默认值为1.0
+                "volume": 1.0, // 音量大小[0, 10][可选]，默认值为1.0，10为最大音量
             } 
         ] // [必选]
         alpha: 全局透明度[0, 1][可选]，默认值为1.0
@@ -178,15 +178,17 @@ def add_video_to_draft(
         display_duration = video['end'] - video['start']
         
         # 6. 创建视频片段
+        # 用户传入 volume 范围为 [0, 10]，剪映内部范围为 [0, 10]
+        raw_volume = video.get('volume', 1.0)
         video_segment = draft.VideoSegment(
             material=video_material, 
             target_timerange=trange(start=video['start'], duration=display_duration),
             source_timerange=trange(start=0, duration=min(video_material.duration, display_duration)),
             speed=1.0,  # 保持原始速度
-            volume=video.get('volume', 1.0),
+            volume=raw_volume,
             clip_settings=clip_settings
         )
-        logger.info(f"video_path: {video_path}, start: {video['start']}, target_duration: {target_duration}, display_duration: {display_duration}, volume: {video.get('volume', 1.0)}")
+        logger.info(f"video_path: {video_path}, start: {video['start']}, target_duration: {target_duration}, display_duration: {display_duration}, raw_volume: {raw_volume}")
 
         # 6. 添加转场效果（如果指定了）
         transition_name = video.get('transition')
@@ -252,7 +254,7 @@ def parse_video_data(json_str: str) -> List[Dict[str, Any]]:
                 "mask": "", // 遮罩类型[可选]，默认值为None
                 "transition": "", // 转场效果名称[可选]，默认值为None
                 "transition_duration": 500000.0, // 转场持续时间(微秒)[可选]，默认值为500000
-                "volume": 1.0, // 音量大小[0, 1][可选]，默认值为1.0
+                "volume": 1.0, // 音量大小[0, 10][可选]，默认值为1.0，10为最大音量
             } 
         ]
         
@@ -303,9 +305,9 @@ def parse_video_data(json_str: str) -> List[Dict[str, Any]]:
             "volume": item.get("volume", 1.0)  # 默认值 1.0
         }
         
-        # 验证数值范围
-        if processed_item["volume"] < 0 or processed_item["volume"] > 1:
-            # 音量值必须在[0, 1]范围内，给默认值
+        # 验证数值范围：用户传入范围 [0, 10]，超范围时给默认值
+        if processed_item["volume"] < 0 or processed_item["volume"] > 10:
+            logger.warning(f"Volume {processed_item['volume']} out of range [0, 10], using default 1.0")
             processed_item["volume"] = 1.0
         
         if processed_item["transition_duration"] < 0:
