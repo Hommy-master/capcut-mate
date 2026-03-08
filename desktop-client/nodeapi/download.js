@@ -409,10 +409,13 @@ async function downloadNotJsonFile(
     );
 
     // 创建可写流
-    const writer = response.data.pipe(createWriteStream(filePath));
+    // 显式指定 flags 和 mode，避免 Windows 下文件句柄共享模式异常
+    const writer = response.data.pipe(createWriteStream(filePath, { flags: "w", mode: 0o666 }));
 
     return new Promise((resolve, reject) => {
-      writer.on("finish", resolve);
+      // 监听 close 而非 finish：finish 仅表示数据写完，close 才表示文件句柄已释放
+      // 在 Windows 上，句柄未释放时其他进程访问该文件会出现权限异常（EACCES）
+      writer.on("close", resolve);
       writer.on("error", (err) => {
         // 尝试删除可能不完整的文件
         fs.unlink(filePath).catch(() => { });
