@@ -73,16 +73,17 @@ uv run main.py
 4. 访问API文档
 启动后访问 http://localhost:30000/docs 查看自动生成的交互式API文档
 
-### 容器部署
+### Docker 部署
+
+#### 快速部署（推荐）
+
 ```bash
-docker pull gogoshine/capcut-mate:latest
-docker run -p 30000:30000 gogoshine/capcut-mate:latest
+git clone https://github.com/Hommy-master/capcut-mate.git
+cd capcut-mate
+docker-compose pull && docker-compose up -d
 ```
 
-或者使用 docker-compose:
-```bash
-docker-compose up -d
-```
+部署完成后，访问 API 文档：http://localhost:30000/docs
 
 ## 一键导入扣子插件
 

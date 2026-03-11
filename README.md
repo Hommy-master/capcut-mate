@@ -73,16 +73,17 @@ uv run main.py
 4. Access API documentation
 After starting, visit http://localhost:30000/docs to view the automatically generated interactive API documentation
 
-### Container Deployment
+### Docker Deployment
+
+#### Quick Deployment (Recommended)
+
 ```bash
-docker pull gogoshine/capcut-mate:latest
-docker run -p 30000:30000 gogoshine/capcut-mate:latest
+git clone https://github.com/Hommy-master/capcut-mate.git
+cd capcut-mate
+docker-compose pull && docker-compose up -d
 ```
 
-Or use docker-compose:
-```bash
-docker-compose up -d
-```
+After deployment, access the API documentation at: http://localhost:30000/docs
 
 ## One-Click Import Coze Plugin
 
