@@ -209,6 +209,29 @@ components:
                           start: 284891428
                 RespExample:
                     infos: '[{"effect_title": "红包来了", "start": 0, "end": 284891428}, {"effect_title": "雪花", "start": 284891428, "end": 579578774}]'
+        gen_video:
+            value:
+                ReqExample:
+                    apiKey: 559a84a5-a9e9-4ade-a26b-e80b732754d6
+                    draft_url: https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025120421372636a27729
+                RespExample:
+                    code: 0
+                    message: 视频生成任务已提交，请使用draft_url查询进度
+        gen_video_status:
+            value:
+                ReqExample:
+                    draft_url: https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025120421372636a27729
+                RespExample:
+                    code: 0
+                    completed_at: 2026-01-31T21:10:10.398727
+                    created_at: 2026-01-31T21:09:15.104249
+                    draft_url: https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025120421372636a27729
+                    error_message: '导出草稿失败: 未在编辑窗口中找到导出按钮'
+                    message: 成功
+                    progress: 0
+                    started_at: 2026-01-31T21:09:15.549183
+                    status: failed
+                    video_url: ""
         get_audio_duration:
             value:
                 ReqExample:
@@ -1525,6 +1548,84 @@ paths:
                 default:
                     description: ""
             summary: 根据时间线关联特效
+    /gen_video:
+        post:
+            operationId: gen_video
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            properties:
+                                apiKey:
+                                    description: 从官网(www.jcaigc.cn)获取
+                                    type: string
+                                draft_url:
+                                    description: 剪映草稿地址
+                                    type: string
+                            required:
+                                - draft_url
+                                - apiKey
+                            type: object
+            responses:
+                "200":
+                    content:
+                        application/json:
+                            schema:
+                                properties:
+                                    code:
+                                        type: number
+                                    message:
+                                        type: string
+                                type: object
+                    description: new desc
+                default:
+                    description: ""
+            summary: 将剪映草稿导出为视频。
+    /gen_video_status:
+        post:
+            operationId: gen_video_status
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            properties:
+                                draft_url:
+                                    description: 剪映草稿地址
+                                    type: string
+                            required:
+                                - draft_url
+                            type: object
+            responses:
+                "200":
+                    content:
+                        application/json:
+                            schema:
+                                properties:
+                                    code:
+                                        type: number
+                                    completed_at:
+                                        type: string
+                                    created_at:
+                                        type: string
+                                    draft_url:
+                                        type: string
+                                    error_message:
+                                        type: string
+                                    message:
+                                        type: string
+                                    progress:
+                                        type: number
+                                    started_at:
+                                        type: string
+                                    status:
+                                        type: string
+                                    video_url:
+                                        type: string
+                                type: object
+                    description: new desc
+                default:
+                    description: ""
+            summary: 查询视频导出状态和进度。
     /get_audio_duration:
         post:
             operationId: get_audio_duration
