@@ -23,6 +23,7 @@ POST /openapi/capcut-mate/v1/add_videos
 {
   "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
   "video_infos": "[{\"video_url\":\"https://assets.jcaigc.cn/video1.mp4\",\"width\":1024,\"height\":1024,\"start\":0,\"end\":5000000,\"duration\":5000000,\"mask\":\"圆形\",\"transition\":\"淡入淡出\",\"transition_duration\":500000,\"volume\":0.8}]",
+  "scene_timelines": [{"start":0,"end":2500000}],
   "alpha": 0.5,
   "scale_x": 1.0,
   "scale_y": 1.0,
@@ -37,6 +38,7 @@ POST /openapi/capcut-mate/v1/add_videos
 |--------|------|------|--------|------|
 | draft_url | string | ✅ | - | 目标草稿的完整URL |
 | video_infos | string | ✅ | - | 视频信息数组的JSON字符串 |
+| scene_timelines | array[object] | ❌ | - | 场景时间线数组，用于视频变速 |
 | alpha | number | ❌ | 1.0 | 全局透明度(0-1) |
 | scale_x | number | ❌ | 1.0 | X轴缩放比例 |
 | scale_y | number | ❌ | 1.0 | Y轴缩放比例 |
@@ -57,6 +59,13 @@ POST /openapi/capcut-mate/v1/add_videos
 | transition | string | ❌ | - | 转场效果名称 |
 | transition_duration | number | ❌ | 500000 | 转场持续时间(微秒) |
 | volume | number | ❌ | 1.0 | 音量大小(0-1) |
+
+### scene_timelines 数组结构
+
+| 字段名 | 类型 | 必填 | 说明 |
+|--------|------|------|------|
+| start | number | ✅ | 场景开始时间（微秒） |
+| end | number | ✅ | 场景结束时间（微秒） |
 
 ### 参数详解
 
@@ -112,6 +121,25 @@ POST /openapi/capcut-mate/v1/add_videos
   - 0.5 = 一半音量
   - 0.0 = 静音
   - 范围：0.0 - 1.0
+
+#### 视频变速 (scene_timelines)
+
+- **scene_timelines**: 场景时间线数组，用于视频变速，与video_infos一一对应
+  - 每个项包含 `start` 和 `end` 字段（微秒）
+  - 速度计算：`speed = (video.end - video.start) / (scene_timeline.end - scene_timeline.start)`
+  - 示例：如果视频时间线是 0-2000000（2秒），场景时间线是 0-1000000（1秒），则视频将以2倍速播放
+  - 如果不提供，视频以正常速度（1.0倍）播放
+
+**变速示例**：
+```json
+// 原始视频：时间轴上占2秒（0-2000000）
+// 要变为2倍速（1秒内播完）：
+{
+  "video_infos": "[{\"video_url\":\"...\", \"start\":0, \"end\":2000000}]",
+  "scene_timelines": "[{\"start\":0, \"end\":1000000}]"
+}
+// 结果：视频以2倍速播放，实际播放时长为1秒
+```
 
 ## 响应格式
 
@@ -191,6 +219,32 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_videos \
   }'
 ```
 
+#### 5. 视频变速（2倍速）
+
+```bash
+curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_videos \
+  -H "Content-Type: application/json" \
+  -d '{
+    "draft_url": "YOUR_DRAFT_URL",
+    "video_infos": "[{\"video_url\":\"https://assets.jcaigc.cn/video1.mp4\",\"start\":0,\"end\":2000000}]",
+    "scene_timelines": [{"start":0, "end":1000000}]
+  }'
+```
+
+#### 6. 多个视频不同速度
+
+```bash
+curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_videos \
+  -H "Content-Type: application/json" \
+  -d '{
+    "draft_url": "YOUR_DRAFT_URL",
+    "video_infos": "[{\"video_url\":\"https://assets.jcaigc.cn/video1.mp4\",\"start\":0,\"end\":3000000},{\"video_url\":\"https://assets.jcaigc.cn/video2.mp4\",\"start\":3000000,\"end\":6000000}]",
+    "scene_timelines": [{"start":0, "end":1500000},{"start":0, "end":4000000}]
+  }'
+# video1: 3000000/1500000 = 2倍速
+# video2: 3000000/4000000 = 0.75倍速（慢放）
+```
+
 ## 错误码说明
 
 | 错误码 | 错误信息 | 说明 | 解决方案 |
@@ -216,6 +270,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_videos \
 6. **遮罩限制**: 只支持预定义的遮罩类型
 7. **转场限制**: 转场时长有固定范围限制
 8. **性能考虑**: 批量添加大量视频可能影响性能
+9. **变速功能**: scene_timelines是对象数组，长度应与video_infos数组长度一致
 
 ## 工作流程
 

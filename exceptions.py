@@ -48,6 +48,9 @@ class CustomError(Enum):
     AUDIO_DURATION_GET_FAILED = (2034, "获取音频时长失败", "Get audio duration failed")
     INSUFFICIENT_ACCOUNT_BALANCE = (2035, "账户余额不足，当前积分需大于 1 才可继续使用服务，请完成充值后重试", "Insufficient account balance. A minimum of 1 point is required to continue using the service. Please recharge and try again.")
     INVALID_APIKEY = (2036, "无效的apiKey", "Invalid apiKey")
+    INVALID_FILTER_INFO = (2037, "无效的滤镜信息，请检查filter_infos字段值是否正确", "Invalid filter information, please check if the value of the filter_infos field is correct.")
+    FILTER_ADD_FAILED = (2038, "滤镜添加失败", "Filter addition failed")
+    FILTER_NOT_FOUND = (2039, "滤镜未找到，请检查滤镜名称是否正确", "Filter not found, please check if the filter name is correct.")
 
     # ===== 系统错误码 (9000-9999) =====
     INTERNAL_SERVER_ERROR = (9998, "系统内部错误", "Internal server error")

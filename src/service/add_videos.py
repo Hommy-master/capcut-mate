@@ -17,6 +17,7 @@ from typing import List, Dict, Any, Tuple, Optional
 def add_videos(
     draft_url: str, 
     video_infos: str,
+    scene_timelines: Optional[List[Dict[str, int]]] = None,
     alpha: float = 1.0, 
     scale_x: float = 1.0, 
     scale_y: float = 1.0, 
@@ -59,7 +60,7 @@ def add_videos(
     Raises:
         CustomException: 视频批量添加失败
     """
-    logger.info(f"add_videos, draft_url: {draft_url}, video_infos: {video_infos}, alpha: {alpha}, scale_x: {scale_x}, scale_y: {scale_y}, transform_x: {transform_x}, transform_y: {transform_y}")
+    logger.info(f"add_videos, draft_url: {draft_url}, video_infos: {video_infos}, scene_timelines: {scene_timelines}, alpha: {alpha}, scale_x: {scale_x}, scale_y: {scale_y}, transform_x: {transform_x}, transform_y: {transform_y}")
 
     # 1. 提取草稿ID
     draft_id = helper.get_url_param(draft_url, "draft_id")
@@ -77,6 +78,9 @@ def add_videos(
         logger.info(f"No video info, draft_id: {draft_id}")
         raise CustomException(CustomError.INVALID_VIDEO_INFO)
 
+    # 3.5 处理场景时间线（可选，已是对象数组）
+    logger.info(f"Parsed {len(videos)} videos, scene_timelines: {scene_timelines}")
+
     # 4. 从缓存中获取草稿
     script: ScriptFile = DRAFT_CACHE[draft_id]
 
@@ -87,8 +91,11 @@ def add_videos(
 
     # 6. 遍历视频信息，添加视频到草稿中的指定轨道，收集片段ID
     segment_ids = []
-    for video in videos:
+    for i, video in enumerate(videos):
+        # 获取对应的场景时间线（如果有）
+        scene_timeline = scene_timelines[i] if scene_timelines and i < len(scene_timelines) else None
         segment_id = add_video_to_draft(script, track_name, draft_video_dir=draft_video_dir, video=video,
+                                      scene_timeline=scene_timeline,
                                       alpha=alpha, scale_x=scale_x, scale_y=scale_y, 
                                       transform_x=transform_x, transform_y=transform_y)
         segment_ids.append(segment_id)
@@ -117,6 +124,7 @@ def add_video_to_draft(
     track_name: str,
     draft_video_dir: str,
     video: dict, 
+    scene_timeline: Optional[Dict[str, int]] = None,
     alpha: float = 1.0, 
     scale_x: float = 1.0, 
     scale_y: float = 1.0, 
@@ -141,6 +149,10 @@ def add_video_to_draft(
             transition: 转场效果(可选)
             transition_duration: 转场持续时间(可选)
             volume: 音量大小(可选)
+        scene_timeline: 场景时间线字典，包含以下字段：
+            start: 场景开始时间(微秒)
+            end: 场景结束时间(微秒)
+            用于计算视频变速：speed = (video.end - video.start) / (scene_timeline.end - scene_timeline.start)
         alpha: 视频透明度
         scale_x: 横向缩放
         scale_y: 纵向缩放
@@ -177,6 +189,16 @@ def add_video_to_draft(
         # 5. 计算在时间轴上的显示时长（source duration）
         display_duration = video['end'] - video['start']
         
+        # 5.5 计算变速（如果提供了场景时间线）
+        speed = 1.0
+        if scene_timeline:
+            scene_duration = scene_timeline['end'] - scene_timeline['start']
+            if scene_duration > 0:
+                # speed = 时间轴时长 / 场景时长
+                # 例如：时间轴2秒，场景1秒，则speed=2（2倍速）
+                speed = display_duration / scene_duration
+                logger.info(f"Video speed calculated: {speed}x (display_duration={display_duration}, scene_duration={scene_duration})")
+        
         # 6. 创建视频片段
         # 用户传入 volume 范围为 [0, 10]，剪映内部范围为 [0, 10]
         raw_volume = video.get('volume', 1.0)
@@ -184,11 +206,11 @@ def add_video_to_draft(
             material=video_material, 
             target_timerange=trange(start=video['start'], duration=display_duration),
             source_timerange=trange(start=0, duration=min(video_material.duration, display_duration)),
-            speed=1.0,  # 保持原始速度
+            speed=speed,  # 使用计算出的速度
             volume=raw_volume,
             clip_settings=clip_settings
         )
-        logger.info(f"video_path: {video_path}, start: {video['start']}, target_duration: {target_duration}, display_duration: {display_duration}, raw_volume: {raw_volume}")
+        logger.info(f"video_path: {video_path}, start: {video['start']}, target_duration: {target_duration}, display_duration: {display_duration}, speed: {speed}, raw_volume: {raw_volume}")
 
         # 6. 添加转场效果（如果指定了）
         transition_name = video.get('transition')

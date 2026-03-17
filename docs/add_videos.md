@@ -23,6 +23,7 @@ Batch add video materials to existing drafts. This interface is a powerful video
 {
   "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
   "video_infos": "[{\"video_url\":\"https://assets.jcaigc.cn/video1.mp4\",\"width\":1024,\"height\":1024,\"start\":0,\"end\":5000000,\"duration\":5000000,\"mask\":\"circle\",\"transition\":\"fade\",\"transition_duration\":500000,\"volume\":0.8}]",
+  "scene_timelines": [{"start":0,"end":2500000}],
   "alpha": 0.5,
   "scale_x": 1.0,
   "scale_y": 1.0,
@@ -37,6 +38,7 @@ Batch add video materials to existing drafts. This interface is a powerful video
 |-----------|------|----------|---------|-------------|
 | draft_url | string | ✅ | - | Complete URL of the target draft |
 | video_infos | string | ✅ | - | JSON string of video information array |
+| scene_timelines | array[object] | ❌ | - | Scene timeline array for video speed change |
 | alpha | number | ❌ | 1.0 | Global transparency (0-1) |
 | scale_x | number | ❌ | 1.0 | X-axis scaling ratio |
 | scale_y | number | ❌ | 1.0 | Y-axis scaling ratio |
@@ -57,6 +59,13 @@ Batch add video materials to existing drafts. This interface is a powerful video
 | transition | string | ❌ | - | Transition effect name |
 | transition_duration | number | ❌ | 500000 | Transition duration (microseconds) |
 | volume | number | ❌ | 1.0 | Volume size (0-1) |
+
+### scene_timelines Array Structure
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| start | number | ✅ | Scene start time (microseconds) |
+| end | number | ✅ | Scene end time (microseconds) |
 
 ### Parameter Details
 
@@ -112,6 +121,25 @@ Supported mask types (all optional, default is no mask):
   - 0.5 = Half volume
   - 0.0 = Mute
   - Range: 0.0 - 1.0
+
+#### Video Speed Change (scene_timelines)
+
+- **scene_timelines**: Scene timeline array for video speed change, corresponds one-to-one with video_infos
+  - Each item contains `start` and `end` fields (microseconds)
+  - Speed calculation: `speed = (video.end - video.start) / (scene_timeline.end - scene_timeline.start)`
+  - Example: If video timeline is 0-2000000 (2 seconds) and scene_timeline is 0-1000000 (1 second), the video will play at 2x speed
+  - If not provided, video plays at normal speed (1.0x)
+
+**Speed Change Example**:
+```json
+// Original video: 2 seconds on timeline (0-2000000)
+// To make it 2x speed (play in 1 second):
+{
+  "video_infos": "[{\"video_url\":\"...\", \"start\":0, \"end\":2000000}]",
+  "scene_timelines": "[{\"start\":0, \"end\":1000000}]"
+}
+// Result: Video plays at 2x speed, actual playback duration is 1 second
+```
 
 ## Response Format
 
@@ -191,6 +219,32 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_videos \
   }'
 ```
 
+#### 5. Video with Speed Change (2x Speed)
+
+```bash
+curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_videos \
+  -H "Content-Type: application/json" \
+  -d '{
+    "draft_url": "YOUR_DRAFT_URL",
+    "video_infos": "[{\"video_url\":\"https://assets.jcaigc.cn/video1.mp4\",\"start\":0,\"end\":2000000}]",
+    "scene_timelines": [{"start":0, "end":1000000}]
+  }'
+```
+
+#### 6. Multiple Videos with Different Speeds
+
+```bash
+curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_videos \
+  -H "Content-Type: application/json" \
+  -d '{
+    "draft_url": "YOUR_DRAFT_URL",
+    "video_infos": "[{\"video_url\":\"https://assets.jcaigc.cn/video1.mp4\",\"start\":0,\"end\":3000000},{\"video_url\":\"https://assets.jcaigc.cn/video2.mp4\",\"start\":3000000,\"end\":6000000}]",
+    "scene_timelines": [{"start":0, "end":1500000},{"start":0, "end":4000000}]
+  }'
+# video1: 3000000/1500000 = 2x speed
+# video2: 3000000/4000000 = 0.75x speed (slow motion)
+```
+
 ## Error Code Description
 
 | Error Code | Error Message | Description | Solution |
@@ -216,6 +270,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_videos \
 6. **Mask Limitation**: Only predefined mask types are supported
 7. **Transition Limitation**: Transition duration has fixed range limitations
 8. **Performance Consideration**: Batch adding a large number of videos may affect performance
+9. **Speed Change**: scene_timelines is an object array, length should match video_infos array length
 
 ## Workflow
 

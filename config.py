@@ -27,13 +27,14 @@ STICKER_CONFIG_PATH = os.path.join(os.path.dirname(__file__), "config", "sticker
 TEMPLATE_DIR = os.path.join(os.path.dirname(__file__), "template")
 
 # 剪映草稿保存路径（下载剪映草稿保存位置）-- 云渲染必需配置
-DRAFT_SAVE_PATH = "C:/Users/Administrator/AppData/Local/JianyingPro/User Data/Projects/com.lveditor.draft"
+#DRAFT_SAVE_PATH = "C:/Users/Administrator/AppData/Local/JianyingPro/User Data/Projects/com.lveditor.draft"
+DRAFT_SAVE_PATH = "C:/Users/1/AppData/Local/JianyingPro/User Data/Projects/com.lveditor.draft"
 
 # 腾讯云对象存储配置 -- 云渲染必需配置
-COS_SECRET_ID = os.getenv("COS_SECRET_ID", "")
-COS_SECRET_KEY = os.getenv("COS_SECRET_KEY", "")
-COS_BUCKET_NAME = os.getenv("COS_BUCKET_NAME", "")
-COS_REGION = os.getenv("COS_REGION", "")
+COS_SECRET_ID = os.getenv("COS_SECRET_ID", "xxx")
+COS_SECRET_KEY = os.getenv("COS_SECRET_KEY", "xxx")
+COS_BUCKET_NAME = os.getenv("COS_BUCKET_NAME", "xxx")
+COS_REGION = os.getenv("COS_REGION", "xxx")
 
 # APIKEY启用配置-默认启用 -- 云渲染必需配置
 ENABLE_APIKEY = os.getenv("ENABLE_APIKEY", "true")
