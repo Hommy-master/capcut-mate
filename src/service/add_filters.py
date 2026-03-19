@@ -80,7 +80,7 @@ def add_filters(
 
     # 6. 保存草稿
     script.save()
-    logger.info(f"Draft saved successfully")
+    logger.info("Draft saved successfully")
 
     # 7. 获取当前滤镜轨道ID
     track_id = ""
