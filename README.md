@@ -77,6 +77,8 @@ After starting, visit http://localhost:30000/docs to view the automatically gene
 
 #### Quick Deployment (Recommended)
 
+📺 **Video Tutorial**: [CapCut Mate Private Deployment Complete Tutorial](./assets/deploy.mp4)
+
 ```bash
 git clone https://github.com/Hommy-master/capcut-mate.git
 cd capcut-mate

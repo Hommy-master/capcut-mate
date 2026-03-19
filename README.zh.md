@@ -77,6 +77,8 @@ uv run main.py
 
 #### 快速部署（推荐）
 
+📺 **视频教程**：[CapCut Mate 私有化部署完整教程](./assets/deploy.mp4)
+
 ```bash
 git clone https://github.com/Hommy-master/capcut-mate.git
 cd capcut-mate
