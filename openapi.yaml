@@ -53,6 +53,18 @@ components:
                     segment_ids:
                         - 23e0c0900c69427f82e44243183706c9
                     track_id: 2ffea3839d304f83ae29dadc43a18227
+        add_filters:
+            value:
+                ReqExample:
+                    draft_url: https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=20260319205519ce52b6b7
+                    filter_infos: '[{"filter_title": "清透感", "start": 0, "end": 5000000, "intensity": 100.0}]'
+                RespExample:
+                    draft_url: https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=20260319205519ce52b6b7
+                    filter_ids:
+                        - 5dc1f01ad54a4ff3bc95e689dfc6177b
+                    segment_ids:
+                        - a52328e0df4e4ff9aef4733489e41488
+                    track_id: 90ce51176b89486ebddca926d51af67c
         add_images:
             value:
                 ReqExample:
@@ -209,6 +221,16 @@ components:
                           start: 284891428
                 RespExample:
                     infos: '[{"effect_title": "红包来了", "start": 0, "end": 284891428}, {"effect_title": "雪花", "start": 284891428, "end": 579578774}]'
+        filter_infos:
+            value:
+                ReqExample:
+                    filters:
+                        - 清透感
+                    timelines:
+                        - end: 5000000
+                          start: 0
+                RespExample:
+                    infos: '[{"filter_title": "清透感", "start": 0, "end": 5000000, "intensity": 100.0}]'
         gen_video:
             value:
                 ReqExample:
@@ -800,6 +822,53 @@ paths:
                 default:
                     description: ""
             summary: 添加特效
+    /add_filters:
+        post:
+            operationId: add_filters
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            properties:
+                                draft_url:
+                                    description: 草稿地址
+                                    type: string
+                                filter_infos:
+                                    description: '滤镜信息，示例：[{"filter_title": "清透感", "start": 0, "end": 5000000, "intensity": 100.0}]'
+                                    type: string
+                            required:
+                                - draft_url
+                                - filter_infos
+                            type: object
+            responses:
+                "200":
+                    content:
+                        application/json:
+                            schema:
+                                properties:
+                                    code:
+                                        type: number
+                                        x-global-disable: true
+                                    draft_url:
+                                        type: string
+                                    filter_ids:
+                                        items:
+                                            type: string
+                                        type: array
+                                    message:
+                                        type: string
+                                        x-global-disable: true
+                                    segment_ids:
+                                        items:
+                                            type: string
+                                        type: array
+                                    track_id:
+                                        type: string
+                                type: object
+                    description: new desc
+                default:
+                    description: ""
+            summary: 批量添加滤镜。
     /add_images:
         post:
             operationId: add_images
@@ -1548,6 +1617,65 @@ paths:
                 default:
                     description: ""
             summary: 根据时间线关联特效
+    /filter_infos:
+        post:
+            operationId: filter_infos
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            properties:
+                                filters:
+                                    description: 滤镜名称列表，示例：[ "清透感" ]
+                                    items:
+                                        description: 滤镜名称，在剪映中查看
+                                        type: string
+                                    type: array
+                                intensities:
+                                    description: 强度列表
+                                    items:
+                                        description: 强度，取值[0, 100]
+                                        type: integer
+                                    type: array
+                                timelines:
+                                    description: 时间线列表
+                                    items:
+                                        description: 时间线
+                                        properties:
+                                            end:
+                                                description: 结束时间
+                                                type: integer
+                                            start:
+                                                description: 开始时间
+                                                type: integer
+                                        required:
+                                            - start
+                                            - end
+                                        type: object
+                                    type: array
+                            required:
+                                - filters
+                                - timelines
+                            type: object
+            responses:
+                "200":
+                    content:
+                        application/json:
+                            schema:
+                                properties:
+                                    code:
+                                        type: number
+                                        x-global-disable: true
+                                    infos:
+                                        type: string
+                                    message:
+                                        type: string
+                                        x-global-disable: true
+                                type: object
+                    description: new desc
+                default:
+                    description: ""
+            summary: 为插件add_filters构造添加滤镜的参数。
     /gen_video:
         post:
             operationId: gen_video
