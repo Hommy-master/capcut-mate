@@ -264,16 +264,12 @@ npm run web:dev
 npm start
 ```
 
-## Open Source Community Discussion Group
-- WeChat Group:
+## Contact
 
-  <img src="./assets/wechat-q.jpg" width="344" height="498" alt="Jianying Assistant">
-
-## Business Cooperation
-- WeChat:
-
-  <img src="./assets/wechat.jpg" width="220" height="220" alt="Technical Support WeChat">
-
-- Email: taohongmin51@gmail.com
+| Type | Method | Description |
+|------|--------|-------------|
+| 📱 WeChat Group | <img src="./assets/wechat-q.jpg" width="200" alt="Jianying Assistant"> | Open Source Community Discussion Group |
+| 💬 WeChat | <img src="./assets/wechat.jpg" width="120" alt="Technical Support WeChat"> | Business Cooperation |
+| 📧 Email | taohongmin51@gmail.com | Technical Support |
 
 ---
