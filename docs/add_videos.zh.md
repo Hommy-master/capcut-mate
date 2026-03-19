@@ -1,7 +1,7 @@
 # ADD_VIDEOS API 接口文档
 
 ## 🌐 语言切换
-[中文版](./add_audios.zh.md) | [English](./add_audios.md)
+[中文版](./add_videos.zh.md) | [English](./add_videos.md)
 
 ## 接口信息
 
@@ -38,7 +38,7 @@ POST /openapi/capcut-mate/v1/add_videos
 |--------|------|------|--------|------|
 | draft_url | string | ✅ | - | 目标草稿的完整URL |
 | video_infos | string | ✅ | - | 视频信息数组的JSON字符串 |
-| scene_timelines | array[object] | ❌ | - | 场景时间线数组，用于视频变速 |
+| scene_timelines | array[object] | ❌ | - | 场景时间线数组，用于视频变速，与video_infos一一对应 |
 | alpha | number | ❌ | 1.0 | 全局透明度(0-1) |
 | scale_x | number | ❌ | 1.0 | X轴缩放比例 |
 | scale_y | number | ❌ | 1.0 | Y轴缩放比例 |

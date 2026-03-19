@@ -43,6 +43,15 @@ def add_videos(
                 "volume": 1.0, // 音量大小[0, 10][可选]，默认值为1.0，10为最大音量
             } 
         ] // [必选]
+        scene_timelines: [ // [可选] 场景时间线数组，用于视频变速，与video_infos一一对应
+            {
+                "start": 0, // [必选] 场景开始时间(微秒)
+                "end": 6000000 // [必选] 场景结束时间(微秒)
+            }
+        ]
+        // 变速原理：speed = (video.end - video.start) / (scene_timeline.end - scene_timeline.start)
+        // 示例：视频时间轴 0-2000000(2秒)，场景时间线 0-1000000(1秒)，则视频以2倍速播放
+        // 如果不提供scene_timelines或对应项为None，视频以正常速度(1.0倍)播放
         alpha: 全局透明度[0, 1][可选]，默认值为1.0
         scale_x: X轴缩放比例[可选]，默认值为1.0
         scale_y: Y轴缩放比例[可选]，默认值为1.0

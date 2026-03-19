@@ -38,7 +38,7 @@ Batch add video materials to existing drafts. This interface is a powerful video
 |-----------|------|----------|---------|-------------|
 | draft_url | string | ✅ | - | Complete URL of the target draft |
 | video_infos | string | ✅ | - | JSON string of video information array |
-| scene_timelines | array[object] | ❌ | - | Scene timeline array for video speed change |
+| scene_timelines | array[object] | ❌ | - | Scene timeline array for video speed change, corresponds one-to-one with video_infos |
 | alpha | number | ❌ | 1.0 | Global transparency (0-1) |
 | scale_x | number | ❌ | 1.0 | X-axis scaling ratio |
 | scale_y | number | ❌ | 1.0 | Y-axis scaling ratio |
