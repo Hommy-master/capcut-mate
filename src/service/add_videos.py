@@ -87,7 +87,12 @@ def add_videos(
         logger.info(f"No video info, draft_id: {draft_id}")
         raise CustomException(CustomError.INVALID_VIDEO_INFO)
 
-    # 3.5 处理场景时间线（可选，已是对象数组）
+    # 3.5 保存每个视频的原始时间信息（用于变速后的连续性计算）
+    for video in videos:
+        video['original_start'] = video['start']
+        video['original_end'] = video['end']
+    
+    # 3.6 处理场景时间线（可选，已是对象数组）
     logger.info(f"Parsed {len(videos)} videos, scene_timelines: {scene_timelines}")
 
     # 4. 从缓存中获取草稿
@@ -100,14 +105,27 @@ def add_videos(
 
     # 6. 遍历视频信息，添加视频到草稿中的指定轨道，收集片段ID
     segment_ids = []
+    current_track_end = 0  # 跟踪当前轨道上的实际结束位置（用于处理变速后的连续性）
     for i, video in enumerate(videos):
         # 获取对应的场景时间线（如果有）
         scene_timeline = scene_timelines[i] if scene_timelines and i < len(scene_timelines) else None
-        segment_id = add_video_to_draft(script, track_name, draft_video_dir=draft_video_dir, video=video,
+        
+        # 自动调整视频的start时间，确保与前一个视频连续（处理变速后的间隙问题）
+        if i > 0 and current_track_end > 0:
+            # 使用原始时长计算新的end
+            original_duration = video['original_end'] - video['original_start']
+            video['start'] = current_track_end
+            video['end'] = video['start'] + original_duration
+            logger.info(f"Adjusted video {i} start time to {video['start']} for continuity, original_duration: {original_duration}")
+        
+        segment_id, actual_duration = add_video_to_draft(script, track_name, draft_video_dir=draft_video_dir, video=video,
                                       scene_timeline=scene_timeline,
                                       alpha=alpha, scale_x=scale_x, scale_y=scale_y, 
                                       transform_x=transform_x, transform_y=transform_y)
         segment_ids.append(segment_id)
+        # 更新当前轨道结束位置（使用实际播放时长，而非原始时间轴时长）
+        current_track_end = video['start'] + actual_duration
+        logger.info(f"Video {i} added, track end position: {current_track_end}, actual_duration: {actual_duration}")
     logger.info(f"segment_ids: {segment_ids}")
 
     # 7. 保存草稿
@@ -139,7 +157,7 @@ def add_video_to_draft(
     scale_y: float = 1.0, 
     transform_x: int = 0, 
     transform_y: int = 0
-    ) -> str:
+    ) -> Tuple[str, int]:
     """
     向剪映草稿中添加视频
     
@@ -170,6 +188,7 @@ def add_video_to_draft(
     
     Returns:
         segment_id: 片段ID
+        actual_duration: 视频在轨道上的实际播放时长(微秒)，考虑变速后的时长
     """
     try:
         # 0. 下载视频
@@ -200,12 +219,14 @@ def add_video_to_draft(
         
         # 5.5 计算变速（如果提供了场景时间线）
         speed = 1.0
+        actual_duration = display_duration  # 默认实际时长等于显示时长
         if scene_timeline:
             scene_duration = scene_timeline['end'] - scene_timeline['start']
             if scene_duration > 0:
                 # speed = 时间轴时长 / 场景时长
                 # 例如：时间轴2秒，场景1秒，则speed=2（2倍速）
                 speed = display_duration / scene_duration
+                actual_duration = scene_duration  # 实际播放时长为场景时长
                 logger.info(f"Video speed calculated: {speed}x (display_duration={display_duration}, scene_duration={scene_duration})")
         
         # 6. 创建视频片段
@@ -238,8 +259,8 @@ def add_video_to_draft(
         # 7. 向指定轨道添加片段
         script.add_segment(video_segment, track_name)
 
-        # 8. 返回片段ID（注意：是segment_id而不是material_id）
-        return video_segment.segment_id
+        # 8. 返回片段ID和实际播放时长（注意：是segment_id而不是material_id）
+        return video_segment.segment_id, actual_duration
     except CustomException:
         logger.info(f"Add video to draft failed, draft_video_dir: {draft_video_dir}, video: {video}")
         raise
