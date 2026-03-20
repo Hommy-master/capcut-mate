@@ -43,6 +43,7 @@ from src.schemas.caption_infos import CaptionInfosRequest, CaptionInfosResponse
 from src.schemas.effect_infos import EffectInfosRequest, EffectInfosResponse
 from src.schemas.filter_infos import FilterInfosRequest, FilterInfosResponse
 from src.schemas.get_filters import GetFiltersRequest, GetFiltersResponse
+from src.schemas.get_effects import GetEffectsRequest, GetEffectsResponse
 from src.schemas.keyframes_infos import KeyframesInfosRequest, KeyframesInfosResponse
 from src.schemas.video_infos import VideoInfosRequest, VideoInfosResponse
 from src.schemas.search_sticker import SearchStickerRequest, SearchStickerResponse
@@ -381,6 +382,22 @@ def get_filters(gfr: GetFiltersRequest) -> GetFiltersResponse:
     # 直接返回对象数组，Pydantic 会自动处理序列化
     return GetFiltersResponse(
         filters=filters
+    )
+
+@router.post(path="/get_effects", response_model=GetEffectsResponse)
+def get_effects(ger: GetEffectsRequest) -> GetEffectsResponse:
+    """
+    获取特效列表 (v1 版本)
+    """
+
+    # 调用 service 层处理业务逻辑
+    effects = service.get_effects(
+        mode=ger.mode
+    )
+
+    # 直接返回对象数组，Pydantic 会自动处理序列化
+    return GetEffectsResponse(
+        effects=effects
     )
 
 @router.get(path="/get_draft", response_model=GetDraftResponse)
