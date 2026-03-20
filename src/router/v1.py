@@ -42,6 +42,7 @@ from src.schemas.imgs_infos import ImgsInfosRequest, ImgsInfosResponse
 from src.schemas.caption_infos import CaptionInfosRequest, CaptionInfosResponse
 from src.schemas.effect_infos import EffectInfosRequest, EffectInfosResponse
 from src.schemas.filter_infos import FilterInfosRequest, FilterInfosResponse
+from src.schemas.get_filters import GetFiltersRequest, GetFiltersResponse
 from src.schemas.keyframes_infos import KeyframesInfosRequest, KeyframesInfosResponse
 from src.schemas.video_infos import VideoInfosRequest, VideoInfosResponse
 from src.schemas.search_sticker import SearchStickerRequest, SearchStickerResponse
@@ -352,18 +353,34 @@ def get_text_animations(gtar: GetTextAnimationsRequest) -> GetTextAnimationsResp
 @router.post(path="/get_image_animations", response_model=GetImageAnimationsResponse)
 def get_image_animations(giar: GetImageAnimationsRequest) -> GetImageAnimationsResponse:
     """
-    获取图片出入场动画 (v1版本)
+    获取图片出入场动画 (v1 版本)
     """
 
-    # 调用service层处理业务逻辑
+    # 调用 service 层处理业务逻辑
     effects = service.get_image_animations(
         mode=giar.mode,
         type=giar.type
     )
 
-    # 直接返回对象数组，Pydantic会自动处理序列化
+    # 直接返回对象数组，Pydantic 会自动处理序列化
     return GetImageAnimationsResponse(
         effects=effects
+    )
+
+@router.post(path="/get_filters", response_model=GetFiltersResponse)
+def get_filters(gfr: GetFiltersRequest) -> GetFiltersResponse:
+    """
+    获取滤镜列表 (v1 版本)
+    """
+
+    # 调用 service 层处理业务逻辑
+    filters = service.get_filters(
+        mode=gfr.mode
+    )
+
+    # 直接返回对象数组，Pydantic 会自动处理序列化
+    return GetFiltersResponse(
+        filters=filters
     )
 
 @router.get(path="/get_draft", response_model=GetDraftResponse)
