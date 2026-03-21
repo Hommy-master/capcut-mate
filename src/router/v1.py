@@ -547,6 +547,7 @@ def caption_infos(request: CaptionInfosRequest) -> CaptionInfosResponse:
         timelines=[{"start": t.start, "end": t.end} for t in request.timelines],
         font_size=request.font_size,
         keyword_color=request.keyword_color,
+        keyword_border_color=request.keyword_border_color,
         keyword_font_size=request.keyword_font_size,
         keywords=request.keywords,
         in_animation=request.in_animation,

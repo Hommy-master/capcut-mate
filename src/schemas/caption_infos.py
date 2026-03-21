@@ -9,6 +9,7 @@ class CaptionInfosRequest(BaseModel):
     timelines: List[TimelineItem] = Field(..., description="时间线数组")
     font_size: Optional[int] = Field(None, description="字体大小")
     keyword_color: Optional[str] = Field(None, description="关键词颜色")
+    keyword_border_color: Optional[str] = Field(None, description="关键词边框颜色")
     keyword_font_size: Optional[int] = Field(None, description="关键词字体大小")
     keywords: Optional[List[str]] = Field(None, description="文本里面的重点词列表")
     in_animation: Optional[str] = Field(None, description="入场动画名称")

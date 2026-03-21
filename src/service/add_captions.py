@@ -45,6 +45,7 @@ def add_captions(
                     "text": "你好，剪映",  # 字幕文本内容
                     "keyword": "好",  # 关键词（用|分隔多个关键词），可选参数
                     "keyword_color": "#457616",  # 关键词颜色，可选参数
+                    "keyword_border_color": "#000000",  # 关键词边框颜色，可选参数
                     "keyword_font_size": 15,  # 关键词字体大小，可选参数
                     "font_size": 15,  # 文本字体大小，可选参数
                     "in_animation": None,  # 入场动画，可选参数
@@ -210,6 +211,7 @@ def add_caption_to_draft(
             text: 字幕文本内容
             keyword: 关键词（用|分隔多个关键词），可选
             keyword_color: 关键词颜色，可选
+            keyword_border_color: 关键词边框颜色，可选
             keyword_font_size: 关键词字体大小，可选
             font_size: 文本字体大小，可选
             in_animation: 入场动画，可选
@@ -218,9 +220,24 @@ def add_caption_to_draft(
             in_animation_duration: 入场动画时长，可选
             out_animation_duration: 出场动画时长，可选
             loop_animation_duration: 循环动画时长，可选
-        has_shadow: 是否启用文本阴影
-        shadow_info: 文本阴影参数
-        其他参数：字幕样式设置
+        text_color: 文本颜色（十六进制），默认"#ffffff"
+        border_color: 边框颜色（十六进制），默认None
+        alignment: 文本对齐方式（0-5），默认1
+        alpha: 文本透明度（0.0-1.0），默认1.0
+        font: 字体名称，默认None
+        font_size: 字体大小，默认15
+        letter_spacing: 字间距，默认None
+        line_spacing: 行间距，默认None
+        scale_x: 水平缩放，默认1.0
+        scale_y: 垂直缩放，默认1.0
+        transform_x: 水平位移，默认0.0
+        transform_y: 垂直位移，默认0.0
+        style_text: 是否使用样式文本，默认False
+        underline: 文字下划线开关，默认False
+        italic: 文本斜体开关，默认False
+        bold: 文本加粗开关，默认False
+        has_shadow: 是否启用文本阴影，默认False
+        shadow_info: 文本阴影参数，默认None
     
     Returns:
         segment_id: 片段ID
@@ -337,9 +354,17 @@ def add_caption_to_draft(
             keyword_color = caption.get('keyword_color', '#ff7100')  # 默认橙色
             keyword_rgb_color = hex_to_rgb(keyword_color)
             keyword_font_size = caption.get('keyword_font_size')  # 获取关键词字体大小
+            keyword_border_color = caption.get('keyword_border_color')  # 获取关键词边框颜色
+            # 优先使用keyword_border_color，如果没有指定则使用border_color
+            if keyword_border_color:
+                keyword_border_rgb_color = hex_to_rgb(keyword_border_color)
+            elif border_color:
+                keyword_border_rgb_color = hex_to_rgb(border_color)
+            else:
+                keyword_border_rgb_color = None
             # 应用关键词颜色和字体大小到文本样式中
-            apply_keyword_highlight(text_segment, caption['keyword'], keyword_rgb_color, keyword_font_size)
-            logger.info(f"Applied keyword highlighting: {caption['keyword']} with color {keyword_color} and font size {keyword_font_size}")
+            apply_keyword_highlight(text_segment, caption['keyword'], keyword_rgb_color, keyword_font_size, keyword_border_rgb_color)
+            logger.info(f"Applied keyword highlighting: {caption['keyword']} with color {keyword_color}, font size {keyword_font_size}, border color {keyword_border_color or border_color}")
         
         # 10. 处理动画效果
         if caption.get('in_animation'):
@@ -405,7 +430,7 @@ def add_caption_to_draft(
         raise CustomException(CustomError.CAPTION_ADD_FAILED)
 
 
-def apply_keyword_highlight(text_segment: TextSegment, keywords: str, keyword_color: tuple, keyword_font_size: float = None):
+def apply_keyword_highlight(text_segment: TextSegment, keywords: str, keyword_color: tuple, keyword_font_size: float = None, keyword_border_color: tuple = None):
     """
     应用关键词高亮到文本片段
     
@@ -414,6 +439,7 @@ def apply_keyword_highlight(text_segment: TextSegment, keywords: str, keyword_co
         keywords: 关键词字符串，用'|'分隔多个关键词
         keyword_color: 关键词颜色的RGB元组 (0-1范围)
         keyword_font_size: 关键词字体大小，默认为None，使用文本默认字体大小
+        keyword_border_color: 关键词边框颜色的RGB元组 (0-1范围)，默认为None
     """
     # 分割关键词
     keyword_list = keywords.split('|')
@@ -456,9 +482,21 @@ def apply_keyword_highlight(text_segment: TextSegment, keywords: str, keyword_co
                 "underline": text_segment.style.underline
             }
             
-            # 只有在确实有描边时才添加描边信息，避免默认黑色描边的出现
-            if text_segment.border:
-                highlight_style["strokes"] = [text_segment.border.export_json()]
+            # 处理关键词边框颜色：当keyword_border_color不为None时添加描边
+            # keyword_border_color的值由调用方决定：优先使用keyword_border_color参数，否则使用border_color
+            if keyword_border_color is not None:
+                # 使用指定的关键词边框颜色创建描边
+                # 注意：剪映的stroke格式需要包含content.solid结构
+                highlight_style["strokes"] = [{
+                    "content": {
+                        "solid": {
+                            "alpha": 1.0,
+                            "color": list(keyword_border_color)
+                        }
+                    },
+                    "width": 0.08  # 默认边框宽度（与剪映内部表示一致）
+                }]
+            # 注意：当keyword_border_color为None时（即既没有指定keyword_border_color也没有指定border_color），不添加描边
             
             # 添加到文本片段的额外样式中
             text_segment.extra_styles.append(highlight_style)
@@ -478,6 +516,7 @@ def parse_captions_data(json_str: str) -> List[Dict[str, Any]]:
                 "text": "你好，剪映",  # [必选] 字幕文本内容
                 "keyword": "好",  # [可选] 关键词（用|分隔多个关键词）
                 "keyword_color": "#457616",  # [可选] 关键词颜色，默认"#ff7100"
+                "keyword_border_color": "#000000",  # [可选] 关键词边框颜色，默认None
                 "keyword_font_size": 15,  # [可选] 关键词字体大小，默认15
                 "font_size": 15,  # [可选] 文本字体大小，默认15
                 "in_animation": None,  # [可选] 入场动画，默认None
@@ -530,6 +569,7 @@ def parse_captions_data(json_str: str) -> List[Dict[str, Any]]:
             "text": item["text"],
             "keyword": item.get("keyword", None),
             "keyword_color": item.get("keyword_color", "#ff7100"),
+            "keyword_border_color": item.get("keyword_border_color", None),
             "keyword_font_size": item.get("keyword_font_size", 15),
             "font_size": item.get("font_size", None),
             "in_animation": item.get("in_animation", None),

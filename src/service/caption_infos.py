@@ -8,6 +8,7 @@ def caption_infos(
     timelines: List[Dict[str, int]],
     font_size: Optional[int] = None,
     keyword_color: Optional[str] = None,
+    keyword_border_color: Optional[str] = None,
     keyword_font_size: Optional[int] = None,
     keywords: Optional[List[str]] = None,
     in_animation: Optional[str] = None,
@@ -27,6 +28,7 @@ def caption_infos(
         timelines: 时间线数组
         font_size: 字体大小（可选）
         keyword_color: 关键词颜色（可选）
+        keyword_border_color: 关键词边框颜色（可选）
         keyword_font_size: 关键词字体大小（可选）
         keywords: 文本里面的重点词列表（可选）
         in_animation: 入场动画名称（可选）
@@ -57,7 +59,7 @@ def caption_infos(
     infos = []
     for i, (text, timeline) in enumerate(zip(texts, timelines)):
         info = _build_caption_info(text, timeline, i, keywords, 
-                                font_size, keyword_color, keyword_font_size,
+                                font_size, keyword_color, keyword_border_color, keyword_font_size,
                                 in_animation, in_animation_duration,
                                 loop_animation, loop_animation_duration,
                                 out_animation, out_animation_duration,
@@ -73,7 +75,7 @@ def caption_infos(
 
 
 def _build_caption_info(text, timeline, index, keywords,
-                       font_size, keyword_color, keyword_font_size,
+                       font_size, keyword_color, keyword_border_color, keyword_font_size,
                        in_animation, in_animation_duration,
                        loop_animation, loop_animation_duration,
                        out_animation, out_animation_duration,
@@ -96,6 +98,9 @@ def _build_caption_info(text, timeline, index, keywords,
     # 添加可选参数
     if keyword_color is not None:
         info["keyword_color"] = keyword_color
+    
+    if keyword_border_color is not None:
+        info["keyword_border_color"] = keyword_border_color
     
     if keyword_font_size is not None:
         info["keyword_font_size"] = keyword_font_size

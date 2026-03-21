@@ -2,3 +2,5 @@
 .venv
 ./dist
 /.qoder
+/output
+/temp
