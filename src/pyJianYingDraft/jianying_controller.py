@@ -77,27 +77,41 @@ class JianyingController:
         """初始化剪映控制器, 此时剪映应该处于目录页"""
         self.get_window()
 
-    def find_and_click_draft(self, draft_name: str) -> None:
+    def find_and_click_draft(self, draft_name: str, max_retries: int = 5, retry_interval: float = 5.0) -> None:
         """查找并点击指定名称的草稿
         
         Args:
             draft_name (str): 要查找的草稿名称
+            max_retries (int): 最大重试次数，默认5次
+            retry_interval (float): 重试间隔时间(秒)，默认5秒
             
         Raises:
             DraftNotFound: 未找到指定名称的剪映草稿
         """
-        # 点击对应草稿
-        draft_name_text = self.app.TextControl(
-            searchDepth=2,
-            Compare=ControlFinder.desc_matcher(f"HomePageDraftTitle:{draft_name}", exact=True)
-        )
-        if not draft_name_text.Exists(0):
-            raise exceptions.DraftNotFound(f"未找到名为{draft_name}的剪映草稿")
-        draft_btn = draft_name_text.GetParentControl()
-        assert draft_btn is not None
-        draft_btn.Click(simulateMove=False)
-        time.sleep(10)
-        self.get_window()
+        last_exception = None
+        for attempt in range(max_retries):
+            try:
+                # 点击对应草稿
+                draft_name_text = self.app.TextControl(
+                    searchDepth=2,
+                    Compare=ControlFinder.desc_matcher(f"HomePageDraftTitle:{draft_name}", exact=True)
+                )
+                if not draft_name_text.Exists(0):
+                    raise exceptions.DraftNotFound(f"未找到名为{draft_name}的剪映草稿")
+                draft_btn = draft_name_text.GetParentControl()
+                assert draft_btn is not None
+                draft_btn.Click(simulateMove=False)
+                time.sleep(10)
+                self.get_window()
+                return  # 成功则返回
+            except exceptions.DraftNotFound as e:
+                last_exception = e
+                if attempt < max_retries - 1:
+                    logger.info(f"未找到名为{draft_name}的剪映草稿，第{attempt + 1}次重试...")
+                    time.sleep(retry_interval)
+        
+        # 所有重试都失败，抛出异常
+        raise last_exception
 
     def click_export_button(self) -> None:
         """点击编辑页面的导出按钮
