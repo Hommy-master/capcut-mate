@@ -176,16 +176,19 @@ components:
         caption_infos:
             value:
                 ReqExample:
+                    font_size: 12
+                    keyword_border_color: '#ff0000'
+                    keyword_color: '#ffef00'
+                    keyword_font_size: 12
+                    keywords:
+                        - '["明月"]'
                     texts:
-                        - 床前明月光
-                        - 明天我发光
+                        - '["床前明月光"]'
                     timelines:
-                        - end: 284891428
+                        - end: 5000000
                           start: 0
-                        - end: 579578774
-                          start: 284891428
                 RespExample:
-                    infos: '[{"start": 0, "end": 284891428, "text": "床前明月光"}, {"start": 284891428, "end": 579578774, "text": "明天我发光"}]'
+                    infos: '[{"start": 0, "end": 5000000, "text": "[\"床前明月光\"]", "keyword": "[\"明月\"]", "keyword_color": "#ffef00", "keyword_border_color": "#ff0000", "keyword_font_size": 12, "font_size": 12}]'
         create_draft:
             value:
                 ReqExample:
@@ -12852,6 +12855,9 @@ paths:
                                 in_animation_duration:
                                     description: 入场动画时长
                                     type: integer
+                                keyword_border_color:
+                                    description: 关键边框颜色，示例：#ff0000
+                                    type: string
                                 keyword_color:
                                     description: 关键词颜色
                                     type: string
