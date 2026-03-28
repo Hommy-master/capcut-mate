@@ -166,10 +166,14 @@ def add_mask_to_segment(
             return segment.mask.global_id
         
         # 4. 计算遮罩尺寸参数
-        # 根据 add_mask 方法的要求，size 是主要尺寸（以占素材高度的比例表示）
         material_width, material_height = segment.material_size
-        size = height / material_height  # 高度比例
-        rect_width = width / material_width if mask_type == MaskType.矩形 else None
+        size, rect_width = calculate_mask_size_params(
+            mask_type=mask_type,
+            width=width,
+            height=height,
+            material_width=material_width,
+            material_height=material_height
+        )
         
         logger.info(f"Adding mask to segment {segment_id}: type={mask_type.value.name}, center=({center_x}, {center_y}), size={size}")
         logger.info(f"Mask details - width: {width}, height: {height}, feather: {feather}, rotation: {rotation}, invert: {invert}, round_corner: {round_corner}")
@@ -199,6 +203,19 @@ def add_mask_to_segment(
                 feather=float(feather),
                 invert=invert
             )
+
+        # ⭐⭐⭐ 关键修复：手动将蒙版添加到 script.materials.masks ⭐⭐⭐
+        if segment.mask is not None:
+            # 检查是否已存在（避免重复添加）
+            mask_exists = False
+            for existing_mask in script.materials.masks:
+                if existing_mask.get("id") == segment.mask.global_id:
+                    mask_exists = True
+                    break
+            
+            if not mask_exists:
+                script.materials.masks.append(segment.mask.export_json())
+                logger.info(f"Registered mask to materials.masks, mask_id: {segment.mask.global_id}")
 
         mask_id = segment.mask.global_id if segment.mask is not None else ""
         if not mask_id:
@@ -242,6 +259,40 @@ def find_segment_by_id(script: ScriptFile, segment_id: str) -> Optional[VisualSe
     
     logger.warning(f"Segment {segment_id} not found in any track")
     return None
+
+
+def calculate_mask_size_params(
+    mask_type: MaskType,
+    width: int,
+    height: int,
+    material_width: int,
+    material_height: int
+) -> Tuple[float, Optional[float]]:
+    """
+    计算遮罩的尺寸参数
+    
+    Args:
+        mask_type: 遮罩类型
+        width: 遮罩宽度（像素）
+        height: 遮罩高度（像素）
+        material_width: 素材宽度（像素）
+        material_height: 素材高度（像素）
+    
+    Returns:
+        Tuple[float, Optional[float]]: 
+        - size: 遮罩的主要尺寸比例
+        - rect_width: 矩形遮罩的宽度比例（仅矩形遮罩有效）
+    """
+    # 计算高度比例作为主要尺寸
+    size = height / material_height
+    
+    # 仅矩形遮罩需要计算宽度比例
+    if mask_type == MaskType.矩形:
+        rect_width = width / material_width
+        return size, rect_width
+    
+    # 其他遮罩类型不需要设置 rect_width
+    return size, None
 
 
 def find_mask_type_by_name(mask_name: str) -> Optional[MaskType]:
