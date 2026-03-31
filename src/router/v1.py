@@ -198,7 +198,7 @@ def add_captions(acr: AddCaptionsRequest) -> AddCaptionsResponse:
     # 添加日志打印参数值
     logger.info(f"add_captions request params: {acr.model_dump_json()}")
 
-    # 调用service层处理业务逻辑
+    # 调用 service 层处理业务逻辑
     draft_url, track_id, text_ids, segment_ids, segment_infos = service.add_captions(
         draft_url=acr.draft_url,
         captions=acr.captions,
@@ -219,7 +219,8 @@ def add_captions(acr: AddCaptionsRequest) -> AddCaptionsResponse:
         italic=acr.italic,
         bold=acr.bold,
         has_shadow=acr.has_shadow,
-        shadow_info=acr.shadow_info
+        shadow_info=acr.shadow_info,
+        text_effect=acr.text_effect
     )
 
     return AddCaptionsResponse(

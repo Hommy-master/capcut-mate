@@ -8,6 +8,7 @@ from src.utils.draft_cache import DRAFT_CACHE
 from exceptions import CustomException, CustomError
 from src.utils import helper
 from src.schemas.add_captions import ShadowInfo
+from src.service.get_text_effects import resolve_text_effect
 
 
 def add_captions(
@@ -30,20 +31,21 @@ def add_captions(
     italic: bool = False,
     bold: bool = False,
     has_shadow: bool = False,
-    shadow_info: Optional[ShadowInfo] = None
+    shadow_info: Optional[ShadowInfo] = None,
+    text_effect: Optional[str] = None
 ) -> Tuple[str, str, List[str], List[str], List[dict]]:
     """
     批量添加字幕到剪映草稿的业务逻辑
     
     Args:
-        draft_url: 草稿URL
-        captions: 字幕信息列表的JSON字符串，格式如下：
+        draft_url: 草稿 URL
+        captions: 字幕信息列表的 JSON 字符串，格式如下：
             [
                 {
                     "start": 0,  # 字幕开始时间（微秒）
                     "end": 10000000,  # 字幕结束时间（微秒）
                     "text": "你好，剪映",  # 字幕文本内容
-                    "keyword": "好",  # 关键词（用|分隔多个关键词），可选参数
+                    "keyword": "好",  # 关键词（用 | 分隔多个关键词），可选参数
                     "keyword_color": "#457616",  # 关键词颜色，可选参数
                     "keyword_border_color": "#000000",  # 关键词边框颜色，可选参数
                     "keyword_font_size": 15,  # 关键词字体大小，可选参数
@@ -53,31 +55,35 @@ def add_captions(
                     "loop_animation": None,  # 循环动画，可选参数
                     "in_animation_duration": None,  # 入场动画时长，可选参数
                     "out_animation_duration": None,  # 出场动画时长，可选参数
-                    "loop_animation_duration": None  # 循环动画时长，可选参数
+                    "loop_animation_duration": None,  # 循环动画时长，可选参数
+                    "text_effect": None  # 花字效果名称或 effect_id，可选参数
                 }
             ]
         text_color: 文本颜色（十六进制），默认"#ffffff"
-        border_color: 边框颜色（十六进制），默认None
-        alignment: 文本对齐方式（0-5），默认1
-        alpha: 文本透明度（0.0-1.0），默认1.0
-        font: 字体名称，默认None
-        font_size: 字体大小，默认15
-        letter_spacing: 字间距，默认None
-        line_spacing: 行间距，默认None
-        scale_x: 水平缩放，默认1.0
-        scale_y: 垂直缩放，默认1.0
-        transform_x: 水平位移，默认0.0
-        transform_y: 垂直位移，默认0.0
-        style_text: 是否使用样式文本，默认False
-        underline: 文字下划线开关，默认False
-        italic: 文本斜体开关，默认False
-        bold: 文本加粗开关，默认False
+        border_color: 边框颜色（十六进制），默认 None
+        alignment: 文本对齐方式（0-5），默认 1
+        alpha: 文本透明度（0.0-1.0），默认 1.0
+        font: 字体名称，默认 None
+        font_size: 字体大小，默认 15
+        letter_spacing: 字间距，默认 None
+        line_spacing: 行间距，默认 None
+        scale_x: 水平缩放，默认 1.0
+        scale_y: 垂直缩放，默认 1.0
+        transform_x: 水平位移，默认 0.0
+        transform_y: 垂直位移，默认 0.0
+        style_text: 是否使用样式文本，默认 False
+        underline: 文字下划线开关，默认 False
+        italic: 文本斜体开关，默认 False
+        bold: 文本加粗开关，默认 False
+        has_shadow: 是否启用文本阴影，默认 False
+        shadow_info: 文本阴影参数，默认 None
+        text_effect: 花字效果名称或 effect_id，默认 None（全局参数，可被 caption 中的 text_effect 覆盖）
     
     Returns:
-        draft_url: 草稿URL
-        track_id: 字幕轨道ID
-        text_ids: 字幕ID列表
-        segment_ids: 字幕片段ID列表
+        draft_url: 草稿 URL
+        track_id: 字幕轨道 ID
+        text_ids: 字幕 ID 列表
+        segment_ids: 字幕片段 ID 列表
         segment_infos: 片段信息列表
     
     Raises:
@@ -141,7 +147,8 @@ def add_captions(
                     italic=italic,
                     bold=bold,
                     has_shadow=has_shadow,
-                    shadow_info=shadow_info
+                    shadow_info=shadow_info,
+                    text_effect=text_effect
                 )
                 segment_ids.append(segment_id)
                 text_ids.append(text_id)
@@ -197,7 +204,8 @@ def add_caption_to_draft(
     italic: bool = False,
     bold: bool = False,
     has_shadow: bool = False,
-    shadow_info: Optional[ShadowInfo] = None
+    shadow_info: Optional[ShadowInfo] = None,
+    text_effect: Optional[str] = None
 ) -> Tuple[str, str, dict]:
     """
     向剪映草稿中添加单个字幕
@@ -209,7 +217,7 @@ def add_caption_to_draft(
             start: 字幕开始时间（微秒）
             end: 字幕结束时间（微秒）
             text: 字幕文本内容
-            keyword: 关键词（用|分隔多个关键词），可选
+            keyword: 关键词（用 | 分隔多个关键词），可选
             keyword_color: 关键词颜色，可选
             keyword_border_color: 关键词边框颜色，可选
             keyword_font_size: 关键词字体大小，可选
@@ -220,29 +228,31 @@ def add_caption_to_draft(
             in_animation_duration: 入场动画时长，可选
             out_animation_duration: 出场动画时长，可选
             loop_animation_duration: 循环动画时长，可选
+            text_effect: 花字效果名称或 effect_id，可选
         text_color: 文本颜色（十六进制），默认"#ffffff"
-        border_color: 边框颜色（十六进制），默认None
-        alignment: 文本对齐方式（0-5），默认1
-        alpha: 文本透明度（0.0-1.0），默认1.0
-        font: 字体名称，默认None
-        font_size: 字体大小，默认15
-        letter_spacing: 字间距，默认None
-        line_spacing: 行间距，默认None
-        scale_x: 水平缩放，默认1.0
-        scale_y: 垂直缩放，默认1.0
-        transform_x: 水平位移，默认0.0
-        transform_y: 垂直位移，默认0.0
-        style_text: 是否使用样式文本，默认False
-        underline: 文字下划线开关，默认False
-        italic: 文本斜体开关，默认False
-        bold: 文本加粗开关，默认False
-        has_shadow: 是否启用文本阴影，默认False
-        shadow_info: 文本阴影参数，默认None
+        border_color: 边框颜色（十六进制），默认 None
+        alignment: 文本对齐方式（0-5），默认 1
+        alpha: 文本透明度（0.0-1.0），默认 1.0
+        font: 字体名称，默认 None
+        font_size: 字体大小，默认 15
+        letter_spacing: 字间距，默认 None
+        line_spacing: 行间距，默认 None
+        scale_x: 水平缩放，默认 1.0
+        scale_y: 垂直缩放，默认 1.0
+        transform_x: 水平位移，默认 0.0
+        transform_y: 垂直位移，默认 0.0
+        style_text: 是否使用样式文本，默认 False
+        underline: 文字下划线开关，默认 False
+        italic: 文本斜体开关，默认 False
+        bold: 文本加粗开关，默认 False
+        has_shadow: 是否启用文本阴影，默认 False
+        shadow_info: 文本阴影参数，默认 None
+        text_effect: 花字效果名称或 effect_id，默认 None（可被 caption 中的 text_effect 覆盖）
     
     Returns:
-        segment_id: 片段ID
-        text_id: 文本ID（material_id）
-        segment_info: 片段信息字典，包含id、start、end
+        segment_id: 片段 ID
+        text_id: 文本 ID（material_id）
+        segment_info: 片段信息字典，包含 id、start、end
     
     Raises:
         CustomException: 添加字幕失败
@@ -349,7 +359,21 @@ def add_caption_to_draft(
         logger.info(f"Created text segment, material_id: {text_segment.material_id}")
         logger.info(f"Text segment details - start: {caption['start']}, duration: {caption_duration}, text: {caption['text'][:50]}")
 
-        # 9. 处理关键词高亮
+        # 10. 处理花字效果
+        # 优先使用 caption 中的 text_effect，如果没有则使用全局的 text_effect
+        effect_identifier = caption.get('text_effect') or text_effect
+        if effect_identifier:
+            try:
+                effect_info = resolve_text_effect(effect_identifier)
+                if effect_info:
+                    text_segment.add_effect(effect_info['effect_id'])
+                    logger.info(f"Added text effect: {effect_identifier} (effect_id: {effect_info['effect_id']})")
+                else:
+                    logger.warning(f"Text effect not found: {effect_identifier}")
+            except Exception as e:
+                logger.error(f"Failed to add text effect '{effect_identifier}': {str(e)}")
+        
+        # 11. 处理动画效果
         if caption.get('keyword'):
             keyword_color = caption.get('keyword_color', '#ff7100')  # 默认橙色
             keyword_rgb_color = hex_to_rgb(keyword_color)
@@ -409,10 +433,10 @@ def add_caption_to_draft(
             else:
                 logger.warning(f"Loop animation not found: {loop_animation_name}")
 
-        # 11. 向指定轨道添加片段
+        # 12. 向指定轨道添加片段
         script.add_segment(text_segment, track_name)
 
-        # 12. 构造片段信息
+        # 13. 构造片段信息
         segment_info = {
             "id": text_segment.segment_id,
             "start": caption['start'],

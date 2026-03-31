@@ -33,6 +33,7 @@ class AddCaptionsRequest(BaseModel):
     bold: bool = Field(default=False, description="文本加粗开关")
     has_shadow: bool = Field(default=False, description="是否启用文本阴影")
     shadow_info: Optional[ShadowInfo] = Field(default=None, description="文本阴影参数")
+    text_effect: Optional[str] = Field(default=None, description="花字效果名称或 effect_id，例如：'白字橘色发光花字'")
 
 
 class CaptionItem(BaseModel):
@@ -51,6 +52,7 @@ class CaptionItem(BaseModel):
     in_animation_duration: Optional[int] = Field(default=None, description="入场动画时长")
     out_animation_duration: Optional[int] = Field(default=None, description="出场动画时长")
     loop_animation_duration: Optional[int] = Field(default=None, description="循环动画时长")
+    text_effect: Optional[str] = Field(default=None, description="花字效果名称或 effect_id，例如：'白字橘色发光花字'")
 
 
 class SegmentInfo(BaseModel):
