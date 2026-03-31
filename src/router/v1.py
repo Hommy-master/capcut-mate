@@ -44,6 +44,7 @@ from src.schemas.caption_infos import CaptionInfosRequest, CaptionInfosResponse
 from src.schemas.effect_infos import EffectInfosRequest, EffectInfosResponse
 from src.schemas.filter_infos import FilterInfosRequest, FilterInfosResponse
 from src.schemas.get_filters import GetFiltersRequest, GetFiltersResponse
+from src.schemas.get_text_effects import GetTextEffectsRequest, GetTextEffectsResponse
 from src.schemas.get_effects import GetEffectsRequest, GetEffectsResponse
 from src.schemas.keyframes_infos import KeyframesInfosRequest, KeyframesInfosResponse
 from src.schemas.video_infos import VideoInfosRequest, VideoInfosResponse
@@ -53,6 +54,7 @@ from src.schemas.str_list_to_objs import StrListToObjsRequest, StrListToObjsResp
 from src.schemas.str_to_list import StrToListRequest, StrToListResponse
 from src.schemas.objs_to_str_list import ObjsToStrListRequest, ObjsToStrListResponse
 from src import service
+from src.service.get_text_effects import get_text_effects as get_text_effects_service
 from typing import Annotated
 from src.utils.logger import logger
 import config
@@ -386,6 +388,24 @@ def get_filters(gfr: GetFiltersRequest) -> GetFiltersResponse:
     # 直接返回对象数组，Pydantic 会自动处理序列化
     return GetFiltersResponse(
         filters=filters
+    )
+
+@router.post(path="/get_text_effects", response_model=GetTextEffectsResponse)
+def get_text_effects(gter: GetTextEffectsRequest) -> GetTextEffectsResponse:
+    """
+    获取花字效果列表 (v1 版本)
+    
+    返回所有支持的花字效果，支持按 VIP/免费筛选
+    """
+
+    # 调用 service 层处理业务逻辑
+    text_effects = get_text_effects_service(
+        mode=gter.mode
+    )
+
+    # 直接返回对象数组，Pydantic 会自动处理序列化
+    return GetTextEffectsResponse(
+        text_effects=text_effects
     )
 
 @router.post(path="/get_effects", response_model=GetEffectsResponse)
