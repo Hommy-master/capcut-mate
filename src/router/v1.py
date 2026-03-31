@@ -100,7 +100,8 @@ def add_videos(avr: AddVideosRequest) -> AddVideosResponse:
         scale_x=avr.scale_x,
         scale_y=avr.scale_y,
         transform_x=avr.transform_x,
-        transform_y=avr.transform_y
+        transform_y=avr.transform_y,
+        relative_index=avr.relative_index
     )
 
     return AddVideosResponse(draft_url=draft_url, track_id=track_id, video_ids=video_ids, segment_ids=segment_ids)
@@ -114,7 +115,8 @@ def add_audios(aar: AddAudiosRequest) -> AddAudiosResponse:
     # 调用service层处理业务逻辑
     draft_url, track_id, audio_ids = service.add_audios(
         draft_url=aar.draft_url,
-        audio_infos=aar.audio_infos
+        audio_infos=aar.audio_infos,
+        relative_index=aar.relative_index
     )
 
     return AddAudiosResponse(draft_url=draft_url, track_id=track_id, audio_ids=audio_ids)
@@ -133,7 +135,8 @@ def add_images(air: AddImagesRequest) -> AddImagesResponse:
         scale_x=air.scale_x,
         scale_y=air.scale_y,
         transform_x=air.transform_x,
-        transform_y=air.transform_y
+        transform_y=air.transform_y,
+        relative_index=air.relative_index
     )
 
     return AddImagesResponse(

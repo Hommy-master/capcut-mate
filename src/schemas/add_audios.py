@@ -6,6 +6,7 @@ class AddAudiosRequest(BaseModel):
     """批量添加音频请求参数"""
     draft_url: str = Field(..., description="草稿URL")
     audio_infos: str = Field(..., description="音频信息列表, 用JSON字符串表示")
+    relative_index: int = Field(default=10, description="轨道渲染层级，越大越靠近前景")
 
 
 class AddAudiosResponse(BaseModel):

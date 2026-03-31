@@ -4,3 +4,13 @@
 /.qoder
 /output
 /temp
+
+# Local development files
+CLAUDE.md
+AGENTS.md
+start.sh
+.python-version
+package-lock.json
+.idea/
+.claude/
+.codex/

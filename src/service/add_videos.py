@@ -15,14 +15,15 @@ from typing import List, Dict, Any, Tuple, Optional
 
 
 def add_videos(
-    draft_url: str, 
+    draft_url: str,
     video_infos: str,
     scene_timelines: Optional[List[Dict[str, int]]] = None,
-    alpha: float = 1.0, 
-    scale_x: float = 1.0, 
-    scale_y: float = 1.0, 
-    transform_x: int = 0, 
-    transform_y: int = 0
+    alpha: float = 1.0,
+    scale_x: float = 1.0,
+    scale_y: float = 1.0,
+    transform_x: int = 0,
+    transform_y: int = 0,
+    relative_index: int = 10
 ) -> Tuple[str, str, List[str], List[str]]:
     """
     添加视频到剪映草稿的业务逻辑
@@ -100,8 +101,7 @@ def add_videos(
 
     # 5. 添加视频轨道（明确说明不使用主轨道，并设置合适的渲染层级）
     track_name = f"video_track_{helper.gen_unique_id()}"
-    # 设置 relative_index=10 确保视频轨道在主视频轨道之上，避免与主轨道冲突
-    script.add_track(track_type=draft.TrackType.video, track_name=track_name, relative_index=10)
+    script.add_track(track_type=draft.TrackType.video, track_name=track_name, relative_index=relative_index)
 
     # 6. 遍历视频信息，添加视频到草稿中的指定轨道，收集片段ID
     segment_ids = []

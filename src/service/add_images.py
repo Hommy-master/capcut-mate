@@ -15,13 +15,14 @@ from src.pyJianYingDraft.metadata import IntroType, OutroType, GroupAnimationTyp
 
 
 def add_images(
-    draft_url: str, 
+    draft_url: str,
     image_infos: str,
-    alpha: float = 1.0, 
-    scale_x: float = 1.0, 
-    scale_y: float = 1.0, 
-    transform_x: int = 0, 
-    transform_y: int = 0
+    alpha: float = 1.0,
+    scale_x: float = 1.0,
+    scale_y: float = 1.0,
+    transform_x: int = 0,
+    transform_y: int = 0,
+    relative_index: int = 10
 ) -> Tuple[str, str, List[str], List[str], List[SegmentInfo]]:
     """
     添加图片到剪映草稿的业务逻辑
@@ -88,8 +89,7 @@ def add_images(
 
     # 5. 添加图片轨道（明确说明不使用主轨道，并设置合适的渲染层级）
     track_name = f"image_track_{helper.gen_unique_id()}"
-    # 设置 relative_index=10 确保图片轨道在主视频轨道之上，避免与主轨道冲突
-    script.add_track(track_type=draft.TrackType.video, track_name=track_name, relative_index=10)
+    script.add_track(track_type=draft.TrackType.video, track_name=track_name, relative_index=relative_index)
     logger.info(f"Added image track (non-main track): {track_name}")
 
     # 6. 遍历图片信息，添加图片到草稿中的指定轨道，收集片段ID和信息

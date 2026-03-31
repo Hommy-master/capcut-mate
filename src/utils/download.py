@@ -1,4 +1,5 @@
 import os
+import shutil
 import requests
 import mimetypes
 import time
@@ -60,9 +61,19 @@ def download(url: str, save_dir: str, limit: int = DEFAULT_FILE_SIZE_LIMIT,
     Raises:
         CustomException: 下载失败时抛出异常
     """
+    # 本地文件路径支持（需通过 ALLOW_LOCAL_FILE=true 环境变量显式启用）
+    if config.ALLOW_LOCAL_FILE:
+        local_path = url[7:] if url.startswith("file://") else url
+        if os.path.isabs(local_path) and os.path.isfile(local_path):
+            ext = os.path.splitext(local_path)[1]
+            dest = os.path.join(save_dir, helper.gen_unique_id() + ext)
+            shutil.copy2(local_path, dest)
+            logger.info(f"Local file copied: {local_path} -> {dest}")
+            return dest
+
     # 初始化下载环境
     download_context = _prepare_download_context(url, save_dir, timeout)
-    
+
     # 执行带重试的下载流程
     return _execute_download_with_retry(download_context, limit, retry)
 

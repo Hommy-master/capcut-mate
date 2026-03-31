@@ -18,6 +18,7 @@ class AddVideosRequest(BaseModel):
     scale_y: float = Field(default=1.0, description="Y轴缩放比例, 建议范围[0.1, 5.0]")
     transform_x: int = Field(default=0, description="X轴位置偏移(像素)")
     transform_y: int = Field(default=0, description="Y轴位置偏移(像素)")
+    relative_index: int = Field(default=10, description="轨道渲染层级，越大越靠近前景")
 
 class AddVideosResponse(BaseModel):
     """添加视频响应参数"""

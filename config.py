@@ -6,7 +6,7 @@ import os
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 
 # 保存剪映草稿的目录
-DRAFT_DIR = os.path.join(PROJECT_ROOT, "output", "draft")
+DRAFT_DIR = os.getenv("DRAFT_DIR", os.path.join(PROJECT_ROOT, "output", "draft"))
 
 # 临时文件目录
 TEMP_DIR = os.path.join(PROJECT_ROOT, "temp")
@@ -28,7 +28,7 @@ TEMPLATE_DIR = os.path.join(os.path.dirname(__file__), "template")
 
 # 剪映草稿保存路径（下载剪映草稿保存位置）-- 云渲染必需配置
 #DRAFT_SAVE_PATH = "C:/Users/Administrator/AppData/Local/JianyingPro/User Data/Projects/com.lveditor.draft"
-DRAFT_SAVE_PATH = "C:/Users/1/AppData/Local/JianyingPro/User Data/Projects/com.lveditor.draft"
+DRAFT_SAVE_PATH = os.getenv("DRAFT_SAVE_PATH", "C:/Users/1/AppData/Local/JianyingPro/User Data/Projects/com.lveditor.draft")
 
 # 腾讯云对象存储配置 -- 云渲染必需配置
 COS_SECRET_ID = os.getenv("COS_SECRET_ID", "xxx")
@@ -41,3 +41,7 @@ ENABLE_APIKEY = os.getenv("ENABLE_APIKEY", "true")
 
 # 文件下载大小限制（字节），默认200MB
 DOWNLOAD_FILE_SIZE_LIMIT = int(os.getenv("DOWNLOAD_FILE_SIZE_LIMIT", str(200 * 1024 * 1024)))
+
+# 是否允许本地文件路径作为素材来源，默认关闭（安全考虑）
+# 设置为 "true" 启用，支持绝对路径和 file:// URI
+ALLOW_LOCAL_FILE = os.getenv("ALLOW_LOCAL_FILE", "false").lower() == "true"

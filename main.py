@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+import os
 from src.router import v1_router
 from src.utils.draft_downloader import download_draft
 from src.utils.logger import logger
@@ -28,7 +29,10 @@ for r in app.routes:
 
 logger.info("CapCut Mate API")
 
+
 # 5. 启动
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=30000, log_config=None, log_level="info")
+    host = os.getenv("HOST", "0.0.0.0")
+    port = int(os.getenv("CAPCUT_MATE_PORT", "30000"))
+    uvicorn.run(app, host=host, port=port, log_config=None, log_level="info")

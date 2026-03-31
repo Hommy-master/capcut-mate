@@ -13,8 +13,9 @@ from typing import List, Dict, Any, Tuple
 
 
 def add_audios(
-    draft_url: str, 
-    audio_infos: str
+    draft_url: str,
+    audio_infos: str,
+    relative_index: int = 10
 ) -> Tuple[str, str, List[str]]:
     """
     添加音频到剪映草稿的业务逻辑
@@ -45,7 +46,7 @@ def add_audios(
     validate_audio_data(audios, draft_id)
     
     # 添加音频轨道
-    track_name = add_audio_track(script)
+    track_name = add_audio_track(script, relative_index)
     
     # 添加音频到轨道
     audio_ids = add_audio_segments(script, track_name, draft_audio_dir, audios)
@@ -86,11 +87,10 @@ def validate_audio_data(audios: List[Dict[str, Any]], draft_id: str):
     logger.info(f"Parsed {len(audios)} audio items")
 
 
-def add_audio_track(script: ScriptFile) -> str:
+def add_audio_track(script: ScriptFile, relative_index: int = 10) -> str:
     """添加音频轨道到草稿"""
     track_name = f"audio_track_{helper.gen_unique_id()}"
-    # 设置 relative_index=10 确保音频轨道在主音频轨道之上，避免与主轨道冲突
-    script.add_track(track_type=draft.TrackType.audio, track_name=track_name, relative_index=10)
+    script.add_track(track_type=draft.TrackType.audio, track_name=track_name, relative_index=relative_index)
     logger.info(f"Added audio track (non-main track): {track_name}")
     return track_name
 
