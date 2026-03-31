@@ -6,49 +6,50 @@ from typing import List, Dict, Any, Optional
 from src.utils.logger import logger
 from exceptions import CustomException, CustomError
 
-
-# 预定义的花字效果映射表
-# 格式：{effect_name: {"resource_id": "...", "effect_id": "..."}}
-TEXT_EFFECT_MAP = {
-    # 热门花字效果
-    "白字橘色发光花字": {
-        "resource_id": "7296357486490144036",
-        "effect_id": "7296357486490144036",
-        "name": "白字橘色发光花字",
-        "is_vip": False
-    },
-    "黄字白色发光花字": {
-        "resource_id": "7296357486490144037",
-        "effect_id": "7296357486490144037",
-        "name": "黄字白色发光花字",
-        "is_vip": False
-    },
-    "粉字白色发光花字": {
-        "resource_id": "7296357486490144038",
-        "effect_id": "7296357486490144038",
-        "name": "粉字白色发光花字",
-        "is_vip": False
-    },
-    "绿字白色发光花字": {
-        "resource_id": "7296357486490144039",
-        "effect_id": "7296357486490144039",
-        "name": "绿字白色发光花字",
-        "is_vip": False
-    },
-    "蓝字白色发光花字": {
-        "resource_id": "7296357486490144040",
-        "effect_id": "7296357486490144040",
-        "name": "蓝字白色发光花字",
-        "is_vip": False
-    },
-    "紫字白色发光花字": {
-        "resource_id": "7296357486490144041",
-        "effect_id": "7296357486490144041",
-        "name": "紫字白色发光花字",
-        "is_vip": False
-    },
-    # 更多花字效果可以根据需要添加
-}
+# 导入自动生成的花字效果映射表
+try:
+    from .text_effect_map_generated import TEXT_EFFECT_MAP
+except ImportError:
+    # 如果生成的文件不存在，使用默认的映射表
+    TEXT_EFFECT_MAP = {
+        # 热门花字效果
+        "白字橘色发光花字": {
+            "resource_id": "7296357486490144036",
+            "effect_id": "7296357486490144036",
+            "name": "白字橘色发光花字",
+            "is_vip": False
+        },
+        "黄字白色发光花字": {
+            "resource_id": "7296357486490144037",
+            "effect_id": "7296357486490144037",
+            "name": "黄字白色发光花字",
+            "is_vip": False
+        },
+        "粉字白色发光花字": {
+            "resource_id": "7296357486490144038",
+            "effect_id": "7296357486490144038",
+            "name": "粉字白色发光花字",
+            "is_vip": False
+        },
+        "绿字白色发光花字": {
+            "resource_id": "7296357486490144039",
+            "effect_id": "7296357486490144039",
+            "name": "绿字白色发光花字",
+            "is_vip": False
+        },
+        "蓝字白色发光花字": {
+            "resource_id": "7296357486490144040",
+            "effect_id": "7296357486490144040",
+            "name": "蓝字白色发光花字",
+            "is_vip": False
+        },
+        "紫字白色发光花字": {
+            "resource_id": "7296357486490144041",
+            "effect_id": "7296357486490144041",
+            "name": "紫字白色发光花字",
+            "is_vip": False
+        },
+    }
 
 
 def get_text_effects(mode: int = 0) -> List[Dict[str, Any]]:
