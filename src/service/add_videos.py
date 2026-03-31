@@ -1,6 +1,6 @@
 from src.pyJianYingDraft.video_segment import VideoSegment
 
-
+import asyncio
 from src.utils.logger import logger
 from src.pyJianYingDraft import ScriptFile, trange, IntroType
 import src.pyJianYingDraft as draft
@@ -12,6 +12,7 @@ from src.utils.download import download
 import config
 import json
 from typing import List, Dict, Any, Tuple, Optional
+from src.utils.draft_lock_manager import get_draft_lock_manager
 
 
 def add_videos(
@@ -25,38 +26,38 @@ def add_videos(
     transform_y: int = 0
 ) -> Tuple[str, str, List[str], List[str]]:
     """
-    添加视频到剪映草稿的业务逻辑
+    添加视频到剪映草稿的业务逻辑（同步版本，兼容旧代码）
     
     Args:
-        draft_url: ""  // [必选] 草稿URL
+        draft_url: ""  // [必选] 草稿 URL
         video_infos: [ 
             {
-                "video_url": "https://example.com/video1.mp4", // [必选] 视频文件的URL地址
+                "video_url": "https://example.com/video1.mp4", // [必选] 视频文件的 URL 地址
                 "width": 1920, // [可选] 视频宽度，不传则自动获取视频文件尺寸
                 "height": 1080, // [可选] 视频高度，不传则自动获取视频文件尺寸
                 "start": 0.0, // [必选] 视频在时间轴上的开始时间 (微秒)
                 "end": 12000000.0, // [必选] 视频在时间轴上的结束时间 (微秒)
-                "duration": 12000000.0, // [可选] 视频总时长(微秒)，如果不传则默认为end-start
-                "mask": "", // 遮罩类型[可选]，默认值为None
-                "transition": "", // 转场效果名称[可选]，默认值为None
-                "transition_duration": 500000.0, // 转场持续时间(微秒)[可选]，默认值为500000
-                "volume": 1.0, // 音量大小[0, 10][可选]，默认值为1.0，10为最大音量
+                "duration": 12000000.0, // [可选] 视频总时长 (微秒)，如果不传则默认为 end-start
+                "mask": "", // 遮罩类型 [可选]，默认值为 None
+                "transition": "", // 转场效果名称 [可选]，默认值为 None
+                "transition_duration": 500000.0, // 转场持续时间 (微秒)[可选]，默认值为 500000
+                "volume": 1.0, // 音量大小 [0, 10][可选]，默认值为 1.0，10 为最大音量
             } 
         ] // [必选]
-        scene_timelines: [ // [可选] 场景时间线数组，用于视频变速，与video_infos一一对应
+        scene_timelines: [ // [可选] 场景时间线数组，用于视频变速，与 video_infos 一一对应
             {
-                "start": 0, // [必选] 场景开始时间(微秒)
-                "end": 6000000 // [必选] 场景结束时间(微秒)
+                "start": 0, // [必选] 场景开始时间 (微秒)
+                "end": 6000000 // [必选] 场景结束时间 (微秒)
             }
         ]
         // 变速原理：speed = (video.end - video.start) / (scene_timeline.end - scene_timeline.start)
-        // 示例：视频时间轴 0-2000000(2秒)，场景时间线 0-1000000(1秒)，则视频以2倍速播放
-        // 如果不提供scene_timelines或对应项为None，视频以正常速度(1.0倍)播放
-        alpha: 全局透明度[0, 1][可选]，默认值为1.0
-        scale_x: X轴缩放比例[可选]，默认值为1.0
-        scale_y: Y轴缩放比例[可选]，默认值为1.0
-        transform_x: X轴位置偏移(像素)[可选]，默认值为0
-        transform_y: Y轴位置偏移(像素)[可选]，默认值为0
+        // 示例：视频时间轴 0-2000000(2 秒)，场景时间线 0-1000000(1 秒)，则视频以 2 倍速播放
+        // 如果不提供 scene_timelines 或对应项为 None，视频以正常速度 (1.0 倍) 播放
+        alpha: 全局透明度 [0, 1][可选]，默认值为 1.0
+        scale_x: X 轴缩放比例 [可选]，默认值为 1.0
+        scale_y: Y 轴缩放比例 [可选]，默认值为 1.0
+        transform_x: X 轴位置偏移 (像素)[可选]，默认值为 0
+        transform_y: Y 轴位置偏移 (像素)[可选]，默认值为 0
     
     Returns:
         "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=...",
@@ -69,9 +70,131 @@ def add_videos(
     Raises:
         CustomException: 视频批量添加失败
     """
-    logger.info(f"add_videos, draft_url: {draft_url}, video_infos: {video_infos}, scene_timelines: {scene_timelines}, alpha: {alpha}, scale_x: {scale_x}, scale_y: {scale_y}, transform_x: {transform_x}, transform_y: {transform_y}")
+    # 调用内部处理函数（不获取锁，由外层控制）
+    return _add_videos_internal(
+        draft_url=draft_url,
+        video_infos=video_infos,
+        scene_timelines=scene_timelines,
+        alpha=alpha,
+        scale_x=scale_x,
+        scale_y=scale_y,
+        transform_x=transform_x,
+        transform_y=transform_y
+    )
 
-    # 1. 提取草稿ID
+
+async def add_videos_async(
+    draft_url: str, 
+    video_infos: str,
+    scene_timelines: Optional[List[Dict[str, int]]] = None,
+    alpha: float = 1.0, 
+    scale_x: float = 1.0, 
+    scale_y: float = 1.0, 
+    transform_x: int = 0, 
+    transform_y: int = 0,
+    lock_timeout: float = 30.0
+) -> Tuple[str, str, List[str], List[str]]:
+    """
+    添加视频到剪映草稿的异步版本（带并发锁保护）
+    
+    功能：
+    1. 使用 DraftLockManager 防止同一草稿的并发写操作
+    2. 支持超时控制，避免无限等待
+    3. 自动释放锁，即使发生异常
+    
+    Args:
+        draft_url: 草稿 URL，格式：".../get_draft?draft_id=xxx"
+        video_infos: JSON 字符串，包含视频信息列表，详见 add_videos 函数
+        scene_timelines: 场景时间线列表，用于视频变速，与 video_infos 一一对应
+        alpha: 全局透明度 [0, 1]，默认 1.0
+        scale_x: X 轴缩放比例，默认 1.0
+        scale_y: Y 轴缩放比例，默认 1.0
+        transform_x: X 轴位置偏移（像素），默认 0
+        transform_y: Y 轴位置偏移（像素），默认 0
+        lock_timeout: 获取锁的超时时间（秒），默认 30 秒
+    
+    Returns:
+        tuple: (draft_url, track_id, video_ids, segment_ids)
+    
+    Raises:
+        CustomException: 视频添加失败或获取锁超时
+        asyncio.TimeoutError: 等待锁超时时抛出
+    
+    Example:
+        >>> result = await add_videos_async(
+        ...     draft_url="http://.../draft_id=123",
+        ...     video_infos='[{"video_url":"...", "start":0, "end":5000000}]'
+        ... )
+    """
+    # 提取草稿 ID
+    draft_id = helper.get_url_param(draft_url, "draft_id")
+    if not draft_id:
+        raise CustomException(CustomError.INVALID_DRAFT_URL)
+    
+    # 获取锁管理器
+    lock_manager = get_draft_lock_manager()
+    
+    # 尝试获取锁
+    try:
+        await lock_manager.acquire_lock(draft_id, timeout=lock_timeout)
+        logger.info(f"Lock acquired for draft_id: {draft_id}")
+    except asyncio.TimeoutError:
+        logger.error(f"Timeout waiting for lock on draft_id: {draft_id}")
+        raise CustomException(
+            CustomError.VIDEO_ADD_FAILED,
+            f"Failed to acquire lock for draft {draft_id} after {lock_timeout}s"
+        )
+    
+    try:
+        # 执行实际的添加操作
+        result = _add_videos_internal(
+            draft_url=draft_url,
+            video_infos=video_infos,
+            scene_timelines=scene_timelines,
+            alpha=alpha,
+            scale_x=scale_x,
+            scale_y=scale_y,
+            transform_x=transform_x,
+            transform_y=transform_y
+        )
+        return result
+    finally:
+        # 确保释放锁
+        await lock_manager.release_lock(draft_id)
+        logger.info(f"Lock released for draft_id: {draft_id}")
+
+
+def _add_videos_internal(
+    draft_url: str,
+    video_infos: str,
+    scene_timelines: Optional[List[Dict[str, int]]] = None,
+    alpha: float = 1.0,
+    scale_x: float = 1.0,
+    scale_y: float = 1.0,
+    transform_x: int = 0,
+    transform_y: int = 0
+) -> Tuple[str, str, List[str], List[str]]:
+    """
+    添加视频的内部处理函数（无锁，需外层控制并发）
+    
+    此函数不包含锁机制，必须在已获取锁的情况下调用
+    
+    Args:
+        draft_url: 草稿 URL
+        video_infos: 视频信息 JSON 字符串
+        scene_timelines: 场景时间线列表
+        alpha: 全局透明度
+        scale_x: X 轴缩放比例
+        scale_y: Y 轴缩放比例
+        transform_x: X 轴位置偏移
+        transform_y: Y 轴位置偏移
+    
+    Returns:
+        tuple: (draft_url, track_id, video_ids, segment_ids)
+    """
+    logger.info(f"_add_videos_internal, draft_url: {draft_url}")
+
+    # 1. 提取草稿 ID
     draft_id = helper.get_url_param(draft_url, "draft_id")
     if (not draft_id) or (draft_id not in DRAFT_CACHE):
         raise CustomException(CustomError.INVALID_DRAFT_URL)
@@ -103,16 +226,16 @@ def add_videos(
     # 设置 relative_index=10 确保视频轨道在主视频轨道之上，避免与主轨道冲突
     script.add_track(track_type=draft.TrackType.video, track_name=track_name, relative_index=10)
 
-    # 6. 遍历视频信息，添加视频到草稿中的指定轨道，收集片段ID
+    # 6. 遍历视频信息，添加视频到草稿中的指定轨道，收集片段 ID
     segment_ids = []
     current_track_end = 0  # 跟踪当前轨道上的实际结束位置（用于处理变速后的连续性）
     for i, video in enumerate(videos):
         # 获取对应的场景时间线（如果有）
         scene_timeline = scene_timelines[i] if scene_timelines and i < len(scene_timelines) else None
         
-        # 自动调整视频的start时间，确保与前一个视频连续（处理变速后的间隙问题）
+        # 自动调整视频的 start 时间，确保与前一个视频连续（处理变速后的间隙问题）
         if i > 0 and current_track_end > 0:
-            # 使用原始时长计算新的end
+            # 使用原始时长计算新的 end
             original_duration = video['original_end'] - video['original_start']
             video['start'] = current_track_end
             video['end'] = video['start'] + original_duration
@@ -131,7 +254,7 @@ def add_videos(
     # 7. 保存草稿
     script.save()
 
-    # 8. 获取当前视频轨道id
+    # 8. 获取当前视频轨道 id
     track_id = ""
     for key in script.tracks.keys():
         if script.tracks[key].name == track_name:
@@ -139,11 +262,11 @@ def add_videos(
             break
     logger.info(f"draft_id: {draft_id}, track_id: {track_id}")
 
-    # 9. 获取当前所有视频资源ID（全局唯一ID）
+    # 9. 获取当前所有视频资源 ID（全局唯一 ID）
     video_ids = [video.material_id for video in script.materials.videos]
     logger.info(f"draft_id: {draft_id}, video_ids: {video_ids}")
 
-    # TODO: 这里还是有点小问题，为什么得到的video_ids与segment_ids的结果一样
+    # TODO: 这里还是有点小问题，为什么得到的 video_ids 与 segment_ids 的结果一样
     return draft_url, track_id, video_ids, segment_ids
 
 def add_video_to_draft(

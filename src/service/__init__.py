@@ -1,5 +1,5 @@
 from .create_draft import create_draft
-from .add_videos import add_videos
+from .add_videos import add_videos, add_videos_async, _add_videos_internal
 from .add_audios import add_audios
 from .add_images import add_images
 from .add_sticker import add_sticker

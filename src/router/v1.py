@@ -16,6 +16,7 @@ from src.schemas.easy_create_material import EasyCreateMaterialResponse
 from src.schemas.save_draft import SaveDraftResponse
 from src.schemas.create_draft import CreateDraftResponse
 from fastapi import APIRouter, Request, Depends
+import asyncio
 from src.schemas.create_draft import CreateDraftRequest, CreateDraftResponse
 from src.schemas.add_videos import AddVideosRequest, AddVideosResponse
 from src.schemas.add_audios import AddAudiosRequest, AddAudiosResponse
@@ -86,13 +87,14 @@ def save_draft(sdr: SaveDraftRequest) -> SaveDraftResponse:
     return SaveDraftResponse(draft_url=draft_url)
 
 @router.post(path="/add_videos", response_model=AddVideosResponse)
-def add_videos(avr: AddVideosRequest) -> AddVideosResponse:
+async def add_videos(avr: AddVideosRequest) -> AddVideosResponse:
     """
-    向剪映草稿添加视频 (v1版本)
+    向剪映草稿添加视频 (v1 版本，带并发锁保护)
+    
+    使用异步锁机制防止同一草稿的并发写操作导致文件损坏
     """
-
-    # 调用service层处理业务逻辑
-    draft_url, track_id, video_ids, segment_ids = service.add_videos(
+    # 调用 service 层处理业务逻辑（异步版本，带锁保护）
+    draft_url, track_id, video_ids, segment_ids = await service.add_videos_async(
         draft_url=avr.draft_url,
         video_infos=avr.video_infos,
         scene_timelines=[{"start": t.start, "end": t.end} for t in avr.scene_timelines] if avr.scene_timelines else None,
@@ -100,7 +102,8 @@ def add_videos(avr: AddVideosRequest) -> AddVideosResponse:
         scale_x=avr.scale_x,
         scale_y=avr.scale_y,
         transform_x=avr.transform_x,
-        transform_y=avr.transform_y
+        transform_y=avr.transform_y,
+        lock_timeout=30.0  # 30 秒超时
     )
 
     return AddVideosResponse(draft_url=draft_url, track_id=track_id, video_ids=video_ids, segment_ids=segment_ids)
