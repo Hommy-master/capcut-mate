@@ -9,7 +9,9 @@ from src.utils import helper
 from src.utils.download import download
 import config
 import json
+import asyncio
 from typing import List, Dict, Any, Tuple
+from src.utils.draft_lock_manager import DraftLockManager
 
 from src.pyJianYingDraft.metadata import IntroType, OutroType, GroupAnimationType, TransitionType
 
@@ -131,6 +133,83 @@ def add_images(
     logger.info(f"Image track completed, draft_id: {draft_id}, image_ids: {image_ids}")
 
     return draft_url, track_id, image_ids, segment_ids, segment_infos
+
+
+async def add_images_async(
+    draft_url: str,
+    image_infos: str,
+    alpha: float = 1.0,
+    scale_x: float = 1.0,
+    scale_y: float = 1.0,
+    transform_x: int = 0,
+    transform_y: int = 0,
+    lock_timeout: float = 30.0
+) -> Tuple[str, str, List[str], List[str], List[SegmentInfo]]:
+    """
+    添加图片到剪映草稿的异步版本（带并发锁保护）
+    
+    功能：
+    1. 使用 DraftLockManager 防止同一草稿的并发写操作
+    2. 支持超时控制，避免无限等待
+    3. 自动释放锁，即使发生异常
+    
+    Args:
+        draft_url: 草稿 URL，格式：".../get_draft?draft_id=xxx"
+        image_infos: JSON 字符串，包含图片信息列表，详见 add_images 函数
+        alpha: 全局透明度 [0, 1]，默认 1.0
+        scale_x: X 轴缩放比例，默认 1.0
+        scale_y: Y 轴缩放比例，默认 1.0
+        transform_x: X 轴位置偏移（像素），默认 0
+        transform_y: Y 轴位置偏移（像素），默认 0
+        lock_timeout: 获取锁的超时时间（秒），默认 30 秒
+    
+    Returns:
+        tuple: (draft_url, track_id, image_ids, segment_ids, segment_infos)
+    
+    Raises:
+        CustomException: 图片添加失败或获取锁超时
+        asyncio.TimeoutError: 等待锁超时时抛出
+    
+    Example:
+        >>> result = await add_images_async(
+        ...     draft_url="http://.../draft_id=123",
+        ...     image_infos='[{"image_url":"...", "width":1024, "height":1024, "start":0, "end":5000000}]'
+        ... )
+    """
+    # 提取草稿 ID
+    draft_id = helper.get_url_param(draft_url, "draft_id")
+    if not draft_id:
+        raise CustomException(CustomError.INVALID_DRAFT_URL)
+    
+    # 获取锁管理器
+    lock_manager = DraftLockManager()
+    
+    # 尝试获取锁
+    try:
+        await lock_manager.acquire_lock(draft_id, timeout=lock_timeout)
+        logger.info(f"Lock acquired for draft_id: {draft_id}")
+    except asyncio.TimeoutError:
+        logger.error(f"Timeout waiting for lock on draft_id: {draft_id}")
+        raise CustomException(
+            CustomError.DRAFT_LOCK_TIMEOUT,
+            f"Failed to acquire lock for draft {draft_id} within {lock_timeout}s"
+        )
+    
+    try:
+        # 调用内部处理函数（不获取锁，由外层控制）
+        return add_images(
+            draft_url=draft_url,
+            image_infos=image_infos,
+            alpha=alpha,
+            scale_x=scale_x,
+            scale_y=scale_y,
+            transform_x=transform_x,
+            transform_y=transform_y
+        )
+    finally:
+        # 释放锁
+        await lock_manager.release_lock(draft_id)
+        logger.info(f"Lock released for draft_id: {draft_id}")
 
 
 def add_image_to_draft(

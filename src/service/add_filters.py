@@ -1,5 +1,6 @@
 import json
 from typing import List, Dict, Any, Tuple, Optional
+import asyncio
 
 from src.utils.logger import logger
 from src.pyJianYingDraft import ScriptFile, TrackType, FilterSegment, Timerange
@@ -7,6 +8,7 @@ from src.pyJianYingDraft.metadata import FilterType
 from src.utils.draft_cache import DRAFT_CACHE
 from exceptions import CustomException, CustomError
 from src.utils import helper
+from src.utils.draft_lock_manager import DraftLockManager
 
 
 def add_filters(
@@ -93,6 +95,68 @@ def add_filters(
     logger.info(f"add_filters completed successfully - draft_id: {draft_id}, track_id: {track_id}, filters_added: {len(filter_items)}")
     
     return draft_url, track_id, filter_ids, segment_ids
+
+
+async def add_filters_async(
+    draft_url: str,
+    filter_infos: str,
+    lock_timeout: float = 30.0
+) -> Tuple[str, str, List[str], List[str]]:
+    """
+    添加滤镜到剪映草稿的异步版本（带并发锁保护）
+    
+    功能：
+    1. 使用 DraftLockManager 防止同一草稿的并发写操作
+    2. 支持超时控制，避免无限等待
+    3. 自动释放锁，即使发生异常
+    
+    Args:
+        draft_url: 草稿 URL，格式：".../get_draft?draft_id=xxx"
+        filter_infos: JSON 字符串，包含滤镜信息列表，详见 add_filters 函数
+        lock_timeout: 获取锁的超时时间（秒），默认 30 秒
+    
+    Returns:
+        tuple: (draft_url, track_id, filter_ids, segment_ids)
+    
+    Raises:
+        CustomException: 滤镜添加失败或获取锁超时
+        asyncio.TimeoutError: 等待锁超时时抛出
+    
+    Example:
+        >>> result = await add_filters_async(
+        ...     draft_url="http://.../draft_id=123",
+        ...     filter_infos='[{"filter_title":"复古", "start":0, "end":5000000}]'
+        ... )
+    """
+    # 提取草稿 ID
+    draft_id = helper.get_url_param(draft_url, "draft_id")
+    if not draft_id:
+        raise CustomException(CustomError.INVALID_DRAFT_URL)
+    
+    # 获取锁管理器
+    lock_manager = DraftLockManager()
+    
+    # 尝试获取锁
+    try:
+        await lock_manager.acquire_lock(draft_id, timeout=lock_timeout)
+        logger.info(f"Lock acquired for draft_id: {draft_id}")
+    except asyncio.TimeoutError:
+        logger.error(f"Timeout waiting for lock on draft_id: {draft_id}")
+        raise CustomException(
+            CustomError.DRAFT_LOCK_TIMEOUT,
+            f"Failed to acquire lock for draft {draft_id} within {lock_timeout}s"
+        )
+    
+    try:
+        # 调用内部处理函数（不获取锁，由外层控制）
+        return add_filters(
+            draft_url=draft_url,
+            filter_infos=filter_infos
+        )
+    finally:
+        # 释放锁
+        await lock_manager.release_lock(draft_id)
+        logger.info(f"Lock released for draft_id: {draft_id}")
 
 
 def add_filter_to_draft(

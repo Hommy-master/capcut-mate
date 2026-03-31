@@ -2,6 +2,7 @@ import json
 import os
 from typing import Optional
 from urllib.parse import urlparse
+import asyncio
 
 from src.utils.logger import logger
 from src.pyJianYingDraft import ScriptFile, TrackType, trange, TextSegment, TextStyle, ClipSettings
@@ -10,6 +11,7 @@ from src.utils.draft_cache import DRAFT_CACHE
 from exceptions import CustomException, CustomError
 from src.utils import helper
 import config
+from src.utils.draft_lock_manager import DraftLockManager
 
 
 def easy_create_material(
@@ -85,10 +87,91 @@ def easy_create_material(
 
         logger.info(f"easy_create_material completed successfully - draft_id: {draft_id}")
         return draft_url
-
+        
     except Exception as e:
         logger.error(f"Failed to create materials: {str(e)}")
         raise CustomException(CustomError.MATERIAL_CREATE_FAILED)
+
+
+async def easy_create_material_async(
+    draft_url: str,
+    audio_url: str,
+    text: Optional[str] = None,
+    img_url: Optional[str] = None,
+    video_url: Optional[str] = None,
+    text_color: str = "#ffffff",
+    font_size: int = 15,
+    text_transform_y: int = 0,
+    lock_timeout: float = 30.0
+) -> str:
+    """
+    在现有草稿中添加多种类型的素材内容的异步版本（带并发锁保护）
+    
+    功能：
+    1. 使用 DraftLockManager 防止同一草稿的并发写操作
+    2. 支持超时控制，避免无限等待
+    3. 自动释放锁，即使发生异常
+    
+    Args:
+        draft_url: 目标草稿的完整 URL，必选参数
+        audio_url: 音频文件 URL，必选参数，不能为空或"null"
+        text: 要添加的文字内容，可选参数，默认为 None
+        img_url: 图片文件 URL，可选参数，默认为 None
+        video_url: 视频文件 URL，可选参数，默认为 None
+        text_color: 文字颜色（十六进制格式），默认值："#ffffff"
+        font_size: 字体大小，默认值：15
+        text_transform_y: 文字 Y 轴位置偏移，默认值：0
+        lock_timeout: 获取锁的超时时间（秒），默认 30 秒
+    
+    Returns:
+        draft_url: 草稿 URL
+    
+    Raises:
+        CustomException: 素材创建失败或获取锁超时
+        asyncio.TimeoutError: 等待锁超时时抛出
+    
+    Example:
+        >>> result = await easy_create_material_async(
+        ...     draft_url="http://.../draft_id=123",
+        ...     audio_url="https://.../audio.mp3",
+        ...     text="Hello"
+        ... )
+    """
+    # 提取草稿 ID
+    draft_id = helper.get_url_param(draft_url, "draft_id")
+    if not draft_id:
+        raise CustomException(CustomError.INVALID_DRAFT_URL)
+    
+    # 获取锁管理器
+    lock_manager = DraftLockManager()
+    
+    # 尝试获取锁
+    try:
+        await lock_manager.acquire_lock(draft_id, timeout=lock_timeout)
+        logger.info(f"Lock acquired for draft_id: {draft_id}")
+    except asyncio.TimeoutError:
+        logger.error(f"Timeout waiting for lock on draft_id: {draft_id}")
+        raise CustomException(
+            CustomError.DRAFT_LOCK_TIMEOUT,
+            f"Failed to acquire lock for draft {draft_id} within {lock_timeout}s"
+        )
+    
+    try:
+        # 调用内部处理函数（不获取锁，由外层控制）
+        return easy_create_material(
+            draft_url=draft_url,
+            audio_url=audio_url,
+            text=text,
+            img_url=img_url,
+            video_url=video_url,
+            text_color=text_color,
+            font_size=font_size,
+            text_transform_y=text_transform_y
+        )
+    finally:
+        # 释放锁
+        await lock_manager.release_lock(draft_id)
+        logger.info(f"Lock released for draft_id: {draft_id}")
 
 
 def add_video_material(script: ScriptFile, draft_id: str, video_url: str) -> bool:

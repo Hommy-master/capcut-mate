@@ -9,7 +9,9 @@ from src.utils import helper
 from src.utils.download import download
 import config
 import json
+import asyncio
 from typing import List, Dict, Any, Tuple
+from src.utils.draft_lock_manager import DraftLockManager
 
 
 def add_audios(
@@ -58,6 +60,68 @@ def add_audios(
     logger.info(f"Audio track created, draft_id: {draft_id}, track_id: {track_id}")
     
     return draft_url, track_id, audio_ids
+
+
+async def add_audios_async(
+    draft_url: str,
+    audio_infos: str,
+    lock_timeout: float = 30.0
+) -> Tuple[str, str, List[str]]:
+    """
+    添加音频到剪映草稿的异步版本（带并发锁保护）
+    
+    功能：
+    1. 使用 DraftLockManager 防止同一草稿的并发写操作
+    2. 支持超时控制，避免无限等待
+    3. 自动释放锁，即使发生异常
+    
+    Args:
+        draft_url: 草稿 URL，格式：".../get_draft?draft_id=xxx"
+        audio_infos: JSON 字符串，包含音频信息列表，详见 add_audios 函数
+        lock_timeout: 获取锁的超时时间（秒），默认 30 秒
+    
+    Returns:
+        tuple: (draft_url, track_id, audio_ids)
+    
+    Raises:
+        CustomException: 音频添加失败或获取锁超时
+        asyncio.TimeoutError: 等待锁超时时抛出
+    
+    Example:
+        >>> result = await add_audios_async(
+        ...     draft_url="http://.../draft_id=123",
+        ...     audio_infos='[{"audio_url":"...", "start":0, "end":5000000}]'
+        ... )
+    """
+    # 提取草稿 ID
+    draft_id = helper.get_url_param(draft_url, "draft_id")
+    if not draft_id:
+        raise CustomException(CustomError.INVALID_DRAFT_URL)
+    
+    # 获取锁管理器
+    lock_manager = DraftLockManager()
+    
+    # 尝试获取锁
+    try:
+        await lock_manager.acquire_lock(draft_id, timeout=lock_timeout)
+        logger.info(f"Lock acquired for draft_id: {draft_id}")
+    except asyncio.TimeoutError:
+        logger.error(f"Timeout waiting for lock on draft_id: {draft_id}")
+        raise CustomException(
+            CustomError.DRAFT_LOCK_TIMEOUT,
+            f"Failed to acquire lock for draft {draft_id} within {lock_timeout}s"
+        )
+    
+    try:
+        # 调用内部处理函数（不获取锁，由外层控制）
+        return add_audios(
+            draft_url=draft_url,
+            audio_infos=audio_infos
+        )
+    finally:
+        # 释放锁
+        await lock_manager.release_lock(draft_id)
+        logger.info(f"Lock released for draft_id: {draft_id}")
 
 
 def validate_and_get_draft_id(draft_url: str) -> str:
@@ -445,7 +509,7 @@ def process_single_audio_item(item: Any, index: int) -> Dict[str, Any]:
     processed_item = create_processed_item(item)
     
     # 验证数值范围
-    validate_numeric_ranges(processed_item)
+    validate_numeric_ranges(processed_item, index)
     
     logger.debug(f"Processed audio item {index+1}: {processed_item}")
     return processed_item
@@ -480,13 +544,13 @@ def create_processed_item(item: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def validate_numeric_ranges(processed_item: Dict[str, Any]):
+def validate_numeric_ranges(processed_item: Dict[str, Any], index: int):
     """验证数值范围"""
     if processed_item["volume"] < 0.0 or processed_item["volume"] > 2.0:
         logger.warning(f"Volume value {processed_item['volume']} out of range [0.0, 2.0], using default 1.0")
         processed_item["volume"] = 1.0
     
-    # 如果提供了duration且小于等于0，则报错
+    # 如果提供了 duration 且小于等于 0，则报错
     if processed_item["duration"] is not None and processed_item["duration"] <= 0:
         logger.error(f"Invalid duration: {processed_item['duration']}")
         raise CustomException(CustomError.INVALID_AUDIO_INFO, f"the {index}th item has invalid duration")

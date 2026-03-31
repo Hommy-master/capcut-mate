@@ -1,5 +1,6 @@
 import json
 from typing import List, Dict, Any, Tuple, Optional, Literal
+import asyncio
 
 from src.utils.logger import logger
 from src.pyJianYingDraft import ScriptFile, TrackType, TextSegment, TextStyle, ClipSettings, Timerange, FontType, TextBorder, TextShadow
@@ -9,6 +10,7 @@ from exceptions import CustomException, CustomError
 from src.utils import helper
 from src.schemas.add_captions import ShadowInfo
 from src.service.get_text_effects import resolve_text_effect
+from src.utils.draft_lock_manager import DraftLockManager
 
 
 def add_captions(
@@ -181,6 +183,125 @@ def add_captions(
         # 捕获其他未预期的异常并转换为自定义异常
         logger.error(f"Unexpected error in add_captions: {str(e)}")
         raise CustomException(CustomError.CAPTION_ADD_FAILED, f"Unexpected error: {str(e)}")
+
+
+async def add_captions_async(
+    draft_url: str,
+    captions: str,
+    text_color: str = "#ffffff",
+    border_color: Optional[str] = None,
+    alignment: int = 1,
+    alpha: float = 1.0,
+    font: Optional[str] = None,
+    font_size: int = 15,
+    letter_spacing: Optional[float] = None,
+    line_spacing: Optional[float] = None,
+    scale_x: float = 1.0,
+    scale_y: float = 1.0,
+    transform_x: float = 0.0,
+    transform_y: float = 0.0,
+    style_text: bool = False,
+    underline: bool = False,
+    italic: bool = False,
+    bold: bool = False,
+    has_shadow: bool = False,
+    shadow_info: Optional[ShadowInfo] = None,
+    text_effect: Optional[str] = None,
+    lock_timeout: float = 30.0
+) -> Tuple[str, str, List[str], List[str], List[dict]]:
+    """
+    批量添加字幕到剪映草稿的异步版本（带并发锁保护）
+    
+    功能：
+    1. 使用 DraftLockManager 防止同一草稿的并发写操作
+    2. 支持超时控制，避免无限等待
+    3. 自动释放锁，即使发生异常
+    
+    Args:
+        draft_url: 草稿 URL，格式：".../get_draft?draft_id=xxx"
+        captions: JSON 字符串，包含字幕信息列表，详见 add_captions 函数
+        text_color: 文本颜色（十六进制），默认"#ffffff"
+        border_color: 边框颜色（十六进制），默认 None
+        alignment: 文本对齐方式（0-5），默认 1
+        alpha: 文本透明度（0.0-1.0），默认 1.0
+        font: 字体名称，默认 None
+        font_size: 字体大小，默认 15
+        letter_spacing: 字间距，默认 None
+        line_spacing: 行间距，默认 None
+        scale_x: 水平缩放，默认 1.0
+        scale_y: 垂直缩放，默认 1.0
+        transform_x: 水平位移，默认 0.0
+        transform_y: 垂直位移，默认 0.0
+        style_text: 是否使用样式文本，默认 False
+        underline: 文字下划线开关，默认 False
+        italic: 文本斜体开关，默认 False
+        bold: 文本加粗开关，默认 False
+        has_shadow: 是否启用文本阴影，默认 False
+        shadow_info: 文本阴影参数，默认 None
+        text_effect: 花字效果名称或 effect_id，默认 None
+        lock_timeout: 获取锁的超时时间（秒），默认 30 秒
+    
+    Returns:
+        tuple: (draft_url, track_id, text_ids, segment_ids, segment_infos)
+    
+    Raises:
+        CustomException: 字幕添加失败或获取锁超时
+        asyncio.TimeoutError: 等待锁超时时抛出
+    
+    Example:
+        >>> result = await add_captions_async(
+        ...     draft_url="http://.../draft_id=123",
+        ...     captions='[{"start":0, "end":5000000, "text":"你好"}]'
+        ... )
+    """
+    # 提取草稿 ID
+    draft_id = helper.get_url_param(draft_url, "draft_id")
+    if not draft_id:
+        raise CustomException(CustomError.INVALID_DRAFT_URL)
+    
+    # 获取锁管理器
+    lock_manager = DraftLockManager()
+    
+    # 尝试获取锁
+    try:
+        await lock_manager.acquire_lock(draft_id, timeout=lock_timeout)
+        logger.info(f"Lock acquired for draft_id: {draft_id}")
+    except asyncio.TimeoutError:
+        logger.error(f"Timeout waiting for lock on draft_id: {draft_id}")
+        raise CustomException(
+            CustomError.DRAFT_LOCK_TIMEOUT,
+            f"Failed to acquire lock for draft {draft_id} within {lock_timeout}s"
+        )
+    
+    try:
+        # 调用内部处理函数（不获取锁，由外层控制）
+        return add_captions(
+            draft_url=draft_url,
+            captions=captions,
+            text_color=text_color,
+            border_color=border_color,
+            alignment=alignment,
+            alpha=alpha,
+            font=font,
+            font_size=font_size,
+            letter_spacing=letter_spacing,
+            line_spacing=line_spacing,
+            scale_x=scale_x,
+            scale_y=scale_y,
+            transform_x=transform_x,
+            transform_y=transform_y,
+            style_text=style_text,
+            underline=underline,
+            italic=italic,
+            bold=bold,
+            has_shadow=has_shadow,
+            shadow_info=shadow_info,
+            text_effect=text_effect
+        )
+    finally:
+        # 释放锁
+        await lock_manager.release_lock(draft_id)
+        logger.info(f"Lock released for draft_id: {draft_id}")
 
 
 def add_caption_to_draft(

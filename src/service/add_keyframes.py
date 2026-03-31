@@ -1,5 +1,6 @@
 import json
 from typing import List, Dict, Any, Tuple, Optional
+import asyncio
 
 from src.utils.logger import logger
 from src.pyJianYingDraft import ScriptFile
@@ -8,6 +9,7 @@ from src.pyJianYingDraft.segment import VisualSegment
 from src.utils.draft_cache import DRAFT_CACHE
 from exceptions import CustomException, CustomError
 from src.utils import helper
+from src.utils.draft_lock_manager import DraftLockManager
 
 
 def add_keyframes(
@@ -126,6 +128,68 @@ def add_keyframes(
     logger.info(f"add_keyframes completed - draft_id: {draft_id}, keyframes_added: {keyframes_added}, affected_segments: {affected_segments}, failed_keyframes: {failed_keyframes}")
     
     return draft_url, keyframes_added, affected_segments
+
+
+async def add_keyframes_async(
+    draft_url: str,
+    keyframes: str,
+    lock_timeout: float = 30.0
+) -> Tuple[str, int, List[str]]:
+    """
+    添加关键帧到剪映草稿的异步版本（带并发锁保护）
+    
+    功能：
+    1. 使用 DraftLockManager 防止同一草稿的并发写操作
+    2. 支持超时控制，避免无限等待
+    3. 自动释放锁，即使发生异常
+    
+    Args:
+        draft_url: 草稿 URL，格式：".../get_draft?draft_id=xxx"
+        keyframes: JSON 字符串，包含关键帧信息列表，详见 add_keyframes 函数
+        lock_timeout: 获取锁的超时时间（秒），默认 30 秒
+    
+    Returns:
+        tuple: (draft_url, keyframes_added, affected_segments)
+    
+    Raises:
+        CustomException: 关键帧添加失败或获取锁超时
+        asyncio.TimeoutError: 等待锁超时时抛出
+    
+    Example:
+        >>> result = await add_keyframes_async(
+        ...     draft_url="http://.../draft_id=123",
+        ...     keyframes='[{"segment_id":"...", "property":"KFTypePositionX", "offset":0.5, "value":-0.1}]'
+        ... )
+    """
+    # 提取草稿 ID
+    draft_id = helper.get_url_param(draft_url, "draft_id")
+    if not draft_id:
+        raise CustomException(CustomError.INVALID_DRAFT_URL)
+    
+    # 获取锁管理器
+    lock_manager = DraftLockManager()
+    
+    # 尝试获取锁
+    try:
+        await lock_manager.acquire_lock(draft_id, timeout=lock_timeout)
+        logger.info(f"Lock acquired for draft_id: {draft_id}")
+    except asyncio.TimeoutError:
+        logger.error(f"Timeout waiting for lock on draft_id: {draft_id}")
+        raise CustomException(
+            CustomError.DRAFT_LOCK_TIMEOUT,
+            f"Failed to acquire lock for draft {draft_id} within {lock_timeout}s"
+        )
+    
+    try:
+        # 调用内部处理函数（不获取锁，由外层控制）
+        return add_keyframes(
+            draft_url=draft_url,
+            keyframes=keyframes
+        )
+    finally:
+        # 释放锁
+        await lock_manager.release_lock(draft_id)
+        logger.info(f"Lock released for draft_id: {draft_id}")
 
 
 def find_segment_by_id(script: ScriptFile, segment_id: str) -> Optional[VisualSegment]:

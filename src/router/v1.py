@@ -77,13 +77,16 @@ def create_draft(cdr: CreateDraftRequest) -> CreateDraftResponse:
     return CreateDraftResponse(draft_url=draft_url, tip_url=config.TIP_URL)
 
 @router.post(path="/save_draft", response_model=SaveDraftResponse)
-def save_draft(sdr: SaveDraftRequest) -> SaveDraftResponse:
+async def save_draft(sdr: SaveDraftRequest) -> SaveDraftResponse:
     """
-    保存剪映草稿 (v1版本)
+    保存剪映草稿 (v1 版本，带并发锁保护)
+    
+    使用异步锁机制防止同一草稿的并发写操作导致文件损坏
     """
-    # 调用service层处理业务逻辑
-    draft_url = service.save_draft(
+    # 调用 service 层处理业务逻辑（异步版本，带锁保护）
+    draft_url = await service.save_draft_async(
         draft_url=sdr.draft_url,
+        lock_timeout=30.0  # 30 秒超时
     )
 
     return SaveDraftResponse(draft_url=draft_url)
@@ -111,34 +114,38 @@ async def add_videos(avr: AddVideosRequest) -> AddVideosResponse:
     return AddVideosResponse(draft_url=draft_url, track_id=track_id, video_ids=video_ids, segment_ids=segment_ids)
 
 @router.post(path="/add_audios", response_model=AddAudiosResponse)
-def add_audios(aar: AddAudiosRequest) -> AddAudiosResponse:
+async def add_audios(aar: AddAudiosRequest) -> AddAudiosResponse:
     """
-    向剪映草稿批量添加音频 (v1版本)
+    向剪映草稿批量添加音频 (v1 版本，带并发锁保护)
+    
+    使用异步锁机制防止同一草稿的并发写操作导致文件损坏
     """
-
-    # 调用service层处理业务逻辑
-    draft_url, track_id, audio_ids = service.add_audios(
+    # 调用 service 层处理业务逻辑（异步版本，带锁保护）
+    draft_url, track_id, audio_ids = await service.add_audios_async(
         draft_url=aar.draft_url,
-        audio_infos=aar.audio_infos
+        audio_infos=aar.audio_infos,
+        lock_timeout=30.0  # 30 秒超时
     )
 
     return AddAudiosResponse(draft_url=draft_url, track_id=track_id, audio_ids=audio_ids)
 
 @router.post(path="/add_images", response_model=AddImagesResponse)
-def add_images(air: AddImagesRequest) -> AddImagesResponse:
+async def add_images(air: AddImagesRequest) -> AddImagesResponse:
     """
-    向剪映草稿批量添加图片 (v1版本)
+    向剪映草稿批量添加图片 (v1 版本，带并发锁保护)
+    
+    使用异步锁机制防止同一草稿的并发写操作导致文件损坏
     """
-
-    # 调用service层处理业务逻辑
-    draft_url, track_id, image_ids, segment_ids, segment_infos = service.add_images(
+    # 调用 service 层处理业务逻辑（异步版本，带锁保护）
+    draft_url, track_id, image_ids, segment_ids, segment_infos = await service.add_images_async(
         draft_url=air.draft_url,
         image_infos=air.image_infos,
         alpha=air.alpha,
         scale_x=air.scale_x,
         scale_y=air.scale_y,
         transform_x=air.transform_x,
-        transform_y=air.transform_y
+        transform_y=air.transform_y,
+        lock_timeout=30.0  # 30 秒超时
     )
 
     return AddImagesResponse(
@@ -150,20 +157,22 @@ def add_images(air: AddImagesRequest) -> AddImagesResponse:
     )
 
 @router.post(path="/add_sticker", response_model=AddStickerResponse)
-def add_sticker(asr: AddStickerRequest) -> AddStickerResponse:
+async def add_sticker(asr: AddStickerRequest) -> AddStickerResponse:
     """
-    向剪映草稿添加贴纸 (v1版本)
+    向剪映草稿添加贴纸 (v1 版本，带并发锁保护)
+    
+    使用异步锁机制防止同一草稿的并发写操作导致文件损坏
     """
-
-    # 调用service层处理业务逻辑
-    draft_url, sticker_id, track_id, segment_id, duration = service.add_sticker(
+    # 调用 service 层处理业务逻辑（异步版本，带锁保护）
+    draft_url, sticker_id, track_id, segment_id, duration = await service.add_sticker_async(
         draft_url=asr.draft_url,
         sticker_id=asr.sticker_id,
         start=asr.start,
         end=asr.end,
         scale=asr.scale,
         transform_x=asr.transform_x,
-        transform_y=asr.transform_y
+        transform_y=asr.transform_y,
+        lock_timeout=30.0  # 30 秒超时
     )
 
     return AddStickerResponse(
@@ -175,15 +184,17 @@ def add_sticker(asr: AddStickerRequest) -> AddStickerResponse:
     )
 
 @router.post(path="/add_keyframes", response_model=AddKeyframesResponse)
-def add_keyframes(akr: AddKeyframesRequest) -> AddKeyframesResponse:
+async def add_keyframes(akr: AddKeyframesRequest) -> AddKeyframesResponse:
     """
-    向剪映草稿添加关键帧 (v1版本)
+    向剪映草稿添加关键帧 (v1 版本，带并发锁保护)
+    
+    使用异步锁机制防止同一草稿的并发写操作导致文件损坏
     """
-
-    # 调用service层处理业务逻辑
-    draft_url, keyframes_added, affected_segments = service.add_keyframes(
+    # 调用 service 层处理业务逻辑（异步版本，带锁保护）
+    draft_url, keyframes_added, affected_segments = await service.add_keyframes_async(
         draft_url=akr.draft_url,
-        keyframes=akr.keyframes
+        keyframes=akr.keyframes,
+        lock_timeout=30.0  # 30 秒超时
     )
 
     return AddKeyframesResponse(
@@ -193,15 +204,17 @@ def add_keyframes(akr: AddKeyframesRequest) -> AddKeyframesResponse:
     )
 
 @router.post(path="/add_captions", response_model=AddCaptionsResponse)
-def add_captions(acr: AddCaptionsRequest) -> AddCaptionsResponse:
+async def add_captions(acr: AddCaptionsRequest) -> AddCaptionsResponse:
     """
-    向剪映草稿批量添加字幕 (v1版本)
+    向剪映草稿批量添加字幕 (v1 版本，带并发锁保护)
+    
+    使用异步锁机制防止同一草稿的并发写操作导致文件损坏
     """
     # 添加日志打印参数值
     logger.info(f"add_captions request params: {acr.model_dump_json()}")
 
-    # 调用 service 层处理业务逻辑
-    draft_url, track_id, text_ids, segment_ids, segment_infos = service.add_captions(
+    # 调用 service 层处理业务逻辑（异步版本，带锁保护）
+    draft_url, track_id, text_ids, segment_ids, segment_infos = await service.add_captions_async(
         draft_url=acr.draft_url,
         captions=acr.captions,
         text_color=acr.text_color,
@@ -222,7 +235,8 @@ def add_captions(acr: AddCaptionsRequest) -> AddCaptionsResponse:
         bold=acr.bold,
         has_shadow=acr.has_shadow,
         shadow_info=acr.shadow_info,
-        text_effect=acr.text_effect
+        text_effect=acr.text_effect,
+        lock_timeout=30.0  # 30 秒超时
     )
 
     return AddCaptionsResponse(
@@ -234,15 +248,17 @@ def add_captions(acr: AddCaptionsRequest) -> AddCaptionsResponse:
     )
 
 @router.post(path="/add_effects", response_model=AddEffectsResponse)
-def add_effects(aer: AddEffectsRequest) -> AddEffectsResponse:
+async def add_effects(aer: AddEffectsRequest) -> AddEffectsResponse:
     """
-    向剪映草稿添加特效 (v1版本)
+    向剪映草稿添加特效 (v1 版本，带并发锁保护)
+    
+    使用异步锁机制防止同一草稿的并发写操作导致文件损坏
     """
-
-    # 调用service层处理业务逻辑
-    draft_url, track_id, effect_ids, segment_ids = service.add_effects(
+    # 调用 service 层处理业务逻辑（异步版本，带锁保护）
+    draft_url, track_id, effect_ids, segment_ids = await service.add_effects_async(
         draft_url=aer.draft_url,
-        effect_infos=aer.effect_infos
+        effect_infos=aer.effect_infos,
+        lock_timeout=30.0  # 30 秒超时
     )
 
     return AddEffectsResponse(
@@ -253,15 +269,17 @@ def add_effects(aer: AddEffectsRequest) -> AddEffectsResponse:
     )
 
 @router.post(path="/add_filters", response_model=AddFiltersResponse)
-def add_filters(afr: AddFiltersRequest) -> AddFiltersResponse:
+async def add_filters(afr: AddFiltersRequest) -> AddFiltersResponse:
     """
-    向剪映草稿添加滤镜 (v1版本)
+    向剪映草稿添加滤镜 (v1 版本，带并发锁保护)
+    
+    使用异步锁机制防止同一草稿的并发写操作导致文件损坏
     """
-
-    # 调用service层处理业务逻辑
-    draft_url, track_id, filter_ids, segment_ids = service.add_filters(
+    # 调用 service 层处理业务逻辑（异步版本，带锁保护）
+    draft_url, track_id, filter_ids, segment_ids = await service.add_filters_async(
         draft_url=afr.draft_url,
-        filter_infos=afr.filter_infos
+        filter_infos=afr.filter_infos,
+        lock_timeout=30.0  # 30 秒超时
     )
 
     return AddFiltersResponse(
@@ -272,13 +290,14 @@ def add_filters(afr: AddFiltersRequest) -> AddFiltersResponse:
     )
 
 @router.post(path="/add_masks", response_model=AddMasksResponse)
-def add_masks(amr: AddMasksRequest) -> AddMasksResponse:
+async def add_masks(amr: AddMasksRequest) -> AddMasksResponse:
     """
-    向剪映草稿添加遮罩 (v1版本)
+    向剪映草稿添加遮罩 (v1 版本，带并发锁保护)
+    
+    使用异步锁机制防止同一草稿的并发写操作导致文件损坏
     """
-
-    # 调用service层处理业务逻辑
-    draft_url, masks_added, affected_segments, mask_ids = service.add_masks(
+    # 调用 service 层处理业务逻辑（异步版本，带锁保护）
+    draft_url, masks_added, affected_segments, mask_ids = await service.add_masks_async(
         draft_url=amr.draft_url,
         segment_ids=amr.segment_ids,
         name=amr.name,
@@ -289,7 +308,8 @@ def add_masks(amr: AddMasksRequest) -> AddMasksResponse:
         feather=amr.feather,
         rotation=amr.rotation,
         invert=amr.invert,
-        roundCorner=amr.roundCorner
+        roundCorner=amr.roundCorner,
+        lock_timeout=30.0  # 30 秒超时
     )
 
     return AddMasksResponse(
@@ -319,13 +339,14 @@ def add_text_style(atsr: AddTextStyleRequest) -> AddTextStyleResponse:
     )
 
 @router.post(path="/easy_create_material", response_model=EasyCreateMaterialResponse)
-def easy_create_material(ecmr: EasyCreateMaterialRequest) -> EasyCreateMaterialResponse:
+async def easy_create_material(ecmr: EasyCreateMaterialRequest) -> EasyCreateMaterialResponse:
     """
-    快速创建素材轨道 (v1版本)
+    快速创建素材轨道 (v1 版本，带并发锁保护)
+    
+    使用异步锁机制防止同一草稿的并发写操作导致文件损坏
     """
-
-    # 调用service层处理业务逻辑
-    draft_url = service.easy_create_material(
+    # 调用 service 层处理业务逻辑（异步版本，带锁保护）
+    draft_url = await service.easy_create_material_async(
         draft_url=ecmr.draft_url,
         audio_url=ecmr.audio_url,
         text=ecmr.text,
@@ -333,7 +354,8 @@ def easy_create_material(ecmr: EasyCreateMaterialRequest) -> EasyCreateMaterialR
         video_url=ecmr.video_url,
         text_color=ecmr.text_color,
         font_size=ecmr.font_size,
-        text_transform_y=ecmr.text_transform_y
+        text_transform_y=ecmr.text_transform_y,
+        lock_timeout=30.0  # 30 秒超时
     )
 
     return EasyCreateMaterialResponse(
