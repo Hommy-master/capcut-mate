@@ -181,6 +181,9 @@ class ScriptFile:
     imported_tracks: List[ImportedTrack]
     """导入的轨道信息"""
 
+    dual_file_compatibility: bool
+    """双文件兼容模式，启用时同时保存到 draft_content.json 和 draft_info.json"""
+
     def __init__(self, width: int, height: int, fps: int, maintrack_adsorb: bool):
         """**创建剪映草稿推荐使用`DraftFolder.create_draft()`而非此方法**
 
@@ -203,6 +206,8 @@ class ScriptFile:
 
         self.imported_materials = {}
         self.imported_tracks = []
+
+        self.dual_file_compatibility = True  # 启用双文件兼容模式
 
         with open(assets.get_asset_path('DRAFT_CONTENT_TEMPLATE'), "r", encoding="utf-8") as f:
             self.content = json.load(f)
