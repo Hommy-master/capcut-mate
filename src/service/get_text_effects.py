@@ -1,17 +1,55 @@
 """
 获取花字效果列表和解析花字效果标识符的业务逻辑处理模块
 """
+import json
 from typing import List, Dict, Any, Optional
 from src.utils.logger import logger
 from exceptions import CustomException, CustomError
+from config import HUAZI_CONFIG_PATH
 
 
-# 导入自动生成的花字效果映射表
-try:
-    from .text_effect_map_generated import TEXT_EFFECT_MAP
-except ImportError:
-    # Fallback: use empty map if generated file doesn't exist
-    TEXT_EFFECT_MAP = {}
+# 进程启动时加载花字数据到内存
+_HUAZI_DATA: List[Dict[str, Any]] = []
+_HUAZI_MAP_BY_NAME: Dict[str, Dict[str, Any]] = {}
+_HUAZI_MAP_BY_ID: Dict[str, Dict[str, Any]] = {}
+
+
+def _load_huazi_data() -> None:
+    """在进程启动时加载花字数据到内存"""
+    global _HUAZI_DATA, _HUAZI_MAP_BY_NAME, _HUAZI_MAP_BY_ID
+    
+    try:
+        with open(HUAZI_CONFIG_PATH, "r", encoding="utf-8") as f:
+            _HUAZI_DATA = json.load(f)
+        
+        # 构建映射表以便快速查找
+        for item in _HUAZI_DATA:
+            title = item.get("title", "")
+            resource_id = item.get("id", "")
+            
+            # 标准化花字数据格式（匹配接口返回格式）
+            effect_data = {
+                "id": resource_id,
+                "title": title,
+                "is_vip": item.get("is_vip", False)
+            }
+            
+            if title:
+                _HUAZI_MAP_BY_NAME[title] = effect_data
+            if resource_id:
+                _HUAZI_MAP_BY_ID[resource_id] = effect_data
+        
+        logger.info(f"成功加载 {len(_HUAZI_DATA)} 个花字效果到内存")
+        
+    except Exception as e:
+        logger.error(f"加载花字数据失败: {str(e)}")
+        _HUAZI_DATA = []
+        _HUAZI_MAP_BY_NAME = {}
+        _HUAZI_MAP_BY_ID = {}
+
+
+# 模块导入时自动加载数据
+_load_huazi_data()
 
 
 def resolve_text_effect(effect_identifier: str) -> Optional[Dict[str, Any]]:
@@ -22,33 +60,34 @@ def resolve_text_effect(effect_identifier: str) -> Optional[Dict[str, Any]]:
         effect_identifier: 可以是 effect_id（数字字符串）或效果名称（中文名称）
     
     Returns:
-        花字效果信息字典，包含 resource_id 和 effect_id，如果未找到则返回 None
+        花字效果信息字典，包含 id 和 title，如果未找到则返回 None
     """
     logger.debug(f"Resolving text effect: {effect_identifier}")
     
-    # 1. 尝试作为 effect_id 查找
-    if effect_identifier.isdigit() or effect_identifier in [v["effect_id"] for v in TEXT_EFFECT_MAP.values()]:
-        for effect_name, effect_data in TEXT_EFFECT_MAP.items():
-            if effect_data["effect_id"] == effect_identifier:
-                return {
-                    "resource_id": effect_data["resource_id"],
-                    "effect_id": effect_data["effect_id"]
-                }
-        # 如果是数字但不在映射表中，直接使用（可能是新的 effect_id）
+    # 1. 尝试作为 id 查找
+    if effect_identifier in _HUAZI_MAP_BY_ID:
+        effect_data = _HUAZI_MAP_BY_ID[effect_identifier]
         return {
-            "resource_id": effect_identifier,
-            "effect_id": effect_identifier
+            "id": effect_data["id"],
+            "title": effect_data["title"]
         }
     
     # 2. 尝试作为中文名称查找
-    if effect_identifier in TEXT_EFFECT_MAP:
-        effect_data = TEXT_EFFECT_MAP[effect_identifier]
+    if effect_identifier in _HUAZI_MAP_BY_NAME:
+        effect_data = _HUAZI_MAP_BY_NAME[effect_identifier]
         return {
-            "resource_id": effect_data["resource_id"],
-            "effect_id": effect_data["effect_id"]
+            "id": effect_data["id"],
+            "title": effect_data["title"]
         }
     
-    # 3. 未找到
+    # 3. 如果是纯数字但不在映射表中，直接使用（可能是新的 effect_id）
+    if effect_identifier.isdigit():
+        return {
+            "id": effect_identifier,
+            "title": effect_identifier
+        }
+    
+    # 4. 未找到
     logger.warning(f"Text effect not found: {effect_identifier}")
     return None
 
@@ -103,24 +142,10 @@ def _get_text_effects_by_mode(mode: int) -> List[Dict[str, Any]]:
     """
     logger.info(f"Getting text effects for mode: {mode}")
     
-    # 从自动生成的映射表中获取所有花字效果
-    try:
-        from src.service.text_effect_map_generated import TEXT_EFFECT_MAP
-    except ImportError:
-        logger.warning("text_effect_map_generated not found, using empty map")
-        TEXT_EFFECT_MAP = {}
+    # 从内存中直接获取所有花字效果
+    all_text_effects = list(_HUAZI_MAP_BY_NAME.values())
     
-    all_text_effects = []
-    for effect_name, effect_data in TEXT_EFFECT_MAP.items():
-        effect_info = {
-            "name": effect_data.get("name", effect_name),
-            "is_vip": effect_data.get("is_vip", False),
-            "resource_id": effect_data.get("resource_id", ""),
-            "effect_id": effect_data.get("effect_id", "")
-        }
-        all_text_effects.append(effect_info)
-    
-    logger.info(f"Total text effects loaded: {len(all_text_effects)}")
+    logger.info(f"Total text effects loaded from memory: {len(all_text_effects)}")
     
     # 根据模式过滤
     if mode == 0:  # 所有

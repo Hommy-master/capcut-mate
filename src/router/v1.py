@@ -425,7 +425,7 @@ def get_text_effects(gter: GetTextEffectsRequest) -> GetTextEffectsResponse:
         mode=gter.mode
     )
 
-    # 直接返回对象数组，Pydantic 会自动处理序列化
+    # 返回响应，由 middleware 统一添加 code 和 message
     return GetTextEffectsResponse(
         text_effects=text_effects
     )

@@ -9,10 +9,9 @@ class GetTextEffectsRequest(BaseModel):
 
 class TextEffectItem(BaseModel):
     """花字效果信息项"""
-    name: str = Field(..., description="花字效果名称")
+    id: str = Field(..., description="花字效果 ID")
+    title: str = Field(..., description="花字效果名称")
     is_vip: bool = Field(..., description="是否为 VIP 效果")
-    resource_id: str = Field(..., description="资源 ID")
-    effect_id: str = Field(..., description="效果 ID")
 
 
 class GetTextEffectsResponse(BaseModel):
