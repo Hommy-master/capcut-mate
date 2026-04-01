@@ -325,6 +325,10 @@ class ScriptFile:
             for filter_ in segment.filters:
                 if filter_ not in self.materials:
                     self.materials.filters.append(filter_)
+            # 混合模式
+            for mix_mode in segment.mix_modes:
+                if mix_mode not in self.materials:
+                    self.materials.mix_modes.append(mix_mode)
             # 蒙版
             if segment.mask is not None:
                 self.materials.masks.append(segment.mask.export_json())
@@ -334,6 +338,9 @@ class ScriptFile:
             # 背景填充
             if segment.background_filling is not None:
                 self.materials.canvases.append(segment.background_filling)
+            # 音频淡入淡出
+            if (segment.fade is not None) and (segment.fade not in self.materials):
+                self.materials.audio_fades.append(segment.fade)
 
             self.materials.speeds.append(segment.speed)
         elif isinstance(segment, StickerSegment):
@@ -825,4 +832,18 @@ class ScriptFile:
         """
         if self.save_path is None:
             raise ValueError("没有设置保存路径, 可能不在模板模式下")
+        
+        # 保存到主要文件
         self.dump(self.save_path)
+        
+        # 如果启用了双文件兼容模式，同时保存到另一个文件
+        if self.dual_file_compatibility:
+            draft_dir = os.path.dirname(self.save_path)
+            if "draft_content.json" in self.save_path and "draft_info.json" not in self.save_path:
+                # 当前保存的是 draft_content.json，同时保存到 draft_info.json
+                alt_path = os.path.join(draft_dir, "draft_info.json")
+                self.dump(alt_path)
+            elif "draft_info.json" in self.save_path and "draft_content.json" not in self.save_path:
+                # 当前保存的是 draft_info.json，同时保存到 draft_content.json
+                alt_path = os.path.join(draft_dir, "draft_content.json")
+                self.dump(alt_path)
