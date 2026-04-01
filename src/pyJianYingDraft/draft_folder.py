@@ -61,6 +61,7 @@ class DraftFolder:
         shutil.rmtree(draft_path)
 
     def create_draft(self, draft_name: str, width: int, height: int, fps: int = 30, *,
+                     maintrack_adsorb: bool = True,
                      allow_replace: bool = False) -> ScriptFile:
         """创建一个新草稿并开始编辑, 编辑完成后使用`ScriptFile.save()`保存即可
 
@@ -69,6 +70,7 @@ class DraftFolder:
             width (`int`): 视频宽度, 单位为像素
             height (`int`): 视频高度, 单位为像素
             fps (`int`, optional): 视频帧率. 默认为30.
+            maintrack_adsorb (`bool`, optional): 是否启用主轨道吸附（主轨磁吸）. 默认启用.
             allow_replace (`bool`, optional): 是否允许覆盖与`draft_name`重名的草稿. 默认为否.
 
         Raises:
@@ -85,7 +87,7 @@ class DraftFolder:
         shutil.copy(assets.get_asset_path("DRAFT_META_TEMPLATE"), os.path.join(draft_path, "draft_meta_info.json"))
 
         # 创建草稿文件
-        script_file = ScriptFile(width, height, fps)
+        script_file = ScriptFile(width, height, fps, maintrack_adsorb)
         
         # 设置保存路径为 draft_content.json
         draft_content_path = os.path.join(draft_path, "draft_content.json")
