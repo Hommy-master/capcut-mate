@@ -487,8 +487,8 @@ def add_caption_to_draft(
             try:
                 effect_info = resolve_text_effect(effect_identifier)
                 if effect_info:
-                    text_segment.add_effect(effect_info['id'])
-                    logger.info(f"Added text effect: {effect_identifier} (effect_id: {effect_info['id']})")
+                    text_segment.add_effect(effect_info['effect_id'])
+                    logger.info(f"Added text effect: {effect_identifier} (effect_id: {effect_info['effect_id']})")
                 else:
                     logger.warning(f"Text effect not found: {effect_identifier}")
             except Exception as e:

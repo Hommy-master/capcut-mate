@@ -60,31 +60,31 @@ def resolve_text_effect(effect_identifier: str) -> Optional[Dict[str, Any]]:
         effect_identifier: 可以是 effect_id（数字字符串）或效果名称（中文名称）
     
     Returns:
-        花字效果信息字典，包含 id 和 title，如果未找到则返回 None
+        花字效果信息字典，包含 effect_id 和 resource_id，如果未找到则返回 None
     """
     logger.debug(f"Resolving text effect: {effect_identifier}")
     
-    # 1. 尝试作为 id 查找
+    # 1. 尝试作为 effect_id 查找
     if effect_identifier in _HUAZI_MAP_BY_ID:
         effect_data = _HUAZI_MAP_BY_ID[effect_identifier]
         return {
-            "id": effect_data["id"],
-            "title": effect_data["title"]
+            "resource_id": effect_data["id"],
+            "effect_id": effect_data["id"]
         }
     
     # 2. 尝试作为中文名称查找
     if effect_identifier in _HUAZI_MAP_BY_NAME:
         effect_data = _HUAZI_MAP_BY_NAME[effect_identifier]
         return {
-            "id": effect_data["id"],
-            "title": effect_data["title"]
+            "resource_id": effect_data["id"],
+            "effect_id": effect_data["id"]
         }
     
     # 3. 如果是纯数字但不在映射表中，直接使用（可能是新的 effect_id）
     if effect_identifier.isdigit():
         return {
-            "id": effect_identifier,
-            "title": effect_identifier
+            "resource_id": effect_identifier,
+            "effect_id": effect_identifier
         }
     
     # 4. 未找到
