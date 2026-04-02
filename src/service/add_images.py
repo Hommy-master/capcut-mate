@@ -10,7 +10,7 @@ from src.utils.download import download
 import config
 import json
 import asyncio
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Tuple, Optional
 from src.utils.draft_lock_manager import DraftLockManager
 
 from src.pyJianYingDraft.metadata import IntroType, OutroType, GroupAnimationType, TransitionType
@@ -64,50 +64,98 @@ def add_images(
     Raises:
         CustomException: 图片批量添加失败
     """
-    logger.info(f"add_images started, draft_url: {draft_url}, alpha: {alpha}, scale_x: {scale_x}, scale_y: {scale_y}, transform_x: {transform_x}, transform_y: {transform_y}")
+    return _add_images_internal(
+        draft_url=draft_url,
+        image_infos=image_infos,
+        alpha=alpha,
+        scale_x=scale_x,
+        scale_y=scale_y,
+        transform_x=transform_x,
+        transform_y=transform_y,
+        prepared_images=None,
+    )
 
-    # 1. 提取草稿ID
+
+def _prepare_images_local_files(draft_url: str, image_infos: str) -> List[Dict[str, Any]]:
+    """
+    校验草稿、解析 image_infos 并下载素材到草稿目录。
+    不修改 ScriptFile，可在草稿写锁外调用。
+    """
     draft_id = helper.get_url_param(draft_url, "draft_id")
     if (not draft_id) or (draft_id not in DRAFT_CACHE):
         logger.error(f"Invalid draft URL or draft not found in cache, draft_id: {draft_id}")
         raise CustomException(CustomError.INVALID_DRAFT_URL)
 
-    # 2. 创建保存图片资源的目录
     draft_dir = os.path.join(config.DRAFT_DIR, draft_id)
     draft_image_dir = os.path.join(draft_dir, "assets", "images")
     os.makedirs(name=draft_image_dir, exist_ok=True)
     logger.info(f"Created image directory: {draft_image_dir}")
 
-    # 3. 解析图片信息
     images = parse_image_data(json_str=image_infos)
     if len(images) == 0:
         logger.error(f"No image info provided, draft_id: {draft_id}")
         raise CustomException(CustomError.INVALID_IMAGE_INFO)
-    logger.info(f"Parsed {len(images)} image items")
 
-    # 4. 从缓存中获取草稿
+    for image in images:
+        image["local_image_path"] = download(url=image["image_url"], save_dir=draft_image_dir)
+
+    return images
+
+
+def _add_images_internal(
+    draft_url: str,
+    image_infos: str,
+    alpha: float = 1.0,
+    scale_x: float = 1.0,
+    scale_y: float = 1.0,
+    transform_x: int = 0,
+    transform_y: int = 0,
+    prepared_images: Optional[List[Dict[str, Any]]] = None,
+) -> Tuple[str, str, List[str], List[str], List[SegmentInfo]]:
+    logger.info(
+        f"add_images started, draft_url: {draft_url}, alpha: {alpha}, scale_x: {scale_x}, "
+        f"scale_y: {scale_y}, transform_x: {transform_x}, transform_y: {transform_y}"
+    )
+
+    draft_id = helper.get_url_param(draft_url, "draft_id")
+    if (not draft_id) or (draft_id not in DRAFT_CACHE):
+        logger.error(f"Invalid draft URL or draft not found in cache, draft_id: {draft_id}")
+        raise CustomException(CustomError.INVALID_DRAFT_URL)
+
+    draft_dir = os.path.join(config.DRAFT_DIR, draft_id)
+    draft_image_dir = os.path.join(draft_dir, "assets", "images")
+    os.makedirs(name=draft_image_dir, exist_ok=True)
+    logger.info(f"Using image directory: {draft_image_dir}")
+
+    if prepared_images is not None:
+        images = prepared_images
+    else:
+        images = parse_image_data(json_str=image_infos)
+        if len(images) == 0:
+            logger.error(f"No image info provided, draft_id: {draft_id}")
+            raise CustomException(CustomError.INVALID_IMAGE_INFO)
+
+    logger.info(f"Using {len(images)} image items")
+
     script: ScriptFile = DRAFT_CACHE[draft_id]
 
-    # 5. 添加图片轨道（明确说明不使用主轨道，并设置合适的渲染层级）
     track_name = f"image_track_{helper.gen_unique_id()}"
-    # 设置 relative_index=10 确保图片轨道在主视频轨道之上，避免与主轨道冲突
     script.add_track(track_type=draft.TrackType.video, track_name=track_name, relative_index=10)
     logger.info(f"Added image track (non-main track): {track_name}")
 
-    # 6. 遍历图片信息，添加图片到草稿中的指定轨道，收集片段ID和信息
     segment_ids = []
     segment_infos = []
     for i, image in enumerate(images):
         try:
             segment_id, segment_info = add_image_to_draft(
-                script, track_name, 
-                draft_image_dir=draft_image_dir, 
+                script, track_name,
+                draft_image_dir=draft_image_dir,
                 image=image,
                 alpha=alpha,
                 scale_x=scale_x,
                 scale_y=scale_y,
                 transform_x=transform_x,
-                transform_y=transform_y
+                transform_y=transform_y,
             )
             segment_ids.append(segment_id)
             segment_infos.append(segment_info)
@@ -116,11 +164,9 @@ def add_images(
             logger.error(f"Failed to add image {i+1}/{len(images)}, error: {str(e)}")
             raise
 
-    # 7. 保存草稿
     script.save()
     logger.info(f"Draft saved successfully")
 
-    # 8. 获取当前图片轨道ID
     track_id = ""
     for key in script.tracks.keys():
         if script.tracks[key].name == track_name:
@@ -128,7 +174,6 @@ def add_images(
             break
     logger.info(f"Image track created, draft_id: {draft_id}, track_id: {track_id}")
 
-    # 9. 获取当前所有图片资源ID（明确说明这些是图片资源，不与主轨道冲突）
     image_ids = [video.material_id for video in script.materials.videos if video.material_type == "photo"]
     logger.info(f"Image track completed, draft_id: {draft_id}, image_ids: {image_ids}")
 
@@ -152,6 +197,7 @@ async def add_images_async(
     1. 使用 DraftLockManager 防止同一草稿的并发写操作
     2. 支持超时控制，避免无限等待
     3. 自动释放锁，即使发生异常
+    4. 图片下载在获取锁之前完成，持锁阶段仅修改草稿与写盘
     
     Args:
         draft_url: 草稿 URL，格式：".../get_draft?draft_id=xxx"
@@ -167,8 +213,7 @@ async def add_images_async(
         tuple: (draft_url, track_id, image_ids, segment_ids, segment_infos)
     
     Raises:
-        CustomException: 图片添加失败或获取锁超时
-        asyncio.TimeoutError: 等待锁超时时抛出
+        CustomException: 图片添加失败，或 `DRAFT_LOCK_TIMEOUT`（获取写锁超时）
     
     Example:
         >>> result = await add_images_async(
@@ -176,15 +221,14 @@ async def add_images_async(
         ...     image_infos='[{"image_url":"...", "width":1024, "height":1024, "start":0, "end":5000000}]'
         ... )
     """
-    # 提取草稿 ID
     draft_id = helper.get_url_param(draft_url, "draft_id")
     if not draft_id:
         raise CustomException(CustomError.INVALID_DRAFT_URL)
-    
-    # 获取锁管理器
+
+    prepared_images = _prepare_images_local_files(draft_url=draft_url, image_infos=image_infos)
+
     lock_manager = DraftLockManager()
-    
-    # 尝试获取锁
+
     try:
         await lock_manager.acquire_lock(draft_id, timeout=lock_timeout)
         logger.info(f"Lock acquired for draft_id: {draft_id}")
@@ -192,22 +236,21 @@ async def add_images_async(
         logger.error(f"Timeout waiting for lock on draft_id: {draft_id}")
         raise CustomException(
             CustomError.DRAFT_LOCK_TIMEOUT,
-            f"Failed to acquire lock for draft {draft_id} within {lock_timeout}s"
+            f"Failed to acquire lock for draft {draft_id} within {lock_timeout}s",
         )
-    
+
     try:
-        # 调用内部处理函数（不获取锁，由外层控制）
-        return add_images(
+        return _add_images_internal(
             draft_url=draft_url,
             image_infos=image_infos,
             alpha=alpha,
             scale_x=scale_x,
             scale_y=scale_y,
             transform_x=transform_x,
-            transform_y=transform_y
+            transform_y=transform_y,
+            prepared_images=prepared_images,
         )
     finally:
-        # 释放锁
         await lock_manager.release_lock(draft_id)
         logger.info(f"Lock released for draft_id: {draft_id}")
 
@@ -258,9 +301,14 @@ def add_image_to_draft(
         CustomException: 添加图片失败
     """
     try:
-        # 1. 下载图片文件
-        image_path = download(url=image['image_url'], save_dir=draft_image_dir)
-        logger.info(f"Downloaded image from {image['image_url']} to {image_path}")
+        image_path = image.get("local_image_path")
+        if image_path:
+            if not os.path.isfile(image_path):
+                raise CustomException(CustomError.IMAGE_ADD_FAILED, f"Missing local file: {image_path}")
+            logger.info(f"Using local image: {image_path}")
+        else:
+            image_path = download(url=image["image_url"], save_dir=draft_image_dir)
+            logger.info(f"Downloaded image from {image['image_url']} to {image_path}")
 
         # 2. 创建图片素材并添加到草稿
         segment_duration = image['end'] - image['start']

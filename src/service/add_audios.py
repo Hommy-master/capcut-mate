@@ -10,7 +10,7 @@ from src.utils.download import download
 import config
 import json
 import asyncio
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Tuple, Optional
 from src.utils.draft_lock_manager import DraftLockManager
 
 
@@ -33,32 +33,51 @@ def add_audios(
     Raises:
         CustomException: 音频批量添加失败
     """
-    logger.info(f"add_audios, draft_url: {draft_url}, audio_infos: {audio_infos}")
-    
-    # 验证草稿ID并获取草稿对象
+    return _add_audios_internal(draft_url, audio_infos, prepared_audios=None)
+
+
+def _prepare_audios_local_files(draft_url: str, audio_infos: str) -> List[Dict[str, Any]]:
+    """
+    校验草稿、解析 audio_infos 并下载素材到草稿目录。
+    不修改 ScriptFile，可在草稿写锁外调用。
+    """
     draft_id = validate_and_get_draft_id(draft_url)
-    script: ScriptFile = DRAFT_CACHE[draft_id]
-    
-    # 创建音频资源目录
     draft_audio_dir = create_audio_directory(draft_id)
-    
-    # 解析音频信息
     audios = parse_audio_data(json_str=audio_infos)
     validate_audio_data(audios, draft_id)
-    
-    # 添加音频轨道
+    for audio in audios:
+        audio["local_audio_path"] = download_audio_file(audio, draft_audio_dir)
+    return audios
+
+
+def _add_audios_internal(
+    draft_url: str,
+    audio_infos: str,
+    prepared_audios: Optional[List[Dict[str, Any]]] = None,
+) -> Tuple[str, str, List[str]]:
+    logger.info(f"add_audios, draft_url: {draft_url}, audio_infos: {audio_infos}")
+
+    draft_id = validate_and_get_draft_id(draft_url)
+    script: ScriptFile = DRAFT_CACHE[draft_id]
+
+    draft_audio_dir = create_audio_directory(draft_id)
+
+    if prepared_audios is not None:
+        audios = prepared_audios
+    else:
+        audios = parse_audio_data(json_str=audio_infos)
+        validate_audio_data(audios, draft_id)
+
     track_name = add_audio_track(script)
-    
-    # 添加音频到轨道
+
     audio_ids = add_audio_segments(script, track_name, draft_audio_dir, audios)
-    
-    # 保存草稿并返回结果
+
     script.save()
     logger.info(f"Draft saved successfully")
-    
+
     track_id = get_track_id(script, track_name)
     logger.info(f"Audio track created, draft_id: {draft_id}, track_id: {track_id}")
-    
+
     return draft_url, track_id, audio_ids
 
 
@@ -74,6 +93,7 @@ async def add_audios_async(
     1. 使用 DraftLockManager 防止同一草稿的并发写操作
     2. 支持超时控制，避免无限等待
     3. 自动释放锁，即使发生异常
+    4. 音频下载在获取锁之前完成，持锁阶段仅修改草稿与写盘
     
     Args:
         draft_url: 草稿 URL，格式：".../get_draft?draft_id=xxx"
@@ -84,8 +104,7 @@ async def add_audios_async(
         tuple: (draft_url, track_id, audio_ids)
     
     Raises:
-        CustomException: 音频添加失败或获取锁超时
-        asyncio.TimeoutError: 等待锁超时时抛出
+        CustomException: 音频添加失败，或 `DRAFT_LOCK_TIMEOUT`（获取写锁超时）
     
     Example:
         >>> result = await add_audios_async(
@@ -93,15 +112,14 @@ async def add_audios_async(
         ...     audio_infos='[{"audio_url":"...", "start":0, "end":5000000}]'
         ... )
     """
-    # 提取草稿 ID
     draft_id = helper.get_url_param(draft_url, "draft_id")
     if not draft_id:
         raise CustomException(CustomError.INVALID_DRAFT_URL)
-    
-    # 获取锁管理器
+
+    prepared_audios = _prepare_audios_local_files(draft_url=draft_url, audio_infos=audio_infos)
+
     lock_manager = DraftLockManager()
-    
-    # 尝试获取锁
+
     try:
         await lock_manager.acquire_lock(draft_id, timeout=lock_timeout)
         logger.info(f"Lock acquired for draft_id: {draft_id}")
@@ -109,17 +127,16 @@ async def add_audios_async(
         logger.error(f"Timeout waiting for lock on draft_id: {draft_id}")
         raise CustomException(
             CustomError.DRAFT_LOCK_TIMEOUT,
-            f"Failed to acquire lock for draft {draft_id} within {lock_timeout}s"
+            f"Failed to acquire lock for draft {draft_id} within {lock_timeout}s",
         )
-    
+
     try:
-        # 调用内部处理函数（不获取锁，由外层控制）
-        return add_audios(
+        return _add_audios_internal(
             draft_url=draft_url,
-            audio_infos=audio_infos
+            audio_infos=audio_infos,
+            prepared_audios=prepared_audios,
         )
     finally:
-        # 释放锁
         await lock_manager.release_lock(draft_id)
         logger.info(f"Lock released for draft_id: {draft_id}")
 
@@ -294,8 +311,16 @@ def add_audio_to_draft(
         CustomException: 添加音频失败
     """
     try:
-        # 1. 下载音频文件并获取实际时长
-        audio_path = download_audio_file(audio, draft_audio_dir)
+        audio_path = audio.get("local_audio_path")
+        if audio_path:
+            if not os.path.isfile(audio_path):
+                raise CustomException(
+                    CustomError.AUDIO_ADD_FAILED,
+                    f"Missing local file: {audio_path}",
+                )
+            logger.info(f"Using local audio: {audio_path}")
+        else:
+            audio_path = download_audio_file(audio, draft_audio_dir)
         actual_duration = get_audio_actual_duration(audio_path)
         
         # 2. 处理音频时长参数

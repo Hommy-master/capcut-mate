@@ -83,18 +83,24 @@ class TestAllAsyncLockAPIs:
             }
         ])
         
+        mock_audio_seg = MagicMock()
+        mock_audio_seg.material_instance.material_id = 'audio-mat-123'
+
         with patch('src.service.add_audios.DRAFT_CACHE') as mock_cache, \
              patch('src.service.add_audios.helper.get_url_param', return_value=mock_draft_data['draft_id']), \
              patch('src.service.add_audios.download') as mock_download, \
              patch('src.service.add_audios.AudioMaterial') as mock_audio_material, \
-             patch('src.service.add_audios.os.makedirs'):
+             patch('src.service.add_audios.draft.AudioSegment', return_value=mock_audio_seg), \
+             patch('src.service.add_audios.os.makedirs'), \
+             patch('src.service.add_audios.os.path.isfile', return_value=True):
             
-            # 模拟草稿对象
+            # 模拟草稿对象（prepare 阶段会执行 draft_id in DRAFT_CACHE）
             mock_script = MagicMock()
             mock_script.save.return_value = None
             mock_script.tracks = {'track1': MagicMock(track_id='track-id-123', name='audio_track')}
             mock_script.width = 1920
             mock_script.height = 1080
+            mock_cache.__contains__.return_value = True
             mock_cache.__getitem__.return_value = mock_script
             
             # 模拟下载和音频处理
@@ -124,17 +130,24 @@ class TestAllAsyncLockAPIs:
             }
         ])
         
+        mock_img_seg = MagicMock()
+        mock_img_seg.segment_id = 'seg-img-123'
+        mock_img_seg.material_instance.material_id = 'img-mat-123'
+
         with patch('src.service.add_images.DRAFT_CACHE') as mock_cache, \
              patch('src.service.add_images.helper.get_url_param', return_value=mock_draft_data['draft_id']), \
              patch('src.service.add_images.download') as mock_download, \
-             patch('src.service.add_images.os.makedirs'):
+             patch('src.service.add_images.draft.VideoSegment', return_value=mock_img_seg), \
+             patch('src.service.add_images.os.makedirs'), \
+             patch('src.service.add_images.os.path.isfile', return_value=True):
             
-            # 模拟草稿对象
+            # 模拟草稿对象（prepare 阶段会执行 draft_id in DRAFT_CACHE）
             mock_script = MagicMock()
             mock_script.save.return_value = None
             mock_script.tracks = {'track1': MagicMock(track_id='track-id-123', name='image_track')}
             mock_script.width = 1920
             mock_script.height = 1080
+            mock_cache.__contains__.return_value = True
             mock_cache.__getitem__.return_value = mock_script
             
             # 模拟下载
