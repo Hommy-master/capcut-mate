@@ -53,8 +53,9 @@ class TestAddVideosAsync:
              patch('src.service.add_videos.add_video_to_draft') as mock_add, \
              patch('src.service.add_videos.download') as mock_download:
             
-            # 设置 mock
+            # 设置 mock（prepare 阶段会执行 draft_id in DRAFT_CACHE）
             mock_get_param.return_value = "test-draft-001"
+            mock_cache.__contains__.return_value = True
             mock_parse.return_value = [{
                 'video_url': 'https://example.com/video1.mp4',
                 'width': 1920,
@@ -109,16 +110,28 @@ class TestAddVideosAsync:
         
         # 先获取锁并不释放
         await lock_manager.acquire_lock(draft_id)
-        
-        # 尝试获取同一个草稿的锁（应该超时）
-        with pytest.raises(CustomException) as exc_info:
-            await add_videos_async(
-                draft_url=f"http://localhost/v1/get_draft?draft_id={draft_id}",
-                video_infos='[]',
-                lock_timeout=0.1
-            )
-        
-        assert "Failed to acquire lock" in str(exc_info.value.args)
+
+        prepared = [{
+            "video_url": "https://example.com/v.mp4",
+            "start": 0,
+            "end": 1,
+            "duration": 1,
+            "original_start": 0,
+            "original_end": 1,
+            "local_video_path": "/tmp/timeout-test.mp4",
+        }]
+
+        # 尝试获取同一个草稿的锁（应该超时）；prepare 在锁之前，需绕过网络/缓存
+        with patch("src.service.add_videos._prepare_videos_local_files", return_value=prepared):
+            with pytest.raises(CustomException) as exc_info:
+                await add_videos_async(
+                    draft_url=f"http://localhost/v1/get_draft?draft_id={draft_id}",
+                    video_infos="[]",
+                    lock_timeout=0.1,
+                )
+
+        assert exc_info.value.err == CustomError.DRAFT_LOCK_TIMEOUT
+        assert "Failed to acquire lock" in exc_info.value.detail
         
         # 清理
         await lock_manager.release_lock(draft_id)
@@ -133,53 +146,61 @@ class TestAddVideosAsync:
             "start": 0,
             "end": 5000000
         }])
-        
+
+        prep_counter = {"n": 0}
+
+        def fake_prepare(draft_url: str, video_infos: str):
+            prep_counter["n"] += 1
+            n = prep_counter["n"]
+            return [{
+                "video_url": "https://example.com/video.mp4",
+                "start": 0,
+                "end": 5000000,
+                "duration": 5000000,
+                "original_start": 0,
+                "original_end": 5000000,
+                "local_video_path": f"/tmp/video_prep_{n}.mp4",
+            }]
+
         async def add_video_task(task_id):
-            with patch('src.service.add_videos.helper.get_url_param') as mock_get_param, \
-                 patch('src.service.add_videos.DRAFT_CACHE') as mock_cache, \
-                 patch('src.service.add_videos.os.makedirs'), \
-                 patch('src.service.add_videos.parse_video_data') as mock_parse, \
-                 patch('src.service.add_videos.add_video_to_draft') as mock_add, \
-                 patch('src.service.add_videos.download') as mock_download:
-                
-                mock_get_param.return_value = "concurrent-test"
-                mock_parse.return_value = [{
-                    'video_url': 'https://example.com/video.mp4',
-                    'start': 0,
-                    'end': 5000000,
-                    'duration': 5000000,
-                    'original_start': 0,
-                    'original_end': 5000000
-                }]
-                mock_add.return_value = (f"segment-{task_id}", 5000000)
-                mock_download.return_value = f"/tmp/video_{task_id}.mp4"
-                
-                mock_script = MagicMock()
-                mock_script.width = 1920
-                mock_script.height = 1080
-                mock_script.tracks = {}
-                mock_script.materials.videos = []
-                mock_cache.__getitem__.return_value = mock_script
-                
-                try:
-                    execution_order.append(f"{task_id}_start")
-                    await add_videos_async(
-                        draft_url=draft_url,
-                        video_infos=video_infos,
-                        lock_timeout=5.0
-                    )
-                    execution_order.append(f"{task_id}_complete")
-                except Exception as e:
-                    execution_order.append(f"{task_id}_error: {str(e)}")
-        
-        # 启动 3 个并发任务
-        tasks = [
-            add_video_task(1),
-            add_video_task(2),
-            add_video_task(3)
-        ]
-        
-        await asyncio.gather(*tasks)
+            try:
+                execution_order.append(f"{task_id}_start")
+                await add_videos_async(
+                    draft_url=draft_url,
+                    video_infos=video_infos,
+                    lock_timeout=5.0,
+                )
+                execution_order.append(f"{task_id}_complete")
+            except Exception as e:
+                execution_order.append(f"{task_id}_error: {str(e)}")
+
+        with patch("src.service.add_videos.helper.get_url_param", return_value="concurrent-test"), \
+                patch("src.service.add_videos.DRAFT_CACHE") as mock_cache, \
+                patch("src.service.add_videos.os.makedirs"), \
+                patch("src.service.add_videos._prepare_videos_local_files", side_effect=fake_prepare), \
+                patch("src.service.add_videos.add_video_to_draft") as mock_add:
+
+            mock_cache.__contains__.return_value = True
+            mock_script = MagicMock()
+            mock_script.width = 1920
+            mock_script.height = 1080
+            mock_script.tracks = {}
+            mock_script.materials.videos = []
+            mock_cache.__getitem__.return_value = mock_script
+
+            call_seq = {"i": 0}
+
+            def add_side_effect(*args, **kwargs):
+                call_seq["i"] += 1
+                return (f"segment-{call_seq['i']}", 5000000)
+
+            mock_add.side_effect = add_side_effect
+
+            await asyncio.gather(
+                add_video_task(1),
+                add_video_task(2),
+                add_video_task(3),
+            )
         
         # 验证任务是串行执行的（每个任务必须等待前一个释放锁）
         # 第一个任务必须先完成
@@ -194,48 +215,55 @@ class TestAddVideosAsync:
     async def test_concurrent_add_videos_different_drafts(self):
         """测试并发添加视频到不同草稿（可以并行执行）"""
         completed_drafts = []
-        
+
+        def fake_get_url_param(url: str, key: str):
+            if key != "draft_id":
+                return None
+            return url.split("draft_id=")[-1]
+
+        def fake_prepare(draft_url: str, video_infos: str):
+            did = fake_get_url_param(draft_url, "draft_id")
+            return [{
+                "video_url": f"https://example.com/video_{did}.mp4",
+                "start": 0,
+                "end": 5000000,
+                "duration": 5000000,
+                "original_start": 0,
+                "original_end": 5000000,
+                "local_video_path": f"/tmp/video_{did}.mp4",
+            }]
+
+        def make_script():
+            mock_script = MagicMock()
+            mock_script.width = 1920
+            mock_script.height = 1080
+            mock_script.tracks = {}
+            mock_script.materials.videos = []
+            return mock_script
+
         async def add_video_task(draft_id):
-            with patch('src.service.add_videos.helper.get_url_param') as mock_get_param, \
-                 patch('src.service.add_videos.DRAFT_CACHE') as mock_cache, \
-                 patch('src.service.add_videos.os.makedirs'), \
-                 patch('src.service.add_videos.parse_video_data') as mock_parse, \
-                 patch('src.service.add_videos.add_video_to_draft') as mock_add, \
-                 patch('src.service.add_videos.download') as mock_download:
-                
-                mock_get_param.return_value = draft_id
-                mock_parse.return_value = [{
-                    'video_url': f'https://example.com/video_{draft_id}.mp4',
-                    'start': 0,
-                    'end': 5000000,
-                    'duration': 5000000,
-                    'original_start': 0,
-                    'original_end': 5000000
-                }]
-                mock_add.return_value = (f"segment-{draft_id}", 5000000)
-                mock_download.return_value = f"/tmp/video_{draft_id}.mp4"
-                
-                mock_script = MagicMock()
-                mock_script.width = 1920
-                mock_script.height = 1080
-                mock_script.tracks = {}
-                mock_script.materials.videos = []
-                mock_cache.__getitem__.return_value = mock_script
-                
-                await add_videos_async(
-                    draft_url=f"http://localhost/v1/get_draft?draft_id={draft_id}",
-                    video_infos='[]'
-                )
-                completed_drafts.append(draft_id)
-        
-        # 并发访问 3 个不同的草稿
-        tasks = [
-            add_video_task("draft-a"),
-            add_video_task("draft-b"),
-            add_video_task("draft-c")
-        ]
-        
-        await asyncio.gather(*tasks)
+            await add_videos_async(
+                draft_url=f"http://localhost/v1/get_draft?draft_id={draft_id}",
+                video_infos="[]",
+            )
+            completed_drafts.append(draft_id)
+
+        with patch("src.service.add_videos.helper.get_url_param", side_effect=fake_get_url_param), \
+                patch("src.service.add_videos._prepare_videos_local_files", side_effect=fake_prepare), \
+                patch("src.service.add_videos.DRAFT_CACHE") as mock_cache, \
+                patch("src.service.add_videos.os.makedirs"), \
+                patch("src.service.add_videos.add_video_to_draft") as mock_add:
+
+            mock_cache.__contains__.return_value = True
+            mock_cache.__getitem__.side_effect = lambda _did: make_script()
+            mock_add.return_value = ("segment-mock", 5000000)
+
+            tasks = [
+                add_video_task("draft-a"),
+                add_video_task("draft-b"),
+                add_video_task("draft-c"),
+            ]
+            await asyncio.gather(*tasks)
         
         # 所有任务都应该完成
         assert len(completed_drafts) == 3
@@ -297,6 +325,7 @@ class TestLockManagerIntegration:
     async def test_lock_stats_accuracy(self):
         """测试锁统计信息准确性"""
         lock_manager = DraftLockManager()
+        await lock_manager.clear_all_locks()
         draft_ids = ["stats-1", "stats-2", "stats-3"]
         
         # 初始状态
@@ -318,7 +347,8 @@ class TestLockManagerIntegration:
         await lock_manager.release_lock(draft_ids[0])
         
         stats = lock_manager.get_stats()
-        assert stats["total_locks"] == 2  # 锁对象被删除
+        # release_lock 不删除 _locks 中的条目，total_locks 仍为草稿数
+        assert stats["total_locks"] == 3
         assert stats["locked_drafts"] == 2
         assert stats["total_holders"] == 2
 
