@@ -4,7 +4,7 @@
 """
 import asyncio
 import threading
-import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from enum import Enum
 from typing import Dict, Optional, Tuple, Any
@@ -51,13 +51,13 @@ class VideoGenTask:
     error_message: str = ""
     progress: int = 0  # 进度百分比 0-100
     api_key: Optional[str] = None  # 存储API密钥用于计费
+    outfile: str = ""  # 导出目标路径，在下载阶段生成
 
 
 class VideoGenTaskManager:
     """视频生成任务管理器 - 单例模式
-    
-    注意：_export_video 方法使用 export_video_lock 确保任何时候只有一个线程执行导出操作
-    这是为了防止剪映应用在同时导出多个视频时可能出现的问题
+
+    草稿下载与时长校验可并发（线程池）；剪映 RPA 导出由 export_video_lock 保证全局同一时间仅一个。
     """
     
     _instance = None
@@ -79,9 +79,13 @@ class VideoGenTaskManager:
         self.tasks: Dict[str, VideoGenTask] = {}
         # 任务队列
         self.task_queue: asyncio.Queue = asyncio.Queue()
-        # 工作线程锁（确保同时只有一个视频生成任务在执行）
-        self.processing_lock = threading.Lock()
-        # 导出视频专用锁（确保任何时候只有一个线程执行导出视频操作）
+        # 草稿下载与校验线程池（可与导出重叠；导出仍由 export_video_lock 串行）
+        _dl_workers = min(32, (os.cpu_count() or 1) + 4)
+        self._download_executor = ThreadPoolExecutor(
+            max_workers=_dl_workers,
+            thread_name_prefix="draft_dl",
+        )
+        # 导出视频专用锁（确保任何时候只有一个线程执行剪映 RPA 导出）
         self.export_video_lock = threading.Lock()
         # 工作线程
         self.worker_thread: Optional[threading.Thread] = None
@@ -217,9 +221,9 @@ class VideoGenTaskManager:
             try:
                 # 等待任务（带超时，以便检查停止标志）
                 task = await asyncio.wait_for(self.task_queue.get(), timeout=1.0)
-                
-                # 处理任务
-                await self._process_task(task)
+
+                t = asyncio.create_task(self._process_task(task))
+                t.add_done_callback(self._log_async_task_done)
                 
             except asyncio.TimeoutError:
                 # 超时，继续循环检查停止标志
@@ -228,64 +232,65 @@ class VideoGenTaskManager:
                 logger.error(f"Worker loop error: {e}")
                 # 短暂休息后继续
                 await asyncio.sleep(1)
+
+    def _log_async_task_done(self, fut: asyncio.Task) -> None:
+        try:
+            fut.result()
+        except asyncio.CancelledError:
+            pass
+        except Exception as e:
+            logger.exception(f"Async task finished with error: {e}")
     
     async def _process_task(self, task: VideoGenTask):
         """
-        处理单个视频生成任务
-        
-        Args:
-            task: 视频生成任务
+        处理单个视频生成任务：下载阶段可与其他任务并行，导出阶段受 export_video_lock 串行。
         """
-        # 获取处理锁（确保同时只处理一个任务）
-        with self.processing_lock:
-            logger.info(f"Processing task: {task.draft_url}")
-            
-            # 更新任务状态
-            task.status = TaskStatus.PROCESSING
-            task.started_at = datetime.now()
-            task.progress = 10
-            
-            try:
-                # 执行视频生成
-                video_url, error_message = await self._generate_video(task)
-                
-                if video_url:
-                    # 成功
-                    task.status = TaskStatus.COMPLETED
-                    task.video_url = video_url
-                    task.progress = 100
-                    logger.info(f"Task completed successfully: {task.draft_url}")
-                else:
-                    # 失败
-                    task.status = TaskStatus.FAILED
-                    task.error_message = error_message
-                    task.progress = 0
-                    logger.error(f"Task failed: {task.draft_url}, error: {error_message}")
-                    
-            except Exception as e:
-                # 异常
+        logger.info(f"Processing task: {task.draft_url}")
+
+        task.status = TaskStatus.PROCESSING
+        task.started_at = datetime.now()
+        task.progress = 10
+
+        loop = asyncio.get_running_loop()
+
+        try:
+            prep_error = await loop.run_in_executor(
+                self._download_executor,
+                self._phase_download_and_prepare,
+                task,
+            )
+            if prep_error:
                 task.status = TaskStatus.FAILED
-                task.error_message = str(e)
+                task.error_message = prep_error
                 task.progress = 0
-                logger.exception(f"Task exception: {task.draft_url}, error: {e}")
-            
-            finally:
-                task.completed_at = datetime.now()
-    
-    async def _generate_video(self, task: VideoGenTask) -> Tuple[str, str]:
-        """
-        生成视频的核心逻辑（在线程池中执行）
-        
-        Args:
-            task: 视频生成任务
-            
-        Returns:
-            (video_url, error_message): 视频URL和错误信息
-        """
-        loop = asyncio.get_event_loop()
-        
-        # 在线程池中执行同步的视频生成逻辑
-        return await loop.run_in_executor(None, self._sync_generate_video, task)
+                logger.error(f"Task failed: {task.draft_url}, error: {prep_error}")
+                return
+
+            video_url, error_message = await loop.run_in_executor(
+                None,
+                self._phase_export_upload_finalize,
+                task,
+            )
+
+            if video_url:
+                task.status = TaskStatus.COMPLETED
+                task.video_url = video_url
+                task.progress = 100
+                logger.info(f"Task completed successfully: {task.draft_url}")
+            else:
+                task.status = TaskStatus.FAILED
+                task.error_message = error_message
+                task.progress = 0
+                logger.error(f"Task failed: {task.draft_url}, error: {error_message}")
+
+        except Exception as e:
+            task.status = TaskStatus.FAILED
+            task.error_message = str(e)
+            task.progress = 0
+            logger.exception(f"Task exception: {task.draft_url}, error: {e}")
+
+        finally:
+            task.completed_at = datetime.now()
     
     def _check_draft_duration(self, task: VideoGenTask) -> bool:
         """
@@ -328,68 +333,61 @@ class VideoGenTaskManager:
             logger.error(f"检查草稿时长时发生错误: {e}, 草稿ID: {task.draft_id}")
             return False
 
-    def _sync_generate_video(self, task: VideoGenTask) -> Tuple[str, str]:
+    def _phase_download_and_prepare(self, task: VideoGenTask) -> str:
         """
-        同步的视频生成逻辑（原有逻辑）
-        
-        Args:
-            task: 视频生成任务
-            
+        下载草稿并校验时长（可并发执行）。
+
         Returns:
-            (video_url, error_message): 视频URL和错误信息
+            错误信息，成功时返回空字符串。
         """
         try:
-            # 更新进度
             task.progress = 20
-            
-            # 生成输出文件路径
-            outfile = os.path.join(config.DRAFT_DIR, f"{helper.gen_unique_id()}.mp4")
-            
-            if not sys.platform.startswith('win'):
-                return "", "视频生成功能仅在Windows系统上可用"
-            
-            # 更新进度
+            task.outfile = os.path.join(config.DRAFT_DIR, f"{helper.gen_unique_id()}.mp4")
+
+            if not sys.platform.startswith("win"):
+                return "视频生成功能仅在Windows系统上可用"
+
             task.progress = 30
-            
-            # 下载草稿
-            download_success = self._download_draft(task)
-            if not download_success:
+
+            if not self._download_draft(task):
                 error_message = f"草稿下载失败: {task.draft_url}"
                 logger.error(error_message)
-                return "", error_message
-            
-            # 检查草稿中的视频时长（必需大于0）
-            duration_valid = self._check_draft_duration(task)
-            if not duration_valid:
-                error_message = f"草稿中视频时长不大于0，请检查草稿内容: {task.draft_id}"
+                return error_message
+
+            if not self._check_draft_duration(task):
+                error_message = (
+                    f"草稿中视频时长不大于0，请检查草稿内容: {task.draft_id}"
+                )
                 logger.error(error_message)
-                return "", error_message
-            
-            # 更新进度
+                return error_message
+
             task.progress = 40
-            
-            # 导出视频
-            export_success = self._export_video(task, outfile)
+            return ""
+        except Exception as exc:
+            logger.exception(
+                f"Export draft failed: draft_id={task.draft_id}, error={exc}"
+            )
+            return f"导出草稿失败: {exc}"
+
+    def _phase_export_upload_finalize(self, task: VideoGenTask) -> Tuple[str, str]:
+        """
+        导出、上传、扣费与清理（导出段在 export_video_lock 内，全局串行）。
+        """
+        try:
+            export_success = self._export_video(task, task.outfile)
             if not export_success:
                 return "", "导出草稿失败"
-            
-            # 更新进度
+
             task.progress = 95
-            
-            # 上传视频到COS
-            upload_url, upload_failed = self._upload_video_to_cos(outfile)
-            
-            # 计算并扣除费用（必需执行但不关心结果）
-            self._calculate_and_charge(task, outfile)
-            
-            # 清理临时文件
-            self._cleanup_files(outfile, task.draft_id)
-            
-            # 返回结果
+
+            upload_url, upload_failed = self._upload_video_to_cos(task.outfile)
+            self._calculate_and_charge(task, task.outfile)
+            self._cleanup_files(task.outfile, task.draft_id)
             return self._handle_result(upload_url, upload_failed)
-            
         except Exception as exc:
-            logger.exception(f"Export draft failed: draft_id={task.draft_id}, error={exc}")
+            logger.exception(
+                f"Export draft failed: draft_id={task.draft_id}, error={exc}"
+            )
             return "", f"导出草稿失败: {exc}"
     
     def _download_draft(self, task: VideoGenTask) -> bool:
@@ -575,6 +573,7 @@ class VideoGenTaskManager:
         self.stop_flag.set()
         if self.worker_thread and self.worker_thread.is_alive():
             self.worker_thread.join(timeout=5)
+        self._download_executor.shutdown(wait=False)
         logger.info("VideoGenTaskManager stopped")
 
 

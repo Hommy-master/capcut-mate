@@ -7,12 +7,14 @@ import config
 
 def gen_video(draft_url: str, apiKey: str = None) -> str:
     """
-    提交视频生成任务（异步处理）
-    
+    提交视频生成任务（异步处理）。
+
+    队列内多个任务的草稿下载可并行；剪映 RPA 导出仍全局串行，行为与重构前一致。
+
     Args:
         draft_url: 草稿URL
         apiKey: 可选的API密钥，必须是合法的UUID格式，可以为空
-    
+
     Returns:
         message: 响应消息
     """
