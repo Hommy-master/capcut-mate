@@ -57,7 +57,7 @@ class VideoGenTask:
 class VideoGenTaskManager:
     """视频生成任务管理器 - 单例模式
 
-    草稿下载与时长校验可并发（线程池）；剪映 RPA 导出由 export_video_lock 保证全局同一时间仅一个。
+    草稿下载、COS 上传可并发（各自线程池）；剪映 RPA 导出由 export_video_lock 保证全局同一时间仅一个。
     """
     
     _instance = None
@@ -79,11 +79,14 @@ class VideoGenTaskManager:
         self.tasks: Dict[str, VideoGenTask] = {}
         # 任务队列
         self.task_queue: asyncio.Queue = asyncio.Queue()
-        # 草稿下载与校验线程池（可与导出重叠；导出仍由 export_video_lock 串行）
-        _dl_workers = min(32, (os.cpu_count() or 1) + 4)
+        _io_workers = min(32, (os.cpu_count() or 1) + 4)
         self._download_executor = ThreadPoolExecutor(
-            max_workers=_dl_workers,
+            max_workers=_io_workers,
             thread_name_prefix="draft_dl",
+        )
+        self._upload_executor = ThreadPoolExecutor(
+            max_workers=_io_workers,
+            thread_name_prefix="cos_upload",
         )
         # 导出视频专用锁（确保任何时候只有一个线程执行剪映 RPA 导出）
         self.export_video_lock = threading.Lock()
@@ -243,7 +246,7 @@ class VideoGenTaskManager:
     
     async def _process_task(self, task: VideoGenTask):
         """
-        处理单个视频生成任务：下载阶段可与其他任务并行，导出阶段受 export_video_lock 串行。
+        处理单个视频生成任务：下载、COS 上传可与其他任务并行；导出受 export_video_lock 串行。
         """
         logger.info(f"Processing task: {task.draft_url}")
 
@@ -266,9 +269,21 @@ class VideoGenTaskManager:
                 logger.error(f"Task failed: {task.draft_url}, error: {prep_error}")
                 return
 
-            video_url, error_message = await loop.run_in_executor(
+            export_error = await loop.run_in_executor(
                 None,
-                self._phase_export_upload_finalize,
+                self._phase_export_only,
+                task,
+            )
+            if export_error:
+                task.status = TaskStatus.FAILED
+                task.error_message = export_error
+                task.progress = 0
+                logger.error(f"Task failed: {task.draft_url}, error: {export_error}")
+                return
+
+            video_url, error_message = await loop.run_in_executor(
+                self._upload_executor,
+                self._phase_cos_upload_finalize,
                 task,
             )
 
@@ -369,17 +384,29 @@ class VideoGenTaskManager:
             )
             return f"导出草稿失败: {exc}"
 
-    def _phase_export_upload_finalize(self, task: VideoGenTask) -> Tuple[str, str]:
+    def _phase_export_only(self, task: VideoGenTask) -> str:
         """
-        导出、上传、扣费与清理（导出段在 export_video_lock 内，全局串行）。
+        仅执行剪映导出（在 export_video_lock 内，全局串行）。
+
+        Returns:
+            错误信息，成功时返回空字符串。
         """
         try:
-            export_success = self._export_video(task, task.outfile)
-            if not export_success:
-                return "", "导出草稿失败"
+            if not self._export_video(task, task.outfile):
+                return "导出草稿失败"
+            return ""
+        except Exception as exc:
+            logger.exception(
+                f"Export draft failed: draft_id={task.draft_id}, error={exc}"
+            )
+            return f"导出草稿失败: {exc}"
 
+    def _phase_cos_upload_finalize(self, task: VideoGenTask) -> Tuple[str, str]:
+        """
+        COS 上传、扣费与清理（可与其它任务的上传并行）。
+        """
+        try:
             task.progress = 95
-
             upload_url, upload_failed = self._upload_video_to_cos(task.outfile)
             self._calculate_and_charge(task, task.outfile)
             self._cleanup_files(task.outfile, task.draft_id)
@@ -574,6 +601,7 @@ class VideoGenTaskManager:
         if self.worker_thread and self.worker_thread.is_alive():
             self.worker_thread.join(timeout=5)
         self._download_executor.shutdown(wait=False)
+        self._upload_executor.shutdown(wait=False)
         logger.info("VideoGenTaskManager stopped")
 
 

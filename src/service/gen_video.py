@@ -9,7 +9,7 @@ def gen_video(draft_url: str, apiKey: str = None) -> str:
     """
     提交视频生成任务（异步处理）。
 
-    队列内多个任务的草稿下载可并行；剪映 RPA 导出仍全局串行，行为与重构前一致。
+    队列内多个任务的草稿下载、COS 上传可并行；剪映 RPA 导出仍全局串行，业务结果与重构前一致。
 
     Args:
         draft_url: 草稿URL
