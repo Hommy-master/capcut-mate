@@ -132,3 +132,8 @@ def get_task_status_info(draft_url: str) -> dict:
         raise CustomException(CustomError.VIDEO_TASK_NOT_FOUND)
     
     return status_info
+
+
+def get_gen_video_active_count() -> int:
+    """返回当前排队中 + 渲染中的云渲染草稿数量（不含已完成/失败）。"""
+    return task_manager.get_active_render_count()

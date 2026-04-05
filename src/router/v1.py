@@ -34,6 +34,7 @@ from src.schemas.easy_create_material import EasyCreateMaterialRequest, EasyCrea
 from src.schemas.save_draft import SaveDraftRequest, SaveDraftResponse
 from src.schemas.gen_video import GenVideoRequest, GenVideoResponse
 from src.schemas.gen_video_status import GenVideoStatusRequest, GenVideoStatusResponse
+from src.schemas.gen_video_active_count import GenVideoActiveCountResponse
 from src.schemas.get_draft import GetDraftRequest, GetDraftResponse
 from src.schemas.get_audio_duration import GetAudioDurationRequest, GetAudioDurationResponse
 from src.schemas.timelines import TimelinesRequest, TimelinesResponse
@@ -487,6 +488,15 @@ def gen_video_status(gvsr: GenVideoStatusRequest) -> GenVideoStatusResponse:
     )
 
     return GenVideoStatusResponse(**status_info)
+
+
+@router.get(path="/gen_video_active_count", response_model=GenVideoActiveCountResponse)
+def gen_video_active_count() -> GenVideoActiveCountResponse:
+    """
+    查询当前进行中的云渲染草稿数量（排队中 + 渲染中，不含已完成/失败）。
+    """
+    count = service.get_gen_video_active_count()
+    return GenVideoActiveCountResponse(count=count)
 
 
 @router.post(path="/get_audio_duration", response_model=GetAudioDurationResponse)

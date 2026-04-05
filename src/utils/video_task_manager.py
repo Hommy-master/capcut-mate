@@ -196,7 +196,15 @@ class VideoGenTaskManager:
             "started_at": task.started_at.isoformat() if task.started_at else None,
             "completed_at": task.completed_at.isoformat() if task.completed_at else None
         }
-    
+
+    def get_active_render_count(self) -> int:
+        """
+        当前进行中的云渲染草稿数量：排队(pending) + 渲染中(processing)。
+        不含已完成(completed)、失败(failed)。
+        """
+        active = (TaskStatus.PENDING, TaskStatus.PROCESSING)
+        return sum(1 for t in self.tasks.values() if t.status in active)
+
     def _ensure_worker_running(self):
         """确保工作线程正在运行"""
         if self.worker_thread is None or not self.worker_thread.is_alive():
