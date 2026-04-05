@@ -2,7 +2,6 @@ from src.utils.logger import logger
 from src.utils.video_task_manager import task_manager
 from src.utils.points import get_user_points
 from exceptions import CustomException, CustomError
-from typing import Tuple
 import config
 
 
@@ -20,7 +19,7 @@ def gen_video(draft_url: str, apiKey: str = None) -> str:
     logger.info(f"gen_video called with draft_url: {draft_url}, apiKey provided: {apiKey is not None}")
     
     try:
-        if config.ENABLE_APIKEY == "true":
+        if config.ENABLE_APIKEY:
             if apiKey == "": # 开启API密钥验证
                 raise CustomException(CustomError.INVALID_APIKEY)
 

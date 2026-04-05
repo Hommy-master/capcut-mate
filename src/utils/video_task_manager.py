@@ -494,7 +494,7 @@ class VideoGenTaskManager:
         Returns:
             None: 无返回值
         """
-        if config.ENABLE_APIKEY == "true" and task.api_key:
+        if config.ENABLE_APIKEY and task.api_key:
             try:
                 # 导入获取媒体时长的函数
                 from src.utils.media import get_media_duration
