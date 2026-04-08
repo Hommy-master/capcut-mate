@@ -19,5 +19,6 @@ dependencies = [
 [project.optional-dependencies]
 windows = [
     "pywin32>=311; sys_platform == 'win32'",
+    "pyautogui>=0.9.54; sys_platform == 'win32'",
     "uiautomation>=2.0.29; sys_platform == 'win32'",
 ]

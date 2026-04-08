@@ -13,6 +13,11 @@ try:
 except ImportError as e:
     raise ImportError(f"Missing required Windows dependencies: {e}. Please install with: pip install capcut-mate[windows]")
 
+try:
+    import pyautogui  # pyright: ignore[reportMissingModuleSource]
+except ImportError as e:
+    raise ImportError(f"Missing required Windows dependencies: {e}. Please install with: pip install pyautogui[windows]")
+
 from enum import Enum
 from typing import Optional, Literal, Callable
 
@@ -236,6 +241,9 @@ class JianyingController:
         Raises:
             AutomationError: 导出超时
         """
+        # 点击继续导出按钮次数
+        continue_export_click_count = 0
+
         # 等待导出完成
         st = time.time()
         while True:
@@ -248,6 +256,12 @@ class JianyingController:
 
             if time.time() - st > timeout:
                 raise AutomationError("导出超时, 时限为%d秒" % timeout)
+
+            # 导出过程中，如果出现异常弹窗，则点击继续导出按钮
+            if continue_export_click_count < 20:
+                print("pyautogui.size(): ", pyautogui.size(), ", click index: ", continue_export_click_count)
+                pyautogui.click(x=996, y=597, button="left")
+                continue_export_click_count += 1
 
             time.sleep(1)
         time.sleep(2)
