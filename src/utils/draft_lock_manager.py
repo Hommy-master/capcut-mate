@@ -172,6 +172,18 @@ class DraftLockManager:
             raise
         finally:
             async with self._manager_lock:
+                # 无持有者、未锁定、且无等待者时回收锁对象，避免 draft_id 维度常驻增长
+                lock_obj = self._locks.get(draft_id)
+                if lock_obj is not None:
+                    waiters = getattr(lock_obj, "_waiters", None)
+                    has_waiters = bool(waiters) if waiters is not None else False
+                    if (
+                        self._lock_counts.get(draft_id, 0) <= 0
+                        and not lock_obj.locked()
+                        and not has_waiters
+                    ):
+                        self._locks.pop(draft_id, None)
+                        self._lock_counts.pop(draft_id, None)
                 self._lock_owner.pop(draft_id, None)
                 self._lock_acquired_at.pop(draft_id, None)
 
