@@ -60,6 +60,8 @@ def download(url: str, save_dir: str, limit: int = DEFAULT_FILE_SIZE_LIMIT,
     Raises:
         CustomException: 下载失败时抛出异常
     """
+    # 兼容 Pydantic HttpUrl 等类型，避免切片/解析时下标报错
+    url = str(url)
     # 初始化下载环境
     download_context = _prepare_download_context(url, save_dir, timeout)
     
@@ -834,7 +836,7 @@ def _download_file_with_enhanced_stability(
                         speed_mbps = (downloaded_size - existing_size) / (current_time - start_time) / 1024 / 1024
                         logger.info(
                             f"Download progress: {downloaded_size / 1024 / 1024:.1f}MB "
-                            f"({progress_percent:.1f}%), speed: {speed_mbps:.2f}MB/s, URL: {url[:50]}..."
+                            f"({progress_percent:.1f}%), speed: {speed_mbps:.2f}MB/s, URL: {str(url)[:50]}..."
                         )
                         last_progress_time = current_time
                         
