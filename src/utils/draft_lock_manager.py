@@ -3,6 +3,7 @@
 用于防止同一草稿的并发写操作导致文件损坏
 """
 import asyncio
+import time
 from typing import Dict, Optional
 from src.utils.logger import logger
 
@@ -42,6 +43,9 @@ class DraftLockManager:
         self._locks: Dict[str, asyncio.Lock] = {}
         # 存储每个锁的持有者数量（用于引用计数）
         self._lock_counts: Dict[str, int] = {}
+        # 诊断信息：记录最近持有者与持锁开始时间（用于定位“为什么会等满timeout”）
+        self._lock_owner: Dict[str, str] = {}
+        self._lock_acquired_at: Dict[str, float] = {}
         # 初始化锁（用于保护_locks 字典的修改）
         self._manager_lock = asyncio.Lock()
         # 标记初始化完成
@@ -82,6 +86,7 @@ class DraftLockManager:
             lock = self._locks[draft_id]
         
         # 尝试获取锁（带超时）
+        wait_started_at = time.monotonic()
         try:
             if timeout is not None:
                 # 使用 wait_for 实现超时
@@ -93,12 +98,35 @@ class DraftLockManager:
             # 增加引用计数
             async with self._manager_lock:
                 self._lock_counts[draft_id] = self._lock_counts.get(draft_id, 0) + 1
+                task = asyncio.current_task()
+                task_name = task.get_name() if task and hasattr(task, "get_name") else None
+                self._lock_owner[draft_id] = task_name or "unknown"
+                self._lock_acquired_at[draft_id] = time.monotonic()
             
-            logger.debug(f"Lock acquired for draft_id: {draft_id}, count: {self._lock_counts[draft_id]}")
+            waited = time.monotonic() - wait_started_at
+            logger.info(
+                f"Lock acquired for draft_id: {draft_id}, waited: {waited:.3f}s, count: {self._lock_counts[draft_id]}"
+            )
             return True
             
         except asyncio.TimeoutError:
-            logger.warning(f"Timeout waiting for lock on draft_id: {draft_id}")
+            waited = time.monotonic() - wait_started_at
+            async with self._manager_lock:
+                owner = self._lock_owner.get(draft_id)
+                acquired_at = self._lock_acquired_at.get(draft_id)
+                held_for = (time.monotonic() - acquired_at) if acquired_at else None
+                count = self._lock_counts.get(draft_id, 0)
+                locked = self._locks.get(draft_id).locked() if draft_id in self._locks else False
+            if held_for is not None:
+                logger.warning(
+                    f"Timeout waiting for lock on draft_id: {draft_id}, waited: {waited:.3f}s, "
+                    f"locked: {locked}, holders: {count}, owner: {owner}, held_for: {held_for:.3f}s"
+                )
+            else:
+                logger.warning(
+                    f"Timeout waiting for lock on draft_id: {draft_id}, waited: {waited:.3f}s, "
+                    f"locked: {locked}, holders: {count}, owner: {owner}"
+                )
             raise
     
     async def release_lock(self, draft_id: str) -> None:
@@ -127,14 +155,25 @@ class DraftLockManager:
             
             lock = self._locks[draft_id]
             self._lock_counts[draft_id] = max(0, self._lock_counts.get(draft_id, 0) - 1)
+            acquired_at = self._lock_acquired_at.get(draft_id)
+            owner = self._lock_owner.get(draft_id)
         
         # 释放锁（在 manager_lock 之外，避免死锁）
         try:
             lock.release()
-            logger.debug(f"Lock released for draft_id: {draft_id}")
+            held_for = (time.monotonic() - acquired_at) if acquired_at else None
+            logger.info(
+                f"Lock released for draft_id: {draft_id}, held_for: {held_for:.3f}s, owner: {owner}"
+                if held_for is not None else
+                f"Lock released for draft_id: {draft_id}, owner: {owner}"
+            )
         except RuntimeError as e:
             logger.error(f"Failed to release lock for draft_id {draft_id}: {str(e)}")
             raise
+        finally:
+            async with self._manager_lock:
+                self._lock_owner.pop(draft_id, None)
+                self._lock_acquired_at.pop(draft_id, None)
 
     def is_locked(self, draft_id: str) -> bool:
         """
