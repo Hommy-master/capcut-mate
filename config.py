@@ -8,6 +8,9 @@ PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 # 保存剪映草稿的目录
 DRAFT_DIR = os.path.join(PROJECT_ROOT, "output", "draft")
 
+# 日志目录
+LOG_DIR = os.path.join(PROJECT_ROOT, "output", "logs")
+
 # 临时文件目录
 TEMP_DIR = os.path.join(PROJECT_ROOT, "temp")
 
