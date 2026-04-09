@@ -11,6 +11,7 @@ from src.utils import helper
 from src.utils.download import download
 import config
 import json
+import time
 from typing import List, Dict, Any, Tuple, Optional
 from src.utils.draft_lock_manager import get_draft_lock_manager
 
@@ -158,17 +159,26 @@ async def add_videos_async(
     if not draft_id:
         raise CustomException(CustomError.INVALID_DRAFT_URL)
 
+    logger.info(f"[flow:add_videos] prep_start, draft_id: {draft_id}")
     # 解析、规范化与下载在锁外完成，缩短持锁时间
-    prepared_videos = _prepare_videos_local_files(
-        draft_url=draft_url,
-        video_infos=video_infos,
+    # 下载与预处理放到线程池，避免阻塞事件循环导致锁超时漂移
+    prep_started_at = time.monotonic()
+    prepared_videos = await asyncio.to_thread(
+        _prepare_videos_local_files,
+        draft_url,
+        video_infos,
+    )
+    logger.info(
+        f"[flow:add_videos] prep_done, draft_id: {draft_id}, "
+        f"count: {len(prepared_videos)}, elapsed: {time.monotonic() - prep_started_at:.3f}s"
     )
 
     lock_manager = get_draft_lock_manager()
 
+    logger.info(f"[flow:add_videos] lock_wait_start, draft_id: {draft_id}, timeout: {lock_timeout}s")
     try:
         await lock_manager.acquire_lock(draft_id, timeout=lock_timeout)
-        logger.info(f"Lock acquired for draft_id: {draft_id}")
+        logger.info(f"[flow:add_videos] lock_acquired, draft_id: {draft_id}")
     except asyncio.TimeoutError:
         logger.error(f"Timeout waiting for lock on draft_id: {draft_id}")
         raise CustomException(
@@ -190,7 +200,7 @@ async def add_videos_async(
         )
     finally:
         await lock_manager.release_lock(draft_id)
-        logger.info(f"Lock released for draft_id: {draft_id}")
+        logger.info(f"[flow:add_videos] lock_released, draft_id: {draft_id}")
 
 
 def _add_videos_internal(
