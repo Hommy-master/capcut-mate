@@ -4,6 +4,7 @@ const { app, dialog, shell } = require("electron");
 const { createWriteStream } = require("fs");
 const fs = require("fs").promises; // 使用 fs.promises 进行异步文件操作
 const logger = require("./logger");
+const { detectJianyingDraftRoot } = require("./draftPathDetect");
 const { v4: uuidv4 } = require('uuid');
 
 const RECORD_MAX = 500;
@@ -44,6 +45,23 @@ async function writeConfig(config) {
     logger.error("写入配置文件失败:", error);
     return false;
   }
+}
+
+/**
+ * 未配置草稿路径时，按平台规则自动探测并写入配置。
+ */
+async function ensureAutoDetectedDraftPathInConfig() {
+  let config = await readConfig();
+  if (config.targetDirectory) {
+    return config;
+  }
+  const detected = await detectJianyingDraftRoot();
+  if (detected) {
+    config.targetDirectory = detected;
+    await writeConfig(config);
+    logger.info("[draft-detect] 已自动识别剪映草稿目录:", detected);
+  }
+  return config;
 }
 
 function getDownloadLogPath() {
@@ -236,7 +254,26 @@ async function getTargetDirectory(parentWindow = null, isUpdate = false) {
       await fs.access(config.targetDirectory, fs.constants.R_OK | fs.constants.W_OK);
       return config.targetDirectory;
     } catch (accessErr) {
-      logger.warn("配置的目录已不存在或无访问权限，将重新选择。", accessErr.message);
+      logger.warn(
+        "配置的目录已不存在或无访问权限，将清除并尝试自动识别或手动选择。",
+        accessErr.message
+      );
+      delete config.targetDirectory;
+      await writeConfig(config);
+    }
+  }
+
+  if (!isUpdate) {
+    config = await ensureAutoDetectedDraftPathInConfig();
+    if (config.targetDirectory) {
+      try {
+        await fs.access(config.targetDirectory, fs.constants.R_OK | fs.constants.W_OK);
+        return config.targetDirectory;
+      } catch (e) {
+        logger.warn("自动识别的草稿目录不可读写，将打开目录选择:", e.message);
+        delete config.targetDirectory;
+        await writeConfig(config);
+      }
     }
   }
 
@@ -753,6 +790,7 @@ module.exports = {
   updateDraftPath,
 
   readConfig,
+  ensureAutoDetectedDraftPathInConfig,
 
   getDraftUrls,
 

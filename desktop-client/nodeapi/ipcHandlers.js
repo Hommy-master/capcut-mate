@@ -13,7 +13,7 @@ const {
   getDraftUrls,
   updateDraftPath,
   downloadFiles,
-  readConfig,
+  ensureAutoDetectedDraftPathInConfig,
   checkUrlAccessRight,
   readHistoryRecord,
 } = require('./download');
@@ -57,7 +57,7 @@ function setupIpcHandlers(mainWindow) {
   });
 
   ipcMain.handle('get-config-data', async (event) => {
-    return await readConfig();
+    return await ensureAutoDetectedDraftPathInConfig();
   });
 
   // 设置默认草稿路径
