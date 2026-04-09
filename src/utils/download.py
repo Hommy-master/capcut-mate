@@ -138,6 +138,7 @@ def _execute_download_with_retry(context: dict, limit: int, retry: int) -> str:
     consecutive_failures = 0  # 连续失败计数器
     
     for attempt in range(retry + 1):  # 总共尝试 retry + 1 次
+        response = None
         try:
             logger.info(f"Starting download attempt {attempt + 1}/{retry + 1}, URL: {url}")
             
@@ -174,6 +175,19 @@ def _execute_download_with_retry(context: dict, limit: int, retry: int) -> str:
             if not _handle_download_exception(e, attempt, retry, temp_save_path, 
                                             supports_range, consecutive_failures, context):
                 break  # 致命错误，停止重试
+        finally:
+            # 统一关闭 response/session，避免连接资源滞留
+            if response is not None:
+                try:
+                    response.close()
+                except Exception:
+                    pass
+                session = getattr(response, "_capcut_session", None)
+                if session is not None:
+                    try:
+                        session.close()
+                    except Exception:
+                        pass
     
     # 所有重试都失败，抛出异常
     return _handle_final_failure(last_exception, url)
@@ -442,6 +456,8 @@ def _assess_network_quality(url: str) -> str:
         str: 网络质量 ('good', 'medium', 'poor')
     """
     try:
+        # 兼容 pydantic HttpUrl 等对象，避免出现 decode 属性错误
+        url = str(url)
         import urllib.parse
         parsed_url = urllib.parse.urlparse(url)
         test_url = f"{parsed_url.scheme}://{parsed_url.netloc}"
@@ -468,7 +484,7 @@ def _assess_network_quality(url: str) -> str:
             return 'poor'
             
     except Exception as e:
-        logger.warning(f"Failed to assess network quality: {e}")
+        logger.info(f"Failed to assess network quality, fallback to poor: {e}")
         return 'poor'  # 默认为较差的网络环境
 
 
@@ -486,8 +502,10 @@ def _check_range_support_with_retry(url: str, max_retries: int = 2) -> bool:
     Returns:
         bool: 是否支持Range请求
     """
+    url = str(url)
     # 首先尝试HEAD请求
     for attempt in range(max_retries + 1):
+        response = None
         try:
             response = requests.head(
                 url, 
@@ -504,12 +522,20 @@ def _check_range_support_with_retry(url: str, max_retries: int = 2) -> bool:
             
         except Exception as e:
             if attempt < max_retries:
-                logger.warning(f"Range support check (HEAD) attempt {attempt + 1} failed: {e}, retrying...")
+                logger.info(f"Range support check (HEAD) attempt {attempt + 1} failed: {e}, retrying...")
                 time.sleep(1)
             else:
-                logger.warning(f"HEAD request failed after {max_retries + 1} attempts: {e}, trying GET request...")
+                logger.info(f"HEAD request failed after {max_retries + 1} attempts: {e}, trying GET request...")
+        finally:
+            if response is not None:
+                try:
+                    response.close()
+                except Exception:
+                    pass
     
     # HEAD请求失败，尝试使用GET请求检测（只读取响应头，不下载内容）
+    session = None
+    response = None
     try:
         session = _create_optimized_session()
         session.headers.update(DOWNLOAD_HEADERS)
@@ -527,19 +553,28 @@ def _check_range_support_with_retry(url: str, max_retries: int = 2) -> bool:
         # 如果返回206 Partial Content，说明支持Range请求
         if response.status_code == 206:
             logger.info("Range support check (GET): Server supports Range requests (status 206)")
-            response.close()
             return True
         elif response.status_code == 200:
             # 返回200说明服务器忽略Range头，不支持断点续传
             logger.info("Range support check (GET): Server does not support Range requests (status 200)")
-            response.close()
             return False
         else:
             response.raise_for_status()
             
     except Exception as e:
-        logger.warning(f"Range support check (GET) failed: {e}, assuming no range support")
+        logger.info(f"Range support check (GET) failed: {e}, assuming no range support")
         return False
+    finally:
+        if response is not None:
+            try:
+                response.close()
+            except Exception:
+                pass
+        if session is not None:
+            try:
+                session.close()
+            except Exception:
+                pass
     
     return False
 
@@ -643,6 +678,7 @@ def _download_with_resume_enhanced(url: str, resume_pos: int, timeouts: dict) ->
                 stream=True,
                 timeout=(timeouts['connect_timeout'], timeouts['read_timeout'])
             )
+            response._capcut_session = session
             
             if response.status_code == 206:
                 logger.info(f"Resume download successful, status: {response.status_code}")
@@ -659,11 +695,14 @@ def _download_with_resume_enhanced(url: str, resume_pos: int, timeouts: dict) ->
                 time.sleep(CONNECTION_RETRY_DELAY)
             else:
                 logger.error(f"Resume download failed after {attempt + 1} attempts: {e}")
+                session.close()
                 raise
         except Exception as e:
             logger.error(f"Resume download unexpected error: {e}")
+            session.close()
             raise
     
+    session.close()
     raise requests.exceptions.RequestException("Failed to establish resume connection after retries")
 
 
@@ -691,6 +730,7 @@ def _download_fresh_enhanced(url: str, timeouts: dict) -> requests.Response:
                 stream=True,
                 timeout=(timeouts['connect_timeout'], timeouts['read_timeout'])
             )
+            response._capcut_session = session
             response.raise_for_status()
             logger.info(f"Fresh download successful, status: {response.status_code}")
             return response
@@ -701,11 +741,14 @@ def _download_fresh_enhanced(url: str, timeouts: dict) -> requests.Response:
                 time.sleep(CONNECTION_RETRY_DELAY)
             else:
                 logger.error(f"Fresh download failed after {attempt + 1} attempts: {e}")
+                session.close()
                 raise
         except Exception as e:
             logger.error(f"Fresh download unexpected error: {e}")
+            session.close()
             raise
     
+    session.close()
     raise requests.exceptions.RequestException("Failed to establish fresh connection after retries")
 
 
