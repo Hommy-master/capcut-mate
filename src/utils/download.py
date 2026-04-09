@@ -457,6 +457,7 @@ def _assess_network_quality(url: str) -> str:
     Returns:
         str: 网络质量 ('good', 'medium', 'poor')
     """
+    response = None
     try:
         # 兼容 pydantic HttpUrl 等对象，避免出现 decode 属性错误
         url = str(url)
@@ -488,6 +489,12 @@ def _assess_network_quality(url: str) -> str:
     except Exception as e:
         logger.info(f"Failed to assess network quality, fallback to poor: {e}")
         return 'poor'  # 默认为较差的网络环境
+    finally:
+        if response is not None:
+            try:
+                response.close()
+            except Exception:
+                pass
 
 
 def _check_range_support_with_retry(url: str, max_retries: int = 2) -> bool:
