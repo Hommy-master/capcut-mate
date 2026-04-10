@@ -4,7 +4,7 @@ from typing import Dict
 
 # Modify global variable, use OrderedDict to implement LRU cache, limit the maximum number to 10000
 DRAFT_CACHE: Dict[str, 'draft.ScriptFile'] = OrderedDict()  # Use Dict for type hinting
-MAX_CACHE_SIZE = 10000
+MAX_CACHE_SIZE = 100
 
 def update_cache(key: str, value: draft.ScriptFile) -> None:
     """Update LRU cache"""
