@@ -14,6 +14,9 @@ LOG_DIR = os.path.join(PROJECT_ROOT, "output", "logs")
 # 临时文件目录
 TEMP_DIR = os.path.join(PROJECT_ROOT, "temp")
 
+# 视频生成任务完成结果（SQLite 持久化）
+VIDEO_GEN_TASK_DB_PATH = os.path.join(PROJECT_ROOT, "output", "video_gen_tasks.sqlite3")
+
 # 剪映草稿的下载路径
 DRAFT_URL = os.getenv("DRAFT_URL", "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft")
 

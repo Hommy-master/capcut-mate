@@ -11,6 +11,11 @@ from typing import Dict, Optional, Tuple, Any
 from dataclasses import dataclass
 from src.utils.logger import logger
 from src.utils import helper
+from src.utils.video_task_store import (
+    get_completed_by_draft_id,
+    prune_if_needed,
+    save_completed_result,
+)
 import src.pyJianYingDraft as draft
 import config
 import os
@@ -182,20 +187,23 @@ class VideoGenTaskManager:
         Returns:
             任务状态信息，如果不存在返回None
         """
+        prune_if_needed()
+
         task = self.tasks.get(draft_url)
-        if not task:
-            return None
-        
-        return {
-            "draft_url": task.draft_url,
-            "status": task.status.value,
-            "progress": task.progress,
-            "video_url": task.video_url,
-            "error_message": task.error_message,
-            "created_at": task.created_at.isoformat(),
-            "started_at": task.started_at.isoformat() if task.started_at else None,
-            "completed_at": task.completed_at.isoformat() if task.completed_at else None
-        }
+        if task:
+            return {
+                "draft_url": task.draft_url,
+                "status": task.status.value,
+                "progress": task.progress,
+                "video_url": task.video_url,
+                "error_message": task.error_message,
+                "created_at": task.created_at.isoformat(),
+                "started_at": task.started_at.isoformat() if task.started_at else None,
+                "completed_at": task.completed_at.isoformat() if task.completed_at else None,
+            }
+
+        draft_id = helper.get_url_param(draft_url, "draft_id")
+        return get_completed_by_draft_id(draft_id)
 
     def get_active_render_count(self) -> int:
         """
@@ -314,6 +322,23 @@ class VideoGenTaskManager:
 
         finally:
             task.completed_at = datetime.now()
+            if task.status in (TaskStatus.COMPLETED, TaskStatus.FAILED):
+                try:
+                    save_completed_result(
+                        draft_id=task.draft_id,
+                        draft_url=task.draft_url,
+                        status=task.status.value,
+                        progress=task.progress,
+                        video_url=task.video_url,
+                        error_message=task.error_message,
+                        created_at=task.created_at,
+                        started_at=task.started_at,
+                        completed_at=task.completed_at,
+                    )
+                except Exception as persist_err:
+                    logger.exception(
+                        "Failed to persist video gen task result: %s", persist_err
+                    )
     
     def _check_draft_duration(self, task: VideoGenTask) -> bool:
         """
