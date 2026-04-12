@@ -1,26 +1,29 @@
 # 实现腾讯云对象存储（COS）的上传功能
 import os
 import datetime
+from typing import Optional
 import config
 from qcloud_cos import CosConfig
 from qcloud_cos import CosS3Client
 from src.utils.logger import logger
 from exceptions import CustomException, CustomError
 
-def cos_upload_file(file_path: str, expire_days: int = 1) -> str:
+def cos_upload_file(file_path: str, expire_days: Optional[int] = None) -> str:
     """
-    上传文件到COS，返回带签名的临时URL，文件会在指定天数后自动过期
-    
+    上传文件到COS，返回带签名的临时URL，链接在指定天数后失效（见 config.VIDEO_GEN_RETENTION_DAYS）。
+
     Args:
         file_path: 文件路径
-        expire_days: URL有效期天数，默认1天
+        expire_days: URL 有效期天数；为 None 时使用 config.VIDEO_GEN_RETENTION_DAYS（视频生成任务默认）
 
     Returns:
-        str: 带签名的临时下载URL（有效期为expire_days天）
-    
+        str: 带签名的临时下载URL（有效期为 expire_days 天）
+
     Raises:
         CustomException: 上传失败
     """
+    if expire_days is None:
+        expire_days = config.VIDEO_GEN_RETENTION_DAYS
     cfg = CosConfig(Region=config.COS_REGION, SecretId=config.COS_SECRET_ID, SecretKey=config.COS_SECRET_KEY, Token=None)
     cli = CosS3Client(cfg)
     try:
@@ -31,8 +34,7 @@ def cos_upload_file(file_path: str, expire_days: int = 1) -> str:
         filename = os.path.basename(file_path)
         key = f"{current_date}/{current_hour}/{filename}"
         
-        # 2. 上传文件，并设置1天后自动删除
-        # 计算过期时间（当前时间 + expire_days天）
+        # 2. 上传文件；预签名 URL 在 expire_days 天后失效
         expire_time = datetime.datetime.now() + datetime.timedelta(days=expire_days)
         expire_time_str = expire_time.strftime("%Y-%m-%dT%H:%M:%S.000Z")
         

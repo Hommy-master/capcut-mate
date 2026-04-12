@@ -533,7 +533,7 @@ class VideoGenTaskManager:
         try:
             from src.utils.cos import cos_upload_file
             logger.info(f"Uploading video to COS: {outfile}")
-            upload_url = cos_upload_file(outfile)
+            upload_url = cos_upload_file(outfile, expire_days=config.VIDEO_GEN_RETENTION_DAYS)
             logger.info(f"Video uploaded to COS successfully: {upload_url}")
         except Exception as upload_error:
             logger.error(f"Failed to upload video to COS: {upload_error}")
