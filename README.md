@@ -272,4 +272,8 @@ npm start
 | 💬 WeChat | <div align="center"><img src="./assets/wechat.jpg" width="120" alt="Technical Support WeChat"></div> | Business Cooperation |
 | 📧 Email | taohongmin51@gmail.com | Technical Support |
 
+## Related Projects
+
+- [capcut-cli](https://github.com/renezander030/capcut-cli) -- CLI for editing CapCut/JianYing draft_content.json: change text, timing, speed, volume. JSON output, batch edits via JSONL.
+
 ---
