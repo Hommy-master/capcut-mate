@@ -14,6 +14,10 @@ import config
 import subprocess
 import os
 
+_REQUEST_CONNECT_TIMEOUT = 10
+_REQUEST_READ_TIMEOUT = 30
+_MAX_RETRIES = 3
+
 
 def safe_write_file(file_path: str, file_content: bytes, is_binary: bool = True):
     """
@@ -129,35 +133,47 @@ def get_draft_files_list(draft_url: str) -> list:
     Returns:
         list: 文件URL列表
     """
-    try:
-        response = requests.get(draft_url)
-        
-        if response.status_code != 200:
-            logger.error(f"获取草稿文件列表失败，状态码: {response.status_code}")
-            return []
-        
-        # 解析JSON响应
+    for attempt in range(_MAX_RETRIES + 1):
         try:
-            json_data = response.json()
-        except json.JSONDecodeError as e:
-            logger.error(f"解析草稿JSON响应失败: {e}")
+            response = requests.get(
+                draft_url,
+                timeout=(_REQUEST_CONNECT_TIMEOUT, _REQUEST_READ_TIMEOUT),
+            )
+
+            if response.status_code != 200:
+                logger.error(f"获取草稿文件列表失败，状态码: {response.status_code}")
+                return []
+
+            # 解析JSON响应
+            try:
+                json_data = response.json()
+            except json.JSONDecodeError as e:
+                logger.error(f"解析草稿JSON响应失败: {e}")
+                return []
+
+            # 检查响应状态
+            if json_data.get('code') != 0:
+                logger.error(f"获取草稿文件列表失败: {json_data.get('message', '未知错误')}")
+                return []
+
+            # 返回files列表
+            files = json_data.get('files', [])
+            logger.info(f"获取到 {len(files)} 个草稿文件")
+            return files
+        except requests.exceptions.RequestException as e:
+            if attempt >= _MAX_RETRIES:
+                logger.error(f"网络请求错误，获取草稿文件列表失败，已重试{_MAX_RETRIES}次: {e}")
+                return []
+
+            retry_no = attempt + 1
+            backoff_seconds = retry_no
+            logger.warning(
+                f"网络请求错误，获取草稿文件列表准备重试({retry_no}/{_MAX_RETRIES}): {e}"
+            )
+            time.sleep(backoff_seconds)
+        except Exception as e:
+            logger.error(f"获取草稿文件列表时发生未知错误: {e}")
             return []
-        
-        # 检查响应状态
-        if json_data.get('code') != 0:
-            logger.error(f"获取草稿文件列表失败: {json_data.get('message', '未知错误')}")
-            return []
-        
-        # 返回files列表
-        files = json_data.get('files', [])
-        logger.info(f"获取到 {len(files)} 个草稿文件")
-        return files
-    except requests.exceptions.RequestException as e:
-        logger.error(f"网络请求错误，获取草稿文件列表失败: {e}")
-        return []
-    except Exception as e:
-        logger.error(f"获取草稿文件列表时发生未知错误: {e}")
-        return []
 
 
 def download_all_files(files: list, target_dir: str, draft_id: str) -> bool:
