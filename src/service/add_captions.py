@@ -13,6 +13,84 @@ from src.service.get_text_effects import resolve_text_effect
 from src.utils.draft_lock_manager import DraftLockManager
 
 
+FONT_ALIAS_MAP = {
+    "志向黑": "励字志向黑简_特粗",
+    "励字志向黑": "励字志向黑简_特粗",
+    "励字志向黑简": "励字志向黑简_特粗",
+}
+
+
+def resolve_font_type(font_name: str) -> Optional[FontType]:
+    """
+    解析用户传入的字体名称，支持：
+    1. FontType 枚举字段名
+    2. 预定义别名（例如“志向黑”）
+    3. 字体展示名（EffectMeta.name）
+    4. 唯一的模糊包含匹配
+    """
+    if not font_name:
+        return None
+
+    raw_name = font_name.strip()
+    if not raw_name:
+        return None
+
+    # 1) 直接按枚举字段名匹配
+    direct_match = getattr(FontType, raw_name, None)
+    if isinstance(direct_match, FontType):
+        return direct_match
+
+    # 2) 优先走别名映射
+    normalized_name = raw_name.strip()
+    alias_key = FONT_ALIAS_MAP.get(raw_name)
+    if alias_key is None:
+        for key, value in FONT_ALIAS_MAP.items():
+            if key.strip() == normalized_name:
+                alias_key = value
+                break
+    if alias_key:
+        alias_match = getattr(FontType, alias_key, None)
+        if isinstance(alias_match, FontType):
+            return alias_match
+
+    # 3) 枚举自带名称匹配（忽略空格/下划线）
+    try:
+        return FontType.from_name(raw_name)
+    except ValueError:
+        pass
+
+    # 4) 按展示名/枚举名做容错匹配
+    exact_candidates: List[FontType] = []
+    fuzzy_candidates: List[FontType] = []
+    for font_type in FontType:
+        normalized_enum_name = font_type.name.strip()
+        normalized_display_name = font_type.value.name.strip()
+
+        if normalized_name in (normalized_enum_name, normalized_display_name):
+            exact_candidates.append(font_type)
+            continue
+
+        if normalized_name and (
+            normalized_name in normalized_enum_name or normalized_name in normalized_display_name
+        ):
+            fuzzy_candidates.append(font_type)
+
+    if len(exact_candidates) == 1:
+        return exact_candidates[0]
+    if len(exact_candidates) > 1:
+        logger.warning(f"Font '{font_name}' matched multiple exact candidates, using default font")
+        return None
+
+    if len(fuzzy_candidates) == 1:
+        logger.info(f"Font '{font_name}' resolved to '{fuzzy_candidates[0].name}' via fuzzy match")
+        return fuzzy_candidates[0]
+    if len(fuzzy_candidates) > 1:
+        logger.warning(f"Font '{font_name}' matched multiple fuzzy candidates, using default font")
+        return None
+
+    return None
+
+
 def add_captions(
     draft_url: str,
     captions: str,
@@ -425,12 +503,8 @@ def add_caption_to_draft(
         # 5. 创建字体（如果提供了font）
         font_type = None
         if font:
-            try:
-                # 尝试根据字体名称查找对应的FontType
-                font_type = getattr(FontType, font, None)
-                if font_type is None:
-                    logger.warning(f"Font '{font}' not found, using default font")
-            except AttributeError:
+            font_type = resolve_font_type(font)
+            if font_type is None:
                 logger.warning(f"Font '{font}' not found, using default font")
         
         # 6. 创建图像调节设置
