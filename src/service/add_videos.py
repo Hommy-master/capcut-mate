@@ -269,12 +269,18 @@ def _add_videos_internal(
     # 6. 遍历视频信息，添加视频到草稿中的指定轨道，收集片段 ID
     segment_ids = []
     current_track_end = 0  # 跟踪当前轨道上的实际结束位置（用于处理变速后的连续性）
+    should_keep_continuity = _has_valid_scene_timelines(scene_timelines, len(videos))
+    logger.info(
+        f"Timeline placement mode, should_keep_continuity={should_keep_continuity}, "
+        f"scene_timelines_count={len(scene_timelines) if scene_timelines else 0}"
+    )
     for i, video in enumerate(videos):
         # 获取对应的场景时间线（如果有）
         scene_timeline = scene_timelines[i] if scene_timelines and i < len(scene_timelines) else None
         
-        # 自动调整视频的 start 时间，确保与前一个视频连续（处理变速后的间隙问题）
-        if i > 0 and current_track_end > 0:
+        # 仅在 scene_timelines 有效时，沿用历史行为：自动连续拼接（处理变速后的间隙问题）
+        # 否则严格使用 video_infos 里传入的 start/end。
+        if should_keep_continuity and i > 0 and current_track_end > 0:
             # 使用原始时长计算新的 end
             original_duration = video['original_end'] - video['original_start']
             video['start'] = current_track_end
@@ -308,6 +314,33 @@ def _add_videos_internal(
 
     # TODO: 这里还是有点小问题，为什么得到的 video_ids 与 segment_ids 的结果一样
     return draft_url, track_id, video_ids, segment_ids
+
+
+def _is_valid_scene_timeline(scene_timeline: Any) -> bool:
+    """
+    判断单个 scene_timeline 是否为有效值。
+    有效条件：必须是字典，且包含 start/end，且 end > start。
+    """
+    if not isinstance(scene_timeline, dict):
+        return False
+    if "start" not in scene_timeline or "end" not in scene_timeline:
+        return False
+    return scene_timeline["end"] > scene_timeline["start"]
+
+
+def _has_valid_scene_timelines(
+    scene_timelines: Optional[List[Dict[str, int]]],
+    video_count: int,
+) -> bool:
+    """
+    判断 scene_timelines 是否“指定了有效值”。
+    当且仅当每个视频都存在对应且有效的 scene_timeline 时，返回 True。
+    """
+    if not scene_timelines:
+        return False
+    if len(scene_timelines) < video_count:
+        return False
+    return all(_is_valid_scene_timeline(scene_timelines[i]) for i in range(video_count))
 
 def add_video_to_draft(
     script: ScriptFile,
