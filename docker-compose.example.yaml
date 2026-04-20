@@ -5,6 +5,7 @@ services:
     ports:
       - "30000:30000"
     volumes:
+      - ./logs:/app/logs
       - /opt/1panel/apps/openresty/openresty/www/sites/capcut-mate.jcaigc.cn/index/output:/app/output  # 挂载配置文件目录
       - /etc/localtime:/etc/localtime:ro  # 挂载主机时区
       - /etc/timezone:/etc/timezone:ro    # 挂载时区名称（可选）

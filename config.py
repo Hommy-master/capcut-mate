@@ -9,13 +9,13 @@ PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 DRAFT_DIR = os.path.join(PROJECT_ROOT, "output", "draft")
 
 # 日志目录
-LOG_DIR = os.path.join(PROJECT_ROOT, "output", "logs")
+LOG_DIR = os.path.join(PROJECT_ROOT, "logs")
 
 # 临时文件目录
 TEMP_DIR = os.path.join(PROJECT_ROOT, "temp")
 
 # 视频生成任务完成结果（SQLite 持久化）
-VIDEO_GEN_TASK_DB_PATH = os.path.join(PROJECT_ROOT, "output", "video_gen_tasks.sqlite3")
+VIDEO_GEN_TASK_DB_PATH = os.path.join(PROJECT_ROOT, "db", "video_gen_tasks.sqlite3")
 
 # 视频生成任务：生成视频在 COS 上的可访问保留天数（预签名下载 URL 有效期，环境变量覆盖）
 VIDEO_GEN_RETENTION_DAYS = max(1, int(os.getenv("VIDEO_GEN_RETENTION_DAYS", "1")))
