@@ -519,7 +519,7 @@ class VideoGenTaskManager:
     
     def _upload_video_to_cos(self, outfile: str) -> Tuple[str, bool]:
         """
-        上传视频到COS
+        上传视频到对象存储（优先COS，兜底OSS）
         
         Args:
             outfile: 输出文件路径
@@ -531,12 +531,12 @@ class VideoGenTaskManager:
         upload_failed = False
         
         try:
-            from src.utils.cos import cos_upload_file
-            logger.info(f"Uploading video to COS: {outfile}")
-            upload_url = cos_upload_file(outfile, expire_days=config.VIDEO_GEN_RETENTION_DAYS)
-            logger.info(f"Video uploaded to COS successfully: {upload_url}")
+            from src.utils.upload_file import upload_file
+            logger.info(f"Uploading video to object storage: {outfile}")
+            upload_url = upload_file(outfile, expire_days=config.VIDEO_GEN_RETENTION_DAYS)
+            logger.info(f"Video uploaded to object storage successfully: {upload_url}")
         except Exception as upload_error:
-            logger.error(f"Failed to upload video to COS: {upload_error}")
+            logger.error(f"Failed to upload video to object storage: {upload_error}")
             upload_failed = True
         
         return upload_url, upload_failed
