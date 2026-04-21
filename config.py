@@ -42,11 +42,17 @@ TEMPLATE_DIR = os.path.join(os.path.dirname(__file__), "template")
 #DRAFT_SAVE_PATH = "C:/Users/Administrator/AppData/Local/JianyingPro/User Data/Projects/com.lveditor.draft"
 DRAFT_SAVE_PATH = "C:/Users/1/AppData/Local/JianyingPro/User Data/Projects/com.lveditor.draft"
 
-# 腾讯云对象存储配置 -- 云渲染必需配置
-COS_SECRET_ID = os.getenv("COS_SECRET_ID", "xxx")
-COS_SECRET_KEY = os.getenv("COS_SECRET_KEY", "xxx")
-COS_BUCKET_NAME = os.getenv("COS_BUCKET_NAME", "xxx")
-COS_REGION = os.getenv("COS_REGION", "xxx")
+# 腾讯云对象存储配置（优先）
+COS_SECRET_ID = os.getenv("COS_SECRET_ID", "")
+COS_SECRET_KEY = os.getenv("COS_SECRET_KEY", "")
+COS_BUCKET_NAME = os.getenv("COS_BUCKET_NAME", "")
+COS_REGION = os.getenv("COS_REGION", "")
+
+# 阿里云对象存储配置（COS 未配置时作为兜底）
+OSS_ACCESS_KEY_ID = os.getenv("OSS_ACCESS_KEY_ID", "")
+OSS_ACCESS_KEY_SECRET = os.getenv("OSS_ACCESS_KEY_SECRET", "")
+OSS_BUCKET_NAME = os.getenv("OSS_BUCKET_NAME", "")
+OSS_ENDPOINT = os.getenv("OSS_ENDPOINT", "")
 
 # APIKEY启用配置-默认启用 -- 云渲染必需配置（环境变量 true / false，大小写不敏感）
 ENABLE_APIKEY = os.getenv("ENABLE_APIKEY", "false").strip().lower() == "true"
