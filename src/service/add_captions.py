@@ -136,7 +136,6 @@ def add_captions(
                     "in_animation_duration": None,  # 入场动画时长，可选参数
                     "out_animation_duration": None,  # 出场动画时长，可选参数
                     "loop_animation_duration": None,  # 循环动画时长，可选参数
-                    "text_effect": None  # 花字效果名称或 effect_id，可选参数
                 }
             ]
         text_color: 文本颜色（十六进制），默认"#ffffff"
@@ -157,7 +156,7 @@ def add_captions(
         bold: 文本加粗开关，默认 False
         has_shadow: 是否启用文本阴影，默认 False
         shadow_info: 文本阴影参数，默认 None
-        text_effect: 花字效果名称或 effect_id，默认 None（全局参数，可被 caption 中的 text_effect 覆盖）
+        text_effect: 花字效果名称或 effect_id，默认 None
     
     Returns:
         draft_url: 草稿 URL
@@ -427,7 +426,6 @@ def add_caption_to_draft(
             in_animation_duration: 入场动画时长，可选
             out_animation_duration: 出场动画时长，可选
             loop_animation_duration: 循环动画时长，可选
-            text_effect: 花字效果名称或 effect_id，可选
         text_color: 文本颜色（十六进制），默认"#ffffff"
         border_color: 边框颜色（十六进制），默认 None
         alignment: 文本对齐方式（0-5），默认 1
@@ -446,7 +444,7 @@ def add_caption_to_draft(
         bold: 文本加粗开关，默认 False
         has_shadow: 是否启用文本阴影，默认 False
         shadow_info: 文本阴影参数，默认 None
-        text_effect: 花字效果名称或 effect_id，默认 None（可被 caption 中的 text_effect 覆盖）
+        text_effect: 花字效果名称或 effect_id，默认 None
     
     Returns:
         segment_id: 片段 ID
@@ -459,6 +457,23 @@ def add_caption_to_draft(
     try:
         # 记录函数入口参数，便于调试
         logger.debug(f"add_caption_to_draft called with caption: {caption}")
+
+        # 0. 在函数开头统一处理参数约束：
+        # 当花字有效时，直接将 text_color / border_color / has_shadow 重置为默认值
+        if text_effect:
+            try:
+                if resolve_text_effect(text_effect):
+                    logger.info(
+                        f"Valid text effect detected: {text_effect}, "
+                        f"resetting text_color/border_color/has_shadow to defaults"
+                    )
+                    text_color = "#ffffff"
+                    border_color = None
+                    has_shadow = False
+                else:
+                    logger.warning(f"Text effect not found: {text_effect}")
+            except Exception as e:
+                logger.error(f"Failed to resolve text effect '{text_effect}': {str(e)}")
         
         # 1. 创建时间范围
         caption_duration = caption['end'] - caption['start']
@@ -555,18 +570,14 @@ def add_caption_to_draft(
         logger.info(f"Text segment details - start: {caption['start']}, duration: {caption_duration}, text: {caption['text'][:50]}")
 
         # 10. 处理花字效果
-        # 优先使用 caption 中的 text_effect，如果没有则使用全局的 text_effect
-        effect_identifier = caption.get('text_effect') or text_effect
-        if effect_identifier:
+        if text_effect:
             try:
-                effect_info = resolve_text_effect(effect_identifier)
-                if effect_info:
-                    text_segment.add_effect(effect_info['effect_id'])
-                    logger.info(f"Added text effect: {effect_identifier} (effect_id: {effect_info['effect_id']})")
-                else:
-                    logger.warning(f"Text effect not found: {effect_identifier}")
+                resolved_effect = resolve_text_effect(text_effect)
+                if resolved_effect:
+                    text_segment.add_effect(resolved_effect['effect_id'])
+                    logger.info(f"Added text effect: {text_effect} (effect_id: {resolved_effect['effect_id']})")
             except Exception as e:
-                logger.error(f"Failed to add text effect '{effect_identifier}': {str(e)}")
+                logger.error(f"Failed to add text effect '{text_effect}': {str(e)}")
         
         # 11. 处理动画效果
         if caption.get('keyword'):
