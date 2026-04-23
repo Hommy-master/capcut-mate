@@ -134,9 +134,7 @@ class TestAllAsyncLockAPIs:
 
         with patch('src.service.add_images.DRAFT_CACHE') as mock_cache, \
              patch('src.service.add_images.helper.get_url_param', return_value=mock_draft_data['draft_id']), \
-             patch('src.service.add_images.draft.VideoSegment', return_value=mock_img_seg), \
-             patch('src.service.add_images.os.makedirs'), \
-             patch('src.service.add_images.os.path.isfile', return_value=True):
+             patch('src.service.add_images.draft.VideoSegment', return_value=mock_img_seg):
             
             # 模拟草稿对象（prepare 阶段会执行 draft_id in DRAFT_CACHE）
             mock_script = MagicMock()

@@ -3,9 +3,7 @@ from src.pyJianYingDraft import ScriptFile, trange, AudioSceneEffectType, VideoS
 import src.pyJianYingDraft as draft
 from src.utils.draft_cache import DRAFT_CACHE
 from exceptions import CustomException, CustomError
-import os
 from src.utils import helper
-import config
 import json
 import asyncio
 from typing import List, Dict, Any, Tuple, Optional
@@ -43,14 +41,12 @@ def _add_audios_internal(
     draft_id = validate_and_get_draft_id(draft_url)
     script: ScriptFile = DRAFT_CACHE[draft_id]
 
-    draft_audio_dir = create_audio_directory(draft_id)
-
     audios = parse_audio_data(json_str=audio_infos)
     validate_audio_data(audios, draft_id)
 
     track_name = add_audio_track(script)
 
-    audio_ids = add_audio_segments(script, track_name, draft_audio_dir, audios)
+    audio_ids = add_audio_segments(script, track_name, audios)
 
     script.save()
     logger.info(f"Draft saved successfully")
@@ -128,15 +124,6 @@ def validate_and_get_draft_id(draft_url: str) -> str:
     return draft_id
 
 
-def create_audio_directory(draft_id: str) -> str:
-    """创建音频资源存储目录"""
-    draft_dir = os.path.join(config.DRAFT_DIR, draft_id)
-    draft_audio_dir = os.path.join(draft_dir, "assets", "audios")
-    os.makedirs(name=draft_audio_dir, exist_ok=True)
-    logger.info(f"Created audio directory: {draft_audio_dir}")
-    return draft_audio_dir
-
-
 def validate_audio_data(audios: List[Dict[str, Any]], draft_id: str):
     """验证音频数据是否为空"""
     if len(audios) == 0:
@@ -154,12 +141,12 @@ def add_audio_track(script: ScriptFile) -> str:
     return track_name
 
 
-def add_audio_segments(script: ScriptFile, track_name: str, draft_audio_dir: str, audios: List[Dict[str, Any]]) -> List[str]:
+def add_audio_segments(script: ScriptFile, track_name: str, audios: List[Dict[str, Any]]) -> List[str]:
     """批量添加音频片段到指定轨道"""
     audio_ids = []
     for i, audio in enumerate(audios):
         try:
-            audio_id = add_audio_to_draft(script, track_name, draft_audio_dir=draft_audio_dir, audio=audio)
+            audio_id = add_audio_to_draft(script, track_name, audio=audio)
             audio_ids.append(audio_id)
             logger.info(f"Added audio {i+1}/{len(audios)}, audio_id: {audio_id}")
         except Exception as e:
@@ -264,7 +251,6 @@ def add_audio_effect(audio_segment, audio_effect: str):
 def add_audio_to_draft(
     script: ScriptFile,
     track_name: str,
-    draft_audio_dir: str,
     audio: dict
 ) -> str:
     """
@@ -273,7 +259,6 @@ def add_audio_to_draft(
     Args:
         script: 草稿文件对象
         track_name: 音频轨道名称
-        draft_audio_dir: 音频资源目录
         audio: 音频信息字典，包含以下字段：
             audio_url: 音频URL
             duration: 音频总时长(微秒)，可选字段
@@ -320,7 +305,7 @@ def add_audio_to_draft(
         return audio_segment.material_instance.material_id
         
     except CustomException:
-        logger.error(f"Add audio to draft failed, draft_audio_dir: {draft_audio_dir}, audio: {audio}")
+        logger.error(f"Add audio to draft failed, audio: {audio}")
         raise
     except Exception as e:
         logger.error(f"Add audio to draft failed, error: {str(e)}")

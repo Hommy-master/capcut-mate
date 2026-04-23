@@ -6,9 +6,7 @@ from src.pyJianYingDraft import ScriptFile, trange, IntroType
 import src.pyJianYingDraft as draft
 from src.utils.draft_cache import DRAFT_CACHE
 from exceptions import CustomException, CustomError
-import os
 from src.utils import helper
-import config
 import json
 from typing import List, Dict, Any, Tuple, Optional
 from src.utils.draft_lock_manager import get_draft_lock_manager
@@ -193,11 +191,6 @@ def _add_videos_internal(
     if (not draft_id) or (draft_id not in DRAFT_CACHE):
         raise CustomException(CustomError.INVALID_DRAFT_URL)
 
-    # 2. 创建保存视频资源的目录
-    draft_dir = os.path.join(config.DRAFT_DIR, draft_id)
-    draft_video_dir = os.path.join(draft_dir, "assets", "videos")
-    os.makedirs(name=draft_video_dir, exist_ok=True)
-
     videos = parse_video_data(json_str=video_infos)
     if len(videos) == 0:
         logger.info(f"No video info, draft_id: {draft_id}")
@@ -237,7 +230,7 @@ def _add_videos_internal(
             video['end'] = video['start'] + original_duration
             logger.info(f"Adjusted video {i} start time to {video['start']} for continuity, original_duration: {original_duration}")
         
-        segment_id, actual_duration = add_video_to_draft(script, track_name, draft_video_dir=draft_video_dir, video=video,
+        segment_id, actual_duration = add_video_to_draft(script, track_name, video=video,
                                       scene_timeline=scene_timeline,
                                       alpha=alpha, scale_x=scale_x, scale_y=scale_y, 
                                       transform_x=transform_x, transform_y=transform_y)
@@ -295,7 +288,6 @@ def _has_valid_scene_timelines(
 def add_video_to_draft(
     script: ScriptFile,
     track_name: str,
-    draft_video_dir: str,
     video: dict, 
     scene_timeline: Optional[Dict[str, int]] = None,
     alpha: float = 1.0, 
@@ -310,7 +302,6 @@ def add_video_to_draft(
     Args:
         script: 草稿文件对象
         track_name: 视频轨道名称
-        draft_video_dir: 视频资源目录
         video: 视频信息字典，包含以下字段：
             video_url: 视频URL
             width: 视频宽度(像素)
@@ -414,7 +405,7 @@ def add_video_to_draft(
         # 8. 返回片段ID和实际播放时长（注意：是segment_id而不是material_id）
         return video_segment.segment_id, actual_duration
     except CustomException:
-        logger.info(f"Add video to draft failed, draft_video_dir: {draft_video_dir}, video: {video}")
+        logger.info(f"Add video to draft failed, video: {video}")
         raise
     except Exception as e:
         logger.error(f"Add video to draft failed, error: {str(e)}")

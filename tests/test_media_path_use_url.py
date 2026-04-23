@@ -10,6 +10,7 @@ from src.pyJianYingDraft.local_materials import VideoMaterial, AudioMaterial
 from src.schemas.add_images import AddImagesRequest
 from src.schemas.add_videos import AddVideosRequest
 from src.schemas.add_audios import AddAudiosRequest
+from src.schemas.easy_create_material import EasyCreateMaterialRequest
 
 
 @pytest.fixture
@@ -33,7 +34,6 @@ def test_add_image_to_draft_uses_url_for_material_path(draft_ctx):
         add_image_to_draft(
             script=draft_ctx["script"],
             track_name="image_track_1",
-            draft_image_dir="/tmp/ignored",
             image={
                 "image_url": "https://assets.jcaigc.cn/demo1.png",
                 "width": 1024,
@@ -56,7 +56,6 @@ def test_add_video_to_draft_uses_url_for_material_path(draft_ctx):
         add_video_to_draft(
             script=draft_ctx["script"],
             track_name="video_track_1",
-            draft_video_dir="/tmp/ignored",
             video={
                 "video_url": "https://assets.jcaigc.cn/demo1.mp4",
                 "start": 0,
@@ -77,7 +76,6 @@ def test_add_audio_to_draft_uses_url_for_material_path(draft_ctx):
         add_audio_to_draft(
             script=draft_ctx["script"],
             track_name="audio_track_1",
-            draft_audio_dir="/tmp/ignored",
             audio={
                 "audio_url": "https://assets.jcaigc.cn/demo1.mp3",
                 "start": 0,
@@ -150,4 +148,23 @@ def test_schema_rejects_non_http_audio_url():
                 "start": 0,
                 "end": 1000,
             }]),
+        )
+
+
+def test_easy_create_material_schema_rejects_non_http_audio_url():
+    """easy_create_material 的 audio_url 应在 schema 阶段校验。"""
+    with pytest.raises(Exception):
+        EasyCreateMaterialRequest(
+            draft_url="http://localhost/v1/get_draft?draft_id=draft-1",
+            audio_url="file:///tmp/demo1.mp3",
+        )
+
+
+def test_easy_create_material_schema_rejects_non_http_optional_media_url():
+    """easy_create_material 的 img_url/video_url 如有值必须为 http/https。"""
+    with pytest.raises(Exception):
+        EasyCreateMaterialRequest(
+            draft_url="http://localhost/v1/get_draft?draft_id=draft-1",
+            audio_url="https://assets.jcaigc.cn/test1.mp3",
+            img_url="ftp://example.com/demo1.png",
         )

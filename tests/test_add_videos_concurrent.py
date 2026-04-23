@@ -48,7 +48,6 @@ class TestAddVideosAsync:
         # Mock 所有依赖
         with patch('src.service.add_videos.helper.get_url_param') as mock_get_param, \
              patch('src.service.add_videos.DRAFT_CACHE') as mock_cache, \
-             patch('src.service.add_videos.os.makedirs'), \
              patch('src.service.add_videos.parse_video_data') as mock_parse, \
              patch('src.service.add_videos.add_video_to_draft') as mock_add:
             
@@ -148,7 +147,6 @@ class TestAddVideosAsync:
 
         with patch("src.service.add_videos.helper.get_url_param", return_value="concurrent-test"), \
                 patch("src.service.add_videos.DRAFT_CACHE") as mock_cache, \
-                patch("src.service.add_videos.os.makedirs"), \
                 patch("src.service.add_videos.parse_video_data", return_value=[{
                     "video_url": "https://example.com/video.mp4",
                     "start": 0,
@@ -221,7 +219,6 @@ class TestAddVideosAsync:
                     "duration": 5000000,
                 }]), \
                 patch("src.service.add_videos.DRAFT_CACHE") as mock_cache, \
-                patch("src.service.add_videos.os.makedirs"), \
                 patch("src.service.add_videos.add_video_to_draft") as mock_add:
 
             mock_cache.__contains__.return_value = True

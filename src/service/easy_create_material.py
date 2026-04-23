@@ -1,7 +1,5 @@
 import json
-import os
 from typing import Optional
-from urllib.parse import urlparse
 import asyncio
 
 from src.utils.logger import logger
@@ -10,7 +8,6 @@ import src.pyJianYingDraft as draft
 from src.utils.draft_cache import DRAFT_CACHE
 from exceptions import CustomException, CustomError
 from src.utils import helper
-import config
 from src.utils.draft_lock_manager import DraftLockManager
 
 
@@ -52,36 +49,31 @@ def easy_create_material(
         logger.error(f"Invalid draft_url or draft not found in cache: {draft_url}")
         raise CustomException(CustomError.INVALID_DRAFT_URL)
 
-    # 2. 验证音频URL（必选参数）
-    if not audio_url or audio_url.lower() == "null" or audio_url.strip() == "":
-        logger.error("Audio URL is required and cannot be empty or null")
-        raise CustomException(CustomError.MATERIAL_CREATE_FAILED)
-
-    # 3. 从缓存中获取草稿
+    # 2. 从缓存中获取草稿
     script: ScriptFile = DRAFT_CACHE[draft_id]
     logger.info(f"Retrieved script from cache, draft_id: {draft_id}")
 
     try:
-        # 4. 添加音频（必须的）
-        audio_added = add_audio_material(script, draft_id, audio_url)
+        # 3. 添加音频（必须的）
+        audio_added = add_audio_material(script, audio_url)
         logger.info(f"Audio material added: {audio_added}")
 
-        # 5. 添加视频（如果提供）
-        if video_url and video_url.strip() and video_url.lower() != "null":
-            video_added = add_video_material(script, draft_id, video_url)
+        # 4. 添加视频（如果提供）
+        if video_url:
+            video_added = add_video_material(script, video_url)
             logger.info(f"Video material added: {video_added}")
 
-        # 6. 添加图片（如果提供）
-        if img_url and img_url.strip() and img_url.lower() != "null":
-            image_added = add_image_material(script, draft_id, img_url)
+        # 5. 添加图片（如果提供）
+        if img_url:
+            image_added = add_image_material(script, img_url)
             logger.info(f"Image material added: {image_added}")
 
-        # 7. 添加文字（如果提供）
+        # 6. 添加文字（如果提供）
         if text and text.strip():
             text_added = add_text_material(script, text, text_color, font_size, text_transform_y)
             logger.info(f"Text material added: {text_added}")
 
-        # 8. 保存草稿
+        # 7. 保存草稿
         script.save()
         logger.info(f"Draft saved successfully")
 
@@ -174,18 +166,16 @@ async def easy_create_material_async(
         logger.info(f"Lock released for draft_id: {draft_id}")
 
 
-def add_video_material(script: ScriptFile, draft_id: str, video_url: str) -> bool:
+def add_video_material(script: ScriptFile, video_url: str) -> bool:
     """
     添加视频素材到草稿（固定5秒时长）
     
     与add_videos接口保持一致的处理方式：
-    1. 创建规范的视频资源目录
-    2. 使用parse_video_data解析视频信息
-    3. 调用add_video_to_draft添加视频
+    1. 使用parse_video_data解析视频信息
+    2. 调用add_video_to_draft添加视频
     
     Args:
         script: 草稿文件对象
-        draft_id: 草稿ID
         video_url: 视频文件URL
     
     Returns:
@@ -194,13 +184,7 @@ def add_video_material(script: ScriptFile, draft_id: str, video_url: str) -> boo
     try:
         logger.info(f"Adding video material: {video_url}")
         
-        # 1. 创建视频资源目录（与add_videos保持一致）
-        draft_dir = os.path.join(config.DRAFT_DIR, draft_id)
-        draft_video_dir = os.path.join(draft_dir, "assets", "videos")
-        os.makedirs(name=draft_video_dir, exist_ok=True)
-        logger.info(f"Created video directory: {draft_video_dir}")
-        
-        # 2. 构造视频信息JSON（固定5秒时长）
+        # 1. 构造视频信息JSON（固定5秒时长）
         video_infos = json.dumps([{
             "video_url": video_url,
             "width": 1920,
@@ -211,20 +195,20 @@ def add_video_material(script: ScriptFile, draft_id: str, video_url: str) -> boo
             "volume": 1.0
         }])
         
-        # 3. 解析视频信息
+        # 2. 解析视频信息
         from src.service.add_videos import parse_video_data, add_video_to_draft
         video_items = parse_video_data(video_infos)
         if not video_items:
             logger.error("No video items parsed")
             return False
         
-        # 4. 添加视频轨道
+        # 3. 添加视频轨道
         track_name = f"video_track_{helper.gen_unique_id()}"
         script.add_track(track_type=TrackType.video, track_name=track_name, relative_index=10)
         logger.info(f"Added video track: {track_name}")
         
-        # 5. 添加视频到轨道（传递正确的视频资源目录）
-        add_video_to_draft(script, track_name, draft_video_dir, video_items[0])
+        # 4. 添加视频到轨道
+        add_video_to_draft(script, track_name, video_items[0])
         
         return True
     except Exception as e:
@@ -232,18 +216,16 @@ def add_video_material(script: ScriptFile, draft_id: str, video_url: str) -> boo
         return False
 
 
-def add_image_material(script: ScriptFile, draft_id: str, img_url: str) -> bool:
+def add_image_material(script: ScriptFile, img_url: str) -> bool:
     """
     添加图片素材到草稿
     
     与add_images接口保持一致的处理方式：
-    1. 创建规范的图片资源目录
-    2. 使用parse_image_data解析图片信息
-    3. 调用add_image_to_draft添加图片
+    1. 使用parse_image_data解析图片信息
+    2. 调用add_image_to_draft添加图片
     
     Args:
         script: 草稿文件对象
-        draft_id: 草稿ID
         img_url: 图片文件URL
     
     Returns:
@@ -252,13 +234,7 @@ def add_image_material(script: ScriptFile, draft_id: str, img_url: str) -> bool:
     try:
         logger.info(f"Adding image material: {img_url}")
         
-        # 1. 创建图片资源目录（与add_images保持一致）
-        draft_dir = os.path.join(config.DRAFT_DIR, draft_id)
-        draft_image_dir = os.path.join(draft_dir, "assets", "images")
-        os.makedirs(name=draft_image_dir, exist_ok=True)
-        logger.info(f"Created image directory: {draft_image_dir}")
-        
-        # 2. 构造图片信息JSON（默认尺寸和3秒显示时长）
+        # 1. 构造图片信息JSON（默认尺寸和3秒显示时长）
         image_infos = json.dumps([{
             "image_url": img_url,
             "width": 1024,
@@ -267,20 +243,20 @@ def add_image_material(script: ScriptFile, draft_id: str, img_url: str) -> bool:
             "end": 3000000,  # 3秒（3 * 1000000微秒）
         }])
         
-        # 3. 解析图片信息
+        # 2. 解析图片信息
         from src.service.add_images import parse_image_data, add_image_to_draft
         image_items = parse_image_data(image_infos)
         if not image_items:
             logger.error("No image items parsed")
             return False
         
-        # 4. 添加图片轨道
+        # 3. 添加图片轨道
         track_name = f"image_track_{helper.gen_unique_id()}"
         script.add_track(track_type=TrackType.video, track_name=track_name, relative_index=10)
         logger.info(f"Added image track: {track_name}")
         
-        # 5. 添加图片到轨道（传递正确的图片资源目录）
-        add_image_to_draft(script, track_name, draft_image_dir, image_items[0])
+        # 4. 添加图片到轨道
+        add_image_to_draft(script, track_name, image_items[0])
         
         return True
     except Exception as e:
@@ -288,18 +264,16 @@ def add_image_material(script: ScriptFile, draft_id: str, img_url: str) -> bool:
         return False
 
 
-def add_audio_material(script: ScriptFile, draft_id: str, audio_url: str) -> bool:
+def add_audio_material(script: ScriptFile, audio_url: str) -> bool:
     """
     添加音频素材到草稿（固定5秒时长）
     
     与add_audios接口保持一致的处理方式：
-    1. 创建规范的音频资源目录
-    2. 使用parse_audio_data解析音频信息
-    3. 调用add_audio_to_draft添加音频
+    1. 使用parse_audio_data解析音频信息
+    2. 调用add_audio_to_draft添加音频
     
     Args:
         script: 草稿文件对象
-        draft_id: 草稿ID
         audio_url: 音频文件URL
     
     Returns:
@@ -308,13 +282,7 @@ def add_audio_material(script: ScriptFile, draft_id: str, audio_url: str) -> boo
     try:
         logger.info(f"Adding audio material: {audio_url}")
         
-        # 1. 创建音频资源目录（与add_audios保持一致）
-        draft_dir = os.path.join(config.DRAFT_DIR, draft_id)
-        draft_audio_dir = os.path.join(draft_dir, "assets", "audios")
-        os.makedirs(name=draft_audio_dir, exist_ok=True)
-        logger.info(f"Created audio directory: {draft_audio_dir}")
-        
-        # 2. 构造音频信息JSON（固定5秒时长）
+        # 1. 构造音频信息JSON（固定5秒时长）
         audio_infos = json.dumps([{
             "audio_url": audio_url,
             "start": 0,
@@ -322,20 +290,20 @@ def add_audio_material(script: ScriptFile, draft_id: str, audio_url: str) -> boo
             "volume": 1.0
         }])
         
-        # 3. 解析音频信息
+        # 2. 解析音频信息
         from src.service.add_audios import parse_audio_data, add_audio_to_draft
         audio_items = parse_audio_data(audio_infos)
         if not audio_items:
             logger.error("No audio items parsed")
             return False
         
-        # 4. 添加音频轨道
+        # 3. 添加音频轨道
         track_name = f"audio_track_{helper.gen_unique_id()}"
         script.add_track(track_type=TrackType.audio, track_name=track_name, relative_index=10)
         logger.info(f"Added audio track: {track_name}")
         
-        # 5. 添加音频到轨道（传递正确的音频资源目录）
-        add_audio_to_draft(script, track_name, draft_audio_dir, audio_items[0])
+        # 4. 添加音频到轨道
+        add_audio_to_draft(script, track_name, audio_items[0])
         
         return True
     except Exception as e:
@@ -435,19 +403,3 @@ def hex_to_rgb(hex_color: str) -> list:
         logger.warning(f"Failed to parse hex color: {hex_color}, using default white")
         return [1.0, 1.0, 1.0]  # 默认白色
 
-
-def validate_url(url: str) -> bool:
-    """
-    验证URL格式是否正确
-    
-    Args:
-        url: 待验证的URL
-    
-    Returns:
-        URL是否有效
-    """
-    try:
-        result = urlparse(url)
-        return all([result.scheme, result.netloc])
-    except Exception:
-        return False

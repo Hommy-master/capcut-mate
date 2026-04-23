@@ -4,9 +4,7 @@ import src.pyJianYingDraft as draft
 from src.utils.draft_cache import DRAFT_CACHE
 from exceptions import CustomException, CustomError
 from src.schemas.add_images import SegmentInfo
-import os
 from src.utils import helper
-import config
 import json
 import asyncio
 from typing import List, Dict, Any, Tuple, Optional
@@ -93,11 +91,6 @@ def _add_images_internal(
         logger.error(f"Invalid draft URL or draft not found in cache, draft_id: {draft_id}")
         raise CustomException(CustomError.INVALID_DRAFT_URL)
 
-    draft_dir = os.path.join(config.DRAFT_DIR, draft_id)
-    draft_image_dir = os.path.join(draft_dir, "assets", "images")
-    os.makedirs(name=draft_image_dir, exist_ok=True)
-    logger.info(f"Using image directory: {draft_image_dir}")
-
     images = parse_image_data(json_str=image_infos)
     if len(images) == 0:
         logger.error(f"No image info provided, draft_id: {draft_id}")
@@ -117,7 +110,6 @@ def _add_images_internal(
         try:
             segment_id, segment_info = add_image_to_draft(
                 script, track_name,
-                draft_image_dir=draft_image_dir,
                 image=image,
                 alpha=alpha,
                 scale_x=scale_x,
@@ -224,7 +216,6 @@ async def add_images_async(
 def add_image_to_draft(
     script: ScriptFile,
     track_name: str,
-    draft_image_dir: str,
     image: dict,
     alpha: float = 1.0, 
     scale_x: float = 1.0, 
@@ -238,7 +229,6 @@ def add_image_to_draft(
     Args:
         script: 草稿文件对象
         track_name: 视频轨道名称
-        draft_image_dir: 图片资源目录
         image: 图片信息字典，包含以下字段：
             image_url: 图片URL
             width: 图片宽度(像素)
@@ -395,7 +385,7 @@ def add_image_to_draft(
         return video_segment.segment_id, segment_info
         
     except CustomException:
-        logger.error(f"Add image to draft failed, draft_image_dir: {draft_image_dir}, image: {image}")
+        logger.error(f"Add image to draft failed, image: {image}")
         raise
     except Exception as e:
         logger.error(f"Add image to draft failed, error: {str(e)}")
