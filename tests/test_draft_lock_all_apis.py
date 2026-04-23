@@ -88,7 +88,6 @@ class TestAllAsyncLockAPIs:
 
         with patch('src.service.add_audios.DRAFT_CACHE') as mock_cache, \
              patch('src.service.add_audios.helper.get_url_param', return_value=mock_draft_data['draft_id']), \
-             patch('src.service.add_audios.download') as mock_download, \
              patch('src.service.add_audios.AudioMaterial') as mock_audio_material, \
              patch('src.service.add_audios.draft.AudioSegment', return_value=mock_audio_seg), \
              patch('src.service.add_audios.os.makedirs'), \
@@ -103,8 +102,7 @@ class TestAllAsyncLockAPIs:
             mock_cache.__contains__.return_value = True
             mock_cache.__getitem__.return_value = mock_script
             
-            # 模拟下载和音频处理
-            mock_download.return_value = '/tmp/audio.mp3'
+            # 模拟音频处理
             mock_audio_material.return_value.duration = 5000000
             
             # 执行测试
@@ -136,7 +134,6 @@ class TestAllAsyncLockAPIs:
 
         with patch('src.service.add_images.DRAFT_CACHE') as mock_cache, \
              patch('src.service.add_images.helper.get_url_param', return_value=mock_draft_data['draft_id']), \
-             patch('src.service.add_images.download') as mock_download, \
              patch('src.service.add_images.draft.VideoSegment', return_value=mock_img_seg), \
              patch('src.service.add_images.os.makedirs'), \
              patch('src.service.add_images.os.path.isfile', return_value=True):
@@ -149,9 +146,6 @@ class TestAllAsyncLockAPIs:
             mock_script.height = 1080
             mock_cache.__contains__.return_value = True
             mock_cache.__getitem__.return_value = mock_script
-            
-            # 模拟下载
-            mock_download.return_value = '/tmp/image.jpg'
             
             # 执行测试
             result = await add_images_async(

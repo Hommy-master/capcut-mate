@@ -1,9 +1,24 @@
 import os
 import uuid
 import pymediainfo
+from urllib.parse import urlparse
 
 from typing import Optional, Literal
 from typing import Dict, Any
+
+
+def _is_remote_path(path: str) -> bool:
+    """判断是否为远程 URL 路径。"""
+    parsed = urlparse(path)
+    return parsed.scheme in {"http", "https"} and bool(parsed.netloc)
+
+
+def _safe_int(value: Any, default: int) -> int:
+    """将输入安全转为 int，失败时返回默认值。"""
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
 
 class CropSettings:
     """素材的裁剪设置, 各属性均在0-1之间, 注意素材的坐标原点在左上角"""
@@ -65,7 +80,17 @@ class VideoMaterial:
     material_type: Literal["video", "photo"]
     """素材类型: 视频或图片"""
 
-    def __init__(self, path: str, material_name: Optional[str] = None, crop_settings: CropSettings = CropSettings()):
+    def __init__(
+        self,
+        path: str,
+        material_name: Optional[str] = None,
+        crop_settings: CropSettings = CropSettings(),
+        *,
+        duration: Optional[int] = None,
+        width: Optional[int] = None,
+        height: Optional[int] = None,
+        material_type: Optional[Literal["video", "photo"]] = None,
+    ):
         """从指定位置加载视频（或图片）素材
 
         Args:
@@ -77,16 +102,31 @@ class VideoMaterial:
             `FileNotFoundError`: 素材文件不存在.
             `ValueError`: 不支持的素材文件类型.
         """
-        path = os.path.abspath(path)
-        postfix = os.path.splitext(path)[1]
-        if not os.path.exists(path):
-            raise FileNotFoundError(f"找不到 {path}")
+        is_remote = _is_remote_path(path)
+        raw_path = path
+        if not is_remote:
+            path = os.path.abspath(path)
+            if not os.path.exists(path):
+                raise FileNotFoundError(f"找不到 {path}")
+        postfix = os.path.splitext(raw_path if is_remote else path)[1]
 
-        self.material_name = material_name if material_name else os.path.basename(path)
         self.material_id = uuid.uuid4().hex
+        # 默认素材名直接使用 UUID，避免路径/URL 推断带来的不确定性。
+        self.material_name = material_name if material_name else self.material_id
         self.path = path
         self.crop_settings = crop_settings
         self.local_material_id = ""
+
+        # URL 模式不做本地文件探测，使用调用方提供的元数据。
+        if is_remote:
+            guessed_type = material_type
+            if guessed_type is None:
+                guessed_type = "photo" if postfix.lower() in {".jpg", ".jpeg", ".png", ".bmp", ".webp"} else "video"
+            self.material_type = guessed_type
+            self.duration = _safe_int(duration, 10800000000 if guessed_type == "photo" else 10000000)
+            self.width = _safe_int(width, 1920)
+            self.height = _safe_int(height, 1080)
+            return
 
         if not pymediainfo.MediaInfo.can_parse():
             raise ValueError(f"不支持的视频素材类型 '{postfix}'")
@@ -149,7 +189,7 @@ class AudioMaterial:
     duration: int
     """素材时长, 单位为微秒"""
 
-    def __init__(self, path: str, material_name: Optional[str] = None):
+    def __init__(self, path: str, material_name: Optional[str] = None, *, duration: Optional[int] = None):
         """从指定位置加载音频素材, 注意视频文件不应该作为音频素材使用
 
         Args:
@@ -160,13 +200,25 @@ class AudioMaterial:
             `FileNotFoundError`: 素材文件不存在.
             `ValueError`: 不支持的素材文件类型.
         """
-        path = os.path.abspath(path)
-        if not os.path.exists(path):
-            raise FileNotFoundError(f"找不到 {path}")
+        is_remote = _is_remote_path(path)
+        raw_path = path
+        if not is_remote:
+            path = os.path.abspath(path)
+            if not os.path.exists(path):
+                raise FileNotFoundError(f"找不到 {path}")
 
-        self.material_name = material_name if material_name else os.path.basename(path)
         self.material_id = uuid.uuid4().hex
+        # 默认素材名直接使用 UUID，避免路径/URL 推断带来的不确定性。
+        self.material_name = material_name if material_name else self.material_id
         self.path = path
+
+        # URL 模式不做本地探测，时长优先使用调用方传入值。
+        if is_remote:
+            resolved_duration = _safe_int(duration, 0)
+            if resolved_duration <= 0:
+                raise ValueError("URL 音频素材必须提供大于0的 duration")
+            self.duration = resolved_duration
+            return
 
         if not pymediainfo.MediaInfo.can_parse():
             raise ValueError("不支持的音频素材类型 %s" % os.path.splitext(path)[1])

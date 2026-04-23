@@ -8,10 +8,8 @@ from src.utils.draft_cache import DRAFT_CACHE
 from exceptions import CustomException, CustomError
 import os
 from src.utils import helper
-from src.utils.download import download
 import config
 import json
-import time
 from typing import List, Dict, Any, Tuple, Optional
 from src.utils.draft_lock_manager import get_draft_lock_manager
 
@@ -81,34 +79,7 @@ def add_videos(
         scale_y=scale_y,
         transform_x=transform_x,
         transform_y=transform_y,
-        prepared_videos=None,
     )
-
-
-def _prepare_videos_local_files(draft_url: str, video_infos: str) -> List[Dict[str, Any]]:
-    """
-    校验草稿、解析 video_infos、规范化时间字段并下载素材到草稿目录。
-    不含对 ScriptFile 的修改，可在草稿写锁外调用。
-    """
-    draft_id = helper.get_url_param(draft_url, "draft_id")
-    if (not draft_id) or (draft_id not in DRAFT_CACHE):
-        raise CustomException(CustomError.INVALID_DRAFT_URL)
-
-    draft_dir = os.path.join(config.DRAFT_DIR, draft_id)
-    draft_video_dir = os.path.join(draft_dir, "assets", "videos")
-    os.makedirs(name=draft_video_dir, exist_ok=True)
-
-    videos = parse_video_data(json_str=video_infos)
-    if len(videos) == 0:
-        logger.info(f"No video info, draft_id: {draft_id}")
-        raise CustomException(CustomError.INVALID_VIDEO_INFO)
-
-    for video in videos:
-        video["original_start"] = video["start"]
-        video["original_end"] = video["end"]
-        video["local_video_path"] = download(url=video["video_url"], save_dir=draft_video_dir)
-
-    return videos
 
 
 async def add_videos_async(
@@ -129,7 +100,7 @@ async def add_videos_async(
     1. 使用 DraftLockManager 防止同一草稿的并发写操作
     2. 支持超时控制，避免无限等待
     3. 自动释放锁，即使发生异常
-    4. 视频下载在获取锁之前完成，持锁阶段仅修改草稿与写盘
+    4. 获取锁后执行解析与写盘，减少不必要的前置步骤
     
     Args:
         draft_url: 草稿 URL，格式：".../get_draft?draft_id=xxx"
@@ -159,20 +130,6 @@ async def add_videos_async(
     if not draft_id:
         raise CustomException(CustomError.INVALID_DRAFT_URL)
 
-    logger.info(f"[flow:add_videos] prep_start, draft_id: {draft_id}")
-    # 解析、规范化与下载在锁外完成，缩短持锁时间
-    # 下载与预处理放到线程池，避免阻塞事件循环导致锁超时漂移
-    prep_started_at = time.monotonic()
-    prepared_videos = await asyncio.to_thread(
-        _prepare_videos_local_files,
-        draft_url,
-        video_infos,
-    )
-    logger.info(
-        f"[flow:add_videos] prep_done, draft_id: {draft_id}, "
-        f"count: {len(prepared_videos)}, elapsed: {time.monotonic() - prep_started_at:.3f}s"
-    )
-
     lock_manager = get_draft_lock_manager()
 
     logger.info(f"[flow:add_videos] lock_wait_start, draft_id: {draft_id}, timeout: {lock_timeout}s")
@@ -196,7 +153,6 @@ async def add_videos_async(
             scale_y=scale_y,
             transform_x=transform_x,
             transform_y=transform_y,
-            prepared_videos=prepared_videos,
         )
     finally:
         await lock_manager.release_lock(draft_id)
@@ -212,7 +168,6 @@ def _add_videos_internal(
     scale_y: float = 1.0,
     transform_x: int = 0,
     transform_y: int = 0,
-    prepared_videos: Optional[List[Dict[str, Any]]] = None,
 ) -> Tuple[str, str, List[str], List[str]]:
     """
     添加视频的内部处理函数（无锁，需外层控制并发）
@@ -221,15 +176,13 @@ def _add_videos_internal(
     
     Args:
         draft_url: 草稿 URL
-        video_infos: 视频信息 JSON 字符串（当 prepared_videos 为 None 时参与解析）
+        video_infos: 视频信息 JSON 字符串
         scene_timelines: 场景时间线列表
         alpha: 全局透明度
         scale_x: X 轴缩放比例
         scale_y: Y 轴缩放比例
         transform_x: X 轴位置偏移
         transform_y: Y 轴位置偏移
-        prepared_videos: 若已在外部完成解析与下载（含 local_video_path），则直接使用，跳过下载
-    
     Returns:
         tuple: (draft_url, track_id, video_ids, segment_ids)
     """
@@ -245,16 +198,13 @@ def _add_videos_internal(
     draft_video_dir = os.path.join(draft_dir, "assets", "videos")
     os.makedirs(name=draft_video_dir, exist_ok=True)
 
-    if prepared_videos is not None:
-        videos = prepared_videos
-    else:
-        videos = parse_video_data(json_str=video_infos)
-        if len(videos) == 0:
-            logger.info(f"No video info, draft_id: {draft_id}")
-            raise CustomException(CustomError.INVALID_VIDEO_INFO)
-        for video in videos:
-            video["original_start"] = video["start"]
-            video["original_end"] = video["end"]
+    videos = parse_video_data(json_str=video_infos)
+    if len(videos) == 0:
+        logger.info(f"No video info, draft_id: {draft_id}")
+        raise CustomException(CustomError.INVALID_VIDEO_INFO)
+    for video in videos:
+        video["original_start"] = video["start"]
+        video["original_end"] = video["end"]
 
     logger.info(f"Parsed {len(videos)} videos, scene_timelines: {scene_timelines}")
 
@@ -387,15 +337,17 @@ def add_video_to_draft(
         actual_duration: 视频在轨道上的实际播放时长(微秒)，考虑变速后的时长
     """
     try:
-        video_path = video.get("local_video_path")
-        if video_path:
-            if not os.path.isfile(video_path):
-                raise CustomException(CustomError.VIDEO_ADD_FAILED, f"Missing local file: {video_path}")
-        else:
-            video_path = download(url=video["video_url"], save_dir=draft_video_dir)
+        # 按要求直接写入原始 URL，不进行下载
+        video_path = video["video_url"]
 
-        # 1. 创建视频素材
-        video_material = draft.VideoMaterial(video_path)
+        # 1. 创建视频素材（URL 模式下使用请求参数元数据，避免本地文件探测）
+        video_material = draft.VideoMaterial(
+            video_path,
+            duration=int(video.get("duration", video["end"] - video["start"])),
+            width=int(video.get("width") or script.width),
+            height=int(video.get("height") or script.height),
+            material_type="video",
+        )
         
         # 2. 获取视频播放时长（target duration）
         target_duration = video.get('duration', video['end'] - video['start'])

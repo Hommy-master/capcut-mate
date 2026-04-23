@@ -1,16 +1,13 @@
 from src.utils.logger import logger
 from src.pyJianYingDraft import ScriptFile, trange, AudioSceneEffectType, VideoSceneEffectType, VideoCharacterEffectType
 import src.pyJianYingDraft as draft
-from src.pyJianYingDraft.local_materials import AudioMaterial
 from src.utils.draft_cache import DRAFT_CACHE
 from exceptions import CustomException, CustomError
 import os
 from src.utils import helper
-from src.utils.download import download
 import config
 import json
 import asyncio
-import time
 from typing import List, Dict, Any, Tuple, Optional
 from src.utils.draft_lock_manager import DraftLockManager
 
@@ -34,27 +31,12 @@ def add_audios(
     Raises:
         CustomException: 音频批量添加失败
     """
-    return _add_audios_internal(draft_url, audio_infos, prepared_audios=None)
-
-
-def _prepare_audios_local_files(draft_url: str, audio_infos: str) -> List[Dict[str, Any]]:
-    """
-    校验草稿、解析 audio_infos 并下载素材到草稿目录。
-    不修改 ScriptFile，可在草稿写锁外调用。
-    """
-    draft_id = validate_and_get_draft_id(draft_url)
-    draft_audio_dir = create_audio_directory(draft_id)
-    audios = parse_audio_data(json_str=audio_infos)
-    validate_audio_data(audios, draft_id)
-    for audio in audios:
-        audio["local_audio_path"] = download_audio_file(audio, draft_audio_dir)
-    return audios
+    return _add_audios_internal(draft_url, audio_infos)
 
 
 def _add_audios_internal(
     draft_url: str,
     audio_infos: str,
-    prepared_audios: Optional[List[Dict[str, Any]]] = None,
 ) -> Tuple[str, str, List[str]]:
     logger.info(f"add_audios, draft_url: {draft_url}, audio_infos: {audio_infos}")
 
@@ -63,11 +45,8 @@ def _add_audios_internal(
 
     draft_audio_dir = create_audio_directory(draft_id)
 
-    if prepared_audios is not None:
-        audios = prepared_audios
-    else:
-        audios = parse_audio_data(json_str=audio_infos)
-        validate_audio_data(audios, draft_id)
+    audios = parse_audio_data(json_str=audio_infos)
+    validate_audio_data(audios, draft_id)
 
     track_name = add_audio_track(script)
 
@@ -94,7 +73,7 @@ async def add_audios_async(
     1. 使用 DraftLockManager 防止同一草稿的并发写操作
     2. 支持超时控制，避免无限等待
     3. 自动释放锁，即使发生异常
-    4. 音频下载在获取锁之前完成，持锁阶段仅修改草稿与写盘
+    4. 逻辑简单，获取锁后直接执行解析与写盘
     
     Args:
         draft_url: 草稿 URL，格式：".../get_draft?draft_id=xxx"
@@ -117,19 +96,6 @@ async def add_audios_async(
     if not draft_id:
         raise CustomException(CustomError.INVALID_DRAFT_URL)
 
-    logger.info(f"[flow:add_audios] prep_start, draft_id: {draft_id}")
-    # 下载与预处理放到线程池，避免阻塞事件循环导致锁超时漂移
-    prep_started_at = time.monotonic()
-    prepared_audios = await asyncio.to_thread(
-        _prepare_audios_local_files,
-        draft_url,
-        audio_infos,
-    )
-    logger.info(
-        f"[flow:add_audios] prep_done, draft_id: {draft_id}, "
-        f"count: {len(prepared_audios)}, elapsed: {time.monotonic() - prep_started_at:.3f}s"
-    )
-
     lock_manager = DraftLockManager()
 
     logger.info(f"[flow:add_audios] lock_wait_start, draft_id: {draft_id}, timeout: {lock_timeout}s")
@@ -147,7 +113,6 @@ async def add_audios_async(
         return _add_audios_internal(
             draft_url=draft_url,
             audio_infos=audio_infos,
-            prepared_audios=prepared_audios,
         )
     finally:
         await lock_manager.release_lock(draft_id)
@@ -324,17 +289,11 @@ def add_audio_to_draft(
         CustomException: 添加音频失败
     """
     try:
-        audio_path = audio.get("local_audio_path")
-        if audio_path:
-            if not os.path.isfile(audio_path):
-                raise CustomException(
-                    CustomError.AUDIO_ADD_FAILED,
-                    f"Missing local file: {audio_path}",
-                )
-            logger.info(f"Using local audio: {audio_path}")
-        else:
-            audio_path = download_audio_file(audio, draft_audio_dir)
-        actual_duration = get_audio_actual_duration(audio_path)
+        # 按要求直接写入原始 URL，不进行下载
+        audio_path = audio["audio_url"]
+        logger.info(f"Using audio source path: {audio_path}")
+        fallback_duration = int(audio.get("duration") or (audio["end"] - audio["start"]))
+        actual_duration = get_audio_actual_duration(fallback_duration=fallback_duration)
         
         # 2. 处理音频时长参数
         process_audio_duration(audio, actual_duration)
@@ -368,19 +327,14 @@ def add_audio_to_draft(
         raise CustomException(err=CustomError.AUDIO_ADD_FAILED)
 
 
-def download_audio_file(audio: dict, draft_audio_dir: str) -> str:
-    """下载音频文件"""
-    audio_path = download(url=audio['audio_url'], save_dir=draft_audio_dir)
-    logger.info(f"Downloaded audio from {audio['audio_url']} to {audio_path}")
-    return audio_path
-
-
-def get_audio_actual_duration(audio_path: str) -> int:
+def get_audio_actual_duration(fallback_duration: Optional[int] = None) -> int:
     """获取音频的实际时长"""
-    temp_material = AudioMaterial(audio_path)
-    actual_duration = temp_material.duration
-    logger.info(f"Actual audio duration: {actual_duration} microseconds")
-    return actual_duration
+    # 当前接口约定输入均为远程 URL，不进行本地素材探测。
+    resolved = int(fallback_duration or 0)
+    if resolved <= 0:
+        raise CustomException(CustomError.AUDIO_ADD_FAILED, "Remote audio requires a positive duration")
+    logger.info(f"Using fallback remote audio duration: {resolved} microseconds")
+    return resolved
 
 
 def process_audio_duration(audio: dict, actual_duration: int):
@@ -434,8 +388,11 @@ def update_audio_time_params(audio: dict, start_time: int, end_time: int):
 
 def create_audio_segment(audio_path: str, start_time: int, segment_duration: int, audio: dict):
     """创建音频片段对象"""
+    # URL 模式下显式构建 AudioMaterial 并提供时长，避免本地文件探测失败。
+    material_duration = max(int(audio.get("duration") or segment_duration), int(segment_duration))
+    audio_material = draft.AudioMaterial(audio_path, duration=material_duration)
     audio_segment = draft.AudioSegment(
-        material=audio_path,
+        material=audio_material,
         target_timerange=trange(start=start_time, duration=segment_duration),
         volume=audio['volume']
     )
@@ -462,8 +419,10 @@ def add_segment_with_overlap_handling(script: ScriptFile, track_name: str, audio
                     logger.info(f"Attempt {attempts + 1}: Adjusting segment start time from {start_time} to {adjusted_start}")
                     
                     # 重新创建片段，使用调整后的时间
+                    adjusted_material_duration = max(int(audio.get("duration") or segment_duration), int(segment_duration))
+                    adjusted_audio_material = draft.AudioMaterial(audio_path, duration=adjusted_material_duration)
                     adjusted_audio_segment = draft.AudioSegment(
-                        material=audio_path,
+                        material=adjusted_audio_material,
                         target_timerange=trange(start=adjusted_start, duration=segment_duration),
                         volume=audio['volume']
                     )

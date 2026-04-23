@@ -50,8 +50,7 @@ class TestAddVideosAsync:
              patch('src.service.add_videos.DRAFT_CACHE') as mock_cache, \
              patch('src.service.add_videos.os.makedirs'), \
              patch('src.service.add_videos.parse_video_data') as mock_parse, \
-             patch('src.service.add_videos.add_video_to_draft') as mock_add, \
-             patch('src.service.add_videos.download') as mock_download:
+             patch('src.service.add_videos.add_video_to_draft') as mock_add:
             
             # 设置 mock（prepare 阶段会执行 draft_id in DRAFT_CACHE）
             mock_get_param.return_value = "test-draft-001"
@@ -67,7 +66,6 @@ class TestAddVideosAsync:
                 'original_end': 5000000
             }]
             mock_add.return_value = ("segment-123", 5000000)
-            mock_download.return_value = "/tmp/video.mp4"
             
             # Mock 草稿对象
             mock_script = MagicMock()
@@ -111,24 +109,13 @@ class TestAddVideosAsync:
         # 先获取锁并不释放
         await lock_manager.acquire_lock(draft_id)
 
-        prepared = [{
-            "video_url": "https://example.com/v.mp4",
-            "start": 0,
-            "end": 1,
-            "duration": 1,
-            "original_start": 0,
-            "original_end": 1,
-            "local_video_path": "/tmp/timeout-test.mp4",
-        }]
-
-        # 尝试获取同一个草稿的锁（应该超时）；prepare 在锁之前，需绕过网络/缓存
-        with patch("src.service.add_videos._prepare_videos_local_files", return_value=prepared):
-            with pytest.raises(CustomException) as exc_info:
-                await add_videos_async(
-                    draft_url=f"http://localhost/v1/get_draft?draft_id={draft_id}",
-                    video_infos="[]",
-                    lock_timeout=0.1,
-                )
+        # 尝试获取同一个草稿的锁（应该超时）
+        with pytest.raises(CustomException) as exc_info:
+            await add_videos_async(
+                draft_url=f"http://localhost/v1/get_draft?draft_id={draft_id}",
+                video_infos="[]",
+                lock_timeout=0.1,
+            )
 
         assert exc_info.value.err == CustomError.DRAFT_LOCK_TIMEOUT
         assert "Failed to acquire lock" in exc_info.value.detail
@@ -147,21 +134,6 @@ class TestAddVideosAsync:
             "end": 5000000
         }])
 
-        prep_counter = {"n": 0}
-
-        def fake_prepare(draft_url: str, video_infos: str):
-            prep_counter["n"] += 1
-            n = prep_counter["n"]
-            return [{
-                "video_url": "https://example.com/video.mp4",
-                "start": 0,
-                "end": 5000000,
-                "duration": 5000000,
-                "original_start": 0,
-                "original_end": 5000000,
-                "local_video_path": f"/tmp/video_prep_{n}.mp4",
-            }]
-
         async def add_video_task(task_id):
             try:
                 execution_order.append(f"{task_id}_start")
@@ -177,7 +149,12 @@ class TestAddVideosAsync:
         with patch("src.service.add_videos.helper.get_url_param", return_value="concurrent-test"), \
                 patch("src.service.add_videos.DRAFT_CACHE") as mock_cache, \
                 patch("src.service.add_videos.os.makedirs"), \
-                patch("src.service.add_videos._prepare_videos_local_files", side_effect=fake_prepare), \
+                patch("src.service.add_videos.parse_video_data", return_value=[{
+                    "video_url": "https://example.com/video.mp4",
+                    "start": 0,
+                    "end": 5000000,
+                    "duration": 5000000,
+                }]), \
                 patch("src.service.add_videos.add_video_to_draft") as mock_add:
 
             mock_cache.__contains__.return_value = True
@@ -221,18 +198,6 @@ class TestAddVideosAsync:
                 return None
             return url.split("draft_id=")[-1]
 
-        def fake_prepare(draft_url: str, video_infos: str):
-            did = fake_get_url_param(draft_url, "draft_id")
-            return [{
-                "video_url": f"https://example.com/video_{did}.mp4",
-                "start": 0,
-                "end": 5000000,
-                "duration": 5000000,
-                "original_start": 0,
-                "original_end": 5000000,
-                "local_video_path": f"/tmp/video_{did}.mp4",
-            }]
-
         def make_script():
             mock_script = MagicMock()
             mock_script.width = 1920
@@ -249,7 +214,12 @@ class TestAddVideosAsync:
             completed_drafts.append(draft_id)
 
         with patch("src.service.add_videos.helper.get_url_param", side_effect=fake_get_url_param), \
-                patch("src.service.add_videos._prepare_videos_local_files", side_effect=fake_prepare), \
+                patch("src.service.add_videos.parse_video_data", return_value=[{
+                    "video_url": "https://example.com/video.mp4",
+                    "start": 0,
+                    "end": 5000000,
+                    "duration": 5000000,
+                }]), \
                 patch("src.service.add_videos.DRAFT_CACHE") as mock_cache, \
                 patch("src.service.add_videos.os.makedirs"), \
                 patch("src.service.add_videos.add_video_to_draft") as mock_add:
