@@ -1,16 +1,18 @@
-name: Docker Image CI Dev
+name: Docker Image CI Pro
 
 on:
   push:
-    branches: [ "main", "dev" ]
+    branches: [ "pro" ]
     tags:
-      - 'v*'  # 当推送v开头的tag时触发
+      - 'v*'
   pull_request:
-    branches: [ "main", "dev" ]
+    branches: [ "pro" ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      IMAGE_REPO: capcut-mate-pro
 
     steps:
       - name: 准备代码
@@ -67,7 +69,7 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/capcut-mate  # 统一使用DOCKERHUB_USERNAME（无下划线）
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_REPO }}
           tags: |
             type=ref,event=branch
             type=ref,event=tag
@@ -77,10 +79,11 @@ jobs:
       # 调试步骤：检查生成的标签
       - name: 显示生成的镜像标签
         run: |
+          echo "镜像仓库: ${{ env.IMAGE_REPO }}"
           echo "生成的标签: ${{ steps.meta.outputs.tags }}"
-          # 检查标签是否包含正确的用户名格式
-          if [[ ! "${{ steps.meta.outputs.tags }}" == *"${{ secrets.DOCKERHUB_USERNAME }}/capcut-mate:"* ]]; then
-            echo "错误：标签格式不正确，应为 ${secrets.DOCKERHUB_USERNAME}/capcut-mate:标签"
+          # 检查标签是否包含正确的用户名与仓库名
+          if [[ ! "${{ steps.meta.outputs.tags }}" == *"${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_REPO }}:"* ]]; then
+            echo "错误：标签格式不正确，应为 ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_REPO }}:标签"
             exit 1
           fi
 
