@@ -71,10 +71,9 @@ jobs:
           images: |
             ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_REPO }}
           tags: |
-            type=ref,event=branch
             type=ref,event=tag
             type=sha,format=short
-            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=latest,enable=${{ github.event_name != 'pull_request' }}
 
       # 调试步骤：检查生成的标签
       - name: 显示生成的镜像标签
