@@ -8,7 +8,7 @@ import json
 import time
 import requests
 from urllib.parse import urlparse, parse_qs
-from typing import Optional
+from typing import Optional, Dict, Any, List
 from src.utils.logger import logger
 import config
 import subprocess
@@ -306,8 +306,11 @@ def update_json_file_paths(json_file_path: str, target_dir: str, draft_id: str) 
         remote_prefix = f"/app/output/draft/{draft_id}/"
         local_prefix = os.path.join(config.DRAFT_SAVE_PATH, draft_id).replace('/', os.sep) + os.sep
         
-        # 更新数据中的路径
+        # 更新数据中的路径（服务端草稿内本地路径 -> 客户端目标路径）
         updated_data = update_material_paths(data, remote_prefix, local_prefix)
+
+        # 对 materials 中仍为 URL 的 path 做本地化下载并回写
+        localize_remote_material_paths(updated_data, target_dir)
         
         # 写回JSON文件
         json_content = json.dumps(updated_data, ensure_ascii=False, indent=2)
@@ -403,6 +406,89 @@ def update_single_path(path: str, remote_prefix: str, local_prefix: str) -> str:
         new_path = local_prefix + relative_path_windows
         return new_path
     return path
+
+
+def _is_http_url(value: Any) -> bool:
+    if not isinstance(value, str) or not value:
+        return False
+    parsed = urlparse(value)
+    return parsed.scheme in ("http", "https") and bool(parsed.netloc)
+
+
+def _safe_name(name: str) -> str:
+    return re.sub(r'[\\/:*?"<>|]+', "_", name).strip(" .") or "material"
+
+
+def _infer_local_subdir(material_type: str, material: Dict[str, Any]) -> str:
+    if material_type == "audios":
+        return "audios"
+    if material_type == "videos":
+        return "images" if material.get("type") == "photo" else "videos"
+    return "misc"
+
+
+def _infer_ext_from_url(url: str, fallback: str) -> str:
+    try:
+        ext = os.path.splitext(urlparse(url).path)[1]
+        return ext if ext else fallback
+    except Exception:
+        return fallback
+
+
+def _download_remote_file(file_url: str, local_path: str) -> None:
+    response = requests.get(
+        file_url,
+        timeout=(_REQUEST_CONNECT_TIMEOUT, _REQUEST_READ_TIMEOUT),
+        stream=True,
+    )
+    if response.status_code != 200:
+        raise RuntimeError(f"download failed: {response.status_code}, url: {file_url}")
+    os.makedirs(os.path.dirname(local_path), exist_ok=True)
+    with open(local_path, "wb") as f:
+        for chunk in response.iter_content(chunk_size=8192):
+            if chunk:
+                f.write(chunk)
+
+
+def localize_remote_material_paths(data: Dict[str, Any], target_dir: str) -> None:
+    """
+    将 materials 中 path 为 URL 的音视频素材下载到本地，并回写 path 字段。
+    """
+    materials = data.get("materials", {}) if isinstance(data, dict) else {}
+    if not isinstance(materials, dict):
+        return
+
+    url_cache: Dict[str, str] = {}
+    target_lists: Dict[str, List[Dict[str, Any]]] = {
+        "audios": materials.get("audios", []),
+        "videos": materials.get("videos", []),
+    }
+
+    for material_type, items in target_lists.items():
+        if not isinstance(items, list):
+            continue
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            remote_path = item.get("path")
+            if not _is_http_url(remote_path):
+                continue
+
+            if remote_path in url_cache:
+                item["path"] = url_cache[remote_path]
+                continue
+
+            sub_dir = _infer_local_subdir(material_type, item)
+            fallback_ext = ".mp3" if material_type == "audios" else ".mp4"
+            ext = _infer_ext_from_url(remote_path, fallback_ext)
+            base_name = _safe_name(str(item.get("material_name") or item.get("name") or item.get("id") or "material"))
+            filename = base_name if base_name.lower().endswith(ext.lower()) else f"{base_name}{ext}"
+            local_path = os.path.join(target_dir, "assets", sub_dir, filename)
+
+            _download_remote_file(remote_path, local_path)
+            logger.info(f"URL素材下载成功并回写path: {remote_path} -> {local_path}")
+            item["path"] = local_path
+            url_cache[remote_path] = local_path
 
 def trigger_directory_scan_with_robocopy(target_dir: str):
     """
