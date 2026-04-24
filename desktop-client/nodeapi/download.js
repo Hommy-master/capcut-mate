@@ -21,6 +21,97 @@ const axiosConfig = {
   },
 };
 
+function isHttpUrl(value) {
+  if (!value || typeof value !== "string") return false;
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+function inferMaterialSubDir(materialType, material) {
+  if (materialType === "audios") return "audios";
+  if (materialType === "videos") {
+    return material?.type === "photo" ? "images" : "videos";
+  }
+  return "misc";
+}
+
+function getFileExtFromUrl(url, fallbackExt = ".bin") {
+  try {
+    const pathname = new URL(url).pathname || "";
+    const ext = path.extname(pathname);
+    return ext || fallbackExt;
+  } catch {
+    return fallbackExt;
+  }
+}
+
+function sanitizeFilename(value) {
+  if (!value || typeof value !== "string") return "";
+  return value.replace(/[\\/:*?"<>|]/g, "_").trim();
+}
+
+async function downloadRemoteMaterialFile(fileUrl, localPath) {
+  const response = await axios({
+    ...axiosConfig,
+    url: fileUrl,
+    responseType: "stream",
+  });
+  if (response.status !== 200) {
+    throw new Error(`[error] [material] request failed, status code: ${response.status}`);
+  }
+  await fs.mkdir(path.dirname(localPath), { recursive: true });
+  const writer = response.data.pipe(createWriteStream(localPath, { flags: "w", mode: 0o666 }));
+  await new Promise((resolve, reject) => {
+    writer.on("close", resolve);
+    writer.on("error", (err) => reject(err));
+    response.data.on("error", (err) => reject(err));
+  });
+}
+
+async function localizeRemoteMaterialPaths(materials, draftRootDir, parentWindow) {
+  if (!materials || typeof materials !== "object") return;
+  const supportedTypes = ["videos", "audios"];
+  const cache = new Map();
+
+  for (const materialType of supportedTypes) {
+    const list = materials[materialType];
+    if (!Array.isArray(list)) continue;
+    for (let i = 0; i < list.length; i++) {
+      const item = list[i];
+      if (!item || typeof item !== "object") continue;
+      if (!isHttpUrl(item.path)) continue;
+
+      const subDir = inferMaterialSubDir(materialType, item);
+      const fallbackExt = materialType === "audios" ? ".mp3" : ".mp4";
+      const ext = getFileExtFromUrl(item.path, fallbackExt);
+      const baseName = sanitizeFilename(item.material_name || item.name || item.id || uuidv4());
+      const fileName = baseName.toLowerCase().endsWith(ext.toLowerCase())
+        ? baseName
+        : `${baseName}${ext}`;
+      const localPath = path.join(draftRootDir, "assets", subDir, fileName);
+
+      if (!cache.has(item.path)) {
+        await appendDownloadLog(
+          { level: "loading", message: `正在下载 URL 素材到本地：${fileName}` },
+          parentWindow
+        );
+        try {
+          await downloadRemoteMaterialFile(item.path, localPath);
+        } catch (err) {
+          logger.error(`[error] 下载URL素材失败: ${item.path}`, err);
+          throw err;
+        }
+        cache.set(item.path, localPath);
+      }
+      item.path = cache.get(item.path);
+    }
+  }
+}
+
 function getConfigPath() {
   return path.join(app.getPath("userData"), "app-config.json");
 }
@@ -393,6 +484,8 @@ async function downloadJsonFile(
     if (jsonData?.materials) {
       logger.info(`[log] start modifyJsonValue: materials`);
       recursivelyUpdatePaths(jsonData.materials, targetDir, targetId);
+      // 当素材 path 为 URL 时，下载到本地并回写为本地路径。
+      await localizeRemoteMaterialPaths(jsonData.materials, targetDir, parentWindow);
     }
 
     await appendDownloadLog(
