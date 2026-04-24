@@ -695,9 +695,9 @@ async function getTargetFilePath(fileUrl, baseTargetDir, targetId) {
 }
 
 // 带重试机制的单个文件下载
-// 实现最多3次重试，失败后跳过该文件的功能
+// 实现最多5次重试，失败后跳过该文件的功能
 async function downloadFileWithRetry(config, parentWindow, fileIndex) {
-  const maxRetries = 3;
+  const maxRetries = 5;
   let retryCount = 0;
 
   // 获取文件名用于日志显示

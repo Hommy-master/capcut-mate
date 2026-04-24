@@ -16,7 +16,7 @@ import os
 
 _REQUEST_CONNECT_TIMEOUT = 10
 _REQUEST_READ_TIMEOUT = 30
-_MAX_RETRIES = 3
+_MAX_RETRIES = 5
 
 
 def safe_write_file(file_path: str, file_content: bytes, is_binary: bool = True):
@@ -214,7 +214,7 @@ def download_single_file(file_url: str, target_dir: str) -> bool:
     Returns:
         bool: 是否下载成功
     """
-    max_retries = 3
+    max_retries = 5
     retry_count = 0
     
     while retry_count <= max_retries:
