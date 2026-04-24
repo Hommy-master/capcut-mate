@@ -4,7 +4,7 @@ import electronService from "../services/electronService";
 const externalUrl = "https://jcaigc.cn/external-features";
 
 function ExternalWebpage() {
-  const [iframeHeight, setIframeHeight] = useState("240px");
+  const [iframeHeight, setIframeHeight] = useState("340px");
   const [isAccessible, setIsAccessible] = useState(null);
   
   const checkAccessibility = async () => {
@@ -52,15 +52,7 @@ function ExternalWebpage() {
             allowFullScreen
             sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
           />
-        ) : (
-          // 不可访问时显示的默认静态广告
-          <div className="default-advertisement">
-            <div className="ad-content">
-              <h2>欢迎使用剪映草稿下载工具</h2>
-              <p>我们的工具可以帮助您轻松下载剪映草稿，提高工作效率。</p>
-            </div>
-          </div>
-        )}
+        ) : null}
       </div>
     </section>
   );
