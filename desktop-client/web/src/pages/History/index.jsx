@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { toast } from "react-toastify";
 
 import {
@@ -17,8 +17,7 @@ import {
 import electronService from "../../services/electronService";
 import { formatToDateTime } from "../../utils/date";
 
-import "./index.css";
-import { useMemo } from "react";
+import "./index.less";
 
 // 草稿历史记录页面组件
 function HistoryPage() {
@@ -38,7 +37,9 @@ function HistoryPage() {
       // 从electronService获取完整历史记录
       let allHistory = await electronService.getHistoryRecord() || [];
       // 按时间倒序排列，使最新的草稿在最前面
-      allHistory = allHistory.sort((a, b) => new Date(b.time) - new Date(a.time));
+      allHistory = allHistory.sort(
+        (a, b) => new Date(b.time) - new Date(a.time),
+      );
       setHistoryList(allHistory);
       setTotalCount(allHistory.length || 0);
       setPaginationItems(getPaginatedData(1, allHistory));
@@ -67,7 +68,10 @@ function HistoryPage() {
   };
 
   // 计算分页数据
-  const getPaginatedData = (curPage = currentPage, allHistory = historyList) => {
+  const getPaginatedData = (
+    curPage = currentPage,
+    allHistory = historyList,
+  ) => {
     const startIndex = (curPage - 1) * pageSize;
     const endIndex = startIndex + pageSize;
     return allHistory.slice(startIndex, endIndex);
@@ -76,7 +80,7 @@ function HistoryPage() {
   // 计算总页数
   const totalPages = useMemo(
     () => Math.ceil(totalCount / pageSize),
-    [totalCount, pageSize]
+    [totalCount, pageSize],
   );
 
   // 处理页码变更
@@ -113,7 +117,7 @@ function HistoryPage() {
           onClick={() => handlePageChange(page)}
         >
           {page}
-        </Pagination.Item>
+        </Pagination.Item>,
       );
     }
 
@@ -124,14 +128,15 @@ function HistoryPage() {
     return items;
   };
 
-   const copyToClipboard = (text) => {
+  const copyToClipboard = (text) => {
     if (!text) return;
-    
-    navigator.clipboard.writeText(text)
+
+    navigator.clipboard
+      .writeText(text)
       .then(() => {
         toast.success("已复制到剪贴板");
       })
-      .catch(err => {
+      .catch((err) => {
         toast.error("复制失败: " + err);
       });
   };
@@ -142,15 +147,7 @@ function HistoryPage() {
         {/* 历史记录列表 */}
         <div className="history-list-container">
           <div className="d-flex justify-content-between align-items-center mb-3">
-            <h3
-              style={{
-                color: "#356bfd",
-                fontSize: "22px",
-                fontWeight: "600",
-                display: "flex",
-                alignItems: "center",
-              }}
-            >
+            <h3 className="history-list-title">
               <CollectionPlayFill className="me-2" />
               草稿历史记录
             </h3>
@@ -207,11 +204,7 @@ function HistoryPage() {
                       <div className="col-md-6 mb-2">
                         <div className="d-flex align-items-center">
                           <ClockHistory
-                            style={{
-                              fontSize: "14px",
-                              color: "#356bfd",
-                              marginRight: "8px",
-                            }}
+                            className="clock-history"
                           />
                           <span style={{ fontSize: "14px", color: "#666" }}>
                             解析时间:{" "}
@@ -290,18 +283,17 @@ function HistoryPage() {
 
           {historyList.length > 0 && (
             <div className="d-flex justify-content-between align-items-center mt-4">
-              <div className="total-count">
+              <div className="total-count d-flex align-items-center">
                 <CalendarCheckFill
-                  className="me-2"
-                  style={{ color: "#5c89ff" }}
+                  className="me-2 clock-history"
                 />
                 <span style={{ color: "#666" }}>总记录数: </span>
-                <span style={{ fontWeight: "500", color: "#356bfd" }}>
+                <span className="history-count">
                   {historyList.length}
                 </span>
               </div>
 
-              <Pagination>
+              <Pagination className="pagination">
                 <Pagination.First
                   onClick={() => handlePageChange(1)}
                   disabled={currentPage === 1}

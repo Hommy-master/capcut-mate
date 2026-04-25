@@ -8,7 +8,7 @@ import DownloadControls from "../../components/DownloadControls";
 import DownloadButton from "../../components/DownloadButton";
 import LogModule from "../../components/LogModule";
 
-import "./index.css";
+import "./index.less";
 
 function MainPage() {
   const [textareaValue, setTextareaValue] = useState("");

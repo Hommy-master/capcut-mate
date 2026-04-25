@@ -8,7 +8,7 @@
 import "bootstrap/dist/css/bootstrap.min.css";
 import "react-toastify/dist/ReactToastify.css";
 
-import "./styles/index.css";
+import "./styles/index.less";
 
 import { ToastContainer } from "react-toastify";
 

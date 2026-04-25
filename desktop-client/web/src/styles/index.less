@@ -1,3 +1,7 @@
+@charset "UTF-8";
+
+@import './root.less';
+
 * {
     margin: 0;
     padding: 0;
@@ -59,7 +63,7 @@ body {
 }
 
 .section-title {
-    color: #356bfd;
+    color: var(--secondary-color);
     font-size: 16px;
     font-weight: 500;
     margin-bottom: 15px;
@@ -71,7 +75,7 @@ body {
     content: '';
     flex: 1;
     height: 1px;
-    background: linear-gradient(to right, #7bc1e8, transparent);
+    background: linear-gradient(to right, var(--secondary-light), transparent);
     margin-left: 15px;
 }
 
@@ -85,7 +89,7 @@ body {
 }
 
 i.fas {
-    color: #3498db;
+    color: var(--secondary-color);
 }
 
 .btn i.fas {
@@ -136,7 +140,7 @@ input:disabled+.slider {
 }
 
 input:checked:not(:disabled)+.slider {
-    background-color: #2196f3;
+    background-color: var(--secondary-color);
 }
 
 input:checked+.slider:before {
@@ -148,7 +152,7 @@ input:checked+.slider:before {
 /* 按钮样式 */
 .btn {
     padding: 14px 28px;
-    background: linear-gradient(135deg, #5c89ff 0%, #356bfd 100%);
+    background: linear-gradient(135deg, var(--secondary-color) 0%, var(--primary-color) 100%);
     color: white;
     border: none;
     border-radius: 8px;
@@ -161,14 +165,14 @@ input:checked+.slider:before {
     gap: 8px;
 }
 
-.btn:hover {
-    background: linear-gradient(135deg, #5dade2 0%, #5c89ff 100%);  
+.btn:hover:not(:disabled) {
+    background: linear-gradient(135deg, var(--primary-light) 0%, var(--primary-dark) 100%);  
     color: white;
     transform: translateY(-2px);
 }
 
-.btn:disabled {
-    background: linear-gradient(135deg, #7bc1e8 0%, #5dade2 100%);    
+.btn:disabled:not(:hover) {
+    background: linear-gradient(135deg, var(--secondary-light) 0%, var(--secondary-color) 100%);    
     color: white;
     cursor: not-allowed;
     transform: none;
@@ -185,20 +189,20 @@ input:checked+.slider:before {
 
 .btn-clear,
 .btn-small {
-    background: #3498db;
+    background: var(--secondary-color);
     padding: 4px 8px;
     font-size: 0.75rem;
 }
 
 .btn-clear:hover,
 .btn-small:hover {
-    background: #5aa1f3;
+    background: var(--secondary-light);
 }
 
 .btn-small {
     padding: 8px 16px;
     font-size: 14px;
-    background-color: #3498db;
+    background-color: var(--secondary-color);
     color: white;
     border: none;
     border-radius: 5px;
@@ -206,7 +210,7 @@ input:checked+.slider:before {
 }
 
 .btn-small:hover {
-    background-color: #2980b9;
+    background-color: var(--secondary-light);
 }
 
 @media (min-width: 992px) {
