@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import electronService from "../services/electronService";
 
-const externalUrl = "http://localhost:8008/external-features";
+const externalUrl = "https://jcaigc.cn//external-features";
 
 function ExternalWebpage() {
   const [iframeHeight, setIframeHeight] = useState("0px");
