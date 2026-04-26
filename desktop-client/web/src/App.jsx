@@ -44,8 +44,8 @@ function App() {
             <Route path="/history" element={<HistoryPage />} />
             <Route path="/config" element={<ConfigCenter />} />
           </Routes> */}
-        <div className="main-content-footer">当前版本号：v{appVersion}</div>
       </div>
+      <div className="app-footer">当前版本号：v{appVersion}</div>
       <ToastContainer style={{ top: "55px" }} />
       {/* </Router> */}
     </div>
