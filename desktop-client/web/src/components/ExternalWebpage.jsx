@@ -70,6 +70,13 @@ function ExternalWebpage() {
     }
   };
 
+  // ✅ 关键：当版本号异步获取完成后，再次发送消息通知子页面父页面已就绪，并携带版本号
+  useEffect(() => {
+    if (appVersion) {
+      handleIframeLoad();
+    }
+  }, [appVersion]);
+
   return (
     <section className="module">
       <div className="external-webpage-container">
