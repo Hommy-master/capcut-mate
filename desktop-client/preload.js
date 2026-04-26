@@ -45,4 +45,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
     checkUrlAccess: (url) => ipcRenderer.invoke('check-url-access', url),
     
     getHistoryRecord: () => ipcRenderer.invoke('get-history-record'),
+
+    getAppVersion: () => ipcRenderer.invoke('get-app-version'),
 });

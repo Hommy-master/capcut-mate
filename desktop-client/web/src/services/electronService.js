@@ -75,6 +75,9 @@ const mockElectronAPI = {
     console.warn('Electron API not available in browser: getHistoryRecord');
     return [];
   },
+  getAppVersion: async () => {
+    return null;
+  },
 };
 
 // 实际的Electron API（用于Electron环境）
@@ -111,6 +114,9 @@ const electronAPI = {
   },
   getHistoryRecord: async () => {
     return await window.electronAPI.getHistoryRecord();
+  },
+  getAppVersion: async () => {
+    return await window.electronAPI.getAppVersion();
   },
 };
 

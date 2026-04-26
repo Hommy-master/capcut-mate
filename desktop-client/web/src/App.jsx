@@ -16,12 +16,29 @@ import TopHeader from "./components/Header";
 import HistoryPage from "./pages/History";
 import MainPage from "./pages/Download";
 import ConfigCenter from "./pages/ConfigCenter";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import electronService from "./services/electronService";
 
 import { version } from "../package.json";
 
 function App() {
   const [selectedTab, setSelectedTab] = useState("download");
+  const [appVersion, setAppVersion] = useState(version);
+
+  useEffect(() => {
+    const fetchAppVersion = async () => {
+      try {
+        const realVersion = await electronService.getAppVersion();
+        if (realVersion) {
+          setAppVersion(realVersion);
+        }
+      } catch (error) {
+        console.error("获取应用版本号失败:", error);
+      }
+    };
+
+    fetchAppVersion();
+  }, []);
 
   const tabMap = {
     download: <MainPage />,
@@ -40,7 +57,7 @@ function App() {
             <Route path="/history" element={<HistoryPage />} />
             <Route path="/config" element={<ConfigCenter />} />
           </Routes> */}
-          <div className="main-content-footer">当前版本号：v{version}</div>
+          <div className="main-content-footer">当前版本号：v{appVersion}</div>
         </div>
         <ToastContainer style={{ top: "55px" }} />
       {/* </Router> */}
