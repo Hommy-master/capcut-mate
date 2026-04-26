@@ -1,4 +1,4 @@
-const { app, BrowserWindow, dialog } = require('electron');
+const { app, BrowserWindow, dialog, shell } = require('electron');
 const path = require('path');
 const logger = require('./nodeapi/logger');
 
@@ -92,6 +92,36 @@ process.on('uncaughtException', (error) => {
       buttons: ['确定']
     });
   }
+});
+
+// 判断是否为需要外跳系统浏览器的外部链接
+function isExternalUrl(url) {
+  return url && (url.startsWith('http://') || url.startsWith('https://'));
+}
+
+// 全局拦截所有 webContents 的新窗口打开行为
+app.on('web-contents-created', (event, contents) => {
+  contents.setWindowOpenHandler(({ url }) => {
+    if (isExternalUrl(url)) {
+      shell.openExternal(url);
+      return { action: 'deny' };
+    }
+    return { action: 'allow' };
+  });
+});
+
+// 兜底：任何新窗口被创建时直接销毁并甩到系统浏览器
+app.on('browser-window-created', (event, window) => {
+  // 用 getAllWindows 判断：如果当前只有这一个窗口，说明是主窗口，放过
+  if (BrowserWindow.getAllWindows().length === 1) return;
+  // 检测不是外部链接则放过
+  const url = window.webContents.getURL();
+  if (!isExternalUrl(url)) return;
+
+  window.webContents.once('did-finish-load', () => {
+    shell.openExternal(url);
+    window.destroy();
+  });
 });
 
 // 当Electron完成初始化并准备创建浏览器窗口时调用此方法
