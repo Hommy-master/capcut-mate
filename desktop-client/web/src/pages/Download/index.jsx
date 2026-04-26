@@ -8,7 +8,7 @@ import DownloadControls from "../../components/DownloadControls";
 import DownloadButton from "../../components/DownloadButton";
 import LogModule from "../../components/LogModule";
 
-import "./index.css";
+import "./index.less";
 
 function MainPage() {
   const [textareaValue, setTextareaValue] = useState("");
@@ -43,12 +43,13 @@ function MainPage() {
   }, [logs]);
 
   const handleDownload = async () => {
-    if (!textareaValue) {
+    const trimmedValue = textareaValue.trim();
+    if (!trimmedValue) {
       toast.warn("请输入草稿地址，多个使用回车换行分隔");
       return;
     }
 
-    const valArray = textareaValue.split("\n").map((line) => line.trim());
+    const valArray = trimmedValue.split("\n").map((line) => line.trim());
     for (const val of valArray) {
       if (val) {
         await saveFile(val);
@@ -107,7 +108,7 @@ function MainPage() {
 
         <Textarea
           value={textareaValue}
-          onChange={(val) => setTextareaValue(val?.trim())}
+          onChange={(val) => setTextareaValue(val)}
         />
 
         <Tabs

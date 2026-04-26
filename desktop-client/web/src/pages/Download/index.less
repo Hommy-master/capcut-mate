@@ -11,6 +11,7 @@
 }
 
 .external-webpage {
+    display: block;
     transition: opacity 0.3s ease;
 }
 
@@ -52,86 +53,6 @@
     }
 }
 
-/* 默认静态广告样式 */
-.default-advertisement {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100%;
-    width: 100%;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    padding: 40px;
-    text-align: center;
-}
-
-.ad-content {
-    max-width: 600px;
-}
-
-.ad-logo {
-    font-size: 4rem;
-    margin-bottom: 20px;
-    color: #fff;
-    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
-}
-
-.ad-content h2 {
-    font-size: 2rem;
-    margin-bottom: 15px;
-    font-weight: 600;
-}
-
-.ad-content p {
-    font-size: 1.1rem;
-    margin-bottom: 30px;
-    opacity: 0.9;
-}
-
-.ad-features {
-    display: flex;
-    justify-content: space-around;
-    margin-bottom: 30px;
-    flex-wrap: wrap;
-    gap: 20px;
-}
-
-.feature-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
-}
-
-.feature-item i {
-    font-size: 1.5rem;
-    color: #fff;
-}
-
-.feature-item span {
-    font-size: 0.9rem;
-    opacity: 0.9;
-}
-
-.ad-button {
-    background-color: #fff;
-    color: #667eea;
-    border: none;
-    padding: 12px 30px;
-    font-size: 1rem;
-    font-weight: 600;
-    border-radius: 50px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-}
-
-.ad-button:hover {
-    background-color: #f8f9fa;
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
-}
-
 /* 文本输入区域样式 */
 .textarea-container {
     margin-bottom: 20px;
@@ -153,8 +74,8 @@
 
 .auto-resize-textarea:focus {
     outline: none;
-    border-color: #3498db;
-    box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+    border-color: var(--secondary-color);
+    box-shadow: 0 0 0 2px rgba(var(--secondary-color-rgb), 0.2);
 }
 
 /* Tab样式 */
@@ -184,9 +105,9 @@
 }
 
 .tab-btn.active {
-    background: #3498db;
+    background: var(--secondary-color);
     color: white;
-    border-color: #3498db;
+    border-color: var(--secondary-color);
 }
 
 /* 开关样式 */
@@ -288,7 +209,7 @@
 
 .log-item.loading,
 i.log-icon {
-    color: #3498db;
+    color: var(--secondary-color);
 }
 
 .log-item.all,

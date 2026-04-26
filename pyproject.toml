@@ -15,6 +15,7 @@ dependencies = [
     "uvicorn[standard]>=0.35.0",
     "cos-python-sdk-v5>=1.9.38",
     "oss2",
+    "imageio>=2.37.3",
 ]
 
 [project.optional-dependencies]

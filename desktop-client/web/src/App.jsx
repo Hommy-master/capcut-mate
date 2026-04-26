@@ -8,7 +8,7 @@
 import "bootstrap/dist/css/bootstrap.min.css";
 import "react-toastify/dist/ReactToastify.css";
 
-import "./styles/index.css";
+import "./styles/index.less";
 
 import { ToastContainer } from "react-toastify";
 
@@ -17,6 +17,8 @@ import HistoryPage from "./pages/History";
 import MainPage from "./pages/Download";
 import ConfigCenter from "./pages/ConfigCenter";
 import { useState } from "react";
+
+import { version } from "../package.json";
 
 function App() {
   const [selectedTab, setSelectedTab] = useState("download");
@@ -38,6 +40,7 @@ function App() {
             <Route path="/history" element={<HistoryPage />} />
             <Route path="/config" element={<ConfigCenter />} />
           </Routes> */}
+          <div className="main-content-footer">当前版本号：v{version}</div>
         </div>
         <ToastContainer style={{ top: "55px" }} />
       {/* </Router> */}

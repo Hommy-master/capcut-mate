@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import electronService from "../../services/electronService";
 
-import "./index.css";
+import "./index.less";
 import { toast } from "react-toastify";
 
 const ConfigCenter = () => {
