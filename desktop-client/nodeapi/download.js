@@ -72,10 +72,10 @@ async function downloadRemoteMaterialFile(fileUrl, localPath) {
   });
 }
 
-async function localizeRemoteMaterialPaths(materials, draftRootDir, parentWindow) {
+async function localizeRemoteMaterialPaths(materials, draftRootDir, parentWindow, sharedCache = null) {
   if (!materials || typeof materials !== "object") return;
   const supportedTypes = ["videos", "audios"];
-  const cache = new Map();
+  const cache = sharedCache instanceof Map ? sharedCache : new Map();
 
   for (const materialType of supportedTypes) {
     const list = materials[materialType];
@@ -455,7 +455,7 @@ function recursivelyUpdatePaths(obj, targetDir, targetId) {
 
 // 带错误处理的JSON文件下载
 async function downloadJsonFile(
-  { fileUrl, filePath, targetDir, targetId },
+  { fileUrl, filePath, targetDir, targetId, materialDownloadCache },
   parentWindow
 ) {
   // 1. 使用 Axios 下载 JSON 文件
@@ -485,7 +485,12 @@ async function downloadJsonFile(
       logger.info(`[log] start modifyJsonValue: materials`);
       recursivelyUpdatePaths(jsonData.materials, targetDir, targetId);
       // 当素材 path 为 URL 时，下载到本地并回写为本地路径。
-      await localizeRemoteMaterialPaths(jsonData.materials, targetDir, parentWindow);
+      await localizeRemoteMaterialPaths(
+        jsonData.materials,
+        targetDir,
+        parentWindow,
+        materialDownloadCache
+      );
     }
 
     await appendDownloadLog(
@@ -570,6 +575,20 @@ async function downloadNotJsonFile(
 async function downloadSingleFile(config, parentWindow) {
   const filePath = config.filePath;
   const fileUrl = config.fileUrl;
+  const fileName = path.basename(filePath);
+
+  // 已知 draft_content.json 与 draft_info.json 内容一致时，直接复用，避免重复构建与重复下载 URL 素材。
+  if (fileName === "draft_info.json") {
+    const contentFilePath = path.join(path.dirname(filePath), "draft_content.json");
+    try {
+      await fs.access(contentFilePath, fs.constants.R_OK);
+      await fs.copyFile(contentFilePath, filePath);
+      logger.info(`[log] draft_info.json 直接复用 draft_content.json: ${filePath}`);
+      return;
+    } catch {
+      // draft_content.json 不存在时回退到原逻辑，保证兼容。
+    }
+  }
 
   if (fileUrl.endsWith(".json")) {
     logger.info(`[log] start download json file : ${filePath}`);
@@ -774,6 +793,7 @@ async function downloadFiles(
 
     let successCount = 0;
     let failureCount = 0;
+    const materialDownloadCache = new Map();
     
     // 2. 遍历远程文件URL数组
     for (let i = 0; i < remoteFileUrls.length; i++) {
@@ -798,7 +818,7 @@ async function downloadFiles(
         
         // 带重试机制的下载文件
         const downloadSuccess = await downloadFileWithRetry(
-          { fileUrl, filePath: fullTargetPath, targetDir, targetId },
+          { fileUrl, filePath: fullTargetPath, targetDir, targetId, materialDownloadCache },
           parentWindow,
           fileIndex
         );
