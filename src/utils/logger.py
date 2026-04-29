@@ -29,7 +29,7 @@ LOGGING_CONFIG = {
     "formatters": {
         "default": {
             "()": RelativePathFormatter,
-            "fmt": "%(asctime)s.%(msecs)03d | %(levelname)s | %(name)s | %(rel_path)s:%(lineno)d | %(message)s",
+            "fmt": "%(asctime)s.%(msecs)03d | %(levelname)s | %(trace_id)s | %(name)s | %(rel_path)s:%(lineno)d | %(message)s",
             "datefmt": "%Y-%m-%d %H:%M:%S",
         },
     },
@@ -57,5 +57,18 @@ LOGGING_CONFIG = {
 }
 
 dictConfig(LOGGING_CONFIG)
+
+
+def _install_trace_context_filters() -> None:
+    """dictConfig 之后注册，避免字符串解析 Filter 时在包未加载完的情况下循环导入。"""
+    from src.utils.trace_context import TraceContextFilter
+
+    filt = TraceContextFilter()
+    for log_name in ("uvicorn", "uvicorn.error", "uvicorn.access", "src.utils.logger"):
+        for h in logging.getLogger(log_name).handlers:
+            h.addFilter(filt)
+
+
+_install_trace_context_filters()
 
 logger = logging.getLogger(__name__)
