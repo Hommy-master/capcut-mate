@@ -187,8 +187,7 @@ class VideoGenTaskManager:
         Returns:
             任务状态信息，如果不存在返回None
         """
-        prune_if_needed()
-
+        # 热路径：本进程内提交过的任务始终在内存，避免每次轮询都抢 SQLite 全局锁
         task = self.tasks.get(draft_url)
         if task:
             return {
@@ -202,6 +201,7 @@ class VideoGenTaskManager:
                 "completed_at": task.completed_at.isoformat() if task.completed_at else None,
             }
 
+        prune_if_needed()
         draft_id = helper.get_url_param(draft_url, "draft_id")
         return get_completed_by_draft_id(draft_id)
 

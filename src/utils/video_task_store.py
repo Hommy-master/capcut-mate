@@ -7,6 +7,7 @@ from __future__ import annotations
 import os
 import sqlite3
 import threading
+import time
 from datetime import datetime
 from typing import Any, Dict, Optional
 
@@ -15,6 +16,9 @@ from src.utils.logger import logger
 
 _MAX_ROWS = 100_000
 _PRUNE_BATCH = 1_000
+# 高并发下避免每次状态查询都跑 COUNT/竞争锁；超过间隔才真正检查是否需清理
+_PRUNE_MIN_INTERVAL_SEC = 60.0
+_last_prune_at: Optional[float] = None
 
 _lock = threading.Lock()
 
@@ -67,9 +71,17 @@ _ensure_schema()
 def prune_if_needed() -> None:
     """
     若表中记录数超过 10 万，按 completed_at 最旧优先删除 1000 条。
-    在每次查询任务状态时调用。
+    在查询已落库任务前可调用；高并发下通过时间间隔节流，避免每次请求都 COUNT(*)。
     """
+    global _last_prune_at
+    now = time.monotonic()
+    if _last_prune_at is not None and now - _last_prune_at < _PRUNE_MIN_INTERVAL_SEC:
+        return
     with _lock:
+        now2 = time.monotonic()
+        if _last_prune_at is not None and now2 - _last_prune_at < _PRUNE_MIN_INTERVAL_SEC:
+            return
+        _last_prune_at = now2
         conn = _connect()
         try:
             (cnt,) = conn.execute(
