@@ -142,10 +142,13 @@ async function localizeRemoteMaterialPaths(materials, draftRootDir, parentWindow
             },
             {
               onAttempt: async (attempt) => {
+                const attemptMessage = attempt === 1
+                  ? `正在下载 URL 素材到本地：${fileName}`
+                  : `正在下载 URL 素材到本地：${fileName}（第${attempt - 1}次重试）`;
                 await appendDownloadLog(
                   {
                     level: "loading",
-                    message: `正在下载 URL 素材到本地：${fileName}（第${attempt}/${MAX_DOWNLOAD_ATTEMPTS}次）`,
+                    message: attemptMessage,
                   },
                   parentWindow
                 );
@@ -160,7 +163,7 @@ async function localizeRemoteMaterialPaths(materials, draftRootDir, parentWindow
                 await appendDownloadLog(
                   {
                     level: "error",
-                    message: `URL 素材下载失败（已重试${MAX_DOWNLOAD_ATTEMPTS}次）：${fileName}`,
+                    message: `URL 素材下载失败（已重试${MAX_DOWNLOAD_ATTEMPTS - 1}次，共尝试${MAX_DOWNLOAD_ATTEMPTS}次）：${fileName}`,
                   },
                   parentWindow
                 );
@@ -792,10 +795,13 @@ async function downloadFileWithRetry(config, parentWindow, fileIndex) {
       },
       {
         onAttempt: async (attempt, maxAttempts) => {
+          const attemptMessage = attempt === 1
+            ? `正在下载草稿内容文件: ${fileName} (第${fileIndex}个文件)`
+            : `正在下载草稿内容文件: ${fileName} (第${fileIndex}个文件)（第${attempt - 1}次重试）`;
           await appendDownloadLog(
             {
               level: "loading",
-              message: `正在下载草稿内容文件: ${fileName} (第${fileIndex}个文件)（第${attempt}/${maxAttempts}次）`,
+              message: attemptMessage,
             },
             parentWindow
           );
@@ -817,7 +823,7 @@ async function downloadFileWithRetry(config, parentWindow, fileIndex) {
           await appendDownloadLog(
             {
               level: "error",
-              message: `第 ${fileIndex} 个草稿信息文件下载失败，已达到最大重试次数(${maxAttempts})`,
+              message: `第 ${fileIndex} 个草稿信息文件下载失败（已重试${maxAttempts - 1}次，共尝试${maxAttempts}次）`,
             },
             parentWindow
           );
