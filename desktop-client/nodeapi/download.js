@@ -72,6 +72,46 @@ async function downloadRemoteMaterialFile(fileUrl, localPath) {
   });
 }
 
+const MAX_DOWNLOAD_ATTEMPTS = 6;
+
+async function retryDownloadTask(task, options = {}) {
+  const {
+    maxAttempts = MAX_DOWNLOAD_ATTEMPTS,
+    retryDelayMs = 1000,
+    onAttempt = null,
+    onRetry = null,
+    onExhausted = null,
+  } = options;
+
+  let lastError = null;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      if (typeof onAttempt === "function") {
+        await onAttempt(attempt, maxAttempts);
+      }
+      return await task(attempt, maxAttempts);
+    } catch (error) {
+      lastError = error;
+      const hasNextAttempt = attempt < maxAttempts;
+      if (hasNextAttempt) {
+        if (typeof onRetry === "function") {
+          await onRetry(error, attempt, maxAttempts);
+        }
+        if (retryDelayMs > 0) {
+          await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
+        }
+        continue;
+      }
+      if (typeof onExhausted === "function") {
+        await onExhausted(error, attempt, maxAttempts);
+      }
+      throw error;
+    }
+  }
+
+  throw lastError || new Error("retryDownloadTask failed without explicit error");
+}
+
 async function localizeRemoteMaterialPaths(materials, draftRootDir, parentWindow, sharedCache = null) {
   if (!materials || typeof materials !== "object") return;
   const supportedTypes = ["videos", "audios"];
@@ -95,17 +135,44 @@ async function localizeRemoteMaterialPaths(materials, draftRootDir, parentWindow
       const localPath = path.join(draftRootDir, "assets", subDir, fileName);
 
       if (!cache.has(item.path)) {
-        await appendDownloadLog(
-          { level: "loading", message: `正在下载 URL 素材到本地：${fileName}` },
-          parentWindow
-        );
         try {
-          await downloadRemoteMaterialFile(item.path, localPath);
+          await retryDownloadTask(
+            async () => {
+              await downloadRemoteMaterialFile(item.path, localPath);
+            },
+            {
+              onAttempt: async (attempt) => {
+                await appendDownloadLog(
+                  {
+                    level: "loading",
+                    message: `正在下载 URL 素材到本地：${fileName}（第${attempt}/${MAX_DOWNLOAD_ATTEMPTS}次）`,
+                  },
+                  parentWindow
+                );
+              },
+              onRetry: async (err, attempt) => {
+                logger.warn(
+                  `[warn] 下载URL素材失败，准备重试(${attempt}/${MAX_DOWNLOAD_ATTEMPTS}): ${item.path}`,
+                  err?.message || err
+                );
+              },
+              onExhausted: async () => {
+                await appendDownloadLog(
+                  {
+                    level: "error",
+                    message: `URL 素材下载失败（已重试${MAX_DOWNLOAD_ATTEMPTS}次）：${fileName}`,
+                  },
+                  parentWindow
+                );
+              },
+            }
+          );
+          cache.set(item.path, localPath);
         } catch (err) {
-          logger.error(`[error] 下载URL素材失败: ${item.path}`, err);
-          throw err;
+          // URL 素材失败不影响同一草稿内其他文件下载，保留原 URL 路径。
+          logger.error(`[error] 下载URL素材失败，已达到重试上限: ${item.path}`, err);
+          continue;
         }
-        cache.set(item.path, localPath);
       }
       item.path = cache.get(item.path);
     }
@@ -714,50 +781,58 @@ async function getTargetFilePath(fileUrl, baseTargetDir, targetId) {
 }
 
 // 带重试机制的单个文件下载
-// 实现最多5次重试，失败后跳过该文件的功能
+// 实现单个文件最多下载6次（首轮+最多5次重试）
 async function downloadFileWithRetry(config, parentWindow, fileIndex) {
-  const maxRetries = 5;
-  let retryCount = 0;
-
   // 获取文件名用于日志显示
   const fileName = path.basename(config.filePath);
-
-  while (retryCount <= maxRetries) {
-    try {
-      await appendDownloadLog(
-        {
-          level: "loading",
-          message: `正在下载草稿内容文件: ${fileName} (第${fileIndex}个文件) ${retryCount > 0 ? `(重试第${retryCount}次)` : ''}`,
+  try {
+    await retryDownloadTask(
+      async () => {
+        await downloadSingleFile(config, parentWindow);
+      },
+      {
+        onAttempt: async (attempt, maxAttempts) => {
+          await appendDownloadLog(
+            {
+              level: "loading",
+              message: `正在下载草稿内容文件: ${fileName} (第${fileIndex}个文件)（第${attempt}/${maxAttempts}次）`,
+            },
+            parentWindow
+          );
+          logger.info(
+            `[log] start get file context : ${config.fileUrl}, attempt: ${attempt}/${maxAttempts}`
+          );
         },
-        parentWindow
-      );
-
-      logger.info(`[log] start get file context : ${config.fileUrl}, retry: ${retryCount}`);
-      
-      await downloadSingleFile(config, parentWindow);
-      
-      logger.info(`[log] file saved to : ${config.filePath}`);
-      await appendDownloadLog(
-        { level: "success", message: `第 ${fileIndex} 个草稿信息文件保存成功` },
-        parentWindow
-      );
-      return true; // 下载成功
-    } catch (error) {
-      retryCount++;
-      logger.error(`[error] download file ${config.fileUrl} failed (attempt ${retryCount}/${maxRetries}):`, error);
-
-      if (retryCount >= maxRetries) {
-        // 达到最大重试次数，记录失败并跳过
-        await appendDownloadLog(
-          { level: "error", message: `第 ${fileIndex} 个草稿信息文件下载失败，已达到最大重试次数(${maxRetries})` },
-          parentWindow
-        );
-        return false; // 下载失败
-      } else {
-        // 等待一段时间再重试
-        await new Promise(resolve => setTimeout(resolve, 1000)); // 等待1秒再重试
+        onRetry: async (error, attempt, maxAttempts) => {
+          logger.error(
+            `[error] download file ${config.fileUrl} failed (attempt ${attempt}/${maxAttempts}):`,
+            error
+          );
+        },
+        onExhausted: async (error, attempt, maxAttempts) => {
+          logger.error(
+            `[error] download file ${config.fileUrl} exhausted retries (attempt ${attempt}/${maxAttempts}):`,
+            error
+          );
+          await appendDownloadLog(
+            {
+              level: "error",
+              message: `第 ${fileIndex} 个草稿信息文件下载失败，已达到最大重试次数(${maxAttempts})`,
+            },
+            parentWindow
+          );
+        },
       }
-    }
+    );
+
+    logger.info(`[log] file saved to : ${config.filePath}`);
+    await appendDownloadLog(
+      { level: "success", message: `第 ${fileIndex} 个草稿信息文件保存成功` },
+      parentWindow
+    );
+    return true;
+  } catch {
+    return false;
   }
 }
 
