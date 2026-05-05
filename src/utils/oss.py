@@ -8,10 +8,15 @@ from exceptions import CustomError, CustomException
 from src.utils.logger import logger
 from src.utils.storage_upload_retry import run_with_storage_retry
 
+# oss2.resumable_upload：≥ 此大小走 Multipart；分片大小由 SDK 自动计算；并发上传分片线程数
+_OSS_MULTIPART_THRESHOLD_BYTES = 10 * 1024 * 1024
+_OSS_MULTIPART_NUM_THREADS = 2
+
 
 def oss_upload_file(file_path: str, expire_days: Optional[int] = None) -> str:
     """
-    上传文件到OSS，返回带签名的临时URL，链接在指定天数后失效（见 config.VIDEO_GEN_RETENTION_DAYS）。
+    上传文件到 OSS，返回带签名的临时URL，链接在指定天数后失效（见 config.VIDEO_GEN_RETENTION_DAYS）。
+    使用 oss2.resumable_upload：达到阈值时用分片（Multipart）上传并支持断点续传，小文件仍为单次 PutObject。
 
     Args:
         file_path: 文件路径
@@ -28,6 +33,7 @@ def oss_upload_file(file_path: str, expire_days: Optional[int] = None) -> str:
 
     try:
         import oss2
+        from oss2 import make_upload_store, resumable_upload
     except ImportError as e:
         logger.error(f"OSS SDK import failed: {e}")
         raise CustomException(CustomError.INTERNAL_SERVER_ERROR, "OSS SDK not installed")
@@ -44,7 +50,19 @@ def oss_upload_file(file_path: str, expire_days: Optional[int] = None) -> str:
 
         auth = oss2.Auth(config.OSS_ACCESS_KEY_ID, config.OSS_ACCESS_KEY_SECRET)
         bucket = oss2.Bucket(auth, config.OSS_ENDPOINT, config.OSS_BUCKET_NAME)
-        response = bucket.put_object_from_file(key, file_path)
+
+        os.makedirs(config.TEMP_DIR, exist_ok=True)
+        ckpt = make_upload_store(root=config.TEMP_DIR, dir="oss_multipart_ckpt")
+
+        response = resumable_upload(
+            bucket,
+            key,
+            file_path,
+            store=ckpt,
+            multipart_threshold=_OSS_MULTIPART_THRESHOLD_BYTES,
+            part_size=None,
+            num_threads=_OSS_MULTIPART_NUM_THREADS,
+        )
         logger.info(f"OSS upload success, key: {key}, expire time: {expire_time_str}, status: {response.status}")
 
         signed_url = bucket.sign_url(
