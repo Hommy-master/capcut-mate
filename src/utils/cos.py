@@ -1,5 +1,6 @@
 # 实现腾讯云对象存储（COS）的上传功能
 import os
+import time
 import datetime
 from typing import Optional
 import config
@@ -62,8 +63,21 @@ def cos_upload_file(file_path: str, expire_days: Optional[int] = None) -> str:
         logger.info(f"Generated COS signed URL valid for {expire_days} day(s), URL: {signed_url[:100]}...")
         return signed_url
 
+    _t0 = time.perf_counter()
+    success = False
     try:
-        return run_with_storage_retry(do_upload, context="COS")
+        result = run_with_storage_retry(do_upload, context="COS")
+        success = True
+        return result
     except Exception as e:
         logger.error(f"COS upload failed: {e}")
         raise CustomException(CustomError.INTERNAL_SERVER_ERROR, "COS upload failed")
+    finally:
+        elapsed = time.perf_counter() - _t0
+        logger.info(
+            "COS upload %s, file=%s, key=%s, total_duration_sec=%.3f",
+            "success" if success else "failed",
+            file_path,
+            key,
+            elapsed,
+        )

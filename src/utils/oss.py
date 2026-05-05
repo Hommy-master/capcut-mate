@@ -1,6 +1,7 @@
 # 实现阿里云对象存储（OSS）的上传功能
 import datetime
 import os
+import time
 from typing import Optional
 
 import config
@@ -74,8 +75,21 @@ def oss_upload_file(file_path: str, expire_days: Optional[int] = None) -> str:
         logger.info(f"Generated OSS signed URL valid for {expire_days} day(s), URL: {signed_url[:100]}...")
         return signed_url
 
+    _t0 = time.perf_counter()
+    success = False
     try:
-        return run_with_storage_retry(do_upload, context="OSS")
+        result = run_with_storage_retry(do_upload, context="OSS")
+        success = True
+        return result
     except Exception as e:
         logger.error(f"OSS upload failed: {e}")
         raise CustomException(CustomError.INTERNAL_SERVER_ERROR, "OSS upload failed")
+    finally:
+        elapsed = time.perf_counter() - _t0
+        logger.info(
+            "OSS upload %s, file=%s, key=%s, total_duration_sec=%.3f",
+            "success" if success else "failed",
+            file_path,
+            key,
+            elapsed,
+        )
