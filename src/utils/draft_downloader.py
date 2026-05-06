@@ -83,7 +83,7 @@ def extract_draft_id_from_url(url: str) -> Optional[str]:
         draft_ids = query_params.get('draft_id', [])
         return draft_ids[0] if draft_ids else None
     except Exception as e:
-        logger.error(f"解析URL失败: {url}, 错误: {e}")
+        logger.error(f"Failed to parse URL: {url}, error: {e}")
         return None
 
 
@@ -101,7 +101,7 @@ def download_draft(draft_url: str, save_path: Optional[str] = None) -> bool:
     # 提取draft_id
     draft_id = extract_draft_id_from_url(draft_url)
     if not draft_id:
-        logger.error(f"无法从URL中提取draft_id: {draft_url}")
+        logger.error(f"Cannot extract draft_id from URL: {draft_url}")
         return False
     
     # 设置保存路径
@@ -111,12 +111,12 @@ def download_draft(draft_url: str, save_path: Optional[str] = None) -> bool:
     # 构建并创建目标目录
     target_dir = prepare_target_directory(save_path, draft_id)
     
-    logger.info(f"准备下载草稿: {draft_id} 到目录: {target_dir}")
+    logger.info(f"Downloading draft {draft_id} to {target_dir}")
     
     # 获取草稿文件列表
     files = get_draft_files_list(draft_url)
     if not files:
-        logger.error(f"无法获取草稿文件列表: {draft_id}")
+        logger.error(f"Cannot get draft file list: {draft_id}")
         return False
     
     # 下载所有文件
@@ -141,38 +141,42 @@ def get_draft_files_list(draft_url: str) -> list:
             )
 
             if response.status_code != 200:
-                logger.error(f"获取草稿文件列表失败，状态码: {response.status_code}")
+                logger.error(f"Failed to get draft file list, HTTP status: {response.status_code}")
                 return []
 
             # 解析JSON响应
             try:
                 json_data = response.json()
             except json.JSONDecodeError as e:
-                logger.error(f"解析草稿JSON响应失败: {e}")
+                logger.error(f"Failed to parse draft list JSON: {e}")
                 return []
 
             # 检查响应状态
             if json_data.get('code') != 0:
-                logger.error(f"获取草稿文件列表失败: {json_data.get('message', '未知错误')}")
+                logger.error(
+                    f"Failed to get draft file list: {json_data.get('message', 'unknown error')}"
+                )
                 return []
 
             # 返回files列表
             files = json_data.get('files', [])
-            logger.info(f"获取到 {len(files)} 个草稿文件")
+            logger.info(f"Fetched {len(files)} draft file(s)")
             return files
         except requests.exceptions.RequestException as e:
             if attempt >= _MAX_RETRIES:
-                logger.error(f"网络请求错误，获取草稿文件列表失败，已重试{_MAX_RETRIES}次: {e}")
+                logger.error(
+                    f"Network error while fetching draft file list after {_MAX_RETRIES} retries: {e}"
+                )
                 return []
 
             retry_no = attempt + 1
             backoff_seconds = retry_no
             logger.warning(
-                f"网络请求错误，获取草稿文件列表准备重试({retry_no}/{_MAX_RETRIES}): {e}"
+                f"Network error while fetching draft file list, retry ({retry_no}/{_MAX_RETRIES}): {e}"
             )
             time.sleep(backoff_seconds)
         except Exception as e:
-            logger.error(f"获取草稿文件列表时发生未知错误: {e}")
+            logger.error(f"Unexpected error while fetching draft file list: {e}")
             return []
 
 
@@ -195,11 +199,14 @@ def download_all_files(files: list, target_dir: str, draft_id: str) -> bool:
         if download_single_file(file_url, target_dir):
             success_count += 1
         else:
-            logger.error(f"下载单个文件失败: {file_url}")
+            logger.error(f"Failed to download file: {file_url}")
 
     trigger_directory_scan_with_robocopy(target_dir)
     
-    logger.info(f"草稿 {draft_id} 下载完成: 总计{total_files}, 成功{success_count}, 失败{total_files-success_count}")
+    logger.info(
+        f"Draft {draft_id} download finished: total={total_files}, "
+        f"ok={success_count}, failed={total_files - success_count}"
+    )
     return success_count == total_files
 
 
@@ -223,7 +230,9 @@ def download_single_file(file_url: str, target_dir: str) -> bool:
             response = requests.get(file_url)
             
             if response.status_code != 200:
-                logger.error(f"下载文件失败，状态码: {response.status_code}, URL: {file_url}")
+                logger.error(
+                    f"Download failed, HTTP status: {response.status_code}, URL: {file_url}"
+                )
                 return False
             
             # 解析文件URL以获得相对路径
@@ -263,7 +272,7 @@ def download_single_file(file_url: str, target_dir: str) -> bool:
             # 写入文件
             safe_write_file(full_file_path, response.content, is_binary=True)
             
-            # 如果是JSON文件，修改其中的路径；更新失败则本次下载失败（不应继续导出）
+            # draft_info / draft_content：路径重写与 URL 素材本地化；失败则本文件下载失败
             if full_file_path.endswith(('draft_info.json', 'draft_content.json')):
                 if not update_json_file_paths(full_file_path, target_dir, url_draft_id):
                     return False
@@ -273,31 +282,25 @@ def download_single_file(file_url: str, target_dir: str) -> bool:
         except requests.exceptions.RequestException as e:
             retry_count += 1
             if retry_count > max_retries:
-                logger.error(f"网络请求错误，下载文件失败，已重试{max_retries}次: {e}, URL: {file_url}")
+                logger.error(
+                    f"Network error, download failed after {max_retries} retries: {e}, URL: {file_url}"
+                )
                 return False
             else:
-                logger.warning(f"网络请求错误，准备重试({retry_count}/{max_retries}): {e}, URL: {file_url}")
+                logger.warning(
+                    f"Network error, retry ({retry_count}/{max_retries}): {e}, URL: {file_url}"
+                )
                 time.sleep(1 * retry_count)  # 递增延迟
         except IOError as e:
-            logger.error(f"文件写入错误，下载文件失败: {e}, URL: {file_url}")
+            logger.error(f"File write error, download failed: {e}, URL: {file_url}")
             return False
         except Exception as e:
-            logger.error(f"下载文件时发生未知错误: {e}, URL: {file_url}")
+            logger.error(f"Unexpected error while downloading file: {e}, URL: {file_url}")
             return False
 
 
 def update_json_file_paths(json_file_path: str, target_dir: str, draft_id: str) -> bool:
-    """
-    更新JSON文件中的路径，解析JSON并更新以/app/output/draft/draft_id开头的路径为本地路径
-    
-    Args:
-        json_file_path: JSON文件路径
-        target_dir: 目标目录
-        draft_id: 草稿ID
-        
-    Returns:
-        bool: 是否更新成功
-    """
+    """将服务端路径前缀换成本地，并下载 materials 中的 URL 素材；失败返回 False。"""
     try:
         # 读取JSON文件
         with open(json_file_path, 'r', encoding='utf-8') as f:
@@ -310,25 +313,25 @@ def update_json_file_paths(json_file_path: str, target_dir: str, draft_id: str) 
         # 更新数据中的路径（服务端草稿内本地路径 -> 客户端目标路径）
         updated_data = update_material_paths(data, remote_prefix, local_prefix)
 
-        # 对 materials 中仍为 URL 的 path 做本地化下载并回写；任一条失败则整稿失败、不写回
+        # materials 中仍为 URL 的 path：下载到本地并回写；任一失败则整稿失败且不写回
         if not localize_remote_material_paths(updated_data, target_dir):
             logger.error(
-                f"远程素材本地化失败（已重试），放弃更新 JSON: {json_file_path}"
+                f"Remote material localization failed after retries; skip JSON update: {json_file_path}"
             )
             return False
 
-        # 写回JSON文件
+        # 写回 JSON
         json_content = json.dumps(updated_data, ensure_ascii=False, indent=2)
         safe_write_file(json_file_path, json_content, is_binary=False)
         
-        logger.debug(f"更新了JSON文件中的路径: {json_file_path}")
+        logger.debug(f"Updated paths in JSON file: {json_file_path}")
         return True
     
     except json.JSONDecodeError as e:
-        logger.error(f"JSON解析错误: {e}, 文件: {json_file_path}")
+        logger.error(f"JSON decode error: {e}, file: {json_file_path}")
         return False
     except Exception as e:
-        logger.error(f"更新JSON文件路径失败: {e}, 文件: {json_file_path}")
+        logger.error(f"Failed to update JSON paths: {e}, file: {json_file_path}")
         return False
 
 
@@ -382,7 +385,7 @@ def update_material_paths(data, remote_prefix: str, local_prefix: str):
             new_path = local_prefix + relative_path_windows
             # 验证文件是否存在
             if not os.path.exists(new_path):
-                logger.warning(f"路径更新后的文件不存在: {new_path}")
+                logger.warning(f"File missing after path rewrite: {new_path}")
             return new_path
         return data
     else:
@@ -441,9 +444,7 @@ def _infer_ext_from_url(url: str, fallback: str) -> str:
 
 
 def _download_remote_file(file_url: str, local_path: str) -> bool:
-    """
-    下载单个 URL 素材到本地。网络错误或 HTTP 非 200 时按 _MAX_RETRIES 重试，仍失败则返回 False。
-    """
+    """下载单个 URL 素材；网络异常或非 200 时最多重试 _MAX_RETRIES 次。"""
     for attempt in range(_MAX_RETRIES + 1):
         try:
             response = requests.get(
@@ -454,12 +455,13 @@ def _download_remote_file(file_url: str, local_path: str) -> bool:
             if response.status_code != 200:
                 if attempt >= _MAX_RETRIES:
                     logger.error(
-                        f"URL素材下载失败（HTTP {response.status_code}），已重试{_MAX_RETRIES}次: {file_url}"
+                        f"Remote material download failed (HTTP {response.status_code}) "
+                        f"after {_MAX_RETRIES} retries: {file_url}"
                     )
                     return False
                 retry_no = attempt + 1
                 logger.warning(
-                    f"URL素材下载非200，准备重试({retry_no}/{_MAX_RETRIES}): {file_url}"
+                    f"Remote material download non-200, retry ({retry_no}/{_MAX_RETRIES}): {file_url}"
                 )
                 time.sleep(retry_no)
                 continue
@@ -475,27 +477,25 @@ def _download_remote_file(file_url: str, local_path: str) -> bool:
         except requests.exceptions.RequestException as e:
             if attempt >= _MAX_RETRIES:
                 logger.error(
-                    f"URL素材下载失败，已重试{_MAX_RETRIES}次: {file_url}, 错误: {e}"
+                    f"Remote material download failed after {_MAX_RETRIES} retries: {file_url}, error: {e}"
                 )
                 return False
             retry_no = attempt + 1
             logger.warning(
-                f"URL素材下载网络错误，准备重试({retry_no}/{_MAX_RETRIES}): {file_url}, {e}"
+                f"Remote material download network error, retry ({retry_no}/{_MAX_RETRIES}): "
+                f"{file_url}, {e}"
             )
             time.sleep(retry_no)
         except OSError as e:
-            logger.error(f"URL素材写入本地失败: {local_path}, {e}")
+            logger.error(f"Failed to write remote material to disk: {local_path}, {e}")
             return False
     return False
 
 
 def localize_remote_material_paths(data: Dict[str, Any], target_dir: str) -> bool:
     """
-    将 materials 中 path 为 URL 的音视频素材下载到本地，并回写 path 字段。
-
-    同一 URL 只下载一次；任一素材在 _download_remote_file 全部重试后仍失败则返回 False，
-    且不调用人写入 draft JSON（由 update_json_file_paths 负责）。上层 download_draft 失败后将
-    不会继续视频导出流程。
+    将 materials 里仍为 URL 的 path 下载到本地并回写。
+    同一 URL 只拉取一次；任一 URL 重试仍失败则返回 False，且不写 JSON（由上层中止下载与导出）。
     """
     materials = data.get("materials", {}) if isinstance(data, dict) else {}
     if not isinstance(materials, dict):
@@ -534,10 +534,12 @@ def localize_remote_material_paths(data: Dict[str, Any], target_dir: str) -> boo
 
             if not _download_remote_file(remote_path, local_path):
                 failed_urls.add(remote_path)
-                logger.error(f"URL素材本地化失败（草稿将标记为下载失败）: {remote_path}")
+                logger.error(
+                    f"Remote material localization failed (draft download will fail): {remote_path}"
+                )
                 continue
 
-            logger.info(f"URL素材下载成功并回写path: {remote_path} -> {local_path}")
+            logger.info(f"Remote material saved and path updated: {remote_path} -> {local_path}")
             item["path"] = local_path
             url_cache[remote_path] = local_path
 
@@ -560,7 +562,7 @@ def trigger_directory_scan_with_robocopy(target_dir: str):
                 import shutil
                 shutil.rmtree(tmp_dir)
             except Exception as e:
-                logger.warning(f"清理临时目录失败 {tmp_dir}: {e}")
+                logger.warning(f"Failed to remove temp directory {tmp_dir}: {e}")
 
 def copy_with_robocopy(src: str, dst: str, verbose: bool = False) -> bool:
     """
@@ -729,24 +731,24 @@ def execute_download(draft_url: str, target_dir: str, draft_id: str) -> bool:
         response = requests.get(draft_url)
         
         if response.status_code != 200:
-            logger.error(f"下载草稿失败: {draft_id}, 状态码: {response.status_code}")
+            logger.error(f"Draft download failed: {draft_id}, HTTP status: {response.status_code}")
             return False
         
         file_path = get_file_path(response, target_dir, draft_id)
         
         safe_write_file(file_path, response.content, is_binary=True)
         
-        logger.info(f"草稿下载成功: {file_path}")
+        logger.info(f"Draft downloaded: {file_path}")
         return True
         
     except requests.exceptions.RequestException as e:
-        logger.error(f"网络请求错误，下载草稿失败: {draft_id}, 错误: {e}")
+        logger.error(f"Network error, draft download failed: {draft_id}, error: {e}")
         return False
     except IOError as e:
-        logger.error(f"文件写入错误，下载草稿失败: {draft_id}, 错误: {e}")
+        logger.error(f"File write error, draft download failed: {draft_id}, error: {e}")
         return False
     except Exception as e:
-        logger.error(f"未知错误，下载草稿失败: {draft_id}, 错误: {e}")
+        logger.error(f"Unexpected error, draft download failed: {draft_id}, error: {e}")
         return False
 
 
@@ -858,10 +860,10 @@ def process_single_draft(url: str, save_path: Optional[str], results: dict) -> N
     draft_id = extract_draft_id_from_url(url)
     if draft_id and download_draft(url, save_path):
         results['success'].append(draft_id)
-        logger.info(f"批量下载成功: {draft_id}")
+        logger.info(f"Batch download succeeded: {draft_id}")
     else:
         results['failure'].append({'url': url, 'draft_id': draft_id})
-        logger.error(f"批量下载失败: {draft_id or url}")
+        logger.error(f"Batch download failed: {draft_id or url}")
 
 
 def finalize_batch_results(results: dict, draft_urls: list) -> None:
@@ -882,6 +884,8 @@ def finalize_batch_results(results: dict, draft_urls: list) -> None:
         'failure': failure_count
     }
     
-    logger.info(f"批量下载完成: 总计{total}, 成功{success_count}, 失败{failure_count}")
+    logger.info(
+        f"Batch download finished: total={total}, ok={success_count}, failed={failure_count}"
+    )
 
 
