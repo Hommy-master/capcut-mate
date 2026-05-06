@@ -310,9 +310,13 @@ def update_json_file_paths(json_file_path: str, target_dir: str, draft_id: str) 
         # 更新数据中的路径（服务端草稿内本地路径 -> 客户端目标路径）
         updated_data = update_material_paths(data, remote_prefix, local_prefix)
 
-        # 对 materials 中仍为 URL 的 path 做本地化下载并回写
-        localize_remote_material_paths(updated_data, target_dir)
-        
+        # 对 materials 中仍为 URL 的 path 做本地化下载并回写；任一条失败则整稿失败、不写回
+        if not localize_remote_material_paths(updated_data, target_dir):
+            logger.error(
+                f"远程素材本地化失败（已重试），放弃更新 JSON: {json_file_path}"
+            )
+            return False
+
         # 写回JSON文件
         json_content = json.dumps(updated_data, ensure_ascii=False, indent=2)
         safe_write_file(json_file_path, json_content, is_binary=False)
@@ -436,30 +440,69 @@ def _infer_ext_from_url(url: str, fallback: str) -> str:
         return fallback
 
 
-def _download_remote_file(file_url: str, local_path: str) -> None:
-    response = requests.get(
-        file_url,
-        timeout=(_REQUEST_CONNECT_TIMEOUT, _REQUEST_READ_TIMEOUT),
-        stream=True,
-    )
-    if response.status_code != 200:
-        raise RuntimeError(f"download failed: {response.status_code}, url: {file_url}")
-    os.makedirs(os.path.dirname(local_path), exist_ok=True)
-    with open(local_path, "wb") as f:
-        for chunk in response.iter_content(chunk_size=8192):
-            if chunk:
-                f.write(chunk)
+def _download_remote_file(file_url: str, local_path: str) -> bool:
+    """
+    下载单个 URL 素材到本地。网络错误或 HTTP 非 200 时按 _MAX_RETRIES 重试，仍失败则返回 False。
+    """
+    for attempt in range(_MAX_RETRIES + 1):
+        try:
+            response = requests.get(
+                file_url,
+                timeout=(_REQUEST_CONNECT_TIMEOUT, _REQUEST_READ_TIMEOUT),
+                stream=True,
+            )
+            if response.status_code != 200:
+                if attempt >= _MAX_RETRIES:
+                    logger.error(
+                        f"URL素材下载失败（HTTP {response.status_code}），已重试{_MAX_RETRIES}次: {file_url}"
+                    )
+                    return False
+                retry_no = attempt + 1
+                logger.warning(
+                    f"URL素材下载非200，准备重试({retry_no}/{_MAX_RETRIES}): {file_url}"
+                )
+                time.sleep(retry_no)
+                continue
+
+            parent_dir = os.path.dirname(local_path)
+            if parent_dir:
+                os.makedirs(parent_dir, exist_ok=True)
+            with open(local_path, "wb") as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    if chunk:
+                        f.write(chunk)
+            return True
+        except requests.exceptions.RequestException as e:
+            if attempt >= _MAX_RETRIES:
+                logger.error(
+                    f"URL素材下载失败，已重试{_MAX_RETRIES}次: {file_url}, 错误: {e}"
+                )
+                return False
+            retry_no = attempt + 1
+            logger.warning(
+                f"URL素材下载网络错误，准备重试({retry_no}/{_MAX_RETRIES}): {file_url}, {e}"
+            )
+            time.sleep(retry_no)
+        except OSError as e:
+            logger.error(f"URL素材写入本地失败: {local_path}, {e}")
+            return False
+    return False
 
 
-def localize_remote_material_paths(data: Dict[str, Any], target_dir: str) -> None:
+def localize_remote_material_paths(data: Dict[str, Any], target_dir: str) -> bool:
     """
     将 materials 中 path 为 URL 的音视频素材下载到本地，并回写 path 字段。
+
+    同一 URL 只下载一次；任一素材在 _download_remote_file 全部重试后仍失败则返回 False，
+    且不调用人写入 draft JSON（由 update_json_file_paths 负责）。上层 download_draft 失败后将
+    不会继续视频导出流程。
     """
     materials = data.get("materials", {}) if isinstance(data, dict) else {}
     if not isinstance(materials, dict):
-        return
+        return True
 
     url_cache: Dict[str, str] = {}
+    failed_urls: set = set()
     target_lists: Dict[str, List[Dict[str, Any]]] = {
         "audios": materials.get("audios", []),
         "videos": materials.get("videos", []),
@@ -475,6 +518,9 @@ def localize_remote_material_paths(data: Dict[str, Any], target_dir: str) -> Non
             if not _is_http_url(remote_path):
                 continue
 
+            if remote_path in failed_urls:
+                continue
+
             if remote_path in url_cache:
                 item["path"] = url_cache[remote_path]
                 continue
@@ -486,10 +532,16 @@ def localize_remote_material_paths(data: Dict[str, Any], target_dir: str) -> Non
             filename = base_name if base_name.lower().endswith(ext.lower()) else f"{base_name}{ext}"
             local_path = os.path.join(target_dir, "assets", sub_dir, filename)
 
-            _download_remote_file(remote_path, local_path)
+            if not _download_remote_file(remote_path, local_path):
+                failed_urls.add(remote_path)
+                logger.error(f"URL素材本地化失败（草稿将标记为下载失败）: {remote_path}")
+                continue
+
             logger.info(f"URL素材下载成功并回写path: {remote_path} -> {local_path}")
             item["path"] = local_path
             url_cache[remote_path] = local_path
+
+    return len(failed_urls) == 0
 
 def trigger_directory_scan_with_robocopy(target_dir: str):
     """
