@@ -263,9 +263,10 @@ def download_single_file(file_url: str, target_dir: str) -> bool:
             # 写入文件
             safe_write_file(full_file_path, response.content, is_binary=True)
             
-            # 如果是JSON文件，修改其中的路径
+            # 如果是JSON文件，修改其中的路径；更新失败则本次下载失败（不应继续导出）
             if full_file_path.endswith(('draft_info.json', 'draft_content.json')):
-                update_json_file_paths(full_file_path, target_dir, url_draft_id)
+                if not update_json_file_paths(full_file_path, target_dir, url_draft_id):
+                    return False
 
             return True
         
