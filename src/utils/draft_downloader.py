@@ -223,62 +223,60 @@ def download_single_file(file_url: str, target_dir: str) -> bool:
     """
     max_retries = 5
     retry_count = 0
-    
+
+    # 仅从 URL 解析目标路径，避免请求挂起时无效等待；与原先路径规则一致
+    parsed_url = urlparse(file_url)
+    path_parts = parsed_url.path.split("/")
+    url_draft_id = None
+    for part in path_parts:
+        if re.match(r"^\d{8,}.*$", part) and len(part) >= 10:
+            url_draft_id = part
+            break
+    draft_id_index = -1
+    if url_draft_id:
+        for i, part in enumerate(path_parts):
+            if url_draft_id in part:
+                draft_id_index = i
+                break
+    if draft_id_index != -1:
+        rel_path_parts = path_parts[draft_id_index + 1:]
+        rel_path = os.path.join(*rel_path_parts)
+    else:
+        rel_path = os.path.join(*path_parts[1:])
+    full_file_path = os.path.join(target_dir, rel_path)
+
     while retry_count <= max_retries:
         try:
-            # 发起请求下载文件
-            response = requests.get(file_url)
-            
-            if response.status_code != 200:
-                logger.error(
-                    f"Download failed, HTTP status: {response.status_code}, URL: {file_url}"
-                )
-                return False
-            
-            # 解析文件URL以获得相对路径
-            parsed_url = urlparse(file_url)
-            path_parts = parsed_url.path.split('/')
-            
-            # 从文件URL中提取draft_id（通过路径部分）
-            url_draft_id = None
-            for part in path_parts:
-                # 匹配类似20251204214904ccb1af38的格式，即以年份开头的长字符串
-                if re.match(r'^\d{8,}.*$', part) and len(part) >= 10:  # 匹配以至少8位数字开头的字符串
-                    url_draft_id = part
-                    break
-            
-            # 找到包含draft_id的路径部分，然后保留其后的路径结构
-            draft_id_index = -1
-            if url_draft_id:
-                for i, part in enumerate(path_parts):
-                    if url_draft_id in part:
-                        draft_id_index = i
-                        break
-            
-            if draft_id_index != -1:
-                # 使用从包含draft_id部分的下一个位置开始的路径（跳过draft_id本身）
-                rel_path_parts = path_parts[draft_id_index + 1:]  # 跳过draft_id本身
-                rel_path = os.path.join(*rel_path_parts)
-            else:
-                # 如果没找到draft_id，使用整个路径（去除第一个空字符串）
-                rel_path = os.path.join(*path_parts[1:])  # 跳过第一个空字符串
-            
-            # 构建完整的目标文件路径
-            full_file_path = os.path.join(target_dir, rel_path)
-            
-            # 创建目录
-            os.makedirs(os.path.dirname(full_file_path), exist_ok=True)
-            
-            # 写入文件
-            safe_write_file(full_file_path, response.content, is_binary=True)
-            
+            response = requests.get(
+                file_url,
+                timeout=(_REQUEST_CONNECT_TIMEOUT, _REQUEST_READ_TIMEOUT),
+                stream=True,
+            )
+            try:
+                if response.status_code != 200:
+                    logger.error(
+                        f"Download failed, HTTP status: {response.status_code}, URL: {file_url}"
+                    )
+                    return False
+
+                parent_dir = os.path.dirname(full_file_path)
+                if parent_dir:
+                    os.makedirs(parent_dir, exist_ok=True)
+
+                with open(full_file_path, "wb") as out:
+                    for chunk in response.iter_content(chunk_size=8192):
+                        if chunk:
+                            out.write(chunk)
+            finally:
+                response.close()
+
             # draft_info / draft_content：路径重写与 URL 素材本地化；失败则本文件下载失败
-            if full_file_path.endswith(('draft_info.json', 'draft_content.json')):
+            if full_file_path.endswith(("draft_info.json", "draft_content.json")):
                 if not update_json_file_paths(full_file_path, target_dir, url_draft_id):
                     return False
 
             return True
-        
+
         except requests.exceptions.RequestException as e:
             retry_count += 1
             if retry_count > max_retries:
@@ -291,7 +289,7 @@ def download_single_file(file_url: str, target_dir: str) -> bool:
                     f"Network error, retry ({retry_count}/{max_retries}): {e}, URL: {file_url}"
                 )
                 time.sleep(1 * retry_count)  # 递增延迟
-        except IOError as e:
+        except OSError as e:
             logger.error(f"File write error, download failed: {e}, URL: {file_url}")
             return False
         except Exception as e:
@@ -728,19 +726,31 @@ def execute_download(draft_url: str, target_dir: str, draft_id: str) -> bool:
         bool: 下载是否成功
     """
     try:
-        response = requests.get(draft_url)
-        
-        if response.status_code != 200:
-            logger.error(f"Draft download failed: {draft_id}, HTTP status: {response.status_code}")
-            return False
-        
-        file_path = get_file_path(response, target_dir, draft_id)
-        
-        safe_write_file(file_path, response.content, is_binary=True)
-        
-        logger.info(f"Draft downloaded: {file_path}")
-        return True
-        
+        response = requests.get(
+            draft_url,
+            timeout=(_REQUEST_CONNECT_TIMEOUT, _REQUEST_READ_TIMEOUT),
+            stream=True,
+        )
+        try:
+            if response.status_code != 200:
+                logger.error(f"Draft download failed: {draft_id}, HTTP status: {response.status_code}")
+                return False
+
+            file_path = get_file_path(response, target_dir, draft_id)
+
+            parent_dir = os.path.dirname(file_path)
+            if parent_dir:
+                os.makedirs(parent_dir, exist_ok=True)
+            with open(file_path, "wb") as out:
+                for chunk in response.iter_content(chunk_size=8192):
+                    if chunk:
+                        out.write(chunk)
+
+            logger.info(f"Draft downloaded: {file_path}")
+            return True
+        finally:
+            response.close()
+
     except requests.exceptions.RequestException as e:
         logger.error(f"Network error, draft download failed: {draft_id}, error: {e}")
         return False

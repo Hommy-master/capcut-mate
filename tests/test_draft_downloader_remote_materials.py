@@ -188,3 +188,200 @@ class TestUpdateJsonFilePaths:
                 data = json.load(f)
             assert "materials" in data
             assert isinstance(data["materials"], dict)
+
+
+class TestDownloadSingleFile:
+    """download_single_file：流式写入 + 超时与关闭行为；路径与结果应与优化前语义一致。"""
+
+    _BASE = "https://capcut.example.com"
+    _TIMEOUT = (
+        dd._REQUEST_CONNECT_TIMEOUT,
+        dd._REQUEST_READ_TIMEOUT,
+    )
+
+    def _stream_response(
+        self,
+        chunks: list,
+        status: int = 200,
+    ) -> MagicMock:
+        r = MagicMock()
+        r.status_code = status
+        r.iter_content = MagicMock(side_effect=lambda chunk_size=8192: iter(chunks))
+        r.close = MagicMock()
+        return r
+
+    def test_success_writes_concatenated_chunks_and_relative_path(self, no_sleep) -> None:
+        """URL 中带草稿 ID 时，相对路径为 draft_id 之后的路径段；内容与分块顺序一致。"""
+        file_url = (
+            f"{self._BASE}/app/output/draft/20251204214904ccb1af38/Resources/pic.png"
+        )
+        with tempfile.TemporaryDirectory() as td:
+            resp = self._stream_response([b"hel", b"lo"])
+            with patch.object(dd, "requests") as m_req:
+                m_req.get.return_value = resp
+                m_req.exceptions = requests.exceptions
+                assert dd.download_single_file(file_url, td) is True
+
+            expected = os.path.join(td, "Resources", "pic.png")
+            assert os.path.isfile(expected)
+            with open(expected, "rb") as f:
+                assert f.read() == b"hello"
+
+            m_req.get.assert_called_once_with(
+                file_url,
+                timeout=self._TIMEOUT,
+                stream=True,
+            )
+            resp.close.assert_called_once()
+
+    def test_fallback_relative_path_without_draft_segment(self, no_sleep) -> None:
+        """路径中无草稿 ID 段时，与原先一致：使用 path 第一段子路径之后部分。"""
+        file_url = f"{self._BASE}/static/assets/logo.bin"
+        with tempfile.TemporaryDirectory() as td:
+            resp = self._stream_response([b"z"])
+            with patch.object(dd, "requests") as m_req:
+                m_req.get.return_value = resp
+                m_req.exceptions = requests.exceptions
+                assert dd.download_single_file(file_url, td) is True
+
+            expected = os.path.join(td, "static", "assets", "logo.bin")
+            assert os.path.isfile(expected)
+            with open(expected, "rb") as f:
+                assert f.read() == b"z"
+
+    def test_non200_returns_false_and_closes(self, no_sleep) -> None:
+        file_url = f"{self._BASE}/app/output/draft/20251204214904ccb1af38/x.bin"
+        with tempfile.TemporaryDirectory() as td:
+            resp = self._stream_response([], status=503)
+            with patch.object(dd, "requests") as m_req:
+                m_req.get.return_value = resp
+                m_req.exceptions = requests.exceptions
+                assert dd.download_single_file(file_url, td) is False
+            resp.close.assert_called_once()
+
+    def test_retries_then_success_on_read_timeout(self, no_sleep) -> None:
+        calls: list = []
+
+        def side_effect(*_a, **_kw):
+            calls.append(1)
+            if len(calls) < 3:
+                raise requests.exceptions.ReadTimeout("stalled")
+            return self._stream_response([b"ok"])
+
+        file_url = (
+            f"{self._BASE}/app/output/draft/20251204214904ccb1af38/data.bin"
+        )
+        with tempfile.TemporaryDirectory() as td:
+            with patch.object(dd, "requests") as m_req:
+                m_req.get.side_effect = side_effect
+                m_req.exceptions = requests.exceptions
+                assert dd.download_single_file(file_url, td) is True
+            assert len(calls) == 3
+            out = os.path.join(td, "data.bin")
+            with open(out, "rb") as f:
+                assert f.read() == b"ok"
+
+    def test_returns_false_after_exhausting_retries(self, no_sleep) -> None:
+        file_url = (
+            f"{self._BASE}/app/output/draft/20251204214904ccb1af38/miss.bin"
+        )
+        with tempfile.TemporaryDirectory() as td:
+            with patch.object(dd, "requests") as m_req:
+                m_req.get.side_effect = requests.exceptions.ConnectionError("down")
+                m_req.exceptions = requests.exceptions
+                assert dd.download_single_file(file_url, td) is False
+                # retry_count 0..5 共 6 次尝试后放弃（与原先 max_retries=5 语义一致）
+                assert m_req.get.call_count == 6
+
+    @patch.object(dd, "update_json_file_paths")
+    def test_plain_file_does_not_touch_json_paths(self, m_upd, no_sleep) -> None:
+        file_url = (
+            f"{self._BASE}/app/output/draft/20251204214904ccb1af38/only.bin"
+        )
+        with tempfile.TemporaryDirectory() as td:
+            with patch.object(dd, "requests") as m_req:
+                m_req.get.return_value = self._stream_response([b"\x00"])
+                m_req.exceptions = requests.exceptions
+                assert dd.download_single_file(file_url, td) is True
+            m_upd.assert_not_called()
+
+    @patch.object(dd, "update_json_file_paths", return_value=True)
+    def test_json_files_invoke_path_update(self, m_upd, no_sleep) -> None:
+        file_url = (
+            f"{self._BASE}/app/output/draft/20251204214904ccb1af38/"
+            f"draft_content.json"
+        )
+        with tempfile.TemporaryDirectory() as td:
+            with patch.object(dd, "requests") as m_req:
+                m_req.get.return_value = self._stream_response([b"{}\n"])
+                m_req.exceptions = requests.exceptions
+                assert dd.download_single_file(file_url, td) is True
+            m_upd.assert_called_once()
+            call_kw = m_upd.call_args
+            assert call_kw[0][1] == td
+            assert call_kw[0][2] == "20251204214904ccb1af38"
+
+    @patch.object(dd, "update_json_file_paths", return_value=False)
+    def test_json_update_failure_returns_false(self, m_upd, no_sleep) -> None:
+        file_url = (
+            f"{self._BASE}/app/output/draft/20251204214904ccb1af38/"
+            f"draft_info.json"
+        )
+        with tempfile.TemporaryDirectory() as td:
+            with patch.object(dd, "requests") as m_req:
+                m_req.get.return_value = self._stream_response([b"{}\n"])
+                m_req.exceptions = requests.exceptions
+                assert dd.download_single_file(file_url, td) is False
+
+
+class TestExecuteDownload:
+    """execute_download：超时 + 流式写入 + 关闭连接。"""
+
+    _TIMEOUT = (
+        dd._REQUEST_CONNECT_TIMEOUT,
+        dd._REQUEST_READ_TIMEOUT,
+    )
+
+    def test_streams_body_to_default_filename_and_closes(self, no_sleep) -> None:
+        draft_url = "https://api.example.com/get?draft_id=x"
+        did = "mydraftid001"
+        with tempfile.TemporaryDirectory() as td:
+            r = MagicMock()
+            r.status_code = 200
+            r.headers = {}
+            r.iter_content = MagicMock(
+                side_effect=lambda chunk_size=8192: iter([b"a", b"bc"])
+            )
+            r.close = MagicMock()
+            with patch.object(dd, "requests") as m_req:
+                m_req.get.return_value = r
+                m_req.exceptions = requests.exceptions
+                assert dd.execute_download(draft_url, td, did) is True
+
+            out = os.path.join(td, f"{did}.draft")
+            with open(out, "rb") as f:
+                assert f.read() == b"abc"
+            m_req.get.assert_called_once_with(
+                draft_url,
+                timeout=self._TIMEOUT,
+                stream=True,
+            )
+            r.close.assert_called_once()
+
+    def test_non200_returns_false(self, no_sleep) -> None:
+        r = MagicMock()
+        r.status_code = 500
+        r.close = MagicMock()
+        with tempfile.TemporaryDirectory() as td:
+            with patch.object(dd, "requests") as m_req:
+                m_req.get.return_value = r
+                m_req.exceptions = requests.exceptions
+                assert dd.execute_download("https://u", td, "d") is False
+        r.close.assert_called_once()
+
+    def test_request_exception_returns_false(self, no_sleep) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            with patch.object(dd, "requests") as m_req:
+                m_req.get.side_effect = requests.exceptions.ConnectTimeout("t")
+                m_req.exceptions = requests.exceptions
+                assert dd.execute_download("https://u", td, "d") is False
