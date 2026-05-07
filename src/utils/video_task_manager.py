@@ -358,7 +358,11 @@ class VideoGenTaskManager:
             
             # 检查文件是否存在
             if not os.path.exists(draft_content_path):
-                logger.error(f"草稿内容文件不存在: {draft_content_path}")
+                logger.error(
+                    "draft_content.json not found: path=%s draft_id=%s",
+                    draft_content_path,
+                    task.draft_id,
+                )
                 return False
             
             # 读取并解析JSON文件
@@ -369,23 +373,42 @@ class VideoGenTaskManager:
             duration = draft_content.get("duration", 0)
             
             if duration <= 0:
-                logger.error(f"草稿中视频时长不大于0: {duration}, 草稿ID: {task.draft_id}")
+                logger.error(
+                    "draft duration invalid (<=0): duration_us=%s draft_id=%s",
+                    duration,
+                    task.draft_id,
+                )
                 return False
 
             if duration < MIN_DRAFT_EXPORT_DURATION_US:
                 logger.error(
-                    f"草稿时长小于3秒，视为空草稿: {duration} 微秒, 草稿ID: {task.draft_id}"
+                    "draft duration below minimum export length (<3s): duration_us=%s "
+                    "draft_id=%s",
+                    duration,
+                    task.draft_id,
                 )
                 return False
             
-            logger.info(f"草稿视频时长检查通过: {duration} 微秒, 草稿ID: {task.draft_id}")
+            logger.info(
+                "draft duration check passed: duration_us=%s draft_id=%s",
+                duration,
+                task.draft_id,
+            )
             return True
             
         except json.JSONDecodeError as e:
-            logger.error(f"解析草稿内容文件失败: {e}, 草稿ID: {task.draft_id}")
+            logger.error(
+                "failed to parse draft_content.json: %s draft_id=%s",
+                e,
+                task.draft_id,
+            )
             return False
         except Exception as e:
-            logger.error(f"检查草稿时长时发生错误: {e}, 草稿ID: {task.draft_id}")
+            logger.error(
+                "draft duration check error: %s draft_id=%s",
+                e,
+                task.draft_id,
+            )
             return False
 
     def _phase_download_and_prepare(self, task: VideoGenTask) -> str:
@@ -405,16 +428,15 @@ class VideoGenTaskManager:
             task.progress = 30
 
             if not self._download_draft(task):
-                error_message = f"草稿下载失败: {task.draft_url}"
-                logger.error(error_message)
-                return error_message
+                logger.error("draft download failed: draft_url=%s", task.draft_url)
+                return f"草稿下载失败: {task.draft_url}"
 
             if not self._check_draft_duration(task):
-                error_message = (
-                    f"草稿中视频时长不大于0，请检查草稿内容: {task.draft_id}"
+                logger.error(
+                    "draft duration check failed (empty or too short): draft_id=%s",
+                    task.draft_id,
                 )
-                logger.error(error_message)
-                return error_message
+                return f"草稿中视频时长不大于3秒，请检查草稿内容: {task.draft_id}"
 
             task.progress = 40
             return ""
@@ -500,9 +522,15 @@ class VideoGenTaskManager:
             if draft.JianyingController is None:
                 if sys.platform != "win32":
                     error_msg = "剪映自动导出功能仅在Windows平台可用"
+                    logger.error(
+                        "JianyingController unavailable: requires Windows platform"
+                    )
                 else:
                     error_msg = "缺少Windows依赖，请安装: pip install capcut-mate[windows]"
-                logger.error(error_msg)
+                    logger.error(
+                        "JianyingController unavailable: install windows extras "
+                        "(pip install capcut-mate[windows])"
+                    )
                 raise RuntimeError(error_msg)
             
             with UIAutomationInitializerInThread():
@@ -518,7 +546,11 @@ class VideoGenTaskManager:
             # 检查文件是否生成
             if not os.path.exists(outfile):
                 # 个别版本剪映不会抛异常，但文件未生成
-                logger.error("剪映导出结束但目标文件未生成，请检查磁盘空间或剪映版本")
+                logger.error(
+                    "export finished but output file missing (check disk space / "
+                    "Jianying version): path=%s",
+                    outfile,
+                )
                 return False
 
             logger.info(f"Export draft success: {outfile}")
