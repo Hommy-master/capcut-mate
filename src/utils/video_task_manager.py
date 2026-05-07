@@ -23,6 +23,10 @@ import sys
 import subprocess
 import json
 
+# draft_content.json 中 duration 为微秒；低于 3 秒视为空草稿，不进入剪映导出
+MIN_DRAFT_EXPORT_DURATION_US = 3 * 1_000_000
+EMPTY_DRAFT_NOT_EXPORTABLE_MESSAGE = "当前是空草稿，不支持导出"
+
 # 如果是Linux系统，则不导入uiautomation，并避免执行相关代码
 try:
     from uiautomation import UIAutomationInitializerInThread  # type: ignore
@@ -342,13 +346,11 @@ class VideoGenTaskManager:
     
     def _check_draft_duration(self, task: VideoGenTask) -> bool:
         """
-        检查草稿中的视频时长是否大于0
-        
-        Args:
-            task: 视频生成任务
-            
+        检查草稿中的视频时长是否满足导出要求（draft_content.duration 单位为微秒）。
+        时长不大于 0 或小于 3 秒均视为无效。
+
         Returns:
-            bool: 时长是否大于0
+            bool: 是否允许继续导出
         """
         try:
             # 构建草稿内容文件路径
@@ -366,9 +368,14 @@ class VideoGenTaskManager:
             # 获取时长
             duration = draft_content.get("duration", 0)
             
-            # 检查时长是否大于0
             if duration <= 0:
                 logger.error(f"草稿中视频时长不大于0: {duration}, 草稿ID: {task.draft_id}")
+                return False
+
+            if duration < MIN_DRAFT_EXPORT_DURATION_US:
+                logger.error(
+                    f"草稿时长小于3秒，视为空草稿: {duration} 微秒, 草稿ID: {task.draft_id}"
+                )
                 return False
             
             logger.info(f"草稿视频时长检查通过: {duration} 微秒, 草稿ID: {task.draft_id}")
