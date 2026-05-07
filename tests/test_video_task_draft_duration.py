@@ -8,7 +8,6 @@ from unittest.mock import patch
 import pytest
 
 from src.utils.video_task_manager import (
-    EMPTY_DRAFT_NOT_EXPORTABLE_MESSAGE,
     MIN_DRAFT_EXPORT_DURATION_US,
     TaskStatus,
     VideoGenTask,
@@ -70,11 +69,11 @@ class TestCheckDraftDuration:
 
 
 class TestPhaseDownloadPrepareMessage:
-    """时长不通过时，阶段函数统一返回空草稿提示（不暴露内部校验细节）。"""
+    """时长不通过时，阶段函数返回带 draft_id 的提示文案。"""
 
     @patch("src.utils.video_task_manager.sys.platform", "win32")
     @patch.object(VideoGenTaskManager, "_download_draft", return_value=True)
-    def test_phase_returns_fixed_empty_draft_message(
+    def test_phase_returns_duration_too_short_message(
         self, m_dl, draft_home
     ) -> None:
         did = "phase_short"
@@ -88,4 +87,7 @@ class TestPhaseDownloadPrepareMessage:
             cfg.DRAFT_SAVE_PATH = draft_home
             cfg.DRAFT_DIR = draft_home
             out = VideoGenTaskManager()._phase_download_and_prepare(_task(did))
-            assert out == EMPTY_DRAFT_NOT_EXPORTABLE_MESSAGE
+            assert (
+                out
+                == f"草稿中视频时长不大于3秒，请检查草稿内容: {did}"
+            )
