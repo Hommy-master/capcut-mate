@@ -25,7 +25,6 @@ import json
 
 # draft_content.json 中 duration 为微秒；低于 3 秒视为空草稿，不进入剪映导出
 MIN_DRAFT_EXPORT_DURATION_US = 3 * 1_000_000
-EMPTY_DRAFT_NOT_EXPORTABLE_MESSAGE = "当前是空草稿，不支持导出"
 
 # 如果是Linux系统，则不导入uiautomation，并避免执行相关代码
 try:
