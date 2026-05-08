@@ -19,6 +19,7 @@ from src.utils.video_task_store import (
 import src.pyJianYingDraft as draft
 import config
 import os
+import shutil
 import sys
 import subprocess
 import json
@@ -286,6 +287,7 @@ class VideoGenTaskManager:
                 task.error_message = prep_error
                 task.progress = 0
                 logger.error(f"Task failed: {task.draft_url}, error: {prep_error}")
+                self._cleanup_files(task.outfile, task.draft_id)
                 return
 
             export_error = await loop.run_in_executor(
@@ -298,6 +300,7 @@ class VideoGenTaskManager:
                 task.error_message = export_error
                 task.progress = 0
                 logger.error(f"Task failed: {task.draft_url}, error: {export_error}")
+                self._cleanup_files(task.outfile, task.draft_id)
                 return
 
             video_url, error_message = await loop.run_in_executor(
@@ -322,6 +325,7 @@ class VideoGenTaskManager:
             task.error_message = str(e)
             task.progress = 0
             logger.exception(f"Task exception: {task.draft_url}, error: {e}")
+            self._cleanup_files(getattr(task, "outfile", "") or "", task.draft_id)
 
         finally:
             task.completed_at = datetime.now()
@@ -465,18 +469,20 @@ class VideoGenTaskManager:
     def _phase_cos_upload_finalize(self, task: VideoGenTask) -> Tuple[str, str]:
         """
         COS 上传、扣费与清理（可与其它任务的上传并行）。
+        草稿目录与本地导出 mp4 在 finally 中清理，避免上传/扣费任一环节抛错导致残留。
         """
         try:
             task.progress = 95
             upload_url, upload_failed = self._upload_video_to_cos(task.outfile)
             self._calculate_and_charge(task, task.outfile)
-            self._cleanup_files(task.outfile, task.draft_id)
             return self._handle_result(upload_url, upload_failed)
         except Exception as exc:
             logger.exception(
                 f"Export draft failed: draft_id={task.draft_id}, error={exc}"
             )
             return "", f"导出草稿失败: {exc}"
+        finally:
+            self._cleanup_files(task.outfile, task.draft_id)
     
     def _download_draft(self, task: VideoGenTask) -> bool:
         """
@@ -639,7 +645,6 @@ class VideoGenTaskManager:
                 logger.info(f"Cleaned up local video file: {outfile}")
             
             # 清理下载的草稿文件
-            import shutil
             draft_path = os.path.join(config.DRAFT_SAVE_PATH, draft_id)
             if os.path.exists(draft_path):
                 shutil.rmtree(draft_path)
