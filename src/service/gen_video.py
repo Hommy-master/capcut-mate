@@ -9,7 +9,8 @@ def gen_video(draft_url: str, apiKey: str = None) -> str:
     """
     提交视频生成任务（异步处理）。
 
-    队列内任务按提交顺序串行执行（下载 → 剪映导出 → 上传），保证草稿与成片一一对应。
+    多任务可并行下载；剪映导出全局串行；上传在后台进行且不阻塞其它任务的下载与导出；
+    每个 draft_url 对应独立的 VideoGenTask，保证草稿地址与成片一一对应。
 
     Args:
         draft_url: 草稿URL

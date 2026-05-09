@@ -66,9 +66,9 @@ class VideoGenTask:
 class VideoGenTaskManager:
     """视频生成任务管理器 - 单例模式
 
-    工作线程内对队列任务串行执行完整流水线（下载 → 导出 → 上传），避免多草稿并发写盘、
-    robocopy 触发扫描与剪映 RPA 交错导致「草稿 A 对应导出视频 B」的错配。
-    剪映 RPA 导出仍由 export_video_lock 保证同一时间仅一个线程进入自动化逻辑。
+    每个任务在独立协程中执行：草稿下载在线程池中可多任务并行；剪映 RPA 导出由
+    export_video_lock 全局串行，保证同一时刻仅一次 UI 自动化，避免草稿与成片错配；
+    导出成功后的 COS/OSS 上传在后台协程中执行，不阻塞队列中后续任务的下载与导出。
     """
     
     _instance = None
@@ -241,17 +241,13 @@ class VideoGenTaskManager:
             loop.close()
     
     async def _async_worker_loop(self):
-        """异步工作循环：逐个 await 处理任务，禁止多任务并发跑完整流水线。"""
+        """从队列取任务并启动独立协程；多任务可并行下载，导出仍串行，上传统一走后台。"""
         while not self.stop_flag.is_set():
             try:
                 # 等待任务（带超时，以便检查停止标志）
                 task = await asyncio.wait_for(self.task_queue.get(), timeout=1.0)
-                try:
-                    await self._process_task(task)
-                except asyncio.CancelledError:
-                    raise
-                except Exception as e:
-                    logger.exception(f"Process task failed: {task.draft_url}, error: {e}")
+                t = asyncio.create_task(self._process_task(task))
+                t.add_done_callback(self._log_async_task_done)
             except asyncio.TimeoutError:
                 # 超时，继续循环检查停止标志
                 continue
@@ -259,10 +255,68 @@ class VideoGenTaskManager:
                 logger.error(f"Worker loop error: {e}")
                 # 短暂休息后继续
                 await asyncio.sleep(1)
-    
+
+    def _log_async_task_done(self, fut: asyncio.Task) -> None:
+        try:
+            fut.result()
+        except asyncio.CancelledError:
+            pass
+        except Exception as e:
+            logger.exception(f"Async task finished with error: {e}")
+
+    def _persist_terminal_task(self, task: VideoGenTask) -> None:
+        """将已完成或失败的任务写入 SQLite（仅终态）。"""
+        if task.status not in (TaskStatus.COMPLETED, TaskStatus.FAILED):
+            return
+        task.completed_at = datetime.now()
+        try:
+            save_completed_result(
+                draft_id=task.draft_id,
+                draft_url=task.draft_url,
+                status=task.status.value,
+                progress=task.progress,
+                video_url=task.video_url,
+                error_message=task.error_message,
+                created_at=task.created_at,
+                started_at=task.started_at,
+                completed_at=task.completed_at,
+            )
+        except Exception as persist_err:
+            logger.exception(
+                "Failed to persist video gen task result: %s", persist_err
+            )
+
+    async def _run_upload_and_finalize(self, task: VideoGenTask) -> None:
+        """导出成功后的上传与落库；与其它任务的下载/导出并发，绑定本 task 的 outfile/draft_id。"""
+        loop = asyncio.get_running_loop()
+        try:
+            video_url, error_message = await loop.run_in_executor(
+                self._upload_executor,
+                self._phase_cos_upload_finalize,
+                task,
+            )
+            if video_url:
+                task.status = TaskStatus.COMPLETED
+                task.video_url = video_url
+                task.progress = 100
+                logger.info(f"Task completed successfully: {task.draft_url}")
+            else:
+                task.status = TaskStatus.FAILED
+                task.error_message = error_message
+                task.progress = 0
+                logger.error(f"Task failed: {task.draft_url}, error: {error_message}")
+        except Exception as e:
+            task.status = TaskStatus.FAILED
+            task.error_message = str(e)
+            task.progress = 0
+            logger.exception(f"Upload/finalize exception: {task.draft_url}, error: {e}")
+            self._cleanup_files(getattr(task, "outfile", "") or "", task.draft_id)
+        finally:
+            self._persist_terminal_task(task)
+
     async def _process_task(self, task: VideoGenTask):
         """
-        处理单个视频生成任务：下载、COS 上传可与其他任务并行；导出受 export_video_lock 串行。
+        单任务流水线：并行阶段仅下载；导出串行（export_video_lock）；成功后上传统一异步且不阻塞本循环。
         """
         logger.info(f"Processing task: {task.draft_url}")
 
@@ -284,6 +338,7 @@ class VideoGenTaskManager:
                 task.progress = 0
                 logger.error(f"Task failed: {task.draft_url}, error: {prep_error}")
                 self._cleanup_files(task.outfile, task.draft_id)
+                self._persist_terminal_task(task)
                 return
 
             export_error = await loop.run_in_executor(
@@ -297,24 +352,11 @@ class VideoGenTaskManager:
                 task.progress = 0
                 logger.error(f"Task failed: {task.draft_url}, error: {export_error}")
                 self._cleanup_files(task.outfile, task.draft_id)
+                self._persist_terminal_task(task)
                 return
 
-            video_url, error_message = await loop.run_in_executor(
-                self._upload_executor,
-                self._phase_cos_upload_finalize,
-                task,
-            )
-
-            if video_url:
-                task.status = TaskStatus.COMPLETED
-                task.video_url = video_url
-                task.progress = 100
-                logger.info(f"Task completed successfully: {task.draft_url}")
-            else:
-                task.status = TaskStatus.FAILED
-                task.error_message = error_message
-                task.progress = 0
-                logger.error(f"Task failed: {task.draft_url}, error: {error_message}")
+            ut = asyncio.create_task(self._run_upload_and_finalize(task))
+            ut.add_done_callback(self._log_async_task_done)
 
         except Exception as e:
             task.status = TaskStatus.FAILED
@@ -322,26 +364,7 @@ class VideoGenTaskManager:
             task.progress = 0
             logger.exception(f"Task exception: {task.draft_url}, error: {e}")
             self._cleanup_files(getattr(task, "outfile", "") or "", task.draft_id)
-
-        finally:
-            task.completed_at = datetime.now()
-            if task.status in (TaskStatus.COMPLETED, TaskStatus.FAILED):
-                try:
-                    save_completed_result(
-                        draft_id=task.draft_id,
-                        draft_url=task.draft_url,
-                        status=task.status.value,
-                        progress=task.progress,
-                        video_url=task.video_url,
-                        error_message=task.error_message,
-                        created_at=task.created_at,
-                        started_at=task.started_at,
-                        completed_at=task.completed_at,
-                    )
-                except Exception as persist_err:
-                    logger.exception(
-                        "Failed to persist video gen task result: %s", persist_err
-                    )
+            self._persist_terminal_task(task)
     
     def _check_draft_duration(self, task: VideoGenTask) -> bool:
         """
