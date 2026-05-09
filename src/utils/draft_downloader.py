@@ -18,6 +18,15 @@ _REQUEST_CONNECT_TIMEOUT = 10
 _REQUEST_READ_TIMEOUT = 30
 _MAX_RETRIES = 5
 
+# 网关/上游暂不可用，适合退避重试（含用户关心的 503）
+_RETRYABLE_GATEWAY_HTTP_STATUSES = frozenset({502, 503, 504})
+
+
+def _sleep_gateway_backoff(retry_no: int) -> None:
+    """网关类错误退避：1s 起指数增长，上限 32s。retry_no 为从 1 开始的本次重试序号。"""
+    delay = min(2 ** (retry_no - 1), 32)
+    time.sleep(delay)
+
 
 def safe_write_file(file_path: str, file_content: bytes, is_binary: bool = True):
     """
@@ -141,7 +150,24 @@ def get_draft_files_list(draft_url: str) -> list:
             )
 
             if response.status_code != 200:
-                logger.error(f"Failed to get draft file list, HTTP status: {response.status_code}")
+                if (
+                    response.status_code in _RETRYABLE_GATEWAY_HTTP_STATUSES
+                    and attempt < _MAX_RETRIES
+                ):
+                    retry_no = attempt + 1
+                    logger.warning(
+                        "Gateway HTTP %s while fetching draft file list, retry (%s/%s)",
+                        response.status_code,
+                        retry_no,
+                        _MAX_RETRIES,
+                    )
+                    response.close()
+                    _sleep_gateway_backoff(retry_no)
+                    continue
+                logger.error(
+                    f"Failed to get draft file list, HTTP status: {response.status_code}"
+                )
+                response.close()
                 return []
 
             # 解析JSON响应
@@ -254,6 +280,25 @@ def download_single_file(file_url: str, target_dir: str) -> bool:
             )
             try:
                 if response.status_code != 200:
+                    if response.status_code in _RETRYABLE_GATEWAY_HTTP_STATUSES:
+                        retry_count += 1
+                        if retry_count > max_retries:
+                            logger.error(
+                                "Gateway HTTP %s, download failed after %s retries, URL: %s",
+                                response.status_code,
+                                max_retries,
+                                file_url,
+                            )
+                            return False
+                        logger.warning(
+                            "Gateway HTTP %s, retry (%s/%s), URL: %s",
+                            response.status_code,
+                            retry_count,
+                            max_retries,
+                            file_url,
+                        )
+                        _sleep_gateway_backoff(retry_count)
+                        continue
                     logger.error(
                         f"Download failed, HTTP status: {response.status_code}, URL: {file_url}"
                     )
@@ -461,7 +506,11 @@ def _download_remote_file(file_url: str, local_path: str) -> bool:
                 logger.warning(
                     f"Remote material download non-200, retry ({retry_no}/{_MAX_RETRIES}): {file_url}"
                 )
-                time.sleep(retry_no)
+                if response.status_code in _RETRYABLE_GATEWAY_HTTP_STATUSES:
+                    _sleep_gateway_backoff(retry_no)
+                else:
+                    time.sleep(retry_no)
+                response.close()
                 continue
 
             parent_dir = os.path.dirname(local_path)

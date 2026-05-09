@@ -250,6 +250,18 @@ class TestDownloadSingleFile:
                 assert f.read() == b"z"
 
     def test_non200_returns_false_and_closes(self, no_sleep) -> None:
+        """非网关类 4xx/5xx 不重试，立即失败并关闭响应。"""
+        file_url = f"{self._BASE}/app/output/draft/20251204214904ccb1af38/x.bin"
+        with tempfile.TemporaryDirectory() as td:
+            resp = self._stream_response([], status=404)
+            with patch.object(dd, "requests") as m_req:
+                m_req.get.return_value = resp
+                m_req.exceptions = requests.exceptions
+                assert dd.download_single_file(file_url, td) is False
+            resp.close.assert_called_once()
+
+    def test_gateway_503_retries_until_exhausted(self, no_sleep) -> None:
+        """503 退避重试，耗尽后与网络重试一致共 6 次请求。"""
         file_url = f"{self._BASE}/app/output/draft/20251204214904ccb1af38/x.bin"
         with tempfile.TemporaryDirectory() as td:
             resp = self._stream_response([], status=503)
@@ -257,7 +269,8 @@ class TestDownloadSingleFile:
                 m_req.get.return_value = resp
                 m_req.exceptions = requests.exceptions
                 assert dd.download_single_file(file_url, td) is False
-            resp.close.assert_called_once()
+                assert m_req.get.call_count == 6
+            assert resp.close.call_count == 6
 
     def test_retries_then_success_on_read_timeout(self, no_sleep) -> None:
         calls: list = []
