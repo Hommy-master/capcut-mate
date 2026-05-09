@@ -66,7 +66,9 @@ class VideoGenTask:
 class VideoGenTaskManager:
     """视频生成任务管理器 - 单例模式
 
-    草稿下载、COS 上传可并发（各自线程池）；剪映 RPA 导出由 export_video_lock 保证全局同一时间仅一个。
+    工作线程内对队列任务串行执行完整流水线（下载 → 导出 → 上传），避免多草稿并发写盘、
+    robocopy 触发扫描与剪映 RPA 交错导致「草稿 A 对应导出视频 B」的错配。
+    剪映 RPA 导出仍由 export_video_lock 保证同一时间仅一个线程进入自动化逻辑。
     """
     
     _instance = None
@@ -239,15 +241,17 @@ class VideoGenTaskManager:
             loop.close()
     
     async def _async_worker_loop(self):
-        """异步工作循环"""
+        """异步工作循环：逐个 await 处理任务，禁止多任务并发跑完整流水线。"""
         while not self.stop_flag.is_set():
             try:
                 # 等待任务（带超时，以便检查停止标志）
                 task = await asyncio.wait_for(self.task_queue.get(), timeout=1.0)
-
-                t = asyncio.create_task(self._process_task(task))
-                t.add_done_callback(self._log_async_task_done)
-                
+                try:
+                    await self._process_task(task)
+                except asyncio.CancelledError:
+                    raise
+                except Exception as e:
+                    logger.exception(f"Process task failed: {task.draft_url}, error: {e}")
             except asyncio.TimeoutError:
                 # 超时，继续循环检查停止标志
                 continue
@@ -255,14 +259,6 @@ class VideoGenTaskManager:
                 logger.error(f"Worker loop error: {e}")
                 # 短暂休息后继续
                 await asyncio.sleep(1)
-
-    def _log_async_task_done(self, fut: asyncio.Task) -> None:
-        try:
-            fut.result()
-        except asyncio.CancelledError:
-            pass
-        except Exception as e:
-            logger.exception(f"Async task finished with error: {e}")
     
     async def _process_task(self, task: VideoGenTask):
         """
