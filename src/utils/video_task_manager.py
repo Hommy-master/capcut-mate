@@ -28,6 +28,12 @@ import json
 # draft_content.json 中 duration 为微秒；低于 3 秒视为空草稿，不进入剪映导出
 MIN_DRAFT_EXPORT_DURATION_US = 3 * 1_000_000
 
+# gen_video：同时下载草稿的最大并发，超出部分在 _download_executor 队列中排队
+DRAFT_DOWNLOAD_MAX_CONCURRENT = 3
+
+# gen_video：上传到对象存储的最大并发，超出部分在 _upload_executor 队列中排队
+OBJECT_STORAGE_UPLOAD_MAX_CONCURRENT = 2
+
 # 如果是Linux系统，则不导入uiautomation，并避免执行相关代码
 try:
     from uiautomation import UIAutomationInitializerInThread  # type: ignore
@@ -67,9 +73,10 @@ class VideoGenTask:
 class VideoGenTaskManager:
     """视频生成任务管理器 - 单例模式
 
-    每个任务在独立协程中执行：草稿下载在线程池中可多任务并行；剪映 RPA 导出由
-    export_video_lock 全局串行，保证同一时刻仅一次 UI 自动化，避免草稿与成片错配；
-    导出成功后的 COS/OSS 上传在后台协程中执行，不阻塞队列中后续任务的下载与导出。
+    每个任务在独立协程中执行：草稿下载由专用线程池执行，并发上限为
+    DRAFT_DOWNLOAD_MAX_CONCURRENT，超出部分在线程池队列中排队；
+    剪映 RPA 导出由 export_video_lock 全局串行；COS/OSS 上传在独立线程池中执行，
+    并发上限为 OBJECT_STORAGE_UPLOAD_MAX_CONCURRENT。
     """
     
     _instance = None
@@ -92,13 +99,14 @@ class VideoGenTaskManager:
         # 跨线程任务队列（HTTP 线程 put、worker 线程 get）。不能用 asyncio.Queue：其在 __init__
         # 时绑定的 loop 与 worker 内 new_event_loop() 不一致，会触发 “bound to a different event loop”。
         self.task_queue: queue.Queue = queue.Queue()
-        _io_workers = min(32, (os.cpu_count() or 1) + 4)
+        _download_workers = DRAFT_DOWNLOAD_MAX_CONCURRENT
+        _upload_workers = OBJECT_STORAGE_UPLOAD_MAX_CONCURRENT
         self._download_executor = ThreadPoolExecutor(
-            max_workers=_io_workers,
+            max_workers=_download_workers,
             thread_name_prefix="draft_dl",
         )
         self._upload_executor = ThreadPoolExecutor(
-            max_workers=_io_workers,
+            max_workers=_upload_workers,
             thread_name_prefix="cos_upload",
         )
         # 导出视频专用锁（确保任何时候只有一个线程执行剪映 RPA 导出）
@@ -111,15 +119,16 @@ class VideoGenTaskManager:
         # 停止标志
         self.stop_flag = threading.Event()
 
-        # CPython asyncio default ThreadPoolExecutor uses the same max_workers formula as _io_workers (3.8+).
+        _default_asyncio_pool = min(32, (os.cpu_count() or 1) + 4)
         logger.info(
-            "VideoGenTaskManager initialized: draft_dl/cos_upload max_workers=%s. "
-            "Jianying export uses run_in_executor(None) and shares the asyncio default thread pool "
-            "with sync FastAPI routes (same typical cap min(32, cpu+4)=%s). "
-            "When export-phase concurrency (threads waiting on export_video_lock plus one active export) "
-            "reaches that level, synchronous HTTP handlers may stall waiting for a worker.",
-            _io_workers,
-            _io_workers,
+            "VideoGenTaskManager initialized: draft_dl max_workers=%s (queued beyond that), "
+            "cos_upload max_workers=%s (queued beyond that). Jianying export uses run_in_executor(None) "
+            "and shares the asyncio default thread pool with sync FastAPI routes "
+            "(typical cap min(32, cpu+4)=%s). When export-phase concurrency reaches that level, "
+            "synchronous HTTP handlers may stall.",
+            _download_workers,
+            _upload_workers,
+            _default_asyncio_pool,
         )
     
     def submit_task(self, draft_url: str, api_key: str = None) -> None:
@@ -224,7 +233,7 @@ class VideoGenTaskManager:
             loop.close()
     
     async def _async_worker_loop(self):
-        """从队列取任务并启动独立协程；多任务可并行下载，导出仍串行，上传统一走后台。"""
+        """从队列取任务并启动独立协程；下载/上传并发受各自线程池限制，导出串行。"""
         while not self.stop_flag.is_set():
             try:
                 # Blocking get with timeout on thread pool — queue is thread-safe, not loop-bound.
@@ -268,7 +277,7 @@ class VideoGenTaskManager:
             )
 
     async def _run_upload_and_finalize(self, task: VideoGenTask) -> None:
-        """导出成功后的上传与落库；与其它任务的下载/导出并发，绑定本 task 的 outfile/draft_id。"""
+        """导出成功后的上传与落库；上传受 _upload_executor 并发上限约束，绑定本 task 的 outfile/draft_id。"""
         loop = asyncio.get_running_loop()
         try:
             video_url, error_message = await loop.run_in_executor(
@@ -297,7 +306,8 @@ class VideoGenTaskManager:
 
     async def _process_task(self, task: VideoGenTask):
         """
-        单任务流水线：并行阶段仅下载；导出串行（export_video_lock）；成功后上传统一异步且不阻塞本循环。
+        单任务流水线：下载阶段受 _download_executor 并发上限约束；导出串行（export_video_lock）；
+        成功后上传统一异步且不阻塞本循环（上传受 _upload_executor 限制）。
         """
         logger.info(f"Processing task: {task.draft_url}")
 
@@ -487,7 +497,7 @@ class VideoGenTaskManager:
 
     def _phase_cos_upload_finalize(self, task: VideoGenTask) -> Tuple[str, str]:
         """
-        COS 上传、扣费与清理（可与其它任务的上传并行）。
+        COS 上传、扣费与清理（与其它任务的上传共享线程池，最多 2 路并发）。
         草稿目录与本地导出 mp4 在 finally 中清理，避免上传/扣费任一环节抛错导致残留。
         """
         try:
