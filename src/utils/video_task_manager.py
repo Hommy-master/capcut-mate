@@ -101,12 +101,24 @@ class VideoGenTaskManager:
         )
         # 导出视频专用锁（确保任何时候只有一个线程执行剪映 RPA 导出）
         self.export_video_lock = threading.Lock()
+        # 有多少个线程已进入「仅导出」阶段（含在 export_video_lock 上阻塞等待），用于对照默认线程池挤占
+        self._export_metrics_lock = threading.Lock()
+        self._export_phase_active = 0
         # 工作线程
         self.worker_thread: Optional[threading.Thread] = None
         # 停止标志
         self.stop_flag = threading.Event()
-        
-        logger.info("VideoGenTaskManager initialized")   
+
+        # CPython asyncio default ThreadPoolExecutor uses the same max_workers formula as _io_workers (3.8+).
+        logger.info(
+            "VideoGenTaskManager initialized: draft_dl/cos_upload max_workers=%s. "
+            "Jianying export uses run_in_executor(None) and shares the asyncio default thread pool "
+            "with sync FastAPI routes (same typical cap min(32, cpu+4)=%s). "
+            "When export-phase concurrency (threads waiting on export_video_lock plus one active export) "
+            "reaches that level, synchronous HTTP handlers may stall waiting for a worker.",
+            _io_workers,
+            _io_workers,
+        )
     
     def submit_task(self, draft_url: str, api_key: str = None) -> None:
         """
@@ -475,15 +487,34 @@ class VideoGenTaskManager:
         Returns:
             错误信息，成功时返回空字符串。
         """
+        with self._export_metrics_lock:
+            self._export_phase_active += 1
+            export_phase_concurrent = self._export_phase_active
+        logger.info(
+            "Export phase entered (waiting for lock or exporting): "
+            "concurrent=%s draft_id=%s",
+            export_phase_concurrent,
+            task.draft_id,
+        )
         try:
-            if not self._export_video(task, task.outfile):
-                return "导出草稿失败"
-            return ""
-        except Exception as exc:
-            logger.exception(
-                f"Export draft failed: draft_id={task.draft_id}, error={exc}"
+            try:
+                if not self._export_video(task, task.outfile):
+                    return "导出草稿失败"
+                return ""
+            except Exception as exc:
+                logger.exception(
+                    f"Export draft failed: draft_id={task.draft_id}, error={exc}"
+                )
+                return f"导出草稿失败: {exc}"
+        finally:
+            with self._export_metrics_lock:
+                self._export_phase_active -= 1
+                export_phase_concurrent = self._export_phase_active
+            logger.info(
+                "Export phase exited: concurrent=%s draft_id=%s",
+                export_phase_concurrent,
+                task.draft_id,
             )
-            return f"导出草稿失败: {exc}"
 
     def _phase_cos_upload_finalize(self, task: VideoGenTask) -> Tuple[str, str]:
         """
@@ -536,6 +567,10 @@ class VideoGenTaskManager:
             bool: 导出是否成功
         """
         # 使用专用锁确保任何时候只有一个线程执行导出视频操作
+        logger.info(
+            "Waiting for export_video_lock: draft_id=%s",
+            task.draft_id,
+        )
         with self.export_video_lock:
             logger.info(f"Begin to export draft: {task.draft_id} -> {outfile}")
             
