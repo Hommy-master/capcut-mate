@@ -97,13 +97,13 @@ def gen_video_status(draft_url: str) -> dict:
     Returns:
         任务状态信息
     """
-    logger.info(f"gen_video_status called with draft_url: {draft_url}")
+    logger.debug(f"gen_video_status called with draft_url: {draft_url}")
     
     try:
         # 查询任务状态
         status_info = get_task_status_info(draft_url)
         
-        logger.info(f"Task status retrieved for draft_url: {draft_url}, status={status_info['status']}")
+        logger.debug(f"Task status retrieved for draft_url: {draft_url}, status={status_info['status']}")
         return status_info
         
     except CustomException:
