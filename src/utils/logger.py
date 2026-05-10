@@ -13,6 +13,15 @@ LOG_BACKUP_COUNT = 10
 os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
 
 
+class SkipGenVideoStatusAccessLogFilter(logging.Filter):
+    """Drop uvicorn access lines for gen_video_status (high-frequency polling floods the console)."""
+
+    _PATH_FRAGMENT = "/gen_video_status"
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        return self._PATH_FRAGMENT not in record.getMessage()
+
+
 class RelativePathFormatter(logging.Formatter):
     def __init__(self, *args, project_root: Optional[str] = None, **kwargs):
         super().__init__(*args, **kwargs)
@@ -70,5 +79,7 @@ def _install_trace_context_filters() -> None:
 
 
 _install_trace_context_filters()
+
+logging.getLogger("uvicorn.access").addFilter(SkipGenVideoStatusAccessLogFilter())
 
 logger = logging.getLogger(__name__)
