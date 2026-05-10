@@ -3,6 +3,7 @@
 支持任务排队、状态跟踪和结果查询
 """
 import asyncio
+import queue
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
@@ -88,8 +89,9 @@ class VideoGenTaskManager:
         
         # 任务存储：{draft_url: VideoGenTask}
         self.tasks: Dict[str, VideoGenTask] = {}
-        # 任务队列
-        self.task_queue: asyncio.Queue = asyncio.Queue()
+        # 跨线程任务队列（HTTP 线程 put、worker 线程 get）。不能用 asyncio.Queue：其在 __init__
+        # 时绑定的 loop 与 worker 内 new_event_loop() 不一致，会触发 “bound to a different event loop”。
+        self.task_queue: queue.Queue = queue.Queue()
         _io_workers = min(32, (os.cpu_count() or 1) + 4)
         self._download_executor = ThreadPoolExecutor(
             max_workers=_io_workers,
@@ -152,7 +154,6 @@ class VideoGenTaskManager:
         # 存储任务
         self.tasks[draft_url] = task
         
-        # 添加到队列 - 使用线程安全的方式
         self._add_task_to_queue_sync(task)
         
         # 启动工作线程（如果还没启动）
@@ -160,40 +161,10 @@ class VideoGenTaskManager:
         
         logger.info(f"Task submitted for draft_url: {draft_url}")
     
-    async def _add_to_queue(self, task: VideoGenTask):
-        """将任务添加到队列"""
-        await self.task_queue.put(task)
+    def _add_task_to_queue_sync(self, task: VideoGenTask) -> None:
+        """Thread-safe enqueue from FastAPI worker threads (or any thread)."""
+        self.task_queue.put(task)
         logger.info(f"Task added to queue: {task.draft_url}")
-    
-    def _add_task_to_queue_sync(self, task: VideoGenTask):
-        """
-        同步方式将任务添加到队列
-        使用线程安全的方式提交任务
-        """
-        # 由于队列是asyncio.Queue，我们需要从主线程安全地添加任务
-        try:
-            # 获取当前事件循环
-            loop = asyncio.get_running_loop()
-            # 如果当前有运行的事件循环，就创建任务
-            if loop.is_running():
-                asyncio.run_coroutine_threadsafe(self._add_to_queue(task), loop)
-            else:
-                # 如果没有运行的事件循环，启动一个
-                if not loop.is_closed():
-                    loop.create_task(self._add_to_queue(task))
-        except RuntimeError:
-            # 如果没有事件循环，创建一个新的
-            def run_in_new_loop():
-                new_loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(new_loop)
-                try:
-                    new_loop.run_until_complete(self._add_to_queue(task))
-                finally:
-                    new_loop.close()
-            
-            # 在新线程中运行事件循环
-            thread = threading.Thread(target=run_in_new_loop, daemon=True)
-            thread.start()
     
     def get_task_status(self, draft_url: str) -> Optional[Dict[str, Any]]:
         """
@@ -256,16 +227,14 @@ class VideoGenTaskManager:
         """从队列取任务并启动独立协程；多任务可并行下载，导出仍串行，上传统一走后台。"""
         while not self.stop_flag.is_set():
             try:
-                # 等待任务（带超时，以便检查停止标志）
-                task = await asyncio.wait_for(self.task_queue.get(), timeout=1.0)
+                # Blocking get with timeout on thread pool — queue is thread-safe, not loop-bound.
+                task = await asyncio.to_thread(self.task_queue.get, True, 1.0)
                 t = asyncio.create_task(self._process_task(task))
                 t.add_done_callback(self._log_async_task_done)
-            except asyncio.TimeoutError:
-                # 超时，继续循环检查停止标志
+            except queue.Empty:
                 continue
             except Exception as e:
                 logger.error(f"Worker loop error: {e}")
-                # 短暂休息后继续
                 await asyncio.sleep(1)
 
     def _log_async_task_done(self, fut: asyncio.Task) -> None:
