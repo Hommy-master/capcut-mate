@@ -51,7 +51,10 @@ class CaptionItem(BaseModel):
     loop_animation: Optional[str] = Field(default=None, description="循环动画")
     in_animation_duration: Optional[int] = Field(default=None, description="入场动画时长")
     out_animation_duration: Optional[int] = Field(default=None, description="出场动画时长")
-    loop_animation_duration: Optional[int] = Field(default=None, description="循环动画时长")
+    loop_animation_duration: Optional[int] = Field(
+        default=None,
+        description="循环动画单次循环时长（微秒），与 get_text_animations 中 loop 的 duration 一致；不填则用该动画默认值",
+    )
     text_effect: Optional[str] = Field(default=None, description="花字效果名称或 effect_id，例如：'白字橘色发光花字'")
 
 

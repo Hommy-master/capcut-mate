@@ -15,7 +15,9 @@ class CaptionInfosRequest(BaseModel):
     in_animation: Optional[str] = Field(None, description="入场动画名称")
     in_animation_duration: Optional[int] = Field(None, description="入场动画时长")
     loop_animation: Optional[str] = Field(None, description="组合动画名称")
-    loop_animation_duration: Optional[int] = Field(None, description="组合动画时长")
+    loop_animation_duration: Optional[int] = Field(
+        None, description="循环动画单次循环时长（微秒），与 get_text_animations 中 loop 的 duration 一致"
+    )
     out_animation: Optional[str] = Field(None, description="出场动画名称")
     out_animation_duration: Optional[int] = Field(None, description="出场动画时长")
     transition: Optional[str] = Field(None, description="转场名称")
