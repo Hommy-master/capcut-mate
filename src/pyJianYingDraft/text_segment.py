@@ -329,15 +329,19 @@ class TextSegment(VisualSegment):
         return new_segment
 
     def add_animation(self, animation_type: Union[TextIntro, TextOutro, TextLoopAnim],
-                      duration: Union[str, float, None] = None) -> "TextSegment":
-        """将给定的入场/出场/循环动画添加到此片段的动画列表中, 出入场动画的持续时间可以自行设置, 循环动画则会自动填满其余无动画部分
+                      duration: Union[str, float, int, None] = None) -> "TextSegment":
+        """将给定的入场/出场/循环动画添加到此片段的动画列表中, 出入场动画的持续时间可以自行设置.
+
+        循环动画为剪映中的「循环」类型: ``duration`` 表示**单次循环**时长（微秒）, 与 ``get_text_animations``
+        里 loop 的 ``duration`` 一致; 未指定时使用该动画元数据默认值. 循环从**入场结束之后**开始,
+        至出场之前结束, 中间时段由剪映按该时长重复播放.
 
         注意: 若希望同时使用循环动画和入出场动画, 请**先添加出入场动画再添加循环动画**
 
         Args:
             animation_type (`TextIntro`, `TextOutro` or `TextLoopAnim`): 文本动画类型.
-            duration (`str` or `float`, optional): 动画持续时间, 单位为微秒, 仅对入场/出场动画有效.
-                若传入字符串则会调用`tim()`函数进行解析. 默认使用动画的时长
+            duration (`str`, `int`, `float`, optional): 微秒; 字符串则调用 ``tim()`` 解析.
+                对入场/出场为各自动画段时长; 对循环动画为单次循环时长.
         """
         if duration is None:
             duration = animation_type.value.duration
@@ -350,8 +354,12 @@ class TextSegment(VisualSegment):
         elif isinstance(animation_type, TextLoopAnim):
             intro_trange = self.animations_instance and self.animations_instance.get_animation_trange("in")
             outro_trange = self.animations_instance and self.animations_instance.get_animation_trange("out")
-            start = intro_trange.start if intro_trange else 0
-            duration = self.target_timerange.duration - start - (outro_trange.duration if outro_trange else 0)
+            start = intro_trange.end if intro_trange else 0
+            outro_dur = outro_trange.duration if outro_trange else 0
+            available = self.target_timerange.duration - start - outro_dur
+            cycle = duration
+            span_cap = max(1, available)
+            duration = max(1, min(cycle, span_cap))
         else:
             raise TypeError("Invalid animation type %s" % type(animation_type))
 

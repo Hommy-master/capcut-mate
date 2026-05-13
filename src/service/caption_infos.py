@@ -34,7 +34,7 @@ def caption_infos(
         in_animation: 入场动画名称（可选）
         in_animation_duration: 入场动画时长（可选）
         loop_animation: 组合动画名称（可选）
-        loop_animation_duration: 组合动画时长（可选）
+        loop_animation_duration: 循环动画单次循环时长，微秒（可选）
         out_animation: 出场动画名称（可选）
         out_animation_duration: 出场动画时长（可选）
         transition: 转场名称（可选）
