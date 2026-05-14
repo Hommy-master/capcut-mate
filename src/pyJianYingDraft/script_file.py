@@ -250,6 +250,12 @@ class ScriptFile:
             raise TypeError("错误的素材类型: '%s'" % type(material))
         return self
 
+    def next_track_render_index(self) -> int:
+        """为即将追加的新轨道分配 ``render_index``，保证叠在现有所有轨道之上（数值越大越接近前景）。"""
+        if not self.tracks:
+            return 0
+        return max(track.render_index for track in self.tracks.values()) + 1
+
     def add_track(self, track_type: TrackType, track_name: Optional[str] = None, *,
                   mute: bool = False,
                   relative_index: int = 0, absolute_index: Optional[int] = None) -> "ScriptFile":
