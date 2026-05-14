@@ -202,9 +202,13 @@ def add_video_material(script: ScriptFile, video_url: str) -> bool:
             logger.error("No video items parsed")
             return False
         
-        # 3. 添加视频轨道
+        # 4. 添加视频轨道（与 add_videos 一致：按当前草稿最大 render_index 递增）
         track_name = f"video_track_{helper.gen_unique_id()}"
-        script.add_track(track_type=TrackType.video, track_name=track_name, relative_index=10)
+        script.add_track(
+            track_type=TrackType.video,
+            track_name=track_name,
+            absolute_index=script.next_track_render_index(),
+        )
         logger.info(f"Added video track: {track_name}")
         
         # 4. 添加视频到轨道
