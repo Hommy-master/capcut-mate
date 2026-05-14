@@ -218,9 +218,13 @@ def add_video_material(script: ScriptFile, draft_id: str, video_url: str) -> boo
             logger.error("No video items parsed")
             return False
         
-        # 4. 添加视频轨道
+        # 4. 添加视频轨道（与 add_videos 一致：按当前草稿最大 render_index 递增）
         track_name = f"video_track_{helper.gen_unique_id()}"
-        script.add_track(track_type=TrackType.video, track_name=track_name, relative_index=10)
+        script.add_track(
+            track_type=TrackType.video,
+            track_name=track_name,
+            absolute_index=script.next_track_render_index(),
+        )
         logger.info(f"Added video track: {track_name}")
         
         # 5. 添加视频到轨道（传递正确的视频资源目录）
@@ -274,9 +278,13 @@ def add_image_material(script: ScriptFile, draft_id: str, img_url: str) -> bool:
             logger.error("No image items parsed")
             return False
         
-        # 4. 添加图片轨道
+        # 4. 添加图片轨道（与 add_images 一致：按当前草稿最大 render_index 递增）
         track_name = f"image_track_{helper.gen_unique_id()}"
-        script.add_track(track_type=TrackType.video, track_name=track_name, relative_index=10)
+        script.add_track(
+            track_type=TrackType.video,
+            track_name=track_name,
+            absolute_index=script.next_track_render_index(),
+        )
         logger.info(f"Added image track: {track_name}")
         
         # 5. 添加图片到轨道（传递正确的图片资源目录）
