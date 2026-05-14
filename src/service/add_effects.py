@@ -57,9 +57,13 @@ def add_effects(
     # 3. 从缓存中获取草稿
     script: ScriptFile = DRAFT_CACHE[draft_id]
 
-    # 4. 添加特效轨道
+    # 4. 添加特效轨道（叠层按接口调用先后：新建轨时取当前最大 render_index + 1，与片段在时间轴上的 start/end 无关；避免默认 10000 盖住图片/叠加视频等）
     track_name = f"effect_track_{helper.gen_unique_id()}"
-    script.add_track(track_type=TrackType.effect, track_name=track_name)
+    script.add_track(
+        track_type=TrackType.effect,
+        track_name=track_name,
+        absolute_index=script.next_track_render_index(),
+    )
     logger.info(f"Added effect track: {track_name}")
 
     # 5. 遍历特效信息，添加特效到草稿中的指定轨道，收集片段ID
