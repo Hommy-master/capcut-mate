@@ -218,13 +218,9 @@ def add_video_material(script: ScriptFile, draft_id: str, video_url: str) -> boo
             logger.error("No video items parsed")
             return False
         
-        # 4. 添加视频轨道（与 add_videos 一致：按当前草稿最大 render_index 递增）
+        # 4. 添加视频轨道（与 add_videos 一致：add_track_ordered 按全局调用顺序叠层）
         track_name = f"video_track_{helper.gen_unique_id()}"
-        script.add_track(
-            track_type=TrackType.video,
-            track_name=track_name,
-            absolute_index=script.next_track_render_index(),
-        )
+        script.add_track_ordered(track_type=TrackType.video, track_name=track_name)
         logger.info(f"Added video track: {track_name}")
         
         # 5. 添加视频到轨道（传递正确的视频资源目录）
@@ -278,13 +274,9 @@ def add_image_material(script: ScriptFile, draft_id: str, img_url: str) -> bool:
             logger.error("No image items parsed")
             return False
         
-        # 4. 添加图片轨道（与 add_images 一致：按当前草稿最大 render_index 递增）
+        # 4. 添加图片轨道（与 add_images 一致：add_track_ordered 按全局调用顺序叠层）
         track_name = f"image_track_{helper.gen_unique_id()}"
-        script.add_track(
-            track_type=TrackType.video,
-            track_name=track_name,
-            absolute_index=script.next_track_render_index(),
-        )
+        script.add_track_ordered(track_type=TrackType.video, track_name=track_name)
         logger.info(f"Added image track: {track_name}")
         
         # 5. 添加图片到轨道（传递正确的图片资源目录）
@@ -374,9 +366,9 @@ def add_text_material(
     try:
         logger.info(f"Adding text material: {text[:20]}...")
         
-        # 创建文字轨道
+        # 创建文字轨道（与 add_captions 等一致：按调用顺序叠在当前最上层之上）
         track_name = f"text_track_{helper.gen_unique_id()}"
-        script.add_track(track_type=TrackType.text, track_name=track_name)
+        script.add_track_ordered(track_type=TrackType.text, track_name=track_name)
         
         # 创建图像调节设置
         # 获取草稿的高用于transform坐标转换

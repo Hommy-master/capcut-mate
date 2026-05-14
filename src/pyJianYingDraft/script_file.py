@@ -256,6 +256,11 @@ class ScriptFile:
             return 0
         return max(track.render_index for track in self.tracks.values()) + 1
 
+    def add_track_ordered(self, track_type: TrackType, track_name: Optional[str] = None, *,
+                          mute: bool = False) -> "ScriptFile":
+        """追加新轨道，``render_index`` 取 ``next_track_render_index()``，多接口按调用先后自下而上叠层。"""
+        return self.add_track(track_type, track_name, mute=mute, absolute_index=self.next_track_render_index())
+
     def add_track(self, track_type: TrackType, track_name: Optional[str] = None, *,
                   mute: bool = False,
                   relative_index: int = 0, absolute_index: Optional[int] = None) -> "ScriptFile":

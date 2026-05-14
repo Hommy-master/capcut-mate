@@ -193,9 +193,9 @@ def add_captions(
         # 3. 从缓存中获取草稿
         script: ScriptFile = DRAFT_CACHE[draft_id]
 
-        # 4. 添加字幕轨道
+        # 4. 添加字幕轨道（与其它素材接口一致：按全局接口调用顺序叠层，后调用者在上）
         track_name = f"caption_track_{helper.gen_unique_id()}"
-        script.add_track(track_type=TrackType.text, track_name=track_name)
+        script.add_track_ordered(track_type=TrackType.text, track_name=track_name)
         logger.info(f"Added caption track: {track_name}")
 
         # 5. 遍历字幕信息，添加字幕到草稿中的指定轨道，收集片段ID

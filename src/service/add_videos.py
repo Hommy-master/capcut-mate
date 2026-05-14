@@ -261,13 +261,9 @@ def _add_videos_internal(
     # 4. 从缓存中获取草稿
     script: ScriptFile = DRAFT_CACHE[draft_id]
 
-    # 5. 添加视频轨道（非主轨；叠层与 add_images / add_effects 一致，按调用顺序递增 render_index）
+    # 5. 添加视频轨道（非主轨；叠层与 add_images / add_captions / add_filters 等一致，按全局调用顺序递增 render_index）
     track_name = f"video_track_{helper.gen_unique_id()}"
-    script.add_track(
-        track_type=draft.TrackType.video,
-        track_name=track_name,
-        absolute_index=script.next_track_render_index(),
-    )
+    script.add_track_ordered(track_type=draft.TrackType.video, track_name=track_name)
 
     # 6. 遍历视频信息，添加视频到草稿中的指定轨道，收集片段 ID
     segment_ids = []

@@ -141,12 +141,8 @@ def _add_images_internal(
     script: ScriptFile = DRAFT_CACHE[draft_id]
 
     track_name = f"image_track_{helper.gen_unique_id()}"
-    # 与 add_effects 等一致：按接口调用顺序叠层，避免多次 add_images 仍固定 10 导致后加的图片压在已分配的特效轨之下
-    script.add_track(
-        track_type=draft.TrackType.video,
-        track_name=track_name,
-        absolute_index=script.next_track_render_index(),
-    )
+    # 与 add_videos / add_captions / add_filters 等一致：按全局接口调用顺序叠层（后调用在上）
+    script.add_track_ordered(track_type=draft.TrackType.video, track_name=track_name)
     logger.info(f"Added image track (non-main track): {track_name}")
 
     segment_ids = []
