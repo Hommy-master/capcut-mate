@@ -1,6 +1,6 @@
 import electronService from "@/services/electronService";
 
-import "./index.css";
+import "./index.less";
 
 // 顶部导航组件
 function TopHeader({ onTabChange, selectedTab }) {

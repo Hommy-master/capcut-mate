@@ -1,16 +1,24 @@
 # 实现阿里云对象存储（OSS）的上传功能
 import datetime
 import os
+import time
 from typing import Optional
 
 import config
 from exceptions import CustomError, CustomException
 from src.utils.logger import logger
+from src.utils.storage_upload_retry import run_with_storage_retry
+
+# oss2.resumable_upload：大于 1MB 走 Multipart（与 COS upload_file 默认 PartSize=1 行为一致：≤1MB 仍为单次 PutObject）
+_OSS_MULTIPART_THRESHOLD_BYTES = 1024 * 1024 + 1
+# 弱网可适当保留 2；并发过高易触发超时则改为 1
+_OSS_MULTIPART_NUM_THREADS = 2
 
 
 def oss_upload_file(file_path: str, expire_days: Optional[int] = None) -> str:
     """
-    上传文件到OSS，返回带签名的临时URL，链接在指定天数后失效（见 config.VIDEO_GEN_RETENTION_DAYS）。
+    上传文件到 OSS，返回带签名的临时URL，链接在指定天数后失效（见 config.VIDEO_GEN_RETENTION_DAYS）。
+    使用 oss2.resumable_upload：大于 1MB 时用分片（Multipart）上传并支持断点续传；≤1MB 仍为单次 PutObject。
 
     Args:
         file_path: 文件路径
@@ -27,28 +35,38 @@ def oss_upload_file(file_path: str, expire_days: Optional[int] = None) -> str:
 
     try:
         import oss2
+        from oss2 import make_upload_store, resumable_upload
     except ImportError as e:
         logger.error(f"OSS SDK import failed: {e}")
         raise CustomException(CustomError.INTERNAL_SERVER_ERROR, "OSS SDK not installed")
 
-    try:
-        # 1. 生成带日期和小时的目录路径（格式：2025-10-15/22/文件名）
-        now = datetime.datetime.now()
-        current_date = now.strftime("%Y-%m-%d")
-        current_hour = now.strftime("%H")  # 小时，取值0-23
-        filename = os.path.basename(file_path)
-        key = f"{current_date}/{current_hour}/{filename}"
+    now = datetime.datetime.now()
+    current_date = now.strftime("%Y-%m-%d")
+    current_hour = now.strftime("%H")
+    filename = os.path.basename(file_path)
+    key = f"{current_date}/{current_hour}/{filename}"
 
-        # 2. 上传文件；预签名 URL 在 expire_days 天后失效
+    def do_upload() -> str:
         expire_time = datetime.datetime.now() + datetime.timedelta(days=expire_days)
         expire_time_str = expire_time.strftime("%Y-%m-%dT%H:%M:%S.000Z")
 
         auth = oss2.Auth(config.OSS_ACCESS_KEY_ID, config.OSS_ACCESS_KEY_SECRET)
         bucket = oss2.Bucket(auth, config.OSS_ENDPOINT, config.OSS_BUCKET_NAME)
-        response = bucket.put_object_from_file(key, file_path)
+
+        os.makedirs(config.TEMP_DIR, exist_ok=True)
+        ckpt = make_upload_store(root=config.TEMP_DIR, dir="oss_multipart_ckpt")
+
+        response = resumable_upload(
+            bucket,
+            key,
+            file_path,
+            store=ckpt,
+            multipart_threshold=_OSS_MULTIPART_THRESHOLD_BYTES,
+            part_size=None,
+            num_threads=_OSS_MULTIPART_NUM_THREADS,
+        )
         logger.info(f"OSS upload success, key: {key}, expire time: {expire_time_str}, status: {response.status}")
 
-        # 3. 生成带签名的临时下载URL（有效期为expire_days天）
         signed_url = bucket.sign_url(
             method="GET",
             key=key,
@@ -57,6 +75,21 @@ def oss_upload_file(file_path: str, expire_days: Optional[int] = None) -> str:
         logger.info(f"Generated OSS signed URL valid for {expire_days} day(s), URL: {signed_url[:100]}...")
         return signed_url
 
+    _t0 = time.perf_counter()
+    success = False
+    try:
+        result = run_with_storage_retry(do_upload, context="OSS")
+        success = True
+        return result
     except Exception as e:
         logger.error(f"OSS upload failed: {e}")
         raise CustomException(CustomError.INTERNAL_SERVER_ERROR, "OSS upload failed")
+    finally:
+        elapsed = time.perf_counter() - _t0
+        logger.info(
+            "OSS upload %s, file=%s, key=%s, total_duration_sec=%.3f",
+            "success" if success else "failed",
+            file_path,
+            key,
+            elapsed,
+        )

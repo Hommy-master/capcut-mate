@@ -72,6 +72,10 @@ class ControlFinder:
 class JianyingController:
     """剪映控制器"""
 
+    # 窗口查找重试：剪映启动较慢、RDP 刚连上、或 UI 树尚未就绪时，瞬时 Exists(0) 易失败
+    WINDOW_FIND_MAX_RETRIES = 12
+    WINDOW_FIND_RETRY_INTERVAL = 1.0
+
     app: uia.WindowControl
     """剪映窗口"""
     app_status: Literal["home", "edit", "pre_export"]
@@ -112,7 +116,12 @@ class JianyingController:
             except exceptions.DraftNotFound as e:
                 last_exception = e
                 if attempt < max_retries - 1:
-                    logger.info(f"未找到名为{draft_name}的剪映草稿，第{attempt + 1}次重试...")
+                    logger.info(
+                        "Draft not found (name=%s), retry %d/%d",
+                        draft_name,
+                        attempt + 1,
+                        max_retries,
+                    )
                     time.sleep(retry_interval)
         
         # 所有重试都失败，抛出异常
@@ -370,16 +379,46 @@ class JianyingController:
             else:
                 raise AutomationError("invalid app status: %s" % self.app_status)
         
-        logger.info("can not switch to home page after 32 attempts")
+        logger.info("Cannot switch to home page after 32 attempts")
 
-    def get_window(self) -> None:
-        """寻找剪映窗口并置顶"""
+    def get_window(
+        self,
+        max_retries: Optional[int] = None,
+        retry_interval: Optional[float] = None,
+    ) -> None:
+        """寻找剪映窗口并置顶；未找到时按间隔重试以提高容错。"""
+        if max_retries is None:
+            max_retries = self.WINDOW_FIND_MAX_RETRIES
+        if retry_interval is None:
+            retry_interval = self.WINDOW_FIND_RETRY_INTERVAL
+
         if hasattr(self, "app") and self.app.Exists(0):
             self.app.SetTopmost(False)
 
-        self.app = uia.WindowControl(searchDepth=1, Compare=self.__jianying_window_cmp)
-        if not self.app.Exists(0):
-            raise AutomationError("剪映窗口未找到")
+        for attempt in range(max_retries):
+            self.app = uia.WindowControl(searchDepth=1, Compare=self.__jianying_window_cmp)
+            if self.app.Exists(0):
+                if attempt > 0:
+                    logger.info(
+                        "Jianying main window matched on attempt %d/%d",
+                        attempt + 1,
+                        max_retries,
+                    )
+                break
+            if attempt < max_retries - 1:
+                logger.warning(
+                    "Jianying main window not found, retrying in %.1fs (%d/%d)",
+                    retry_interval,
+                    attempt + 1,
+                    max_retries,
+                )
+                time.sleep(retry_interval)
+        else:
+            raise AutomationError(
+                "Jianying window not found after %d attempts (%.1fs interval); "
+                "ensure Jianying Pro is open on the home or edit screen."
+                % (max_retries, retry_interval)
+            )
 
         # 寻找可能存在的导出窗口
         export_window = self.app.WindowControl(searchDepth=1, Name="导出")

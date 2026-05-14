@@ -1,4 +1,4 @@
-# 对象存储统一上传入口（配置判断 + 路由分发）
+# 对象存储统一上传入口（配置判断 + 路由分发；具体上传与重试在 cos.py / oss.py + storage_upload_retry）
 from typing import Optional
 
 import config

@@ -19,8 +19,16 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+]
 windows = [
     "pywin32>=311; sys_platform == 'win32'",
     "pyautogui>=0.9.54; sys_platform == 'win32'",
     "uiautomation>=2.0.29; sys_platform == 'win32'",
 ]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q"

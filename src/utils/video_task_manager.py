@@ -3,6 +3,7 @@
 支持任务排队、状态跟踪和结果查询
 """
 import asyncio
+import queue
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
@@ -19,9 +20,19 @@ from src.utils.video_task_store import (
 import src.pyJianYingDraft as draft
 import config
 import os
+import shutil
 import sys
 import subprocess
 import json
+
+# draft_content.json 中 duration 为微秒；低于 3 秒视为空草稿，不进入剪映导出
+MIN_DRAFT_EXPORT_DURATION_US = 3 * 1_000_000
+
+# gen_video：同时下载草稿的最大并发，超出部分在 _download_executor 队列中排队
+DRAFT_DOWNLOAD_MAX_CONCURRENT = 3
+
+# gen_video：上传到对象存储的最大并发，超出部分在 _upload_executor 队列中排队
+OBJECT_STORAGE_UPLOAD_MAX_CONCURRENT = 2
 
 # 如果是Linux系统，则不导入uiautomation，并避免执行相关代码
 try:
@@ -62,7 +73,10 @@ class VideoGenTask:
 class VideoGenTaskManager:
     """视频生成任务管理器 - 单例模式
 
-    草稿下载、COS 上传可并发（各自线程池）；剪映 RPA 导出由 export_video_lock 保证全局同一时间仅一个。
+    每个任务在独立协程中执行：草稿下载由专用线程池执行，并发上限为
+    DRAFT_DOWNLOAD_MAX_CONCURRENT，超出部分在线程池队列中排队；
+    剪映 RPA 导出由 export_video_lock 全局串行；COS/OSS 上传在独立线程池中执行，
+    并发上限为 OBJECT_STORAGE_UPLOAD_MAX_CONCURRENT。
     """
     
     _instance = None
@@ -82,25 +96,40 @@ class VideoGenTaskManager:
         
         # 任务存储：{draft_url: VideoGenTask}
         self.tasks: Dict[str, VideoGenTask] = {}
-        # 任务队列
-        self.task_queue: asyncio.Queue = asyncio.Queue()
-        _io_workers = min(32, (os.cpu_count() or 1) + 4)
+        # 跨线程任务队列（HTTP 线程 put、worker 线程 get）。不能用 asyncio.Queue：其在 __init__
+        # 时绑定的 loop 与 worker 内 new_event_loop() 不一致，会触发 “bound to a different event loop”。
+        self.task_queue: queue.Queue = queue.Queue()
+        _download_workers = DRAFT_DOWNLOAD_MAX_CONCURRENT
+        _upload_workers = OBJECT_STORAGE_UPLOAD_MAX_CONCURRENT
         self._download_executor = ThreadPoolExecutor(
-            max_workers=_io_workers,
+            max_workers=_download_workers,
             thread_name_prefix="draft_dl",
         )
         self._upload_executor = ThreadPoolExecutor(
-            max_workers=_io_workers,
+            max_workers=_upload_workers,
             thread_name_prefix="cos_upload",
         )
         # 导出视频专用锁（确保任何时候只有一个线程执行剪映 RPA 导出）
         self.export_video_lock = threading.Lock()
+        # 有多少个线程已进入「仅导出」阶段（含在 export_video_lock 上阻塞等待），用于对照默认线程池挤占
+        self._export_metrics_lock = threading.Lock()
+        self._export_phase_active = 0
         # 工作线程
         self.worker_thread: Optional[threading.Thread] = None
         # 停止标志
         self.stop_flag = threading.Event()
-        
-        logger.info("VideoGenTaskManager initialized")   
+
+        _default_asyncio_pool = min(32, (os.cpu_count() or 1) + 4)
+        logger.info(
+            "VideoGenTaskManager initialized: draft_dl max_workers=%s (queued beyond that), "
+            "cos_upload max_workers=%s (queued beyond that). Jianying export uses run_in_executor(None) "
+            "and shares the asyncio default thread pool with sync FastAPI routes "
+            "(typical cap min(32, cpu+4)=%s). When export-phase concurrency reaches that level, "
+            "synchronous HTTP handlers may stall.",
+            _download_workers,
+            _upload_workers,
+            _default_asyncio_pool,
+        )
     
     def submit_task(self, draft_url: str, api_key: str = None) -> None:
         """
@@ -134,7 +163,6 @@ class VideoGenTaskManager:
         # 存储任务
         self.tasks[draft_url] = task
         
-        # 添加到队列 - 使用线程安全的方式
         self._add_task_to_queue_sync(task)
         
         # 启动工作线程（如果还没启动）
@@ -142,40 +170,10 @@ class VideoGenTaskManager:
         
         logger.info(f"Task submitted for draft_url: {draft_url}")
     
-    async def _add_to_queue(self, task: VideoGenTask):
-        """将任务添加到队列"""
-        await self.task_queue.put(task)
+    def _add_task_to_queue_sync(self, task: VideoGenTask) -> None:
+        """Thread-safe enqueue from FastAPI worker threads (or any thread)."""
+        self.task_queue.put(task)
         logger.info(f"Task added to queue: {task.draft_url}")
-    
-    def _add_task_to_queue_sync(self, task: VideoGenTask):
-        """
-        同步方式将任务添加到队列
-        使用线程安全的方式提交任务
-        """
-        # 由于队列是asyncio.Queue，我们需要从主线程安全地添加任务
-        try:
-            # 获取当前事件循环
-            loop = asyncio.get_running_loop()
-            # 如果当前有运行的事件循环，就创建任务
-            if loop.is_running():
-                asyncio.run_coroutine_threadsafe(self._add_to_queue(task), loop)
-            else:
-                # 如果没有运行的事件循环，启动一个
-                if not loop.is_closed():
-                    loop.create_task(self._add_to_queue(task))
-        except RuntimeError:
-            # 如果没有事件循环，创建一个新的
-            def run_in_new_loop():
-                new_loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(new_loop)
-                try:
-                    new_loop.run_until_complete(self._add_to_queue(task))
-                finally:
-                    new_loop.close()
-            
-            # 在新线程中运行事件循环
-            thread = threading.Thread(target=run_in_new_loop, daemon=True)
-            thread.start()
     
     def get_task_status(self, draft_url: str) -> Optional[Dict[str, Any]]:
         """
@@ -187,8 +185,7 @@ class VideoGenTaskManager:
         Returns:
             任务状态信息，如果不存在返回None
         """
-        prune_if_needed()
-
+        # 热路径：本进程内提交过的任务始终在内存，避免每次轮询都抢 SQLite 全局锁
         task = self.tasks.get(draft_url)
         if task:
             return {
@@ -202,6 +199,7 @@ class VideoGenTaskManager:
                 "completed_at": task.completed_at.isoformat() if task.completed_at else None,
             }
 
+        prune_if_needed()
         draft_id = helper.get_url_param(draft_url, "draft_id")
         return get_completed_by_draft_id(draft_id)
 
@@ -235,21 +233,17 @@ class VideoGenTaskManager:
             loop.close()
     
     async def _async_worker_loop(self):
-        """异步工作循环"""
+        """从队列取任务并启动独立协程；下载/上传并发受各自线程池限制，导出串行。"""
         while not self.stop_flag.is_set():
             try:
-                # 等待任务（带超时，以便检查停止标志）
-                task = await asyncio.wait_for(self.task_queue.get(), timeout=1.0)
-
+                # Blocking get with timeout on thread pool — queue is thread-safe, not loop-bound.
+                task = await asyncio.to_thread(self.task_queue.get, True, 1.0)
                 t = asyncio.create_task(self._process_task(task))
                 t.add_done_callback(self._log_async_task_done)
-                
-            except asyncio.TimeoutError:
-                # 超时，继续循环检查停止标志
+            except queue.Empty:
                 continue
             except Exception as e:
                 logger.error(f"Worker loop error: {e}")
-                # 短暂休息后继续
                 await asyncio.sleep(1)
 
     def _log_async_task_done(self, fut: asyncio.Task) -> None:
@@ -259,10 +253,61 @@ class VideoGenTaskManager:
             pass
         except Exception as e:
             logger.exception(f"Async task finished with error: {e}")
-    
+
+    def _persist_terminal_task(self, task: VideoGenTask) -> None:
+        """将已完成或失败的任务写入 SQLite（仅终态）。"""
+        if task.status not in (TaskStatus.COMPLETED, TaskStatus.FAILED):
+            return
+        task.completed_at = datetime.now()
+        try:
+            save_completed_result(
+                draft_id=task.draft_id,
+                draft_url=task.draft_url,
+                status=task.status.value,
+                progress=task.progress,
+                video_url=task.video_url,
+                error_message=task.error_message,
+                created_at=task.created_at,
+                started_at=task.started_at,
+                completed_at=task.completed_at,
+            )
+        except Exception as persist_err:
+            logger.exception(
+                "Failed to persist video gen task result: %s", persist_err
+            )
+
+    async def _run_upload_and_finalize(self, task: VideoGenTask) -> None:
+        """导出成功后的上传与落库；上传受 _upload_executor 并发上限约束，绑定本 task 的 outfile/draft_id。"""
+        loop = asyncio.get_running_loop()
+        try:
+            video_url, error_message = await loop.run_in_executor(
+                self._upload_executor,
+                self._phase_cos_upload_finalize,
+                task,
+            )
+            if video_url:
+                task.status = TaskStatus.COMPLETED
+                task.video_url = video_url
+                task.progress = 100
+                logger.info(f"Task completed successfully: {task.draft_url}")
+            else:
+                task.status = TaskStatus.FAILED
+                task.error_message = error_message
+                task.progress = 0
+                logger.error(f"Task failed: {task.draft_url}, error: {error_message}")
+        except Exception as e:
+            task.status = TaskStatus.FAILED
+            task.error_message = str(e)
+            task.progress = 0
+            logger.exception(f"Upload/finalize exception: {task.draft_url}, error: {e}")
+            self._cleanup_files(getattr(task, "outfile", "") or "", task.draft_id)
+        finally:
+            self._persist_terminal_task(task)
+
     async def _process_task(self, task: VideoGenTask):
         """
-        处理单个视频生成任务：下载、COS 上传可与其他任务并行；导出受 export_video_lock 串行。
+        单任务流水线：下载阶段受 _download_executor 并发上限约束；导出串行（export_video_lock）；
+        成功后上传统一异步且不阻塞本循环（上传受 _upload_executor 限制）。
         """
         logger.info(f"Processing task: {task.draft_url}")
 
@@ -283,6 +328,8 @@ class VideoGenTaskManager:
                 task.error_message = prep_error
                 task.progress = 0
                 logger.error(f"Task failed: {task.draft_url}, error: {prep_error}")
+                self._cleanup_files(task.outfile, task.draft_id)
+                self._persist_terminal_task(task)
                 return
 
             export_error = await loop.run_in_executor(
@@ -295,60 +342,28 @@ class VideoGenTaskManager:
                 task.error_message = export_error
                 task.progress = 0
                 logger.error(f"Task failed: {task.draft_url}, error: {export_error}")
+                self._cleanup_files(task.outfile, task.draft_id)
+                self._persist_terminal_task(task)
                 return
 
-            video_url, error_message = await loop.run_in_executor(
-                self._upload_executor,
-                self._phase_cos_upload_finalize,
-                task,
-            )
-
-            if video_url:
-                task.status = TaskStatus.COMPLETED
-                task.video_url = video_url
-                task.progress = 100
-                logger.info(f"Task completed successfully: {task.draft_url}")
-            else:
-                task.status = TaskStatus.FAILED
-                task.error_message = error_message
-                task.progress = 0
-                logger.error(f"Task failed: {task.draft_url}, error: {error_message}")
+            ut = asyncio.create_task(self._run_upload_and_finalize(task))
+            ut.add_done_callback(self._log_async_task_done)
 
         except Exception as e:
             task.status = TaskStatus.FAILED
             task.error_message = str(e)
             task.progress = 0
             logger.exception(f"Task exception: {task.draft_url}, error: {e}")
-
-        finally:
-            task.completed_at = datetime.now()
-            if task.status in (TaskStatus.COMPLETED, TaskStatus.FAILED):
-                try:
-                    save_completed_result(
-                        draft_id=task.draft_id,
-                        draft_url=task.draft_url,
-                        status=task.status.value,
-                        progress=task.progress,
-                        video_url=task.video_url,
-                        error_message=task.error_message,
-                        created_at=task.created_at,
-                        started_at=task.started_at,
-                        completed_at=task.completed_at,
-                    )
-                except Exception as persist_err:
-                    logger.exception(
-                        "Failed to persist video gen task result: %s", persist_err
-                    )
+            self._cleanup_files(getattr(task, "outfile", "") or "", task.draft_id)
+            self._persist_terminal_task(task)
     
     def _check_draft_duration(self, task: VideoGenTask) -> bool:
         """
-        检查草稿中的视频时长是否大于0
-        
-        Args:
-            task: 视频生成任务
-            
+        检查草稿中的视频时长是否满足导出要求（draft_content.duration 单位为微秒）。
+        时长不大于 0 或小于 3 秒均视为无效。
+
         Returns:
-            bool: 时长是否大于0
+            bool: 是否允许继续导出
         """
         try:
             # 构建草稿内容文件路径
@@ -356,7 +371,11 @@ class VideoGenTaskManager:
             
             # 检查文件是否存在
             if not os.path.exists(draft_content_path):
-                logger.error(f"草稿内容文件不存在: {draft_content_path}")
+                logger.error(
+                    "draft_content.json not found: path=%s draft_id=%s",
+                    draft_content_path,
+                    task.draft_id,
+                )
                 return False
             
             # 读取并解析JSON文件
@@ -366,19 +385,43 @@ class VideoGenTaskManager:
             # 获取时长
             duration = draft_content.get("duration", 0)
             
-            # 检查时长是否大于0
             if duration <= 0:
-                logger.error(f"草稿中视频时长不大于0: {duration}, 草稿ID: {task.draft_id}")
+                logger.error(
+                    "draft duration invalid (<=0): duration_us=%s draft_id=%s",
+                    duration,
+                    task.draft_id,
+                )
+                return False
+
+            if duration < MIN_DRAFT_EXPORT_DURATION_US:
+                logger.error(
+                    "draft duration below minimum export length (<3s): duration_us=%s "
+                    "draft_id=%s",
+                    duration,
+                    task.draft_id,
+                )
                 return False
             
-            logger.info(f"草稿视频时长检查通过: {duration} 微秒, 草稿ID: {task.draft_id}")
+            logger.info(
+                "draft duration check passed: duration_us=%s draft_id=%s",
+                duration,
+                task.draft_id,
+            )
             return True
             
         except json.JSONDecodeError as e:
-            logger.error(f"解析草稿内容文件失败: {e}, 草稿ID: {task.draft_id}")
+            logger.error(
+                "failed to parse draft_content.json: %s draft_id=%s",
+                e,
+                task.draft_id,
+            )
             return False
         except Exception as e:
-            logger.error(f"检查草稿时长时发生错误: {e}, 草稿ID: {task.draft_id}")
+            logger.error(
+                "draft duration check error: %s draft_id=%s",
+                e,
+                task.draft_id,
+            )
             return False
 
     def _phase_download_and_prepare(self, task: VideoGenTask) -> str:
@@ -398,16 +441,15 @@ class VideoGenTaskManager:
             task.progress = 30
 
             if not self._download_draft(task):
-                error_message = f"草稿下载失败: {task.draft_url}"
-                logger.error(error_message)
-                return error_message
+                logger.error("draft download failed: draft_url=%s", task.draft_url)
+                return f"草稿下载失败: {task.draft_url}"
 
             if not self._check_draft_duration(task):
-                error_message = (
-                    f"草稿中视频时长不大于0，请检查草稿内容: {task.draft_id}"
+                logger.error(
+                    "draft duration check failed (empty or too short): draft_id=%s",
+                    task.draft_id,
                 )
-                logger.error(error_message)
-                return error_message
+                return f"草稿中视频时长不大于3秒，请检查草稿内容: {task.draft_id}"
 
             task.progress = 40
             return ""
@@ -424,31 +466,52 @@ class VideoGenTaskManager:
         Returns:
             错误信息，成功时返回空字符串。
         """
+        with self._export_metrics_lock:
+            self._export_phase_active += 1
+            export_phase_concurrent = self._export_phase_active
+        logger.info(
+            "Export phase entered (waiting for lock or exporting): "
+            "concurrent=%s draft_id=%s",
+            export_phase_concurrent,
+            task.draft_id,
+        )
         try:
-            if not self._export_video(task, task.outfile):
-                return "导出草稿失败"
-            return ""
-        except Exception as exc:
-            logger.exception(
-                f"Export draft failed: draft_id={task.draft_id}, error={exc}"
+            try:
+                if not self._export_video(task, task.outfile):
+                    return "导出草稿失败"
+                return ""
+            except Exception as exc:
+                logger.exception(
+                    f"Export draft failed: draft_id={task.draft_id}, error={exc}"
+                )
+                return f"导出草稿失败: {exc}"
+        finally:
+            with self._export_metrics_lock:
+                self._export_phase_active -= 1
+                export_phase_concurrent = self._export_phase_active
+            logger.info(
+                "Export phase exited: concurrent=%s draft_id=%s",
+                export_phase_concurrent,
+                task.draft_id,
             )
-            return f"导出草稿失败: {exc}"
 
     def _phase_cos_upload_finalize(self, task: VideoGenTask) -> Tuple[str, str]:
         """
-        COS 上传、扣费与清理（可与其它任务的上传并行）。
+        COS 上传、扣费与清理（与其它任务的上传共享线程池，最多 2 路并发）。
+        草稿目录与本地导出 mp4 在 finally 中清理，避免上传/扣费任一环节抛错导致残留。
         """
         try:
             task.progress = 95
             upload_url, upload_failed = self._upload_video_to_cos(task.outfile)
             self._calculate_and_charge(task, task.outfile)
-            self._cleanup_files(task.outfile, task.draft_id)
             return self._handle_result(upload_url, upload_failed)
         except Exception as exc:
             logger.exception(
                 f"Export draft failed: draft_id={task.draft_id}, error={exc}"
             )
             return "", f"导出草稿失败: {exc}"
+        finally:
+            self._cleanup_files(task.outfile, task.draft_id)
     
     def _download_draft(self, task: VideoGenTask) -> bool:
         """
@@ -483,6 +546,10 @@ class VideoGenTaskManager:
             bool: 导出是否成功
         """
         # 使用专用锁确保任何时候只有一个线程执行导出视频操作
+        logger.info(
+            "Waiting for export_video_lock: draft_id=%s",
+            task.draft_id,
+        )
         with self.export_video_lock:
             logger.info(f"Begin to export draft: {task.draft_id} -> {outfile}")
             
@@ -493,9 +560,15 @@ class VideoGenTaskManager:
             if draft.JianyingController is None:
                 if sys.platform != "win32":
                     error_msg = "剪映自动导出功能仅在Windows平台可用"
+                    logger.error(
+                        "JianyingController unavailable: requires Windows platform"
+                    )
                 else:
                     error_msg = "缺少Windows依赖，请安装: pip install capcut-mate[windows]"
-                logger.error(error_msg)
+                    logger.error(
+                        "JianyingController unavailable: install windows extras "
+                        "(pip install capcut-mate[windows])"
+                    )
                 raise RuntimeError(error_msg)
             
             with UIAutomationInitializerInThread():
@@ -511,7 +584,11 @@ class VideoGenTaskManager:
             # 检查文件是否生成
             if not os.path.exists(outfile):
                 # 个别版本剪映不会抛异常，但文件未生成
-                logger.error("剪映导出结束但目标文件未生成，请检查磁盘空间或剪映版本")
+                logger.error(
+                    "export finished but output file missing (check disk space / "
+                    "Jianying version): path=%s",
+                    outfile,
+                )
                 return False
 
             logger.info(f"Export draft success: {outfile}")
@@ -601,7 +678,6 @@ class VideoGenTaskManager:
                 logger.info(f"Cleaned up local video file: {outfile}")
             
             # 清理下载的草稿文件
-            import shutil
             draft_path = os.path.join(config.DRAFT_SAVE_PATH, draft_id)
             if os.path.exists(draft_path):
                 shutil.rmtree(draft_path)

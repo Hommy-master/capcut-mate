@@ -1,4 +1,4 @@
-const { ipcMain, dialog } = require('electron');
+const { ipcMain, dialog, app } = require('electron');
 
 // 引入logger模块
 const logger = require('./logger');
@@ -85,6 +85,10 @@ function setupIpcHandlers(mainWindow) {
 
   ipcMain.handle('get-history-record', async (event) => {
     return await readHistoryRecord();
+  });
+
+  ipcMain.handle('get-app-version', async () => {
+    return app.getVersion();
   });
 }
 

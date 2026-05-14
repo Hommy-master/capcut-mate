@@ -13,6 +13,7 @@
     "cross-env": "^10.1.0",
     "electron": "^39.2.5",
     "electron-builder": "^26.0.12",
+    "less": "^4.6.4",
     "vite": "^7.2.6",
     "vite-plugin-electron": "^0.29.0"
   },

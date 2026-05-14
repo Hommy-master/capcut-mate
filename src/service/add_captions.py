@@ -888,8 +888,8 @@ def hex_to_rgb(hex_color: str) -> tuple:
     Returns:
         RGB三元组，取值范围为[0, 1]
     """
-    # 移除#号（如果存在）
-    hex_color = hex_color.lstrip('#')
+    # 去掉首尾空白后再处理 #，否则 " #RRGGBB" 会 lstrip 不到 # 导致长度校验失败
+    hex_color = hex_color.strip().lstrip('#')
     
     # 确保是6位十六进制
     if len(hex_color) != 6:

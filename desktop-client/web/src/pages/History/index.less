@@ -1,0 +1,126 @@
+.history-page {
+  padding: 20px 0;
+  height: 100%;
+  overflow-y: auto;
+}
+
+.history-page h2 {
+  margin-bottom: 20px;
+  font-size: 24px;
+  color: #333;
+  text-align: center;
+}
+
+.history-list-container {
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  padding: 20px;
+  margin-bottom: 20px;
+  .history-list-title {
+    color: var(--primary-color);
+    font-size: 22px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+  }
+  .clock-history {
+    font-size: 14px;
+    color: var(--primary-color);
+    margin-right: 8px;
+  }
+}
+
+.loading,
+.empty-state {
+  text-align: center;
+  padding: 40px 0;
+  color: #666;
+  font-size: 16px;
+}
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.history-item {
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 15px;
+  transition: all 0.3s ease;
+}
+
+.history-item:hover {
+  border-color: #007bff;
+  box-shadow: 0 2px 8px rgba(0, 123, 255, 0.15);
+}
+
+.history-item-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.draft-id {
+  font-weight: 600;
+  color: #333;
+}
+
+.download-time {
+  color: #666;
+  font-size: 12px;
+}
+
+.history-item-content {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  position: relative;
+}
+.history-count {
+  color: var(--primary-color);
+  font-weight: 500;
+  margin-left: 4px;
+}
+
+.pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 16px;
+  padding: 8px 0;
+  flex-wrap: wrap;
+  gap: 15px;
+  --bs-pagination-color: var(--primary-color);
+  --bs-pagination-hover-color: var(--primary-dark);
+  --bs-pagination-focus-color: var(--primary-dark);
+  --bs-pagination-focus-box-shadow: 0 0 0 0.25rem rgba(var(--primary-color-rgb), 0.25);
+  --bs-pagination-active-bg: var(--primary-color);
+  --bs-pagination-active-border-color: var(--primary-color);
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .history-item-header {
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .pagination {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+@media (max-width: 480px) {
+  .history-list-container {
+    padding: 10px;
+  }
+
+  .pagination {
+    padding: 10px;
+  }
+}
