@@ -67,9 +67,47 @@ async function downloadRemoteMaterialFile(fileUrl, localPath) {
   const writer = response.data.pipe(createWriteStream(localPath, { flags: "w", mode: 0o666 }));
   await new Promise((resolve, reject) => {
     writer.on("close", resolve);
-    writer.on("error", (err) => reject(err));
-    response.data.on("error", (err) => reject(err));
+    writer.on("error", (err) => {
+      fs.unlink(localPath).catch(() => { });
+      reject(err);
+    });
+    response.data.on("error", (err) => {
+      writer.destroy();
+      fs.unlink(localPath).catch(() => { });
+      reject(err);
+    });
   });
+}
+
+/**
+ * Windows 上“权限异常”多与只读属性有关；Node 对文件的 fs.chmod(0o666) 会清除只读位。
+ * 下载完成后统一处理，避免 copyFile / 外部软件间歇性带上只读导致剪映无法改写素材。
+ */
+async function ensureWindowsDraftFilesWritable(rootDir) {
+  if (process.platform !== "win32" || !rootDir) return;
+  const stack = [rootDir];
+  while (stack.length) {
+    const current = stack.pop();
+    let entries;
+    try {
+      entries = await fs.readdir(current, { withFileTypes: true });
+    } catch {
+      continue;
+    }
+    for (const ent of entries) {
+      const full = path.join(current, ent.name);
+      if (ent.isSymbolicLink()) continue;
+      try {
+        if (ent.isDirectory()) {
+          stack.push(full);
+        } else if (ent.isFile()) {
+          await fs.chmod(full, 0o666);
+        }
+      } catch (e) {
+        logger.warn(`[perm] 无法调整文件权限（已跳过）: ${full} — ${e.message}`);
+      }
+    }
+  }
 }
 
 const MAX_DOWNLOAD_ATTEMPTS = 6;
@@ -573,7 +611,7 @@ async function downloadJsonFile(
 
     // 4. 将修改后的 JSON 对象转换为格式化的字符串并写入本地文件
     const jsonString = JSON.stringify(jsonData, null, 2); // 使用 2 个空格进行缩进，美化输出
-    await fs.writeFile(filePath, jsonString, "utf8"); // 指定编码为 utf8
+    await fs.writeFile(filePath, jsonString, { encoding: "utf8", mode: 0o666 });
   } catch (error) {
     logger.error(`下载JSON文件失败: ${fileUrl}`, error);
     throw error;
@@ -937,6 +975,8 @@ async function downloadFiles(
     });
     const jointPath = path.join(baseTargetDir, targetId);
     logger.info(`[finish] all download: ${jointPath}`);
+
+    await ensureWindowsDraftFilesWritable(jointPath);
 
     // 触发剪映目录扫描，使剪映无需重启即可识别新草稿
     await triggerDirectoryScan(jointPath);

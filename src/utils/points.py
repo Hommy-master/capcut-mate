@@ -1,4 +1,6 @@
 from typing import Dict, Any, Optional
+import time
+
 from exceptions import CustomException, CustomError
 from src.utils.logger import logger
 import requests
@@ -11,6 +13,8 @@ API_HEADERS = {
     'Content-Type': 'application/json'
 }
 DEFAULT_API_TIMEOUT = 30  # 默认API超时时间为30秒
+USER_API_RETRY_ATTEMPTS = 3  # 连接失败或超时后额外重试次数（首次 + 3 次重试，最多 4 次请求）
+USER_API_RETRY_INTERVAL_SEC = 1
 
 def get_user_points(api_key: str) -> float:
     """
@@ -151,34 +155,48 @@ def _call_user_api(method: str, endpoint: str, params: Optional[dict] = None, js
         CustomException: 当API调用失败或返回错误时
     """
     url = f"{POINTS_API_BASE_URL}{endpoint}"
-    
-    try:
-        logger.info(f"Calling user API: {method} {url}")
-        
-        # 根据方法类型发送请求
-        if method.upper() == 'GET':
-            response = requests.get(url, params=params, headers=API_HEADERS, timeout=timeout)
-        elif method.upper() == 'POST':
-            response = requests.post(url, json=json_data, headers=API_HEADERS, timeout=timeout)
-        else:
-            raise ValueError(f"Unsupported HTTP method: {method}")
-        
-        response.raise_for_status()
-        
-        # 解析JSON响应
-        return _parse_api_response(response)
-        
-    except requests.exceptions.Timeout:
-        logger.error(f"User API timeout: {method} {url}")
-        raise CustomException(CustomError.INTERNAL_SERVER_ERROR, detail="User API call timeout")
-    except requests.exceptions.ConnectionError:
-        logger.error(f"User API connection error: {method} {url}")
-        raise CustomException(CustomError.INTERNAL_SERVER_ERROR, detail="Unable to connect to user API service")
-    except requests.exceptions.RequestException as e:
-        logger.error(f"User API request failed: {method} {url}, error: {str(e)}")
-        raise CustomException(CustomError.INTERNAL_SERVER_ERROR, detail=f"User API request failed: {str(e)}")
-    except CustomException:
-        raise
-    except Exception as e:
-        logger.error(f"Unexpected error in user API call: {method} {url}, error: {str(e)}")
-        raise CustomException(CustomError.UNKNOWN_ERROR, detail=f"Unknown error occurred while calling user API: {str(e)}")
+    max_attempts = USER_API_RETRY_ATTEMPTS + 1
+
+    for attempt in range(max_attempts):
+        try:
+            if attempt == 0:
+                logger.info(f"Calling user API: {method} {url}")
+            else:
+                logger.info(f"Calling user API: {method} {url} (attempt {attempt + 1}/{max_attempts})")
+
+            # 根据方法类型发送请求
+            if method.upper() == 'GET':
+                response = requests.get(url, params=params, headers=API_HEADERS, timeout=timeout)
+            elif method.upper() == 'POST':
+                response = requests.post(url, json=json_data, headers=API_HEADERS, timeout=timeout)
+            else:
+                raise ValueError(f"Unsupported HTTP method: {method}")
+
+            response.raise_for_status()
+
+            # 解析JSON响应
+            return _parse_api_response(response)
+
+        except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as e:
+            if attempt < USER_API_RETRY_ATTEMPTS:
+                logger.warning(
+                    f"User API {type(e).__name__}, will retry ({attempt + 1}/{USER_API_RETRY_ATTEMPTS}) "
+                    f"after {USER_API_RETRY_INTERVAL_SEC}s: {method} {url}"
+                )
+                time.sleep(USER_API_RETRY_INTERVAL_SEC)
+                continue
+
+            if isinstance(e, requests.exceptions.Timeout):
+                logger.error(f"User API timeout after {max_attempts} attempts: {method} {url}")
+                raise CustomException(CustomError.INTERNAL_SERVER_ERROR, detail="User API call timeout")
+            logger.error(f"User API connection error after {max_attempts} attempts: {method} {url}")
+            raise CustomException(CustomError.INTERNAL_SERVER_ERROR, detail="Unable to connect to user API service")
+
+        except requests.exceptions.RequestException as e:
+            logger.error(f"User API request failed: {method} {url}, error: {str(e)}")
+            raise CustomException(CustomError.INTERNAL_SERVER_ERROR, detail=f"User API request failed: {str(e)}")
+        except CustomException:
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected error in user API call: {method} {url}, error: {str(e)}")
+            raise CustomException(CustomError.UNKNOWN_ERROR, detail=f"Unknown error occurred while calling user API: {str(e)}")
