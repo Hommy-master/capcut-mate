@@ -211,18 +211,14 @@ curl -X POST "http://localhost:30000/openapi/capcut-mate/v1/create_draft" \
 ```
 
 ### 添加视频
+`video_infos` 为 **JSON 字符串**（请求体里不能写成嵌套数组）。每条记录须包含 `video_url`、`start`、`end`（时间轴上的微秒）。可选字段见 [add_videos](./docs/add_videos.zh.md)。
+
 ```bash
 curl -X POST "http://localhost:30000/openapi/capcut-mate/v1/add_videos" \
 -H "Content-Type: application/json" \
 -d '{
   "draft_url": "http://localhost:30000/openapi/capcut-mate/v1/get_draft?draft_id=20251126212753cab03392",
-  "video_infos": [
-    {
-      "url": "https://example.com/video.mp4",
-      "start": 0,
-      "end": 1000000
-    }
-  ]
+  "video_infos": "[{\"video_url\": \"https://example.com/video.mp4\", \"start\": 0, \"end\": 1000000}]"
 }'
 ```
 

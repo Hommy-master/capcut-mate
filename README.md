@@ -211,18 +211,14 @@ curl -X POST "http://localhost:30000/openapi/capcut-mate/v1/create_draft" \
 ```
 
 ### Add Videos
+`video_infos` is a **JSON string** (not a nested JSON array). Each item must include `video_url`, `start`, and `end` (microseconds on the timeline). See [add_videos](./docs/add_videos.md) for optional fields.
+
 ```bash
 curl -X POST "http://localhost:30000/openapi/capcut-mate/v1/add_videos" \
 -H "Content-Type: application/json" \
 -d '{
   "draft_url": "http://localhost:30000/openapi/capcut-mate/v1/get_draft?draft_id=20251126212753cab03392",
-  "video_infos": [
-    {
-      "url": "https://example.com/video.mp4",
-      "start": 0,
-      "end": 1000000
-    }
-  ]
+  "video_infos": "[{\"video_url\": \"https://example.com/video.mp4\", \"start\": 0, \"end\": 1000000}]"
 }'
 ```
 
