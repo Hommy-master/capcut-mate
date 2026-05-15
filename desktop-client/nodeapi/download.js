@@ -112,6 +112,75 @@ async function ensureWindowsDraftFilesWritable(rootDir) {
 
 const MAX_DOWNLOAD_ATTEMPTS = 6;
 
+/** 拉取 get_draft：首次请求 + 2 次重试（共 3 次），自开始起硬截止 3000ms 内必须结束 */
+const GET_DRAFT_FETCH_MAX_ATTEMPTS = 3;
+const GET_DRAFT_FETCH_DEADLINE_MS = 3000;
+const GET_DRAFT_FETCH_PER_ATTEMPT_MAX_MS = 800;
+const GET_DRAFT_FETCH_BACKOFF_MS = [120, 200];
+
+function isRetryableGetDraftError(error) {
+  if (!error) return false;
+  if (error.response) {
+    const status = error.response.status;
+    return status === 408 || status === 429 || status >= 500;
+  }
+  const code = error.code;
+  if (code === "ENOTFOUND" || code === "ECONNREFUSED") return false;
+  return true;
+}
+
+async function requestGetDraftOnce(remoteUrl, timeoutMs) {
+  return axios({
+    ...axiosConfig,
+    url: remoteUrl,
+    responseType: "json",
+    timeout: timeoutMs,
+  });
+}
+
+async function fetchGetDraftWithRetry(remoteUrl) {
+  const deadline = Date.now() + GET_DRAFT_FETCH_DEADLINE_MS;
+  const timeLeftMs = () => deadline - Date.now();
+  let lastError = null;
+
+  for (let attempt = 1; attempt <= GET_DRAFT_FETCH_MAX_ATTEMPTS; attempt++) {
+    if (timeLeftMs() <= 0) break;
+
+    if (attempt > 1) {
+      const planned = GET_DRAFT_FETCH_BACKOFF_MS[attempt - 2] ?? 100;
+      const wait = Math.min(planned, Math.max(0, timeLeftMs() - 1));
+      if (wait > 0) {
+        await new Promise((resolve) => setTimeout(resolve, wait));
+      }
+      if (timeLeftMs() <= 0) break;
+    }
+
+    const timeout = Math.min(
+      GET_DRAFT_FETCH_PER_ATTEMPT_MAX_MS,
+      Math.max(1, timeLeftMs())
+    );
+
+    try {
+      return await requestGetDraftOnce(remoteUrl, timeout);
+    } catch (error) {
+      lastError = error;
+      const willRetry =
+        attempt < GET_DRAFT_FETCH_MAX_ATTEMPTS &&
+        timeLeftMs() > 0 &&
+        isRetryableGetDraftError(error);
+      if (willRetry) {
+        logger.warn(
+          `[warn] get draft url attempt ${attempt}/${GET_DRAFT_FETCH_MAX_ATTEMPTS} failed: ${error.message}`
+        );
+        continue;
+      }
+      throw error;
+    }
+  }
+
+  throw lastError;
+}
+
 async function retryDownloadTask(task, options = {}) {
   const {
     maxAttempts = MAX_DOWNLOAD_ATTEMPTS,
@@ -375,11 +444,7 @@ function errorHandler(error = {}, url = "") {
 async function getDraftUrls(remoteUrl, parentWindow) {
   logger.info("[info] get draft url");
   try {
-    const response = await axios({
-      ...axiosConfig,
-      url: remoteUrl,
-      responseType: "json",
-    });
+    const response = await fetchGetDraftWithRetry(remoteUrl);
 
     // 检查HTTP状态码
     if (response.status !== 200) {
