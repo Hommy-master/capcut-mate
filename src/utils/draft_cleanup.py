@@ -16,9 +16,9 @@ from src.utils.draft_cache import DRAFT_CACHE
 from src.utils.draft_lock_manager import get_draft_lock_manager
 from src.utils.logger import logger
 
-# 草稿清理策略（内置常量，不放在 config）
+# 草稿清理策略（本模块内定义；保留数量可由环境变量 DRAFT_CLEANUP_MAX_DRAFT_COUNT 覆盖，默认 1000）
+DRAFT_CLEANUP_MAX_DRAFT_COUNT = max(0, int(os.getenv("DRAFT_CLEANUP_MAX_DRAFT_COUNT", "1000")))
 DRAFT_CLEANUP_INTERVAL_SECONDS = 3600
-DRAFT_CLEANUP_MAX_DRAFT_COUNT = 1000
 DRAFT_CLEANUP_PROTECTED_DRAFT_IDS = frozenset(
     {
         "20251204214904ccb1af38",
