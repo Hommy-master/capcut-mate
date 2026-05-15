@@ -1,3 +1,6 @@
+import asyncio
+from contextlib import asynccontextmanager, suppress
+
 from fastapi import FastAPI
 from src.router import v1_router
 from src.utils.draft_downloader import download_draft
@@ -5,8 +8,21 @@ from src.utils.logger import logger
 from src.middlewares import PrepareMiddleware, ResponseMiddleware, TraceContextMiddleware
 
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    from src.utils.draft_cleanup import draft_cleanup_background_loop
+
+    cleanup_task = asyncio.create_task(draft_cleanup_background_loop())
+    try:
+        yield
+    finally:
+        cleanup_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await cleanup_task
+
+
 # 1. 创建 FastAPI 应用
-app: FastAPI = FastAPI(title="CapCut Mate API", version="1.0")
+app: FastAPI = FastAPI(title="CapCut Mate API", version="1.0", lifespan=lifespan)
 
 # 2. 注册路由
 app.include_router(router=v1_router, prefix="/openapi/capcut-mate", tags=["capcut-mate"])
