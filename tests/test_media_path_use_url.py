@@ -53,7 +53,7 @@ def test_add_video_to_draft_uses_url_for_material_path(draft_ctx):
     segment = MagicMock(segment_id="seg-video-1")
     with patch("src.service.add_videos.draft.VideoMaterial", return_value=video_material) as mock_material, \
             patch("src.service.add_videos.draft.VideoSegment", return_value=segment):
-        add_video_to_draft(
+        segment_id, segment_info, actual_duration = add_video_to_draft(
             script=draft_ctx["script"],
             track_name="video_track_1",
             video={
@@ -65,6 +65,11 @@ def test_add_video_to_draft_uses_url_for_material_path(draft_ctx):
             },
         )
     assert mock_material.call_args.args[0] == "https://assets.jcaigc.cn/demo1.mp4"
+    assert segment_id == "seg-video-1"
+    assert segment_info.id == "seg-video-1"
+    assert segment_info.start == 0
+    assert segment_info.end == 1_000_000
+    assert actual_duration == 1_000_000
 
 
 def test_add_audio_to_draft_uses_url_for_material_path(draft_ctx):

@@ -18,8 +18,13 @@ import json
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from src.service.add_videos import add_videos_async, _add_videos_internal
+from src.schemas.add_videos import SegmentInfo
 from src.utils.draft_lock_manager import DraftLockManager
 from exceptions import CustomException, CustomError
+
+
+def _segment_info(segment_id: str, start: int = 0, end: int = 5_000_000) -> SegmentInfo:
+    return SegmentInfo(id=segment_id, start=start, end=end)
 
 
 class TestAddVideosAsync:
@@ -64,7 +69,7 @@ class TestAddVideosAsync:
                 'original_start': 0,
                 'original_end': 5000000
             }]
-            mock_add.return_value = ("segment-123", 5000000)
+            mock_add.return_value = ("segment-123", _segment_info("segment-123"), 5_000_000)
             
             # Mock 草稿对象
             mock_script = MagicMock()
@@ -81,8 +86,12 @@ class TestAddVideosAsync:
             )
             
             # 验证结果
-            assert len(result) == 4
+            assert len(result) == 5
             assert result[0] == mock_draft_data["draft_url"]
+            assert len(result[4]) == 1
+            assert result[4][0].id == "segment-123"
+            assert result[4][0].start == 0
+            assert result[4][0].end == 5_000_000
             
             # 验证锁被正确获取和释放
             lock_manager = DraftLockManager()
@@ -167,7 +176,8 @@ class TestAddVideosAsync:
 
             def add_side_effect(*args, **kwargs):
                 call_seq["i"] += 1
-                return (f"segment-{call_seq['i']}", 5000000)
+                seg_id = f"segment-{call_seq['i']}"
+                return (seg_id, _segment_info(seg_id), 5_000_000)
 
             mock_add.side_effect = add_side_effect
 
@@ -223,7 +233,7 @@ class TestAddVideosAsync:
 
             mock_cache.__contains__.return_value = True
             mock_cache.__getitem__.side_effect = lambda _did: make_script()
-            mock_add.return_value = ("segment-mock", 5000000)
+            mock_add.return_value = ("segment-mock", _segment_info("segment-mock"), 5_000_000)
 
             tasks = [
                 add_video_task("draft-a"),

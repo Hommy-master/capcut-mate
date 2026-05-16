@@ -40,9 +40,18 @@ class AddVideosRequest(BaseModel):
                 raise ValueError(f"video_infos[{idx}].video_url must start with http:// or https://")
         return value
 
+
+class SegmentInfo(BaseModel):
+    """片段信息"""
+    id: str = Field(..., description="片段ID")
+    start: int = Field(..., description="开始时间(微秒)")
+    end: int = Field(..., description="结束时间(微秒)")
+
+
 class AddVideosResponse(BaseModel):
     """添加视频响应参数"""
     draft_url: str = Field(default="", description="草稿URL")
     track_id: str = Field(default="", description="轨道ID")
     video_ids: List[str] = Field(default=[], description="视频ID列表")
     segment_ids: List[str] = Field(default=[], description="片段ID列表")
+    segment_infos: List[SegmentInfo] = Field(default=[], description="片段信息列表")
