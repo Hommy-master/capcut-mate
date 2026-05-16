@@ -10,6 +10,7 @@ from src.utils.draft_cache import DRAFT_CACHE
 from exceptions import CustomException, CustomError
 from src.utils import helper
 from src.utils.draft_lock_manager import DraftLockManager
+from src.utils.keyframe_value import normalize_keyframe_value
 
 
 def add_keyframes(
@@ -101,10 +102,26 @@ def add_keyframes(
             # 计算时间偏移（将相对位置转换为微秒）
             time_offset = int(relative_offset * segment_duration)
             
-            logger.info(f"Adding keyframe to segment {keyframe_item['segment_id']}: property={property_enum.value}, time_offset={time_offset}, value={keyframe_item['value']}")
-            
-            # 添加关键帧
-            segment.add_keyframe(property_enum, time_offset, keyframe_item['value'])
+            raw_value = keyframe_item['value']
+            normalized_value = normalize_keyframe_value(
+                keyframe_item['property'],
+                raw_value,
+                width=script.width,
+                height=script.height,
+            )
+            if normalized_value != raw_value:
+                logger.info(
+                    f"Normalized keyframe value for {keyframe_item['property']}: "
+                    f"{raw_value} -> {normalized_value} "
+                    f"(canvas {script.width}x{script.height})"
+                )
+
+            logger.info(
+                f"Adding keyframe to segment {keyframe_item['segment_id']}: "
+                f"property={property_enum.value}, time_offset={time_offset}, value={normalized_value}"
+            )
+
+            segment.add_keyframe(property_enum, time_offset, normalized_value)
             
             keyframes_added += 1
             if keyframe_item['segment_id'] not in affected_segments:
