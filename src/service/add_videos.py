@@ -7,6 +7,7 @@ import src.pyJianYingDraft as draft
 from src.utils.draft_cache import DRAFT_CACHE
 from exceptions import CustomException, CustomError
 import os
+from src.schemas.add_videos import SegmentInfo
 from src.utils import helper
 from src.utils.download import download
 import config
@@ -25,7 +26,7 @@ def add_videos(
     scale_y: float = 1.0, 
     transform_x: int = 0, 
     transform_y: int = 0
-) -> Tuple[str, str, List[str], List[str]]:
+) -> Tuple[str, str, List[str], List[str], List[SegmentInfo]]:
     """
     添加视频到剪映草稿的业务逻辑（同步版本，兼容旧代码）
     
@@ -65,8 +66,7 @@ def add_videos(
         "track_id": "video-track-uuid",
         "video_ids": ["video1-uuid", "video2-uuid", "video3-uuid"],
         "segment_ids": ["segment1-uuid", "segment2-uuid", "segment3-uuid"],
-        "videos_count": 3, [未用]
-        "total_duration": 15000000 [未用]
+        "segment_infos": 片段信息列表，包含每个片段的ID、开始时间和结束时间
 
     Raises:
         CustomException: 视频批量添加失败
@@ -121,7 +121,7 @@ async def add_videos_async(
     transform_x: int = 0, 
     transform_y: int = 0,
     lock_timeout: float = 30.0
-) -> Tuple[str, str, List[str], List[str]]:
+) -> Tuple[str, str, List[str], List[str], List[SegmentInfo]]:
     """
     添加视频到剪映草稿的异步版本（带并发锁保护）
     
@@ -143,7 +143,7 @@ async def add_videos_async(
         lock_timeout: 获取锁的超时时间（秒），默认 30 秒
     
     Returns:
-        tuple: (draft_url, track_id, video_ids, segment_ids)
+        tuple: (draft_url, track_id, video_ids, segment_ids, segment_infos)
     
     Raises:
         CustomException: 视频添加失败，或 `DRAFT_LOCK_TIMEOUT`（获取写锁超时）
@@ -213,7 +213,7 @@ def _add_videos_internal(
     transform_x: int = 0,
     transform_y: int = 0,
     prepared_videos: Optional[List[Dict[str, Any]]] = None,
-) -> Tuple[str, str, List[str], List[str]]:
+) -> Tuple[str, str, List[str], List[str], List[SegmentInfo]]:
     """
     添加视频的内部处理函数（无锁，需外层控制并发）
     
@@ -231,7 +231,7 @@ def _add_videos_internal(
         prepared_videos: 若已在外部完成解析与下载（含 local_video_path），则直接使用，跳过下载
     
     Returns:
-        tuple: (draft_url, track_id, video_ids, segment_ids)
+        tuple: (draft_url, track_id, video_ids, segment_ids, segment_infos)
     """
     logger.info(f"_add_videos_internal, draft_url: {draft_url}")
 
@@ -265,8 +265,9 @@ def _add_videos_internal(
     track_name = f"video_track_{helper.gen_unique_id()}"
     script.add_track_ordered(track_type=draft.TrackType.video, track_name=track_name)
 
-    # 6. 遍历视频信息，添加视频到草稿中的指定轨道，收集片段 ID
+    # 6. 遍历视频信息，添加视频到草稿中的指定轨道，收集片段 ID 与片段信息
     segment_ids = []
+    segment_infos = []
     current_track_end = 0  # 跟踪当前轨道上的实际结束位置（用于处理变速后的连续性）
     should_keep_continuity = _has_valid_scene_timelines(scene_timelines, len(videos))
     logger.info(
@@ -286,11 +287,13 @@ def _add_videos_internal(
             video['end'] = video['start'] + original_duration
             logger.info(f"Adjusted video {i} start time to {video['start']} for continuity, original_duration: {original_duration}")
         
-        segment_id, actual_duration = add_video_to_draft(script, track_name, draft_video_dir=draft_video_dir, video=video,
+        segment_id, segment_info, actual_duration = add_video_to_draft(
+		                              script, track_name, draft_video_dir=draft_video_dir, video=video,
                                       scene_timeline=scene_timeline,
                                       alpha=alpha, scale_x=scale_x, scale_y=scale_y, 
                                       transform_x=transform_x, transform_y=transform_y)
         segment_ids.append(segment_id)
+        segment_infos.append(segment_info)
         # 更新当前轨道结束位置（使用实际播放时长，而非原始时间轴时长）
         current_track_end = video['start'] + actual_duration
         logger.info(f"Video {i} added, track end position: {current_track_end}, actual_duration: {actual_duration}")
@@ -312,7 +315,7 @@ def _add_videos_internal(
     logger.info(f"draft_id: {draft_id}, video_ids: {video_ids}")
 
     # TODO: 这里还是有点小问题，为什么得到的 video_ids 与 segment_ids 的结果一样
-    return draft_url, track_id, video_ids, segment_ids
+    return draft_url, track_id, video_ids, segment_ids, segment_infos
 
 
 def _is_valid_scene_timeline(scene_timeline: Any) -> bool:
@@ -352,7 +355,7 @@ def add_video_to_draft(
     scale_y: float = 1.0, 
     transform_x: int = 0, 
     transform_y: int = 0
-    ) -> Tuple[str, int]:
+    ) -> Tuple[str, SegmentInfo, int]:
     """
     向剪映草稿中添加视频
     
@@ -383,6 +386,7 @@ def add_video_to_draft(
     
     Returns:
         segment_id: 片段ID
+        segment_info: 片段信息，包含 id、start、end（与 add_images 一致，使用放置后的时间轴起止）
         actual_duration: 视频在轨道上的实际播放时长(微秒)，考虑变速后的时长
     """
     try:
@@ -458,8 +462,13 @@ def add_video_to_draft(
         # 7. 向指定轨道添加片段
         script.add_segment(video_segment, track_name)
 
-        # 8. 返回片段ID和实际播放时长（注意：是segment_id而不是material_id）
-        return video_segment.segment_id, actual_duration
+        segment_info = SegmentInfo(
+            id=video_segment.segment_id,
+            start=video['start'],
+            end=video['end'],
+        )
+
+        return video_segment.segment_id, segment_info, actual_duration
     except CustomException:
         logger.info(f"Add video to draft failed, draft_video_dir: {draft_video_dir}, video: {video}")
         raise

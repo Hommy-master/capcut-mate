@@ -100,7 +100,7 @@ async def add_videos(avr: AddVideosRequest) -> AddVideosResponse:
     使用异步锁机制防止同一草稿的并发写操作导致文件损坏
     """
     # 调用 service 层处理业务逻辑（异步版本，带锁保护）
-    draft_url, track_id, video_ids, segment_ids = await service.add_videos_async(
+    draft_url, track_id, video_ids, segment_ids, segment_infos = await service.add_videos_async(
         draft_url=avr.draft_url,
         video_infos=avr.video_infos,
         scene_timelines=[{"start": t.start, "end": t.end} for t in avr.scene_timelines] if avr.scene_timelines else None,
@@ -112,7 +112,13 @@ async def add_videos(avr: AddVideosRequest) -> AddVideosResponse:
         lock_timeout=30.0  # 30 秒超时
     )
 
-    return AddVideosResponse(draft_url=draft_url, track_id=track_id, video_ids=video_ids, segment_ids=segment_ids)
+    return AddVideosResponse(
+        draft_url=draft_url,
+        track_id=track_id,
+        video_ids=video_ids,
+        segment_ids=segment_ids,
+        segment_infos=segment_infos,
+    )
 
 @router.post(path="/add_audios", response_model=AddAudiosResponse)
 async def add_audios(aar: AddAudiosRequest) -> AddAudiosResponse:
