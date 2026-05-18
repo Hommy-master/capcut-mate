@@ -31,8 +31,8 @@ def add_images(
         [
             {
                 "image_url": "https://s.coze.cn/t/XpufYwc2_u4/", // [必选] 图片文件URL
-                "width": 1024, // [必选] 图片宽度(像素)
-                "height": 1024, // [必选] 图片高度(像素)
+                "width": 1920, // [可选] 图片宽度(像素)，不传则使用草稿画布尺寸
+                "height": 1080, // [可选] 图片高度(像素)，不传则使用草稿画布尺寸
                 "start": 0, // [必选] 显示开始时间(微秒)
                 "end": 1000000, // [必选] 显示结束时间(微秒)
                 "in_animation": "", // [可选] 入场动画类型
@@ -232,8 +232,8 @@ def add_image_to_draft(
         track_name: 视频轨道名称
         image: 图片信息字典，包含以下字段：
             image_url: 图片URL
-            width: 图片宽度(像素)
-            height: 图片高度(像素)
+            width: 图片宽度(像素，可选，不传则使用草稿画布尺寸)
+            height: 图片高度(像素，可选，不传则使用草稿画布尺寸)
             start: 显示开始时间(微秒)
             end: 显示结束时间(微秒)
             in_animation: 入场动画类型(可选)
@@ -268,7 +268,12 @@ def add_image_to_draft(
         # 获取草稿的宽高用于transform坐标转换
         draft_width = script.width
         draft_height = script.height
-        logger.info(f"draft size: {draft_width}x{draft_height}, image size: {image['width']}x{image['height']}, transform_x: {transform_x}, transform_y: {transform_y}")
+        image_width = int(image.get("width") or draft_width)
+        image_height = int(image.get("height") or draft_height)
+        logger.info(
+            f"draft size: {draft_width}x{draft_height}, image size: {image_width}x{image_height}, "
+            f"transform_x: {transform_x}, transform_y: {transform_y}"
+        )
                 
         # 创建图像调节设置
         clip_settings = draft.ClipSettings(
@@ -279,12 +284,12 @@ def add_image_to_draft(
             transform_y=transform_y / draft_height  # 转换为半画布高单位
         )
         
-        # 创建图片素材（URL 模式下依赖调用方已知宽高，避免本地文件探测）
+        # 创建图片素材（URL 模式下使用请求参数或草稿画布尺寸，避免本地文件探测）
         image_material = draft.VideoMaterial(
             image_path,
             duration=segment_duration,
-            width=image["width"],
-            height=image["height"],
+            width=image_width,
+            height=image_height,
             material_type="photo",
         )
 
@@ -371,7 +376,7 @@ def add_image_to_draft(
                 logger.warning(f"Failed to add transition '{image['transition']}': {str(e)}")
 
         logger.info(f"Created image segment, material_id: {video_segment.material_instance.material_id}")
-        logger.info(f"Image segment details - start: {image['start']}, duration: {segment_duration}, size: {image['width']}x{image['height']}")
+        logger.info(f"Image segment details - start: {image['start']}, duration: {segment_duration}, size: {image_width}x{image_height}")
 
         # 5. 向指定轨道添加片段
         script.add_segment(video_segment, track_name)
@@ -444,8 +449,8 @@ def parse_image_data(json_str: str) -> List[Dict[str, Any]]:
         [
             {
                 "image_url": "https://s.coze.cn/t/XpufYwc2_u4/", // [必选] 图片文件URL
-                "width": 1024, // [必选] 图片宽度(像素)
-                "height": 1024, // [必选] 图片高度(像素)
+                "width": 1920, // [可选] 图片宽度(像素)，不传则使用草稿画布尺寸
+                "height": 1080, // [可选] 图片高度(像素)，不传则使用草稿画布尺寸
                 "start": 0, // [必选] 显示开始时间(微秒)
                 "end": 1000000, // [必选] 显示结束时间(微秒)
                 "in_animation": "", // [可选] 入场动画类型
@@ -486,18 +491,24 @@ def parse_image_data(json_str: str) -> List[Dict[str, Any]]:
             raise CustomException(CustomError.INVALID_IMAGE_INFO, f"the {i}th item should be a dict")
         
         # 检查必选字段
-        required_fields = ["image_url", "width", "height", "start", "end"]
+        required_fields = ["image_url", "start", "end"]
         missing_fields = [field for field in required_fields if field not in item]
         
         if missing_fields:
             logger.error(f"The {i}th item is missing required fields: {', '.join(missing_fields)}")
             raise CustomException(CustomError.INVALID_IMAGE_INFO, f"the {i}th item is missing required fields: {', '.join(missing_fields)}")
         
-        # 创建处理后的对象，设置默认值
+        # 创建处理后的对象，设置默认值（width/height 未传时在 add_image_to_draft 中使用草稿画布尺寸）
+        width = item.get("width")
+        height = item.get("height")
+        if width is not None:
+            width = int(width)
+        if height is not None:
+            height = int(height)
         processed_item = {
             "image_url": item["image_url"],
-            "width": int(item["width"]),
-            "height": int(item["height"]),
+            "width": width,
+            "height": height,
             "start": int(item["start"]),
             "end": int(item["end"]),
             "in_animation": item.get("in_animation", None),  # 默认无入场动画
@@ -510,9 +521,13 @@ def parse_image_data(json_str: str) -> List[Dict[str, Any]]:
             "transition_duration": item.get("transition_duration", 500000)  # 默认转场时长500000微秒
         }
         
-        # 验证数值范围
-        if processed_item["width"] <= 0 or processed_item["height"] <= 0:
-            logger.error(f"Invalid image dimensions: width={processed_item['width']}, height={processed_item['height']}")
+        # 验证数值范围（仅校验显式传入的尺寸）
+        if (processed_item["width"] is not None and processed_item["width"] <= 0) or (
+            processed_item["height"] is not None and processed_item["height"] <= 0
+        ):
+            logger.error(
+                f"Invalid image dimensions: width={processed_item['width']}, height={processed_item['height']}"
+            )
             raise CustomException(CustomError.INVALID_IMAGE_INFO, f"the {i}th item has invalid image dimensions")
         
         if processed_item["start"] < 0 or processed_item["end"] <= processed_item["start"]:
