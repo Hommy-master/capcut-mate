@@ -1,5 +1,6 @@
 """剪映自动化控制，主要与自动导出有关"""
 
+import os
 import time
 import shutil
 import sys
@@ -86,13 +87,20 @@ class JianyingController:
         """初始化剪映控制器, 此时剪映应该处于目录页"""
         self.get_window()
 
-    def find_and_click_draft(self, draft_name: str, max_retries: int = 5, retry_interval: float = 5.0) -> None:
+    def find_and_click_draft(
+        self,
+        draft_name: str,
+        max_retries: int = 6,
+        retry_interval: float = 5.0,
+        draft_dir: Optional[str] = None,
+    ) -> None:
         """查找并点击指定名称的草稿
         
         Args:
             draft_name (str): 要查找的草稿名称
-            max_retries (int): 最大重试次数，默认5次
+            max_retries (int): 最大重试次数，默认6次
             retry_interval (float): 重试间隔时间(秒)，默认5秒
+            draft_dir (str, optional): 剪映本地草稿目录；未找到时会触发 robocopy 扫描以刷新列表
             
         Raises:
             DraftNotFound: 未找到指定名称的剪映草稿
@@ -122,6 +130,13 @@ class JianyingController:
                         attempt + 1,
                         max_retries,
                     )
+                    if draft_dir and os.path.isdir(draft_dir):
+                        from src.utils.draft_downloader import trigger_directory_scan_with_robocopy
+                        logger.info(
+                            "Triggering robocopy directory scan before retry: %s",
+                            draft_dir,
+                        )
+                        trigger_directory_scan_with_robocopy(draft_dir)
                     time.sleep(retry_interval)
         
         # 所有重试都失败，抛出异常
@@ -295,7 +310,8 @@ class JianyingController:
     def export_draft(self, draft_name: str, output_path: Optional[str] = None, *,
                      resolution: Optional[ExportResolution] = None,
                      framerate: Optional[ExportFramerate] = None,
-                     timeout: float = 1200) -> None:
+                     timeout: float = 1200,
+                     draft_dir: Optional[str] = None) -> None:
         """导出指定的剪映草稿, **目前仅支持剪映6及以下版本**
 
         **注意: 需要确认有导出草稿的权限(不使用VIP功能或已开通VIP), 否则可能陷入死循环**
@@ -306,6 +322,7 @@ class JianyingController:
             resolution (`Export_resolution`, optional): 导出分辨率, 默认不改变剪映导出窗口中的设置.
             framerate (`Export_framerate`, optional): 导出帧率, 默认不改变剪映导出窗口中的设置.
             timeout (`float`, optional): 导出超时时间(秒), 默认为20分钟.
+            draft_dir (`str`, optional): 剪映本地草稿目录；未在首页找到草稿时会 robocopy 触发扫描后重试.
 
         Raises:
             `DraftNotFound`: 未找到指定名称的剪映草稿
@@ -324,7 +341,7 @@ class JianyingController:
             self.__ensure_window_focus()
             if self.app_status == "home":
                 logger.info("[%d]app is already in home page", i)
-                self.find_and_click_draft(draft_name)
+                self.find_and_click_draft(draft_name, draft_dir=draft_dir)
             elif self.app_status == "edit":
                 logger.info("[%d]app is already in edit page", i)
                 # 点击导出按钮进入导出界面
