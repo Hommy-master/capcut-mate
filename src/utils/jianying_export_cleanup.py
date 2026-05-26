@@ -1,9 +1,10 @@
-"""剪映导出失败后的恢复：强杀进程并清空本地草稿目录。"""
+"""剪映导出失败后的恢复：强杀进程并按条件清理本地草稿目录。"""
 from __future__ import annotations
 
 import os
 import shutil
 import subprocess
+import time
 from typing import Iterable
 
 import config
@@ -13,6 +14,12 @@ from src.utils.logger import logger
 JIANYING_PROCESS_IMAGE_NAMES: tuple[str, ...] = (
     "JianyingPro.exe",
 )
+
+ROOT_META_INFO_FILE = "root_meta_info.json"
+DRAFT_CONTENT_FILE = "draft_content.json"
+
+# 草稿目录删除阈值：draft_content.json 创建时间早于该秒数才删除整个草稿目录
+DRAFT_CONTENT_MIN_AGE_SECONDS = 24 * 3600
 
 
 def kill_jianying_process(
@@ -41,8 +48,96 @@ def kill_jianying_process(
             logger.warning("Failed to kill Jianying process %s: %s", image_name, exc)
 
 
-def clear_draft_save_directory() -> None:
-    """删除 ``config.DRAFT_SAVE_PATH`` 下的全部文件、目录及子目录（保留根目录本身）。"""
+def _file_creation_timestamp(path: str) -> float | None:
+    """返回文件创建时间戳（秒）；Windows 下为创建时间。"""
+    try:
+        return os.path.getctime(path)
+    except OSError as exc:
+        logger.warning("Failed to read creation time: path=%s error=%s", path, exc)
+        return None
+
+
+def _draft_content_is_old_enough(
+    draft_dir_path: str,
+    min_age_seconds: float = DRAFT_CONTENT_MIN_AGE_SECONDS,
+) -> bool:
+    """
+    判断草稿目录是否可删除：依据其中 draft_content.json 的创建时间，
+    仅当该文件存在且创建时间早于 min_age_seconds 时返回 True。
+    """
+    content_path = os.path.join(draft_dir_path, DRAFT_CONTENT_FILE)
+    if not os.path.isfile(content_path):
+        logger.info(
+            "Skip draft directory (missing %s): %s",
+            DRAFT_CONTENT_FILE,
+            draft_dir_path,
+        )
+        return False
+
+    created_at = _file_creation_timestamp(content_path)
+    if created_at is None:
+        logger.info(
+            "Skip draft directory (cannot read %s creation time): %s",
+            DRAFT_CONTENT_FILE,
+            draft_dir_path,
+        )
+        return False
+
+    age_seconds = time.time() - created_at
+    if age_seconds >= min_age_seconds:
+        logger.info(
+            "Draft directory eligible for removal: path=%s %s_age_hours=%.2f",
+            draft_dir_path,
+            DRAFT_CONTENT_FILE,
+            age_seconds / 3600,
+        )
+        return True
+
+    logger.info(
+        "Skip draft directory (%s created within last 24h): path=%s age_hours=%.2f",
+        DRAFT_CONTENT_FILE,
+        draft_dir_path,
+        age_seconds / 3600,
+    )
+    return False
+
+
+def _remove_root_meta_info(base: str) -> bool:
+    """删除草稿根目录下的 root_meta_info.json（无条件）。"""
+    path = os.path.join(base, ROOT_META_INFO_FILE)
+    if not os.path.isfile(path):
+        return False
+    try:
+        os.remove(path)
+        logger.info("Removed root meta file: %s", path)
+        return True
+    except OSError as exc:
+        logger.warning("Failed to remove root meta file %s: %s", path, exc)
+        return False
+
+
+def _remove_draft_directory(draft_dir_path: str) -> bool:
+    """删除整个草稿目录（含子目录与文件）。"""
+    try:
+        shutil.rmtree(draft_dir_path)
+        logger.info("Removed draft directory: %s", draft_dir_path)
+        return True
+    except OSError as exc:
+        logger.warning("Failed to remove draft directory %s: %s", draft_dir_path, exc)
+        return False
+
+
+def clear_draft_save_directory(
+    min_age_seconds: float = DRAFT_CONTENT_MIN_AGE_SECONDS,
+) -> None:
+    """
+    按条件清理 ``config.DRAFT_SAVE_PATH``（保留根目录本身）：
+
+    1. 根目录下的 ``root_meta_info.json``：直接删除。
+    2. 子目录（草稿目录）：仅当其中 ``draft_content.json`` 的创建时间
+       早于 ``min_age_seconds``（默认 24 小时）时，删除整个草稿目录。
+    3. 其它根级条目：不处理。
+    """
     base = config.DRAFT_SAVE_PATH
     if not base:
         logger.warning("DRAFT_SAVE_PATH is empty, skip draft directory cleanup")
@@ -51,37 +146,43 @@ def clear_draft_save_directory() -> None:
         logger.warning("Draft save path is not a directory, skip cleanup: %s", base)
         return
 
-    removed = 0
+    removed_meta = _remove_root_meta_info(base)
+
+    removed_drafts = 0
+    skipped_drafts = 0
     try:
         with os.scandir(base) as entries:
-            names = [entry.name for entry in entries]
+            child_names = [entry.name for entry in entries]
     except OSError as exc:
         logger.warning("Failed to list draft save directory %s: %s", base, exc)
         return
 
-    for name in names:
+    for name in child_names:
+        if name == ROOT_META_INFO_FILE:
+            continue
         path = os.path.join(base, name)
-        try:
-            if os.path.isdir(path):
-                shutil.rmtree(path)
-            else:
-                os.remove(path)
-            removed += 1
-            logger.info("Removed draft save entry: %s", path)
-        except OSError as exc:
-            logger.warning("Failed to remove draft save entry %s: %s", path, exc)
+        if not os.path.isdir(path):
+            continue
+        if _draft_content_is_old_enough(path, min_age_seconds=min_age_seconds):
+            if _remove_draft_directory(path):
+                removed_drafts += 1
+        else:
+            skipped_drafts += 1
 
     logger.info(
-        "Cleared draft save directory: path=%s removed_entries=%s",
+        "Draft save directory cleanup finished: path=%s removed_root_meta=%s "
+        "removed_draft_dirs=%s skipped_draft_dirs=%s",
         base,
-        removed,
+        removed_meta,
+        removed_drafts,
+        skipped_drafts,
     )
 
 
 def recover_from_export_failure() -> None:
-    """导出失败后：强杀剪映并清空 ``config.DRAFT_SAVE_PATH`` 下的全部内容。"""
+    """导出失败后：强杀剪映并按条件清理 ``config.DRAFT_SAVE_PATH``。"""
     logger.warning(
-        "Jianying export failed, recovering: kill process and clear draft dir %s",
+        "Jianying export failed, recovering: kill process and conditional clear %s",
         config.DRAFT_SAVE_PATH,
     )
     kill_jianying_process()

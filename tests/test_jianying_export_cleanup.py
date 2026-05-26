@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import os
 import tempfile
+import time
 import unittest
 from unittest.mock import patch
 
@@ -10,17 +11,60 @@ from src.utils import jianying_export_cleanup as cleanup
 
 
 class TestJianyingExportCleanup(unittest.TestCase):
-    def test_clear_draft_save_directory_removes_all_entries(self) -> None:
+    def _make_draft(self, base: str, draft_id: str) -> str:
+        draft_dir = os.path.join(base, draft_id)
+        os.makedirs(draft_dir, exist_ok=True)
+        content_path = os.path.join(draft_dir, cleanup.DRAFT_CONTENT_FILE)
+        with open(content_path, "w", encoding="utf-8") as f:
+            f.write("{}")
+        return draft_dir
+
+    def test_removes_root_meta_info_unconditionally(self) -> None:
         with tempfile.TemporaryDirectory() as base:
-            draft_a = os.path.join(base, "20250101120000abcdef01")
-            os.makedirs(draft_a)
-            with open(os.path.join(base, "root_meta_info.json"), "w", encoding="utf-8") as f:
+            meta_path = os.path.join(base, cleanup.ROOT_META_INFO_FILE)
+            with open(meta_path, "w", encoding="utf-8") as f:
                 f.write("{}")
 
             with patch.object(cleanup.config, "DRAFT_SAVE_PATH", base):
                 cleanup.clear_draft_save_directory()
 
-            self.assertEqual(os.listdir(base), [])
+            self.assertFalse(os.path.exists(meta_path))
+
+    def test_removes_draft_when_draft_content_is_older_than_24h(self) -> None:
+        with tempfile.TemporaryDirectory() as base:
+            draft_dir = self._make_draft(base, "20250101120000abcdef01")
+            old_ts = time.time() - cleanup.DRAFT_CONTENT_MIN_AGE_SECONDS - 60
+
+            with (
+                patch.object(cleanup.config, "DRAFT_SAVE_PATH", base),
+                patch.object(cleanup.os.path, "getctime", return_value=old_ts),
+            ):
+                cleanup.clear_draft_save_directory()
+
+            self.assertFalse(os.path.exists(draft_dir))
+
+    def test_keeps_draft_when_draft_content_is_within_24h(self) -> None:
+        with tempfile.TemporaryDirectory() as base:
+            draft_dir = self._make_draft(base, "20250101120000abcdef01")
+            recent_ts = time.time() - 3600
+
+            with (
+                patch.object(cleanup.config, "DRAFT_SAVE_PATH", base),
+                patch.object(cleanup.os.path, "getctime", return_value=recent_ts),
+            ):
+                cleanup.clear_draft_save_directory()
+
+            self.assertTrue(os.path.isdir(draft_dir))
+
+    def test_skips_draft_dir_without_draft_content(self) -> None:
+        with tempfile.TemporaryDirectory() as base:
+            draft_dir = os.path.join(base, "20250101120000abcdef01")
+            os.makedirs(draft_dir)
+
+            with patch.object(cleanup.config, "DRAFT_SAVE_PATH", base):
+                cleanup.clear_draft_save_directory()
+
+            self.assertTrue(os.path.isdir(draft_dir))
 
     @patch("src.utils.jianying_export_cleanup.subprocess.run")
     def test_kill_jianying_process_invokes_taskkill(self, mock_run) -> None:
@@ -37,6 +81,7 @@ class TestJianyingExportCleanup(unittest.TestCase):
         cleanup.recover_from_export_failure()
         mock_kill.assert_called_once()
         mock_clear.assert_called_once()
+
 
 if __name__ == "__main__":
     unittest.main()
