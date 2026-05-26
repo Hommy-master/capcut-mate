@@ -310,7 +310,7 @@ class JianyingController:
     def export_draft(self, draft_name: str, output_path: Optional[str] = None, *,
                      resolution: Optional[ExportResolution] = None,
                      framerate: Optional[ExportFramerate] = None,
-                     timeout: float = 1200,
+                     timeout: float = 300,
                      draft_dir: Optional[str] = None) -> None:
         """导出指定的剪映草稿, **目前仅支持剪映6及以下版本**
 
@@ -321,7 +321,7 @@ class JianyingController:
             output_path (`str`, optional): 导出路径, 支持指向文件夹或直接指向文件, 不指定则使用剪映默认路径.
             resolution (`Export_resolution`, optional): 导出分辨率, 默认不改变剪映导出窗口中的设置.
             framerate (`Export_framerate`, optional): 导出帧率, 默认不改变剪映导出窗口中的设置.
-            timeout (`float`, optional): 导出超时时间(秒), 默认为20分钟.
+            timeout (`float`, optional): 导出超时时间(秒), 默认为5分钟.
             draft_dir (`str`, optional): 剪映本地草稿目录；未在首页找到草稿时会 robocopy 触发扫描后重试.
 
         Raises:
