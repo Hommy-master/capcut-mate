@@ -6,6 +6,7 @@ import os
 import re
 import json
 import time
+import mimetypes
 import requests
 from urllib.parse import urlparse, parse_qs
 from typing import Optional, Dict, Any, List
@@ -478,12 +479,111 @@ def _infer_local_subdir(material_type: str, material: Dict[str, Any]) -> str:
     return "misc"
 
 
-def _infer_ext_from_url(url: str, fallback: str) -> str:
-    try:
-        ext = os.path.splitext(urlparse(url).path)[1]
-        return ext if ext else fallback
-    except Exception:
+_CONTENT_TYPE_EXT_OVERRIDES = {
+    "image/jpeg": ".jpg",
+    "image/jpg": ".jpg",
+    "image/png": ".png",
+    "image/gif": ".gif",
+    "image/webp": ".webp",
+    "image/bmp": ".bmp",
+    "video/mp4": ".mp4",
+    "video/quicktime": ".mov",
+    "audio/mpeg": ".mp3",
+    "audio/mp3": ".mp3",
+    "audio/wav": ".wav",
+    "audio/x-wav": ".wav",
+}
+
+
+_GENERIC_MIME_TYPES = frozenset({
+    "application/octet-stream",
+    "binary/octet-stream",
+})
+
+
+def _infer_ext_from_content_type(content_type: Optional[str], fallback: str) -> str:
+    if not content_type:
         return fallback
+    mime = content_type.split(";")[0].strip().lower()
+    if mime in _GENERIC_MIME_TYPES:
+        return fallback
+    ext = _CONTENT_TYPE_EXT_OVERRIDES.get(mime) or mimetypes.guess_extension(mime)
+    if ext == ".jpe":
+        ext = ".jpg"
+    return ext or fallback
+
+
+def _build_material_filename(base_name: str, ext: str) -> str:
+    return base_name if base_name.lower().endswith(ext.lower()) else f"{base_name}{ext}"
+
+
+def _download_remote_material(
+    file_url: str,
+    target_dir: str,
+    sub_dir: str,
+    base_name: str,
+    fallback_ext: str,
+) -> Optional[str]:
+    """下载 URL 素材，根据响应 Content-Type 确定扩展名并保存到本地。"""
+    for attempt in range(_MAX_RETRIES + 1):
+        response = None
+        try:
+            response = requests.get(
+                file_url,
+                timeout=(_REQUEST_CONNECT_TIMEOUT, _REQUEST_READ_TIMEOUT),
+                stream=True,
+            )
+            if response.status_code != 200:
+                if attempt >= _MAX_RETRIES:
+                    logger.error(
+                        f"Remote material download failed (HTTP {response.status_code}) "
+                        f"after {_MAX_RETRIES} retries: {file_url}"
+                    )
+                    return None
+                retry_no = attempt + 1
+                logger.warning(
+                    f"Remote material download non-200, retry ({retry_no}/{_MAX_RETRIES}): {file_url}"
+                )
+                if response.status_code in _RETRYABLE_GATEWAY_HTTP_STATUSES:
+                    _sleep_gateway_backoff(retry_no)
+                else:
+                    time.sleep(retry_no)
+                response.close()
+                continue
+
+            ext = _infer_ext_from_content_type(
+                response.headers.get("Content-Type"), fallback_ext
+            )
+            filename = _build_material_filename(base_name, ext)
+            local_path = os.path.join(target_dir, "assets", sub_dir, filename)
+
+            parent_dir = os.path.dirname(local_path)
+            if parent_dir:
+                os.makedirs(parent_dir, exist_ok=True)
+            with open(local_path, "wb") as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    if chunk:
+                        f.write(chunk)
+            return local_path
+        except requests.exceptions.RequestException as e:
+            if attempt >= _MAX_RETRIES:
+                logger.error(
+                    f"Remote material download failed after {_MAX_RETRIES} retries: {file_url}, error: {e}"
+                )
+                return None
+            retry_no = attempt + 1
+            logger.warning(
+                f"Remote material download network error, retry ({retry_no}/{_MAX_RETRIES}): "
+                f"{file_url}, {e}"
+            )
+            time.sleep(retry_no)
+        except OSError as e:
+            logger.error(f"Failed to write remote material to disk: {file_url}, {e}")
+            return None
+        finally:
+            if response is not None:
+                response.close()
+    return None
 
 
 def _download_remote_file(file_url: str, local_path: str) -> bool:
@@ -574,12 +674,12 @@ def localize_remote_material_paths(data: Dict[str, Any], target_dir: str) -> boo
 
             sub_dir = _infer_local_subdir(material_type, item)
             fallback_ext = ".mp3" if material_type == "audios" else ".mp4"
-            ext = _infer_ext_from_url(remote_path, fallback_ext)
             base_name = _safe_name(str(item.get("material_name") or item.get("name") or item.get("id") or "material"))
-            filename = base_name if base_name.lower().endswith(ext.lower()) else f"{base_name}{ext}"
-            local_path = os.path.join(target_dir, "assets", sub_dir, filename)
 
-            if not _download_remote_file(remote_path, local_path):
+            local_path = _download_remote_material(
+                remote_path, target_dir, sub_dir, base_name, fallback_ext
+            )
+            if not local_path:
                 failed_urls.add(remote_path)
                 logger.error(
                     f"Remote material localization failed (draft download will fail): {remote_path}"

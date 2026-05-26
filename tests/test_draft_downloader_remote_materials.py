@@ -19,6 +19,70 @@ def no_sleep():
         yield m_time
 
 
+class TestInferExtFromContentType:
+    def test_image_png(self) -> None:
+        assert dd._infer_ext_from_content_type("image/png", ".mp4") == ".png"
+
+    def test_image_png_with_charset(self) -> None:
+        assert dd._infer_ext_from_content_type("image/png; charset=binary", ".mp4") == ".png"
+
+    def test_video_mp4(self) -> None:
+        assert dd._infer_ext_from_content_type("video/mp4", ".bin") == ".mp4"
+
+    def test_audio_mpeg(self) -> None:
+        assert dd._infer_ext_from_content_type("audio/mpeg", ".mp4") == ".mp3"
+
+    def test_missing_content_type_uses_fallback(self) -> None:
+        assert dd._infer_ext_from_content_type(None, ".mp4") == ".mp4"
+        assert dd._infer_ext_from_content_type("", ".mp3") == ".mp3"
+
+    def test_unknown_content_type_uses_fallback(self) -> None:
+        assert dd._infer_ext_from_content_type("application/octet-stream", ".mp4") == ".mp4"
+
+
+class TestDownloadRemoteMaterial:
+    BYTEIMG_PNG_URL = (
+        "https://p3-bot-workflow-sign.byteimg.com/tos-cn-i-mdko3gqilj/"
+        "fdbbff0d6626486eb67b8940f33e2b2f.png~tplv-mdko3gqilj-image.image"
+        "?rk3s=81d4c505&x-expires=1810794498&x-signature=FlZnzzCcNuzdqyBQDYj584F9Qfc%3D"
+        "&x-wf-file_name=%E5%8F%8C%E8%A1%8C.png"
+    )
+
+    def _ok_response(self, content: bytes = b"png-bytes", content_type: str = "image/png") -> MagicMock:
+        r = MagicMock()
+        r.status_code = 200
+        r.headers = {"Content-Type": content_type}
+        r.iter_content = MagicMock(return_value=[content])
+        r.close = MagicMock()
+        return r
+
+    def test_byteimg_url_saved_as_png_from_content_type(self, no_sleep) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            with patch.object(dd, "requests") as m_req:
+                m_req.get.return_value = self._ok_response()
+                m_req.exceptions = requests.exceptions
+                local_path = dd._download_remote_material(
+                    self.BYTEIMG_PNG_URL, td, "images", "双行", ".mp4"
+                )
+            assert local_path is not None
+            assert local_path.endswith(".png")
+            assert not local_path.endswith(".image")
+            assert os.path.isfile(local_path)
+
+    def test_mp4_content_type_uses_mp4_extension(self, no_sleep) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            with patch.object(dd, "requests") as m_req:
+                m_req.get.return_value = self._ok_response(
+                    content=b"mp4", content_type="video/mp4"
+                )
+                m_req.exceptions = requests.exceptions
+                local_path = dd._download_remote_material(
+                    "https://cdn.example.com/v?id=1", td, "videos", "clip1", ".bin"
+                )
+            assert local_path is not None
+            assert local_path.endswith(".mp4")
+
+
 class TestDownloadRemoteFile:
     def _ok_response(self, content: bytes = b"data") -> MagicMock:
         r = MagicMock()
@@ -93,10 +157,12 @@ class TestLocalizeRemoteMaterialPaths:
         data = {"materials": {"audios": [], "videos": [{"path": "C:\\local\\x.mp4"}]}}
         assert dd.localize_remote_material_paths(data, "/tmp/y") is True
 
-    @patch.object(dd, "_download_remote_file", return_value=True)
+    @patch.object(dd, "_download_remote_material")
     def test_rewrites_path_on_success(self, m_dl) -> None:
         with tempfile.TemporaryDirectory() as td:
             url = "https://cdn.example.com/v.mp4"
+            expected = os.path.join(td, "assets", "videos", "clip1.mp4")
+            m_dl.return_value = expected
             data: dict = {
                 "materials": {
                     "audios": [],
@@ -111,11 +177,37 @@ class TestLocalizeRemoteMaterialPaths:
             assert dd.localize_remote_material_paths(data, td) is True
             m_dl.assert_called_once()
             new_path = data["materials"]["videos"][0]["path"]
+            assert new_path == expected
             assert new_path.startswith(td)
             assert "assets" in new_path.replace("\\", "/")
             assert new_path.endswith(".mp4")
 
-    @patch.object(dd, "_download_remote_file", return_value=False)
+    @patch.object(dd, "_download_remote_material")
+    def test_byteimg_png_url_saved_with_png_extension(self, m_dl) -> None:
+        url = TestDownloadRemoteMaterial.BYTEIMG_PNG_URL
+        with tempfile.TemporaryDirectory() as td:
+            expected = os.path.join(td, "assets", "images", "双行.png")
+            m_dl.return_value = expected
+            data: dict = {
+                "materials": {
+                    "audios": [],
+                    "videos": [
+                        {
+                            "path": url,
+                            "type": "photo",
+                            "material_name": "双行",
+                        }
+                    ],
+                }
+            }
+            assert dd.localize_remote_material_paths(data, td) is True
+            new_path = data["materials"]["videos"][0]["path"]
+            assert new_path == expected
+            assert new_path.endswith(".png")
+            assert not new_path.endswith(".image")
+            m_dl.assert_called_once_with(url, td, "images", "双行", ".mp4")
+
+    @patch.object(dd, "_download_remote_material", return_value=None)
     def test_returns_false_when_download_fails(self, m_dl) -> None:
         with tempfile.TemporaryDirectory() as td:
             url = "https://cdn.example.com/miss.mp4"
@@ -128,10 +220,12 @@ class TestLocalizeRemoteMaterialPaths:
             assert dd.localize_remote_material_paths(data, td) is False
             assert data["materials"]["videos"][0]["path"] == url
 
-    @patch.object(dd, "_download_remote_file", return_value=True)
+    @patch.object(dd, "_download_remote_material")
     def test_same_url_shared_across_items(self, m_dl) -> None:
         u = "https://cdn.example.com/same.mp3"
         with tempfile.TemporaryDirectory() as td:
+            shared = os.path.join(td, "assets", "audios", "a.mp3")
+            m_dl.return_value = shared
             data: dict = {
                 "materials": {
                     "audios": [
