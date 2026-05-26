@@ -26,7 +26,7 @@ class TestJianyingExportCleanup(unittest.TestCase):
                 f.write("{}")
 
             with patch.object(cleanup.config, "DRAFT_SAVE_PATH", base):
-                cleanup.clear_draft_save_directory()
+                self.assertTrue(cleanup.clear_draft_save_directory())
 
             self.assertFalse(os.path.exists(meta_path))
 
@@ -56,6 +56,31 @@ class TestJianyingExportCleanup(unittest.TestCase):
 
             self.assertTrue(os.path.isdir(draft_dir))
 
+    def test_skips_cleanup_when_draft_save_path_missing(self) -> None:
+        missing = os.path.join(tempfile.gettempdir(), "capcut_nonexistent_draft_path")
+        self.assertFalse(os.path.isdir(missing))
+
+        with patch.object(cleanup.config, "DRAFT_SAVE_PATH", missing):
+            self.assertFalse(cleanup.draft_save_path_exists())
+            self.assertFalse(cleanup.clear_draft_save_directory())
+
+    def test_skips_cleanup_when_draft_save_path_empty(self) -> None:
+        with patch.object(cleanup.config, "DRAFT_SAVE_PATH", ""):
+            self.assertFalse(cleanup.draft_save_path_exists())
+            self.assertFalse(cleanup.clear_draft_save_directory())
+
+    @patch("src.utils.jianying_export_cleanup.clear_draft_save_directory")
+    @patch("src.utils.jianying_export_cleanup.kill_jianying_process")
+    def test_recover_skips_clear_when_draft_path_missing(
+        self, mock_kill, mock_clear
+    ) -> None:
+        missing = os.path.join(tempfile.gettempdir(), "capcut_nonexistent_draft_path")
+        with patch.object(cleanup.config, "DRAFT_SAVE_PATH", missing):
+            cleanup.recover_from_export_failure()
+
+        mock_kill.assert_called_once()
+        mock_clear.assert_not_called()
+
     def test_skips_draft_dir_without_draft_content(self) -> None:
         with tempfile.TemporaryDirectory() as base:
             draft_dir = os.path.join(base, "20250101120000abcdef01")
@@ -77,7 +102,8 @@ class TestJianyingExportCleanup(unittest.TestCase):
 
     @patch("src.utils.jianying_export_cleanup.clear_draft_save_directory")
     @patch("src.utils.jianying_export_cleanup.kill_jianying_process")
-    def test_recover_from_export_failure(self, mock_kill, mock_clear) -> None:
+    @patch("src.utils.jianying_export_cleanup.draft_save_path_exists", return_value=True)
+    def test_recover_from_export_failure(self, _exists, mock_kill, mock_clear) -> None:
         cleanup.recover_from_export_failure()
         mock_kill.assert_called_once()
         mock_clear.assert_called_once()

@@ -22,6 +22,12 @@ DRAFT_CONTENT_FILE = "draft_content.json"
 DRAFT_CONTENT_MIN_AGE_SECONDS = 24 * 3600
 
 
+def draft_save_path_exists() -> bool:
+    """``config.DRAFT_SAVE_PATH`` 已配置且对应目录在磁盘上存在。"""
+    base = config.DRAFT_SAVE_PATH
+    return bool(base) and os.path.isdir(base)
+
+
 def kill_jianying_process(
     image_names: Iterable[str] = JIANYING_PROCESS_IMAGE_NAMES,
 ) -> None:
@@ -129,23 +135,29 @@ def _remove_draft_directory(draft_dir_path: str) -> bool:
 
 def clear_draft_save_directory(
     min_age_seconds: float = DRAFT_CONTENT_MIN_AGE_SECONDS,
-) -> None:
+) -> bool:
     """
-    按条件清理 ``config.DRAFT_SAVE_PATH``（保留根目录本身）：
+    按条件清理 ``config.DRAFT_SAVE_PATH``（保留根目录本身）。
 
+    当且仅当 ``DRAFT_SAVE_PATH`` 对应目录存在时才执行；否则直接返回 False。
+
+    清理规则：
     1. 根目录下的 ``root_meta_info.json``：直接删除。
     2. 子目录（草稿目录）：仅当其中 ``draft_content.json`` 的创建时间
        早于 ``min_age_seconds``（默认 24 小时）时，删除整个草稿目录。
     3. 其它根级条目：不处理。
-    """
-    base = config.DRAFT_SAVE_PATH
-    if not base:
-        logger.warning("DRAFT_SAVE_PATH is empty, skip draft directory cleanup")
-        return
-    if not os.path.isdir(base):
-        logger.warning("Draft save path is not a directory, skip cleanup: %s", base)
-        return
 
+    Returns:
+        是否已执行清理（目录存在并完成扫描时为 True）。
+    """
+    if not draft_save_path_exists():
+        logger.info(
+            "Skip draft directory cleanup: DRAFT_SAVE_PATH does not exist (%s)",
+            config.DRAFT_SAVE_PATH,
+        )
+        return False
+
+    base = config.DRAFT_SAVE_PATH
     removed_meta = _remove_root_meta_info(base)
 
     removed_drafts = 0
@@ -155,7 +167,7 @@ def clear_draft_save_directory(
             child_names = [entry.name for entry in entries]
     except OSError as exc:
         logger.warning("Failed to list draft save directory %s: %s", base, exc)
-        return
+        return False
 
     for name in child_names:
         if name == ROOT_META_INFO_FILE:
@@ -177,13 +189,22 @@ def clear_draft_save_directory(
         removed_drafts,
         skipped_drafts,
     )
+    return True
 
 
 def recover_from_export_failure() -> None:
-    """导出失败后：强杀剪映并按条件清理 ``config.DRAFT_SAVE_PATH``。"""
+    """导出失败后：强杀剪映；仅当 ``DRAFT_SAVE_PATH`` 目录存在时再做草稿清理。"""
     logger.warning(
-        "Jianying export failed, recovering: kill process and conditional clear %s",
+        "Jianying export failed, recovering (draft path=%s, exists=%s)",
         config.DRAFT_SAVE_PATH,
+        draft_save_path_exists(),
     )
     kill_jianying_process()
-    clear_draft_save_directory()
+    if draft_save_path_exists():
+        clear_draft_save_directory()
+    else:
+        logger.info(
+            "Skip draft directory cleanup after export failure: "
+            "DRAFT_SAVE_PATH does not exist (%s)",
+            config.DRAFT_SAVE_PATH,
+        )
