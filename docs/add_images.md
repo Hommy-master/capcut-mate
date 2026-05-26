@@ -22,7 +22,7 @@ Add images to existing drafts. This interface is used to add image materials to 
 ```json
 {
   "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
-  "image_infos": "[{\"image_url\":\"https://assets.jcaigc.cn/image1.jpg\",\"width\":1920,\"height\":1080,\"start\":0,\"end\":5000000}]",
+  "image_infos": "[{\"image_url\":\"https://assets.jcaigc.cn/image1.jpg\",\"start\":0,\"end\":5000000}]",
   "alpha": 1.0,
   "scale_x": 1.0,
   "scale_y": 1.0,
@@ -47,11 +47,19 @@ Add images to existing drafts. This interface is used to add image materials to 
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
-| image_url | string | ✅ | - | URL address of the image file |
-| width | number | ✅ | - | Image width (pixels) |
-| height | number | ✅ | - | Image height (pixels) |
+| image_url | string | ✅ | - | Image file URL (must start with `http://` or `https://`) |
 | start | number | ✅ | - | Image start display time (microseconds) |
 | end | number | ✅ | - | Image end display time (microseconds) |
+| width | number | ❌ | Draft canvas width | Image width in pixels (optional); segment size follows the image file |
+| height | number | ❌ | Draft canvas height | Image height in pixels (optional); segment size follows the image file |
+| in_animation | string | ❌ | - | Intro animation name (optional) |
+| out_animation | string | ❌ | - | Outro animation name (optional) |
+| loop_animation | string | ❌ | - | Loop animation name (optional) |
+| in_animation_duration | number | ❌ | - | Intro animation duration in μs (optional) |
+| out_animation_duration | number | ❌ | - | Outro animation duration in μs (optional) |
+| loop_animation_duration | number | ❌ | - | Single loop duration in μs (optional) |
+| transition | string | ❌ | - | Transition effect name (optional) |
+| transition_duration | number | ❌ | 500000 | Transition duration in μs (optional), range 100000–2500000 |
 
 ### Parameter Details
 
@@ -83,28 +91,24 @@ Add images to existing drafts. This interface is used to add image materials to 
 
 #### Position Parameters
 
-- **transform_x**: Image position offset in X-axis direction, unit pixels
-  - Positive value moves right
-  - Negative value moves left
-  - Canvas center as origin
-  - Actually stored as half-canvas-width units (assuming canvas width 1920, divided by 960)
+- **transform_x**: Image position offset on the X axis, in pixels
+  - Positive moves right, negative moves left; origin at canvas center
+  - Stored as half-canvas-width units (divided by the **current draft canvas width**)
 
-- **transform_y**: Image position offset in Y-axis direction, unit pixels
-  - Positive value moves down
-  - Negative value moves up
-  - Canvas center as origin
-  - Actually stored as half-canvas-height units (assuming canvas height 1080, divided by 540)
+- **transform_y**: Image position offset on the Y axis, in pixels
+  - Positive moves down, negative moves up; origin at canvas center
+  - Stored as half-canvas-height units (divided by the **current draft canvas height**)
 
 #### Image Information Description
 
-- **image_url**: URL address of the image
-  - Format: Valid image URL
-  - Example: `"https://assets.jcaigc.cn/image1.jpg"`
-  - Supported formats: JPG, PNG and other common image formats
+- **image_url**: Image URL
+  - Must start with `http://` or `https://`
+  - Supported formats: JPG, PNG, and other common image formats
 
-- **width/height**: Original size of the image
-  - Used to calculate conversion ratio for position offset
-  - Unit: pixels
+- **width / height** (optional)
+  - **Not required**; the API works without them
+  - If provided, must be integers greater than 0
+  - On-screen size is mainly determined by the **image file** and `scale_x` / `scale_y`, not these fields
 
 ## Response Format
 
@@ -148,14 +152,14 @@ Add images to existing drafts. This interface is used to add image materials to 
 
 ### cURL Examples
 
-#### 1. Basic Image Addition
+#### 1. Basic Image Addition (minimum fields)
 
 ```bash
 curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_images \
   -H "Content-Type: application/json" \
   -d '{
     "draft_url": "YOUR_DRAFT_URL",
-    "image_infos": "[{\"image_url\":\"https://assets.jcaigc.cn/photo1.jpg\",\"width\":1920,\"height\":1080,\"start\":0,\"end\":5000000}]"
+    "image_infos": "[{\"image_url\":\"https://assets.jcaigc.cn/photo1.jpg\",\"start\":0,\"end\":5000000}]"
   }'
 ```
 
@@ -193,7 +197,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_images \
 | 400 | draft_url is required | Missing draft URL parameter | Provide a valid draft_url |
 | 400 | image_infos is required | Missing image information parameter | Provide valid image_infos |
 | 400 | image_url is required | Image URL missing | Provide URL for each image |
-| 400 | Image dimensions invalid | width or height invalid | Provide positive width and height |
+| 400 | Image dimensions invalid | Explicit width or height ≤ 0 | Omit width/height, or pass positive integers |
 | 400 | Time range invalid | end must be greater than start | Ensure end time is greater than start time |
 | 400 | Transparency invalid | alpha exceeds recommended range | Use transparency value within 0.0-1.0 range |
 | 404 | Draft does not exist | Specified draft URL invalid | Check if draft URL is correct |
@@ -203,14 +207,14 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_images \
 ## Notes
 
 1. **Time Unit**: All time parameters use microseconds (1 second = 1,000,000 microseconds)
-2. **Image URL**: Ensure using valid image URL
-3. **Time Range**: end must be greater than start
-4. **Transparency Range**: alpha recommended within 0.0-1.0 range
-5. **Position Parameters**: transform_x and transform_y unit is pixels, but internally converted to half-canvas units for storage
-   - transform_x conversion formula: actual value / 960 (assuming canvas width 1920)
-   - transform_y conversion formula: actual value / 540 (assuming canvas height 1080)
-6. **Track Management**: System automatically creates video track
-7. **Performance Consideration**: Avoid adding large number of images simultaneously
+2. **Required fields**: Each `image_infos` item needs `image_url`, `start`, and `end`
+3. **Optional dimensions**: `width` and `height` may be omitted; if set, they must be positive integers
+4. **Image URL**: Must start with `http://` or `https://`
+5. **Time Range**: `end` must be greater than `start`
+6. **Transparency Range**: `alpha` recommended within the 0.0–1.0 range
+7. **Position Parameters**: `transform_x` / `transform_y` are in pixels, converted using the **draft canvas** width and height
+8. **Track Management**: System automatically creates a video track (images are added as `VideoSegment`)
+9. **Performance Consideration**: Avoid adding a large number of images at once
 
 ## Workflow
 
