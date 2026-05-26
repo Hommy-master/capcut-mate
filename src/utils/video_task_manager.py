@@ -571,6 +571,8 @@ class VideoGenTaskManager:
                     )
                 raise RuntimeError(error_msg)
             
+            from src.utils.jianying_export_cleanup import recover_from_export_failure
+
             with UIAutomationInitializerInThread():
                 # 此前需要将剪映打开，并位于目录页
                 ctrl = draft.JianyingController()
@@ -578,18 +580,22 @@ class VideoGenTaskManager:
                 # 更新进度
                 task.progress = 70
 
-                # 导出指定名称的草稿；未找到时由 find_and_click_draft 对本地目录 robocopy 后重试（最多 6 次）
+                # 未找到时由 find_and_click_draft 对本地目录 robocopy 后重试（最多 6 次）
                 draft_dir = os.path.join(config.DRAFT_SAVE_PATH, task.draft_id)
-                ctrl.export_draft(task.draft_id, outfile, draft_dir=draft_dir)
+                try:
+                    ctrl.export_draft(task.draft_id, outfile, draft_dir=draft_dir)
+                except Exception:
+                    recover_from_export_failure()
+                    raise
 
-            # 检查文件是否生成
+            # 个别版本剪映不会抛异常，但文件未生成
             if not os.path.exists(outfile):
-                # 个别版本剪映不会抛异常，但文件未生成
                 logger.error(
                     "export finished but output file missing (check disk space / "
                     "Jianying version): path=%s",
                     outfile,
                 )
+                recover_from_export_failure()
                 return False
 
             logger.info(f"Export draft success: {outfile}")
