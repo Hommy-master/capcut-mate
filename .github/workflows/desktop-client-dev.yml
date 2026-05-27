@@ -14,13 +14,14 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: windows-latest
+          # 固定 runner 大版本，避免 -latest 自动迁移导致构建环境突变
+          - os: windows-2022
             platform: win
             artifact_name: windows-build
             build_command: build-win
             installer_command: build-win-installer
             green_command: build-win-green
-          - os: macos-latest
+          - os: macos-14
             platform: mac
             artifact_name: macos-build
             build_command: build-mac
@@ -43,6 +44,14 @@ jobs:
           node-version: '22'
           cache: 'npm'
           cache-dependency-path: desktop-client/package-lock.json
+
+      - name: 打印构建环境信息
+        run: |
+          echo "Runner OS: ${{ runner.os }}"
+          echo "Runner image: ${{ matrix.os }}"
+          node -v
+          npm -v
+        shell: bash
 
       - name: 安装Electron依赖
         run: npm ci

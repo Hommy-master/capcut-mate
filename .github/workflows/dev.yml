@@ -17,22 +17,7 @@ jobs:
     steps:
       - name: 准备代码
         uses: actions/checkout@v4
-        
-      # 安装uv环境
-      - name: 安装uv
-        uses: astral-sh/setup-uv@v2
-        with:
-          version: "0.8.11"
-          enable-cache: true
-
-      - name: 准备python环境
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: 安装基础依赖
-        run: uv sync  #只安装基础依赖，避免平台特定依赖
-
+      
       - name: 查看文件和目录结构
         run: ls -lha  
 
