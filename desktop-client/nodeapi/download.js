@@ -39,22 +39,35 @@ function inferMaterialSubDir(materialType, material) {
   return "misc";
 }
 
-function getFileExtFromUrl(url, fallbackExt = ".bin") {
-  try {
-    const pathname = new URL(url).pathname || "";
-    const ext = path.extname(pathname);
-    return ext || fallbackExt;
-  } catch {
+const MIME_TO_EXT = {
+  "image/jpeg": ".jpg",
+  "image/jpg": ".jpg",
+  "image/png": ".png",
+  "image/gif": ".gif",
+  "image/webp": ".webp",
+  "image/bmp": ".bmp",
+  "video/mp4": ".mp4",
+  "video/quicktime": ".mov",
+  "audio/mpeg": ".mp3",
+  "audio/mp3": ".mp3",
+  "audio/wav": ".wav",
+  "audio/x-wav": ".wav",
+};
+
+function inferExtFromContentType(contentType, fallbackExt = ".bin") {
+  if (!contentType || typeof contentType !== "string") {
     return fallbackExt;
   }
+  const mime = contentType.split(";")[0].trim().toLowerCase();
+  const ext = MIME_TO_EXT[mime];
+  return ext || fallbackExt;
 }
 
-function sanitizeFilename(value) {
-  if (!value || typeof value !== "string") return "";
-  return value.replace(/[\\/:*?"<>|]/g, "_").trim();
+function buildMaterialFilename(baseName, ext) {
+  return baseName.toLowerCase().endsWith(ext.toLowerCase()) ? baseName : `${baseName}${ext}`;
 }
 
-async function downloadRemoteMaterialFile(fileUrl, localPath) {
+async function downloadRemoteMaterial(fileUrl, draftRootDir, subDir, baseName, fallbackExt) {
   const response = await axios({
     ...axiosConfig,
     url: fileUrl,
@@ -63,6 +76,11 @@ async function downloadRemoteMaterialFile(fileUrl, localPath) {
   if (response.status !== 200) {
     throw new Error(`[error] [material] request failed, status code: ${response.status}`);
   }
+
+  const ext = inferExtFromContentType(response.headers["content-type"], fallbackExt);
+  const fileName = buildMaterialFilename(baseName, ext);
+  const localPath = path.join(draftRootDir, "assets", subDir, fileName);
+
   await fs.mkdir(path.dirname(localPath), { recursive: true });
   const writer = response.data.pipe(createWriteStream(localPath, { flags: "w", mode: 0o666 }));
   await new Promise((resolve, reject) => {
@@ -77,6 +95,12 @@ async function downloadRemoteMaterialFile(fileUrl, localPath) {
       reject(err);
     });
   });
+  return localPath;
+}
+
+function sanitizeFilename(value) {
+  if (!value || typeof value !== "string") return "";
+  return value.replace(/[\\/:*?"<>|]/g, "_").trim();
 }
 
 /**
@@ -234,24 +258,26 @@ async function localizeRemoteMaterialPaths(materials, draftRootDir, parentWindow
 
       const subDir = inferMaterialSubDir(materialType, item);
       const fallbackExt = materialType === "audios" ? ".mp3" : ".mp4";
-      const ext = getFileExtFromUrl(item.path, fallbackExt);
       const baseName = sanitizeFilename(item.material_name || item.name || item.id || uuidv4());
-      const fileName = baseName.toLowerCase().endsWith(ext.toLowerCase())
-        ? baseName
-        : `${baseName}${ext}`;
-      const localPath = path.join(draftRootDir, "assets", subDir, fileName);
 
       if (!cache.has(item.path)) {
         try {
+          let localPath;
           await retryDownloadTask(
             async () => {
-              await downloadRemoteMaterialFile(item.path, localPath);
+              localPath = await downloadRemoteMaterial(
+                item.path,
+                draftRootDir,
+                subDir,
+                baseName,
+                fallbackExt
+              );
             },
             {
               onAttempt: async (attempt) => {
                 const attemptMessage = attempt === 1
-                  ? `正在下载 URL 素材到本地：${fileName}`
-                  : `正在下载 URL 素材到本地：${fileName}（第${attempt - 1}次重试）`;
+                  ? `正在下载 URL 素材到本地：${baseName}`
+                  : `正在下载 URL 素材到本地：${baseName}（第${attempt - 1}次重试）`;
                 await appendDownloadLog(
                   {
                     level: "loading",
@@ -270,7 +296,7 @@ async function localizeRemoteMaterialPaths(materials, draftRootDir, parentWindow
                 await appendDownloadLog(
                   {
                     level: "error",
-                    message: `URL 素材下载失败（已重试${MAX_DOWNLOAD_ATTEMPTS - 1}次，共尝试${MAX_DOWNLOAD_ATTEMPTS}次）：${fileName}`,
+                    message: `URL 素材下载失败（已重试${MAX_DOWNLOAD_ATTEMPTS - 1}次，共尝试${MAX_DOWNLOAD_ATTEMPTS}次）：${baseName}`,
                   },
                   parentWindow
                 );
@@ -1097,5 +1123,7 @@ module.exports = {
 
   checkUrlAccessRight,
 
-  readHistoryRecord
+  readHistoryRecord,
+
+  inferExtFromContentType,
 };

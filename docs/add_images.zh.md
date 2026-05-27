@@ -22,7 +22,7 @@ POST /openapi/capcut-mate/v1/add_images
 ```json
 {
   "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
-  "image_infos": "[{\"image_url\":\"https://assets.jcaigc.cn/image1.jpg\",\"width\":1920,\"height\":1080,\"start\":0,\"end\":5000000}]",
+  "image_infos": "[{\"image_url\":\"https://assets.jcaigc.cn/image1.jpg\",\"start\":0,\"end\":5000000}]",
   "alpha": 1.0,
   "scale_x": 1.0,
   "scale_y": 1.0,
@@ -47,11 +47,19 @@ POST /openapi/capcut-mate/v1/add_images
 
 | 字段名 | 类型 | 必填 | 默认值 | 说明 |
 |--------|------|------|--------|------|
-| image_url | string | ✅ | - | 图片文件的URL地址 |
-| width | number | ✅ | - | 图片宽度(像素) |
-| height | number | ✅ | - | 图片高度(像素) |
+| image_url | string | ✅ | - | 图片文件的 URL 地址（须以 `http://` 或 `https://` 开头） |
 | start | number | ✅ | - | 图片开始显示时间(微秒) |
 | end | number | ✅ | - | 图片结束显示时间(微秒) |
+| width | number | ❌ | 草稿画布宽度 | 图片宽度(像素)，可选；未传时不校验，片段尺寸以图片文件为准 |
+| height | number | ❌ | 草稿画布高度 | 图片高度(像素)，可选；未传时不校验，片段尺寸以图片文件为准 |
+| in_animation | string | ❌ | - | 入场动画名称（可选） |
+| out_animation | string | ❌ | - | 出场动画名称（可选） |
+| loop_animation | string | ❌ | - | 循环动画名称（可选） |
+| in_animation_duration | number | ❌ | - | 入场动画时长(微秒，可选) |
+| out_animation_duration | number | ❌ | - | 出场动画时长(微秒，可选) |
+| loop_animation_duration | number | ❌ | - | 循环动画单次时长(微秒，可选) |
+| transition | string | ❌ | - | 转场效果名称（可选） |
+| transition_duration | number | ❌ | 500000 | 转场时长(微秒，可选)，范围 100000～2500000 |
 
 ### 参数详解
 
@@ -83,28 +91,24 @@ POST /openapi/capcut-mate/v1/add_images
 
 #### 位置参数
 
-- **transform_x**: 图片在X轴方向的位置偏移，单位为像素
-  - 正值向右移动
-  - 负值向左移动
-  - 以画布中心为原点
-  - 实际存储时会转换为半画布宽单位（假设画布宽度1920，即除以960）
+- **transform_x**: 图片在 X 轴方向的位置偏移，单位为像素
+  - 正值向右移动，负值向左移动，以画布中心为原点
+  - 实际存储时除以**当前草稿画布宽度**（半画布宽单位）
 
-- **transform_y**: 图片在Y轴方向的位置偏移，单位为像素
-  - 正值向下移动
-  - 负值向上移动
-  - 以画布中心为原点
-  - 实际存储时会转换为半画布高单位（假设画布高度1080，即除以540）
+- **transform_y**: 图片在 Y 轴方向的位置偏移，单位为像素
+  - 正值向下移动，负值向上移动，以画布中心为原点
+  - 实际存储时除以**当前草稿画布高度**（半画布高单位）
 
 #### 图片信息说明
 
-- **image_url**: 图片的URL地址
-  - 格式：有效的图片URL
-  - 示例：`"https://assets.jcaigc.cn/image1.jpg"`
-  - 支持格式：JPG、PNG等常见图片格式
+- **image_url**: 图片的 URL 地址
+  - 须以 `http://` 或 `https://` 开头
+  - 支持 JPG、PNG 等常见图片格式
 
-- **width/height**: 图片的原始尺寸
-  - 用于计算位置偏移的转换比例
-  - 单位：像素
+- **width / height**（可选）
+  - **非必填**；未传时接口可正常添加图片
+  - 若显式传入，须为大于 0 的整数
+  - 片段在剪映中的显示尺寸主要由**图片文件本身**及 `scale_x` / `scale_y` 控制，与这两项无强绑定
 
 ## 响应格式
 
@@ -148,14 +152,14 @@ POST /openapi/capcut-mate/v1/add_images
 
 ### cURL 示例
 
-#### 1. 基本图片添加
+#### 1. 基本图片添加（最小参数）
 
 ```bash
 curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_images \
   -H "Content-Type: application/json" \
   -d '{
     "draft_url": "YOUR_DRAFT_URL",
-    "image_infos": "[{\"image_url\":\"https://assets.jcaigc.cn/photo1.jpg\",\"width\":1920,\"height\":1080,\"start\":0,\"end\":5000000}]"
+    "image_infos": "[{\"image_url\":\"https://assets.jcaigc.cn/photo1.jpg\",\"start\":0,\"end\":5000000}]"
   }'
 ```
 
@@ -193,7 +197,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_images \
 | 400 | draft_url是必填项 | 缺少草稿URL参数 | 提供有效的draft_url |
 | 400 | image_infos是必填项 | 缺少图片信息参数 | 提供有效的image_infos |
 | 400 | image_url是必填项 | 图片URL缺失 | 为每个图片提供URL |
-| 400 | 图片尺寸无效 | width或height无效 | 提供正数的宽度和高度 |
+| 400 | 图片尺寸无效 | 显式传入的 width 或 height ≤ 0 | 不传宽高即可；若传入须为正整数 |
 | 400 | 时间范围无效 | end必须大于start | 确保结束时间大于开始时间 |
 | 400 | 透明度无效 | alpha超出建议范围 | 使用0.0-1.0范围内的透明度值 |
 | 404 | 草稿不存在 | 指定的草稿URL无效 | 检查草稿URL是否正确 |
@@ -203,14 +207,14 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_images \
 ## 注意事项
 
 1. **时间单位**: 所有时间参数使用微秒（1秒 = 1,000,000微秒）
-2. **图片URL**: 确保使用有效的图片URL
-3. **时间范围**: end必须大于start
-4. **透明度范围**: alpha建议在0.0-1.0范围内
-5. **位置参数**: transform_x和transform_y单位为像素，但内部会转换为半画布单位存储
-   - transform_x转换公式：实际值 / 960（假设画布宽度1920）
-   - transform_y转换公式：实际值 / 540（假设画布高度1080）
-6. **轨道管理**: 系统自动创建视频轨道
-7. **性能考虑**: 避免同时添加大量图片
+2. **必填字段**: `image_infos` 每项至少包含 `image_url`、`start`、`end`
+3. **宽高可选**: `width`、`height` 可不传；传入时须为正整数
+4. **图片 URL**: 须以 `http://` 或 `https://` 开头
+5. **时间范围**: `end` 必须大于 `start`
+6. **透明度范围**: `alpha` 建议在 0.0～1.0 范围内
+7. **位置参数**: `transform_x` / `transform_y` 单位为像素，内部按**草稿画布宽高**转换为半画布单位
+8. **轨道管理**: 系统自动创建视频轨道（图片以 `VideoSegment` 形式添加）
+9. **性能考虑**: 避免同时添加大量图片
 
 ## 工作流程
 
