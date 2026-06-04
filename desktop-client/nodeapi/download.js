@@ -99,13 +99,14 @@ function materialSubDirToCategory(subDir) {
 }
 
 function buildFileLogMessage(phase, category, name) {
-  const verb = {
-    loading: "正在下载",
-    success: "下载完成",
-    error: "下载失败",
-  }[phase];
   const kind = category === "config" ? "配置" : "资源";
-  return `${verb}${kind}${name}`;
+  if (phase === "loading") {
+    return `${kind} ${name} 下载中...`;
+  }
+  if (phase === "success") {
+    return `${kind} ${name} 下载完成`;
+  }
+  return `${kind} ${name} 下载失败`;
 }
 
 function createDownloadProgressTracker(targetId) {
@@ -1324,10 +1325,10 @@ async function downloadFiles(
     const failureCount = tracker.failureCount;
     const draftCompleteMessage =
       failureCount === 0
-        ? `下载完成草稿 ${targetId}`
+        ? `获取草稿 ${targetId} 成功`
         : failureCount === tracker.totalCount && tracker.totalCount > 0
-          ? `下载失败草稿 ${targetId}`
-          : `下载完成草稿 ${targetId}（${failureCount} 个文件失败）`;
+          ? `获取草稿 ${targetId} 失败`
+          : `获取草稿 ${targetId} 成功（${failureCount} 个文件失败）`;
     const draftCompleteLevel =
       failureCount === 0
         ? "success"
@@ -1382,7 +1383,7 @@ async function downloadFiles(
       {
         id: `draft-${targetId}`,
         level: "error",
-        message: `下载失败草稿 ${targetId}`,
+        message: `获取草稿 ${targetId} 失败`,
       },
       parentWindow
     );

@@ -103,7 +103,7 @@ function MainPage() {
         targetId,
         isOpenDir: isDownloadOpen,
       });
-      toast.success(`下载完成草稿 ${targetId}！请前往剪映查看`);
+      toast.success(`获取草稿 ${targetId} 成功`);
     } catch (error) {
       toast.error("保存文件失败", error);
     }
