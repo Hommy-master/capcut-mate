@@ -142,15 +142,103 @@ const GET_DRAFT_FETCH_DEADLINE_MS = 3000;
 const GET_DRAFT_FETCH_PER_ATTEMPT_MAX_MS = 800;
 const GET_DRAFT_FETCH_BACKOFF_MS = [120, 200];
 
-function isRetryableGetDraftError(error) {
-  if (!error) return false;
-  if (error.response) {
-    const status = error.response.status;
-    return status === 408 || status === 429 || status >= 500;
+/** 网关/限流等暂时不可用，退避重试有效（不含 500 等通常表示持久故障的状态） */
+const RETRYABLE_TRANSIENT_HTTP_STATUSES = new Set([408, 429, 502, 503, 504]);
+
+/** 限流/网关错误退避：1s 起指数增长，上限 30s */
+const TRANSIENT_HTTP_BACKOFF_MS = [1000, 2000, 4000, 8000, 16000];
+const TRANSIENT_HTTP_BACKOFF_MAX_MS = 30000;
+
+/** 网络/流错误默认固定退避 */
+const DEFAULT_RETRY_DELAY_MS = 1000;
+
+/** 从 axios 错误或手动抛出的 Error 消息中解析 HTTP 状态码 */
+function getHttpStatusFromError(error) {
+  if (error?.response?.status != null) {
+    return error.response.status;
   }
+  const match = /status code:\s*(\d+)/i.exec(String(error?.message || ""));
+  return match ? Number.parseInt(match[1], 10) : null;
+}
+
+function isTransientHttpError(error) {
+  const status = getHttpStatusFromError(error);
+  return status !== null && RETRYABLE_TRANSIENT_HTTP_STATUSES.has(status);
+}
+
+/** 解析 Retry-After（秒或 HTTP 日期），返回毫秒；无法解析时返回 null */
+function parseRetryAfterMs(headers) {
+  if (!headers) return null;
+  const raw = headers["retry-after"] ?? headers["Retry-After"];
+  if (raw == null || raw === "") return null;
+
+  const asSeconds = Number(raw);
+  if (Number.isFinite(asSeconds) && asSeconds >= 0) {
+    return Math.min(asSeconds * 1000, TRANSIENT_HTTP_BACKOFF_MAX_MS);
+  }
+
+  const retryAt = Date.parse(String(raw));
+  if (Number.isFinite(retryAt)) {
+    return Math.min(Math.max(0, retryAt - Date.now()), TRANSIENT_HTTP_BACKOFF_MAX_MS);
+  }
+  return null;
+}
+
+/**
+ * 计算下次重试前的等待时间。
+ * @param {unknown} error 本次失败错误
+ * @param {number} failedAttempt 已失败的尝试序号（1-based）
+ */
+function getRetryDelayMs(error, failedAttempt) {
+  const retryAfterMs = parseRetryAfterMs(error?.response?.headers);
+  if (retryAfterMs != null) {
+    return retryAfterMs;
+  }
+
+  if (isTransientHttpError(error)) {
+    const idx = Math.min(Math.max(failedAttempt - 1, 0), TRANSIENT_HTTP_BACKOFF_MS.length - 1);
+    return Math.min(
+      TRANSIENT_HTTP_BACKOFF_MS[idx] ?? TRANSIENT_HTTP_BACKOFF_MS.at(-1),
+      TRANSIENT_HTTP_BACKOFF_MAX_MS
+    );
+  }
+
+  return DEFAULT_RETRY_DELAY_MS;
+}
+
+/**
+ * 判断下载错误是否值得重试。
+ * - HTTP：408 / 429 / 502 / 503 / 504 可重试（限流/网关暂时不可用）；404 等 4xx 及 500 等不重试
+ * - 网络：DNS 失败、连接拒绝不重试；超时、连接重置等可重试
+ * - 流写入/读取中断可重试
+ */
+function isRetryableDownloadError(error) {
+  if (!error) return false;
+
+  const status = getHttpStatusFromError(error);
+  if (status !== null) {
+    return RETRYABLE_TRANSIENT_HTTP_STATUSES.has(status);
+  }
+
   const code = error.code;
   if (code === "ENOTFOUND" || code === "ECONNREFUSED") return false;
-  return true;
+  if (
+    code === "ECONNABORTED" ||
+    code === "ETIMEDOUT" ||
+    code === "ECONNRESET" ||
+    code === "EAI_AGAIN"
+  ) {
+    return true;
+  }
+
+  const message = String(error.message || "");
+  if (/write file failed|download stream error/i.test(message)) {
+    return true;
+  }
+
+  if (!error.response && code) return true;
+
+  return false;
 }
 
 async function requestGetDraftOnce(remoteUrl, timeoutMs) {
@@ -171,7 +259,10 @@ async function fetchGetDraftWithRetry(remoteUrl) {
     if (timeLeftMs() <= 0) break;
 
     if (attempt > 1) {
-      const planned = GET_DRAFT_FETCH_BACKOFF_MS[attempt - 2] ?? 100;
+      const baseBackoff = GET_DRAFT_FETCH_BACKOFF_MS[attempt - 2] ?? 100;
+      const planned = isTransientHttpError(lastError)
+        ? Math.max(baseBackoff, getRetryDelayMs(lastError, attempt - 1))
+        : baseBackoff;
       const wait = Math.min(planned, Math.max(0, timeLeftMs() - 1));
       if (wait > 0) {
         await new Promise((resolve) => setTimeout(resolve, wait));
@@ -191,7 +282,7 @@ async function fetchGetDraftWithRetry(remoteUrl) {
       const willRetry =
         attempt < GET_DRAFT_FETCH_MAX_ATTEMPTS &&
         timeLeftMs() > 0 &&
-        isRetryableGetDraftError(error);
+        isRetryableDownloadError(error);
       if (willRetry) {
         logger.warn(
           `[warn] get draft url attempt ${attempt}/${GET_DRAFT_FETCH_MAX_ATTEMPTS} failed: ${error.message}`
@@ -208,7 +299,8 @@ async function fetchGetDraftWithRetry(remoteUrl) {
 async function retryDownloadTask(task, options = {}) {
   const {
     maxAttempts = MAX_DOWNLOAD_ATTEMPTS,
-    retryDelayMs = 1000,
+    retryDelayMs = null,
+    isRetryableError = isRetryableDownloadError,
     onAttempt = null,
     onRetry = null,
     onExhausted = null,
@@ -224,19 +316,33 @@ async function retryDownloadTask(task, options = {}) {
     } catch (error) {
       lastError = error;
       const hasNextAttempt = attempt < maxAttempts;
-      if (hasNextAttempt) {
-        if (typeof onRetry === "function") {
-          await onRetry(error, attempt, maxAttempts);
+      const canRetry = hasNextAttempt && isRetryableError(error);
+
+      if (!canRetry) {
+        if (hasNextAttempt) {
+          logger.warn(
+            `[warn] download error is not retryable (attempt ${attempt}/${maxAttempts}): ${error?.message || error}`
+          );
+        } else if (typeof onExhausted === "function") {
+          await onExhausted(error, attempt, maxAttempts);
         }
-        if (retryDelayMs > 0) {
-          await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
+        throw error;
+      }
+
+      const delayMs =
+        retryDelayMs != null ? retryDelayMs : getRetryDelayMs(error, attempt);
+
+      if (typeof onRetry === "function") {
+        await onRetry(error, attempt, maxAttempts, delayMs);
+      }
+      if (delayMs > 0) {
+        if (isTransientHttpError(error)) {
+          logger.warn(
+            `[warn] transient HTTP ${getHttpStatusFromError(error)}, retry in ${delayMs}ms (attempt ${attempt}/${maxAttempts})`
+          );
         }
-        continue;
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
       }
-      if (typeof onExhausted === "function") {
-        await onExhausted(error, attempt, maxAttempts);
-      }
-      throw error;
     }
   }
 
