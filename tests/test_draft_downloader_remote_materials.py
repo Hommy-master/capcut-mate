@@ -82,6 +82,45 @@ class TestDownloadRemoteMaterial:
             assert local_path is not None
             assert local_path.endswith(".mp4")
 
+    def test_non200_404_does_not_retry(self, no_sleep) -> None:
+        bad = MagicMock()
+        bad.status_code = 404
+        bad.close = MagicMock()
+        with tempfile.TemporaryDirectory() as td:
+            with patch.object(dd, "requests") as m_req:
+                m_req.get.return_value = bad
+                m_req.exceptions = requests.exceptions
+                assert dd._download_remote_material(
+                    "https://cdn.example.com/miss.png", td, "images", "x", ".png"
+                ) is None
+                assert m_req.get.call_count == 1
+
+
+class TestRetryHelpers:
+    @pytest.mark.parametrize(
+        "status, expected",
+        [
+            (404, False),
+            (400, False),
+            (500, False),
+            (408, True),
+            (429, True),
+            (502, True),
+            (503, True),
+            (504, True),
+        ],
+    )
+    def test_is_retryable_http_status(self, status: int, expected: bool) -> None:
+        assert dd._is_retryable_http_status(status) is expected
+
+    def test_connection_refused_not_retryable(self) -> None:
+        exc = requests.exceptions.ConnectionError("Connection refused")
+        assert dd._is_retryable_request_exception(exc) is False
+
+    def test_read_timeout_retryable(self) -> None:
+        exc = requests.exceptions.ReadTimeout("read timed out")
+        assert dd._is_retryable_request_exception(exc) is True
+
 
 class TestDownloadRemoteFile:
     def _ok_response(self, content: bytes = b"data") -> MagicMock:
@@ -124,14 +163,25 @@ class TestDownloadRemoteFile:
             if os.path.isfile(out):
                 os.remove(out)
 
-    def test_returns_false_after_exhausting_retries(self, no_sleep) -> None:
-        with patch.object(dd, "_MAX_RETRIES", 2):
-            with patch.object(dd, "requests") as m_req:
-                m_req.get.side_effect = requests.exceptions.ConnectionError("refused")
-                m_req.exceptions = requests.exceptions
-                out = os.path.join(tempfile.gettempdir(), "t_dl_fail.bin")
-                assert dd._download_remote_file("https://x.test/c.mp4", out) is False
-                assert m_req.get.call_count == 3
+    def test_returns_false_immediately_on_connection_refused(self, no_sleep) -> None:
+        with patch.object(dd, "requests") as m_req:
+            m_req.get.side_effect = requests.exceptions.ConnectionError("Connection refused")
+            m_req.exceptions = requests.exceptions
+            out = os.path.join(tempfile.gettempdir(), "t_dl_fail.bin")
+            assert dd._download_remote_file("https://x.test/c.mp4", out) is False
+            assert m_req.get.call_count == 1
+
+    def test_non200_404_does_not_retry(self, no_sleep) -> None:
+        bad = MagicMock()
+        bad.status_code = 404
+        bad.close = MagicMock()
+        out = os.path.join(tempfile.gettempdir(), "t_dl_404.bin")
+        with patch.object(dd, "requests") as m_req:
+            m_req.get.return_value = bad
+            m_req.exceptions = requests.exceptions
+            assert dd._download_remote_file("https://x.test/miss.mp4", out) is False
+            assert m_req.get.call_count == 1
+        bad.close.assert_not_called()
 
     def test_non200_retries_then_success(self, no_sleep) -> None:
         bad = MagicMock()
@@ -387,6 +437,19 @@ class TestDownloadSingleFile:
             out = os.path.join(td, "data.bin")
             with open(out, "rb") as f:
                 assert f.read() == b"ok"
+
+    def test_connection_refused_does_not_retry(self, no_sleep) -> None:
+        file_url = (
+            f"{self._BASE}/app/output/draft/20251204214904ccb1af38/miss.bin"
+        )
+        with tempfile.TemporaryDirectory() as td:
+            with patch.object(dd, "requests") as m_req:
+                m_req.get.side_effect = requests.exceptions.ConnectionError(
+                    "Connection refused"
+                )
+                m_req.exceptions = requests.exceptions
+                assert dd.download_single_file(file_url, td) is False
+                assert m_req.get.call_count == 1
 
     def test_returns_false_after_exhausting_retries(self, no_sleep) -> None:
         file_url = (
