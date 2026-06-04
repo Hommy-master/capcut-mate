@@ -67,6 +67,113 @@ function buildMaterialFilename(baseName, ext) {
   return baseName.toLowerCase().endsWith(ext.toLowerCase()) ? baseName : `${baseName}${ext}`;
 }
 
+const IMAGE_EXTENSIONS = new Set([
+  ".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".heic", ".jpe",
+]);
+const VIDEO_EXTENSIONS = new Set([
+  ".mp4", ".mov", ".avi", ".mkv", ".webm", ".m4v", ".flv",
+]);
+const AUDIO_EXTENSIONS = new Set([
+  ".mp3", ".wav", ".aac", ".m4a", ".flac", ".ogg", ".wma",
+]);
+
+/** 除图片/视频/音频外均视为配置文件 */
+function classifyDraftFile(filePath) {
+  const normalized = String(filePath).replace(/\\/g, "/").toLowerCase();
+  if (normalized.includes("/assets/images/")) return "image";
+  if (normalized.includes("/assets/videos/")) return "video";
+  if (normalized.includes("/assets/audios/")) return "audio";
+
+  const ext = path.extname(filePath).toLowerCase();
+  if (IMAGE_EXTENSIONS.has(ext)) return "image";
+  if (VIDEO_EXTENSIONS.has(ext)) return "video";
+  if (AUDIO_EXTENSIONS.has(ext)) return "audio";
+  return "config";
+}
+
+function materialSubDirToCategory(subDir) {
+  if (subDir === "images") return "image";
+  if (subDir === "videos") return "video";
+  if (subDir === "audios") return "audio";
+  return "config";
+}
+
+function buildFileLogMessage(phase, category, name) {
+  const verb = {
+    loading: "正在下载",
+    success: "下载完成",
+    error: "下载失败",
+  }[phase];
+  const kind = category === "config" ? "配置" : "资源";
+  return `${verb}${kind}${name}`;
+}
+
+function createDownloadProgressTracker(targetId) {
+  let seq = 0;
+  const stats = {
+    image: 0,
+    video: 0,
+    audio: 0,
+    config: 0,
+    success: 0,
+    failure: 0,
+  };
+
+  return {
+    beginFile(displayName, category) {
+      stats[category] += 1;
+      return {
+        id: `file-${targetId}-${++seq}-${displayName}`,
+        category,
+        displayName,
+      };
+    },
+    recordSuccess() {
+      stats.success += 1;
+    },
+    recordFailure() {
+      stats.failure += 1;
+    },
+    buildSummaryMessage() {
+      const total = stats.image + stats.video + stats.audio + stats.config;
+      return `下载完成：共${total}个文件，图片：${stats.image}个，视频：${stats.video}个，音频：${stats.audio}个，配置：${stats.config}个，成功${stats.success}个，失败${stats.failure}个`;
+    },
+    get failureCount() {
+      return stats.failure;
+    },
+    get totalCount() {
+      return stats.image + stats.video + stats.audio + stats.config;
+    },
+  };
+}
+
+async function logFileDownloadStatus(parentWindow, logMeta, phase) {
+  const level =
+    phase === "loading" ? "loading" : phase === "success" ? "success" : "error";
+  await upsertDownloadLog(
+    {
+      id: logMeta.id,
+      level,
+      message: buildFileLogMessage(phase, logMeta.category, logMeta.displayName),
+    },
+    parentWindow
+  );
+}
+
+function extractFileNameFromUrl(fileUrl) {
+  try {
+    return path.basename(new URL(fileUrl).pathname) || "未知文件";
+  } catch {
+    return "未知文件";
+  }
+}
+
+async function markFileDownloadFailed(parentWindow, tracker, displayName, category) {
+  const logMeta = tracker.beginFile(displayName, category);
+  await logFileDownloadStatus(parentWindow, logMeta, "error");
+  tracker.recordFailure();
+}
+
 async function downloadRemoteMaterial(fileUrl, draftRootDir, subDir, baseName, fallbackExt) {
   const response = await axios({
     ...axiosConfig,
@@ -349,7 +456,13 @@ async function retryDownloadTask(task, options = {}) {
   throw lastError || new Error("retryDownloadTask failed without explicit error");
 }
 
-async function localizeRemoteMaterialPaths(materials, draftRootDir, parentWindow, sharedCache = null) {
+async function localizeRemoteMaterialPaths(
+  materials,
+  draftRootDir,
+  parentWindow,
+  sharedCache = null,
+  tracker = null
+) {
   if (!materials || typeof materials !== "object") return;
   const supportedTypes = ["videos", "audios"];
   const cache = sharedCache instanceof Map ? sharedCache : new Map();
@@ -363,60 +476,80 @@ async function localizeRemoteMaterialPaths(materials, draftRootDir, parentWindow
       if (!isHttpUrl(item.path)) continue;
 
       const subDir = inferMaterialSubDir(materialType, item);
+      const category = materialSubDirToCategory(subDir);
       const fallbackExt = materialType === "audios" ? ".mp3" : ".mp4";
       const baseName = sanitizeFilename(item.material_name || item.name || item.id || uuidv4());
 
-      if (!cache.has(item.path)) {
+      if (cache.has(item.path)) {
+        item.path = cache.get(item.path);
+        continue;
+      }
+
+      if (!tracker) {
         try {
-          let localPath;
-          await retryDownloadTask(
-            async () => {
-              localPath = await downloadRemoteMaterial(
-                item.path,
-                draftRootDir,
-                subDir,
-                baseName,
-                fallbackExt
-              );
-            },
-            {
-              onAttempt: async (attempt) => {
-                const attemptMessage = attempt === 1
-                  ? `正在下载 URL 素材到本地：${baseName}`
-                  : `正在下载 URL 素材到本地：${baseName}（第${attempt - 1}次重试）`;
-                await appendDownloadLog(
-                  {
-                    level: "loading",
-                    message: attemptMessage,
-                  },
-                  parentWindow
-                );
-              },
-              onRetry: async (err, attempt) => {
-                logger.warn(
-                  `[warn] 下载URL素材失败，准备重试(${attempt}/${MAX_DOWNLOAD_ATTEMPTS}): ${item.path}`,
-                  err?.message || err
-                );
-              },
-              onExhausted: async () => {
-                await appendDownloadLog(
-                  {
-                    level: "error",
-                    message: `URL 素材下载失败（已重试${MAX_DOWNLOAD_ATTEMPTS - 1}次，共尝试${MAX_DOWNLOAD_ATTEMPTS}次）：${baseName}`,
-                  },
-                  parentWindow
-                );
-              },
-            }
+          const localPath = await downloadRemoteMaterial(
+            item.path,
+            draftRootDir,
+            subDir,
+            baseName,
+            fallbackExt
           );
           cache.set(item.path, localPath);
         } catch (err) {
-          // URL 素材失败不影响同一草稿内其他文件下载，保留原 URL 路径。
-          logger.error(`[error] 下载URL素材失败，已达到重试上限: ${item.path}`, err);
-          continue;
+          logger.error(`[error] 下载URL素材失败: ${item.path}`, err);
         }
+        item.path = cache.get(item.path) || item.path;
+        continue;
       }
-      item.path = cache.get(item.path);
+
+      const logMeta = tracker.beginFile(baseName, category);
+      let finished = false;
+
+      const markFailed = async () => {
+        if (finished) return;
+        finished = true;
+        await logFileDownloadStatus(parentWindow, logMeta, "error");
+        tracker.recordFailure();
+      };
+
+      try {
+        let localPath;
+        await retryDownloadTask(
+          async () => {
+            localPath = await downloadRemoteMaterial(
+              item.path,
+              draftRootDir,
+              subDir,
+              baseName,
+              fallbackExt
+            );
+          },
+          {
+            onAttempt: async (attempt) => {
+              if (attempt === 1) {
+                await logFileDownloadStatus(parentWindow, logMeta, "loading");
+              }
+            },
+            onRetry: async (err, attempt) => {
+              logger.warn(
+                `[warn] 下载URL素材失败，准备重试(${attempt}/${MAX_DOWNLOAD_ATTEMPTS}): ${item.path}`,
+                err?.message || err
+              );
+            },
+          }
+        );
+        if (!finished) {
+          finished = true;
+          cache.set(item.path, localPath);
+          await logFileDownloadStatus(parentWindow, logMeta, "success");
+          tracker.recordSuccess();
+        }
+      } catch (err) {
+        await markFailed();
+        logger.error(`[error] 下载URL素材失败，已达到重试上限: ${item.path}`, err);
+      }
+
+      item.path = cache.get(item.path) || item.path;
     }
   }
 }
@@ -495,11 +628,61 @@ async function appendDownloadLog(entry, parentWindow) {
 
   entry.time = new Date();
   console.log(`appendDownloadLog: ${JSON.stringify(entry)}`);
-  await parentWindow.webContents.send("file-operation-log", entry);
+  await parentWindow.webContents.send("file-operation-log", {
+    ...entry,
+    action: "append",
+  });
   logs.push(entry);
   if (logs.length > LOG_MAX) {
     logs.shift();
   }
+  try {
+    await fs.writeFile(logPath, JSON.stringify(logs, null, 2), "utf8");
+  } catch (writeErr) {
+    logger.error("写入日志文件失败:", writeErr);
+  }
+}
+
+/**
+ * 按 id 追加或更新日志（用于草稿下载状态：正在下载 → 下载完成）
+ * @param {*} entry { id, level, message }
+ */
+async function upsertDownloadLog(entry, parentWindow) {
+  if (!entry?.id) {
+    return appendDownloadLog(entry, parentWindow);
+  }
+
+  const logPath = getDownloadLogPath();
+  let logs = [];
+  try {
+    logs = await readDownloadLog();
+  } catch {
+    logs = [];
+  }
+
+  const now = new Date();
+  const existingIndex = logs.findIndex((item) => item.id === entry.id);
+  const storedEntry =
+    existingIndex >= 0
+      ? { ...logs[existingIndex], ...entry, time: now }
+      : { ...entry, time: now };
+
+  if (existingIndex >= 0) {
+    logs[existingIndex] = storedEntry;
+  } else {
+    logs.push(storedEntry);
+  }
+
+  if (logs.length > LOG_MAX) {
+    logs.shift();
+  }
+
+  console.log(`upsertDownloadLog: ${JSON.stringify(storedEntry)}`);
+  await parentWindow.webContents.send("file-operation-log", {
+    ...storedEntry,
+    action: existingIndex >= 0 ? "update" : "append",
+  });
+
   try {
     await fs.writeFile(logPath, JSON.stringify(logs, null, 2), "utf8");
   } catch (writeErr) {
@@ -760,7 +943,7 @@ function recursivelyUpdatePaths(obj, targetDir, targetId) {
 
 // 带错误处理的JSON文件下载
 async function downloadJsonFile(
-  { fileUrl, filePath, targetDir, targetId, materialDownloadCache },
+  { fileUrl, filePath, targetDir, targetId, materialDownloadCache, tracker },
   parentWindow
 ) {
   // 1. 使用 Axios 下载 JSON 文件
@@ -773,10 +956,6 @@ async function downloadJsonFile(
 
     // 检查HTTP状态码
     if (response.status !== 200) {
-      await appendDownloadLog(
-        { level: "error", message: `下载草稿内容文件失败` },
-        parentWindow
-      );
       throw new Error(
         `[error] [json] request failed, status code: ${response.status}`
       );
@@ -794,17 +973,10 @@ async function downloadJsonFile(
         jsonData.materials,
         targetDir,
         parentWindow,
-        materialDownloadCache
+        materialDownloadCache,
+        tracker
       );
     }
-
-    await appendDownloadLog(
-      {
-        level: "loading",
-        message: `正在将草稿内容文件写入本地草稿目录 ${targetDir}`,
-      },
-      parentWindow
-    );
 
     // 4. 将修改后的 JSON 对象转换为格式化的字符串并写入本地文件
     const jsonString = JSON.stringify(jsonData, null, 2); // 使用 2 个空格进行缩进，美化输出
@@ -829,24 +1001,12 @@ async function downloadNotJsonFile(
 
     // 检查HTTP状态码
     if (response.status !== 200) {
-      await appendDownloadLog(
-        { level: "error", message: `下载草稿内容文件失败` },
-        parentWindow
-      );
       throw new Error(
         `[error] [stream] request failed, status code: ${response.status}`
       );
     }
 
     logger.info(`[log] start create writable stream: ${filePath}`);
-
-    await appendDownloadLog(
-      {
-        level: "loading",
-        message: `正在将草稿内容文件写入本地草稿目录 ${targetDir}`,
-      },
-      parentWindow
-    );
 
     // 创建可写流
     // 显式指定 flags 和 mode，避免 Windows 下文件句柄共享模式异常
@@ -1019,29 +1179,31 @@ async function getTargetFilePath(fileUrl, baseTargetDir, targetId) {
 }
 
 // 带重试机制的单个文件下载
-// 实现单个文件最多下载6次（首轮+最多5次重试）
-async function downloadFileWithRetry(config, parentWindow, fileIndex) {
-  // 获取文件名用于日志显示
+async function downloadFileWithRetry(config, parentWindow, tracker) {
   const fileName = path.basename(config.filePath);
+  const category = classifyDraftFile(config.filePath);
+  const logMeta = tracker.beginFile(fileName, category);
+  let finished = false;
+
+  const markFailed = async () => {
+    if (finished) return;
+    finished = true;
+    await logFileDownloadStatus(parentWindow, logMeta, "error");
+    tracker.recordFailure();
+  };
+
   try {
     await retryDownloadTask(
       async () => {
         await downloadSingleFile(config, parentWindow);
       },
       {
-        onAttempt: async (attempt, maxAttempts) => {
-          const attemptMessage = attempt === 1
-            ? `正在下载草稿内容文件: ${fileName} (第${fileIndex}个文件)`
-            : `正在下载草稿内容文件: ${fileName} (第${fileIndex}个文件)（第${attempt - 1}次重试）`;
-          await appendDownloadLog(
-            {
-              level: "loading",
-              message: attemptMessage,
-            },
-            parentWindow
-          );
+        onAttempt: async (attempt) => {
+          if (attempt === 1) {
+            await logFileDownloadStatus(parentWindow, logMeta, "loading");
+          }
           logger.info(
-            `[log] start get file context : ${config.fileUrl}, attempt: ${attempt}/${maxAttempts}`
+            `[log] start get file context : ${config.fileUrl}, attempt: ${attempt}/${MAX_DOWNLOAD_ATTEMPTS}`
           );
         },
         onRetry: async (error, attempt, maxAttempts) => {
@@ -1055,24 +1217,21 @@ async function downloadFileWithRetry(config, parentWindow, fileIndex) {
             `[error] download file ${config.fileUrl} exhausted retries (attempt ${attempt}/${maxAttempts}):`,
             error
           );
-          await appendDownloadLog(
-            {
-              level: "error",
-              message: `第 ${fileIndex} 个草稿信息文件下载失败（已重试${maxAttempts - 1}次，共尝试${maxAttempts}次）`,
-            },
-            parentWindow
-          );
+          await markFailed();
         },
       }
     );
 
+    if (!finished) {
+      finished = true;
+      await logFileDownloadStatus(parentWindow, logMeta, "success");
+      tracker.recordSuccess();
+    }
+
     logger.info(`[log] file saved to : ${config.filePath}`);
-    await appendDownloadLog(
-      { level: "success", message: `第 ${fileIndex} 个草稿信息文件保存成功` },
-      parentWindow
-    );
     return true;
   } catch {
+    await markFailed();
     return false;
   }
 }
@@ -1102,63 +1261,95 @@ async function downloadFiles(
 
     logger.info("[log] get target dir:", baseTargetDir);
 
-    await appendDownloadLog(
-      { level: "info", message: `创建剪映草稿目录：${targetId}` },
+    const draftLogId = `draft-${targetId}`;
+    const tracker = createDownloadProgressTracker(targetId);
+
+    await upsertDownloadLog(
+      {
+        id: draftLogId,
+        level: "loading",
+        message: `正在下载草稿 ${targetId}`,
+      },
       parentWindow
     );
 
-    let successCount = 0;
-    let failureCount = 0;
     const materialDownloadCache = new Map();
-    
+
     // 2. 遍历远程文件URL数组
     for (let i = 0; i < remoteFileUrls.length; i++) {
       const fileUrl = remoteFileUrls[i];
-      const fileIndex = i + 1; // 文件索引从1开始
-      
+
       try {
         // 获取目标文件路径
         const targetPaths = await getTargetFilePath(fileUrl, baseTargetDir, targetId);
-        
+
         if (!targetPaths) {
-          logger.error(`[error] 无法获取第 ${fileIndex} 个文件的目标路径: ${fileUrl}`);
-          await appendDownloadLog(
-            { level: "error", message: `第 ${fileIndex} 个草稿信息文件路径解析失败` },
-            parentWindow
+          logger.error(`[error] 无法获取文件的目标路径: ${fileUrl}`);
+          const fileName = extractFileNameFromUrl(fileUrl);
+          await markFileDownloadFailed(
+            parentWindow,
+            tracker,
+            fileName,
+            classifyDraftFile(fileName)
           );
-          failureCount++;
-          continue; // 跳过当前文件
+          continue;
         }
-        
+
         const { fullTargetPath, targetDir } = targetPaths;
-        
-        // 带重试机制的下载文件
-        const downloadSuccess = await downloadFileWithRetry(
-          { fileUrl, filePath: fullTargetPath, targetDir, targetId, materialDownloadCache },
+
+        await downloadFileWithRetry(
+          {
+            fileUrl,
+            filePath: fullTargetPath,
+            targetDir,
+            targetId,
+            materialDownloadCache,
+            tracker,
+          },
           parentWindow,
-          fileIndex
+          tracker
         );
-        
-        if (downloadSuccess) {
-          successCount++;
-        } else {
-          failureCount++;
-        }
       } catch (error) {
-        logger.error(`[error] 处理第 ${fileIndex} 个文件时发生错误:`, error);
-        await appendDownloadLog(
-          { level: "error", message: `第 ${fileIndex} 个草稿信息文件处理失败` },
-          parentWindow
+        logger.error(`[error] 处理文件时发生错误:`, error);
+        const fileName = extractFileNameFromUrl(fileUrl);
+        await markFileDownloadFailed(
+          parentWindow,
+          tracker,
+          fileName,
+          classifyDraftFile(fileName)
         );
-        failureCount++;
       }
     }
-    
-    // 输出最终统计结果
-    await appendDownloadLog(
+
+    const failureCount = tracker.failureCount;
+    const draftCompleteMessage =
+      failureCount === 0
+        ? `下载完成草稿 ${targetId}`
+        : failureCount === tracker.totalCount && tracker.totalCount > 0
+          ? `下载失败草稿 ${targetId}`
+          : `下载完成草稿 ${targetId}（${failureCount} 个文件失败）`;
+    const draftCompleteLevel =
+      failureCount === 0
+        ? "success"
+        : failureCount === tracker.totalCount && tracker.totalCount > 0
+          ? "error"
+          : "all";
+
+    await upsertDownloadLog(
       {
-        level: "all",
-        message: `下载完成：共 ${remoteFileUrls.length} 个文件，成功 ${successCount} 个，失败 ${failureCount} 个`
+        id: draftLogId,
+        level: draftCompleteLevel,
+        message: draftCompleteMessage,
+      },
+      parentWindow
+    );
+
+    const summaryLogId = `summary-${targetId}`;
+    await upsertDownloadLog(
+      {
+        id: summaryLogId,
+        level: failureCount === 0 ? "all" : "info",
+        message: tracker.buildSummaryMessage(),
       },
       parentWindow
     );
@@ -1181,11 +1372,20 @@ async function downloadFiles(
     if (isOpenDir) await openDraftDirectory(jointPath);
     
     return {
-      success: true,
-      message: `文件批量保存完成，保存至目录: ${jointPath}，成功 ${successCount} 个，失败 ${failureCount} 个`,
+      success: failureCount === 0,
+      message: `文件批量保存完成，保存至目录: ${jointPath}，${tracker.buildSummaryMessage()}`,
     };
   } catch (error) {
     logger.error(`[error] 批量保存过程发生错误:`, error);
+
+    await upsertDownloadLog(
+      {
+        id: `draft-${targetId}`,
+        level: "error",
+        message: `下载失败草稿 ${targetId}`,
+      },
+      parentWindow
+    );
 
     await appendDownloadLog(
       {

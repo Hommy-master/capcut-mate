@@ -21,9 +21,20 @@ function MainPage() {
 
   // 加载配置
   useEffect(() => {
-    // 监听日志更新
+    // 监听日志更新（支持按 id 更新草稿下载状态）
     electronService.onFileOperationLog((logEntry) => {
-      setLogs((prevLogs) => [...prevLogs, logEntry]);
+      const { action, ...entry } = logEntry;
+      setLogs((prevLogs) => {
+        if (action === "update" && entry.id) {
+          const index = prevLogs.findIndex((log) => log.id === entry.id);
+          if (index >= 0) {
+            const next = [...prevLogs];
+            next[index] = { ...next[index], ...entry };
+            return next;
+          }
+        }
+        return [...prevLogs, entry];
+      });
     });
 
     return () => {
@@ -50,6 +61,7 @@ function MainPage() {
     }
 
     const valArray = trimmedValue.split("\n").map((line) => line.trim());
+    setLogs([]);
     for (const val of valArray) {
       if (val) {
         await saveFile(val);
@@ -85,15 +97,13 @@ function MainPage() {
         return;
       }
 
-      setLogs([]);
-
       await electronService.saveFile({
         sourceUrl: value,
         remoteFileUrls: matchedFiles,
         targetId,
         isOpenDir: isDownloadOpen,
       });
-      toast.success(`剪映草稿下载完成！请前往剪映查看`);
+      toast.success(`下载完成草稿 ${targetId}！请前往剪映查看`);
     } catch (error) {
       toast.error("保存文件失败", error);
     }
