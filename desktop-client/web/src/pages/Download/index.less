@@ -234,3 +234,25 @@
 .log-item:last-child {
     border-bottom: none;
 }
+
+.log-active-divider {
+    padding: 6px 12px;
+    border-top: 1px solid #b8daff;
+    border-bottom: 1px solid #b8daff;
+    background: linear-gradient(180deg, #eef6ff 0%, #e3f0ff 100%);
+    list-style: none;
+}
+
+.log-active-divider-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--secondary-color);
+}
+
+.log-active-divider + .log-item,
+.log-active-divider ~ .log-item {
+    background-color: #f7fbff;
+}

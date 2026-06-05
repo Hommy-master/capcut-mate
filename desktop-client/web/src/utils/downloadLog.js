@@ -1,5 +1,32 @@
 const TERMINAL_LEVELS = new Set(["success", "error", "all"]);
 
+/** 单文件下载日志（配置/资源），且仍处于下载中 */
+export function isActiveFileDownloadLog(log) {
+  return (
+    log?.level === "loading" &&
+    typeof log?.id === "string" &&
+    log.id.startsWith("file-")
+  );
+}
+
+/**
+ * 将日志拆为「已完成/其他」与「下载中的配置/资源」，后者固定展示在底部。
+ */
+export function partitionLogsForDisplay(logs) {
+  const settled = [];
+  const active = [];
+
+  for (const log of logs) {
+    if (isActiveFileDownloadLog(log)) {
+      active.push(log);
+    } else {
+      settled.push(log);
+    }
+  }
+
+  return { settled, active };
+}
+
 function mergeLogEntry(existing, incoming) {
   if (TERMINAL_LEVELS.has(existing.level) && incoming.level === "loading") {
     return existing;
