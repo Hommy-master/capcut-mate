@@ -98,15 +98,15 @@ function materialSubDirToCategory(subDir) {
   return "config";
 }
 
-function buildFileLogMessage(phase, category, name) {
+function buildFileLogMessage(phase, category, sourceUrl) {
   const kind = category === "config" ? "配置" : "资源";
   if (phase === "loading") {
-    return `${kind} ${name} 下载中...`;
+    return `${kind} ${sourceUrl} 下载中...`;
   }
   if (phase === "success") {
-    return `${kind} ${name} 下载完成`;
+    return `${kind} ${sourceUrl} 下载完成`;
   }
-  return `${kind} ${name} 下载失败`;
+  return `${kind} ${sourceUrl} 下载失败`;
 }
 
 function createDownloadProgressTracker(targetId) {
@@ -121,12 +121,12 @@ function createDownloadProgressTracker(targetId) {
   };
 
   return {
-    beginFile(displayName, category) {
+    beginFile(sourceUrl, category) {
       stats[category] += 1;
       return {
-        id: `file-${targetId}-${++seq}-${displayName}`,
+        id: `file-${targetId}-${++seq}-${sourceUrl}`,
         category,
-        displayName,
+        sourceUrl,
       };
     },
     recordSuccess() {
@@ -155,7 +155,7 @@ async function logFileDownloadStatus(parentWindow, logMeta, phase) {
     {
       id: logMeta.id,
       level,
-      message: buildFileLogMessage(phase, logMeta.category, logMeta.displayName),
+      message: buildFileLogMessage(phase, logMeta.category, logMeta.sourceUrl),
     },
     parentWindow
   );
@@ -169,8 +169,9 @@ function extractFileNameFromUrl(fileUrl) {
   }
 }
 
-async function markFileDownloadFailed(parentWindow, tracker, displayName, category) {
-  const logMeta = tracker.beginFile(displayName, category);
+async function markFileDownloadFailed(parentWindow, tracker, sourceUrl) {
+  const category = classifyDraftFile(extractFileNameFromUrl(sourceUrl));
+  const logMeta = tracker.beginFile(sourceUrl, category);
   await logFileDownloadStatus(parentWindow, logMeta, "error");
   tracker.recordFailure();
 }
@@ -503,7 +504,7 @@ async function localizeRemoteMaterialPaths(
         continue;
       }
 
-      const logMeta = tracker.beginFile(baseName, category);
+      const logMeta = tracker.beginFile(item.path, category);
       let finished = false;
 
       const markFailed = async () => {
@@ -1181,9 +1182,8 @@ async function getTargetFilePath(fileUrl, baseTargetDir, targetId) {
 
 // 带重试机制的单个文件下载
 async function downloadFileWithRetry(config, parentWindow, tracker) {
-  const fileName = path.basename(config.filePath);
   const category = classifyDraftFile(config.filePath);
-  const logMeta = tracker.beginFile(fileName, category);
+  const logMeta = tracker.beginFile(config.fileUrl, category);
   let finished = false;
 
   const markFailed = async () => {
@@ -1286,13 +1286,7 @@ async function downloadFiles(
 
         if (!targetPaths) {
           logger.error(`[error] 无法获取文件的目标路径: ${fileUrl}`);
-          const fileName = extractFileNameFromUrl(fileUrl);
-          await markFileDownloadFailed(
-            parentWindow,
-            tracker,
-            fileName,
-            classifyDraftFile(fileName)
-          );
+          await markFileDownloadFailed(parentWindow, tracker, fileUrl);
           continue;
         }
 
@@ -1312,13 +1306,7 @@ async function downloadFiles(
         );
       } catch (error) {
         logger.error(`[error] 处理文件时发生错误:`, error);
-        const fileName = extractFileNameFromUrl(fileUrl);
-        await markFileDownloadFailed(
-          parentWindow,
-          tracker,
-          fileName,
-          classifyDraftFile(fileName)
-        );
+        await markFileDownloadFailed(parentWindow, tracker, fileUrl);
       }
     }
 
