@@ -458,6 +458,56 @@ async function retryDownloadTask(task, options = {}) {
   throw lastError || new Error("retryDownloadTask failed without explicit error");
 }
 
+async function downloadOneRemoteMaterial(
+  item,
+  materialType,
+  draftRootDir,
+  cache,
+  parentWindow,
+  tracker
+) {
+  const subDir = inferMaterialSubDir(materialType, item);
+  const category = materialSubDirToCategory(subDir);
+  const fallbackExt = materialType === "audios" ? ".mp3" : ".mp4";
+  const baseName = sanitizeFilename(item.material_name || item.name || item.id || uuidv4());
+  const sourceUrl = item.path;
+
+  const logMeta = tracker.beginFile(sourceUrl, category);
+
+  try {
+    await logFileDownloadStatus(parentWindow, logMeta, "loading");
+    let localPath;
+    await retryDownloadTask(
+      async () => {
+        localPath = await downloadRemoteMaterial(
+          sourceUrl,
+          draftRootDir,
+          subDir,
+          baseName,
+          fallbackExt
+        );
+      },
+      {
+        onRetry: async (err, attempt) => {
+          logger.warn(
+            `[warn] 下载URL素材失败，准备重试(${attempt}/${MAX_DOWNLOAD_ATTEMPTS}): ${sourceUrl}`,
+            err?.message || err
+          );
+        },
+      }
+    );
+    cache.set(sourceUrl, localPath);
+    item.path = localPath;
+    await logFileDownloadStatus(parentWindow, logMeta, "success");
+    tracker.recordSuccess();
+  } catch (err) {
+    await logFileDownloadStatus(parentWindow, logMeta, "error");
+    tracker.recordFailure();
+    logger.error(`[error] 下载URL素材失败，已达到重试上限: ${sourceUrl}`, err);
+    item.path = cache.get(sourceUrl) || item.path;
+  }
+}
+
 async function localizeRemoteMaterialPaths(
   materials,
   draftRootDir,
@@ -468,6 +518,8 @@ async function localizeRemoteMaterialPaths(
   if (!materials || typeof materials !== "object") return;
   const supportedTypes = ["videos", "audios"];
   const cache = sharedCache instanceof Map ? sharedCache : new Map();
+  const pendingDownloads = [];
+  const inFlightByUrl = new Map();
 
   for (const materialType of supportedTypes) {
     const list = materials[materialType];
@@ -477,82 +529,67 @@ async function localizeRemoteMaterialPaths(
       if (!item || typeof item !== "object") continue;
       if (!isHttpUrl(item.path)) continue;
 
-      const subDir = inferMaterialSubDir(materialType, item);
-      const category = materialSubDirToCategory(subDir);
-      const fallbackExt = materialType === "audios" ? ".mp3" : ".mp4";
-      const baseName = sanitizeFilename(item.material_name || item.name || item.id || uuidv4());
+      const sourceUrl = item.path;
 
-      if (cache.has(item.path)) {
-        item.path = cache.get(item.path);
+      if (cache.has(sourceUrl)) {
+        item.path = cache.get(sourceUrl);
         continue;
       }
 
+      if (inFlightByUrl.has(sourceUrl)) {
+        pendingDownloads.push(
+          inFlightByUrl.get(sourceUrl).then((localPath) => {
+            item.path = localPath;
+          })
+        );
+        continue;
+      }
+
+      let downloadTask;
       if (!tracker) {
-        try {
-          const localPath = await downloadRemoteMaterial(
-            item.path,
-            draftRootDir,
-            subDir,
-            baseName,
-            fallbackExt
-          );
-          cache.set(item.path, localPath);
-        } catch (err) {
-          logger.error(`[error] 下载URL素材失败: ${item.path}`, err);
-        }
-        item.path = cache.get(item.path) || item.path;
-        continue;
-      }
-
-      const logMeta = tracker.beginFile(item.path, category);
-      let finished = false;
-
-      const markFailed = async () => {
-        if (finished) return;
-        finished = true;
-        await logFileDownloadStatus(parentWindow, logMeta, "error");
-        tracker.recordFailure();
-      };
-
-      try {
-        let localPath;
-        await retryDownloadTask(
-          async () => {
-            localPath = await downloadRemoteMaterial(
-              item.path,
+        downloadTask = (async () => {
+          try {
+            const subDir = inferMaterialSubDir(materialType, item);
+            const fallbackExt = materialType === "audios" ? ".mp3" : ".mp4";
+            const baseName = sanitizeFilename(
+              item.material_name || item.name || item.id || uuidv4()
+            );
+            const localPath = await downloadRemoteMaterial(
+              sourceUrl,
               draftRootDir,
               subDir,
               baseName,
               fallbackExt
             );
-          },
-          {
-            onAttempt: async (attempt) => {
-              if (attempt === 1) {
-                await logFileDownloadStatus(parentWindow, logMeta, "loading");
-              }
-            },
-            onRetry: async (err, attempt) => {
-              logger.warn(
-                `[warn] 下载URL素材失败，准备重试(${attempt}/${MAX_DOWNLOAD_ATTEMPTS}): ${item.path}`,
-                err?.message || err
-              );
-            },
+            cache.set(sourceUrl, localPath);
+            return localPath;
+          } catch (err) {
+            logger.error(`[error] 下载URL素材失败: ${sourceUrl}`, err);
+            return cache.get(sourceUrl) || sourceUrl;
           }
-        );
-        if (!finished) {
-          finished = true;
-          cache.set(item.path, localPath);
-          await logFileDownloadStatus(parentWindow, logMeta, "success");
-          tracker.recordSuccess();
-        }
-      } catch (err) {
-        await markFailed();
-        logger.error(`[error] 下载URL素材失败，已达到重试上限: ${item.path}`, err);
+        })();
+      } else {
+        downloadTask = downloadOneRemoteMaterial(
+          item,
+          materialType,
+          draftRootDir,
+          cache,
+          parentWindow,
+          tracker
+        ).then(() => cache.get(sourceUrl) || item.path);
       }
 
-      item.path = cache.get(item.path) || item.path;
+      inFlightByUrl.set(sourceUrl, downloadTask);
+      pendingDownloads.push(
+        downloadTask.then((localPath) => {
+          item.path = localPath;
+        })
+      );
     }
+  }
+
+  if (pendingDownloads.length > 0) {
+    await Promise.all(pendingDownloads);
   }
 }
 
@@ -1184,27 +1221,17 @@ async function getTargetFilePath(fileUrl, baseTargetDir, targetId) {
 async function downloadFileWithRetry(config, parentWindow, tracker) {
   const category = classifyDraftFile(config.filePath);
   const logMeta = tracker.beginFile(config.fileUrl, category);
-  let finished = false;
-
-  const markFailed = async () => {
-    if (finished) return;
-    finished = true;
-    await logFileDownloadStatus(parentWindow, logMeta, "error");
-    tracker.recordFailure();
-  };
 
   try {
+    await logFileDownloadStatus(parentWindow, logMeta, "loading");
     await retryDownloadTask(
       async () => {
         await downloadSingleFile(config, parentWindow);
       },
       {
-        onAttempt: async (attempt) => {
-          if (attempt === 1) {
-            await logFileDownloadStatus(parentWindow, logMeta, "loading");
-          }
+        onAttempt: async (attempt, maxAttempts) => {
           logger.info(
-            `[log] start get file context : ${config.fileUrl}, attempt: ${attempt}/${MAX_DOWNLOAD_ATTEMPTS}`
+            `[log] start get file context : ${config.fileUrl}, attempt: ${attempt}/${maxAttempts}`
           );
         },
         onRetry: async (error, attempt, maxAttempts) => {
@@ -1218,23 +1245,23 @@ async function downloadFileWithRetry(config, parentWindow, tracker) {
             `[error] download file ${config.fileUrl} exhausted retries (attempt ${attempt}/${maxAttempts}):`,
             error
           );
-          await markFailed();
         },
       }
     );
 
-    if (!finished) {
-      finished = true;
-      await logFileDownloadStatus(parentWindow, logMeta, "success");
-      tracker.recordSuccess();
-    }
-
+    await logFileDownloadStatus(parentWindow, logMeta, "success");
+    tracker.recordSuccess();
     logger.info(`[log] file saved to : ${config.filePath}`);
     return true;
   } catch {
-    await markFailed();
+    await logFileDownloadStatus(parentWindow, logMeta, "error");
+    tracker.recordFailure();
     return false;
   }
+}
+
+function yieldToRenderer() {
+  return new Promise((resolve) => setImmediate(resolve));
 }
 
 // 批量下载文件主函数
@@ -1309,6 +1336,9 @@ async function downloadFiles(
         await markFileDownloadFailed(parentWindow, tracker, fileUrl);
       }
     }
+
+    // 等待渲染进程处理已发送的资源日志，再标记草稿完成，避免 UI 仍显示「下载中」
+    await yieldToRenderer();
 
     const failureCount = tracker.failureCount;
     const draftCompleteMessage =

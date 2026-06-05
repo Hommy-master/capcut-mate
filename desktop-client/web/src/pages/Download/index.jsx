@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { toast } from "react-toastify";
 import electronService from "../../services/electronService";
 import ExternalWebpage from "../../components/ExternalWebpage";
@@ -7,6 +7,7 @@ import Tabs from "../../components/Tabs";
 import DownloadControls from "../../components/DownloadControls";
 import DownloadButton from "../../components/DownloadButton";
 import LogModule from "../../components/LogModule";
+import { applyLogBatch } from "../../utils/downloadLog";
 
 import "./index.less";
 
@@ -18,23 +19,38 @@ function MainPage() {
 
   // 外层容器的ref，用于实现自动滚动
   const downloadPageRef = useRef(null);
+  const pendingLogsRef = useRef([]);
+  const flushScheduledRef = useRef(false);
+
+  const flushLogQueue = useCallback(() => {
+    flushScheduledRef.current = false;
+    if (pendingLogsRef.current.length === 0) {
+      return;
+    }
+    const batch = pendingLogsRef.current.splice(0);
+    setLogs((prevLogs) => applyLogBatch(prevLogs, batch));
+    if (pendingLogsRef.current.length > 0) {
+      flushScheduledRef.current = true;
+      queueMicrotask(flushLogQueue);
+    }
+  }, []);
+
+  const enqueueLogEntry = useCallback(
+    (logEntry) => {
+      pendingLogsRef.current.push(logEntry);
+      if (!flushScheduledRef.current) {
+        flushScheduledRef.current = true;
+        queueMicrotask(flushLogQueue);
+      }
+    },
+    [flushLogQueue]
+  );
 
   // 加载配置
   useEffect(() => {
     // 监听日志更新（支持按 id 更新草稿下载状态）
     electronService.onFileOperationLog((logEntry) => {
-      const { action, ...entry } = logEntry;
-      setLogs((prevLogs) => {
-        if (action === "update" && entry.id) {
-          const index = prevLogs.findIndex((log) => log.id === entry.id);
-          if (index >= 0) {
-            const next = [...prevLogs];
-            next[index] = { ...next[index], ...entry };
-            return next;
-          }
-        }
-        return [...prevLogs, entry];
-      });
+      enqueueLogEntry(logEntry);
     });
 
     return () => {
@@ -44,7 +60,7 @@ function MainPage() {
         console.error("取消订阅日志失败:", error);
       }
     };
-  }, []);
+  }, [enqueueLogEntry]);
 
   // 当日志更新时，将外层容器滚动到底部
   useEffect(() => {
