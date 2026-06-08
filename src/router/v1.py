@@ -375,15 +375,12 @@ def get_text_animations(gtar: GetTextAnimationsRequest) -> GetTextAnimationsResp
     获取文字出入场动画 (v1版本)
     """
 
-    # 调用service层处理业务逻辑
-    effects = service.get_text_animations(
-        mode=gtar.mode,
-        type=gtar.type
-    )
+    animations = service.get_text_animations(mode=gtar.mode)
 
-    # 直接返回对象数组，Pydantic会自动处理序列化
     return GetTextAnimationsResponse(
-        effects=effects
+        in_animations=animations["in"],
+        out_animations=animations["out"],
+        loop_animations=animations["loop"],
     )
 
 @router.post(path="/get_image_animations", response_model=GetImageAnimationsResponse)
