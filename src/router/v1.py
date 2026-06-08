@@ -393,14 +393,12 @@ def get_image_animations(giar: GetImageAnimationsRequest) -> GetImageAnimationsR
     """
 
     # 调用 service 层处理业务逻辑
-    effects = service.get_image_animations(
-        mode=giar.mode,
-        type=giar.type
-    )
+    animations = service.get_image_animations(mode=giar.mode)
 
-    # 直接返回对象数组，Pydantic 会自动处理序列化
     return GetImageAnimationsResponse(
-        effects=effects
+        in_animations=animations["in"],
+        out_animations=animations["out"],
+        loop_animations=animations["loop"],
     )
 
 @router.post(path="/get_filters", response_model=GetFiltersResponse)
