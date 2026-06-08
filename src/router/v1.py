@@ -375,13 +375,9 @@ def get_text_animations(gtar: GetTextAnimationsRequest) -> GetTextAnimationsResp
     获取文字出入场动画 (v1版本)
     """
 
-    animations = service.get_text_animations(mode=gtar.mode)
+    effects = service.get_text_animations(mode=gtar.mode, type=gtar.type)
 
-    return GetTextAnimationsResponse(
-        in_animations=animations["in"],
-        out_animations=animations["out"],
-        loop_animations=animations["loop"],
-    )
+    return GetTextAnimationsResponse(effects=effects)
 
 @router.post(path="/get_image_animations", response_model=GetImageAnimationsResponse)
 def get_image_animations(giar: GetImageAnimationsRequest) -> GetImageAnimationsResponse:
@@ -390,13 +386,9 @@ def get_image_animations(giar: GetImageAnimationsRequest) -> GetImageAnimationsR
     """
 
     # 调用 service 层处理业务逻辑
-    animations = service.get_image_animations(mode=giar.mode)
+    effects = service.get_image_animations(mode=giar.mode, type=giar.type)
 
-    return GetImageAnimationsResponse(
-        in_animations=animations["in"],
-        out_animations=animations["out"],
-        loop_animations=animations["loop"],
-    )
+    return GetImageAnimationsResponse(effects=effects)
 
 @router.post(path="/get_filters", response_model=GetFiltersResponse)
 def get_filters(gfr: GetFiltersRequest) -> GetFiltersResponse:

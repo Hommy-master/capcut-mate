@@ -1,13 +1,16 @@
 """
 获取文字出入场动画的数据模型定义
 """
-from typing import List, Optional
-from pydantic import BaseModel, Field, ConfigDict
+from typing import List, Optional, Literal
+from pydantic import BaseModel, Field
 
 
 class GetTextAnimationsRequest(BaseModel):
     """获取文字出入场动画的请求模型"""
     mode: Optional[int] = Field(default=0, description="动画模式：0=所有，1=VIP，2=免费")
+    type: Optional[Literal["in", "out", "loop"]] = Field(
+        default=None, description="动画类型：in=入场，out=出场，loop=循环；不传则返回全部"
+    )
 
 
 class TextAnimationItem(BaseModel):
@@ -26,19 +29,8 @@ class TextAnimationItem(BaseModel):
     panel: str = Field(default="", description="面板信息")
     path: str = Field(default="", description="路径信息")
     platform: str = Field(default="all", description="支持平台")
-    is_vip: bool = Field(default=False, description="是否为VIP动画")
 
 
 class GetTextAnimationsResponse(BaseModel):
     """获取文字出入场动画的响应模型"""
-    model_config = ConfigDict(populate_by_name=True)
-
-    in_animations: List[TextAnimationItem] = Field(
-        ..., alias="in", description="入场动画列表"
-    )
-    out_animations: List[TextAnimationItem] = Field(
-        ..., alias="out", description="出场动画列表"
-    )
-    loop_animations: List[TextAnimationItem] = Field(
-        ..., alias="loop", description="循环动画列表"
-    )
+    effects: List[TextAnimationItem] = Field(..., description="文字出入场动画对象数组")
