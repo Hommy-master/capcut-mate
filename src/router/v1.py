@@ -375,16 +375,9 @@ def get_text_animations(gtar: GetTextAnimationsRequest) -> GetTextAnimationsResp
     获取文字出入场动画 (v1版本)
     """
 
-    # 调用service层处理业务逻辑
-    effects = service.get_text_animations(
-        mode=gtar.mode,
-        type=gtar.type
-    )
+    effects = service.get_text_animations(mode=gtar.mode, type=gtar.type)
 
-    # 直接返回对象数组，Pydantic会自动处理序列化
-    return GetTextAnimationsResponse(
-        effects=effects
-    )
+    return GetTextAnimationsResponse(effects=effects)
 
 @router.post(path="/get_image_animations", response_model=GetImageAnimationsResponse)
 def get_image_animations(giar: GetImageAnimationsRequest) -> GetImageAnimationsResponse:
@@ -393,15 +386,9 @@ def get_image_animations(giar: GetImageAnimationsRequest) -> GetImageAnimationsR
     """
 
     # 调用 service 层处理业务逻辑
-    effects = service.get_image_animations(
-        mode=giar.mode,
-        type=giar.type
-    )
+    effects = service.get_image_animations(mode=giar.mode, type=giar.type)
 
-    # 直接返回对象数组，Pydantic 会自动处理序列化
-    return GetImageAnimationsResponse(
-        effects=effects
-    )
+    return GetImageAnimationsResponse(effects=effects)
 
 @router.post(path="/get_filters", response_model=GetFiltersResponse)
 def get_filters(gfr: GetFiltersRequest) -> GetFiltersResponse:

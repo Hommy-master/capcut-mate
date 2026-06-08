@@ -1,14 +1,16 @@
 """
 获取图片出入场动画的数据模型定义
 """
-from typing import Literal, List, Dict, Any
+from typing import List, Optional, Literal
 from pydantic import BaseModel, Field
 
 
 class GetImageAnimationsRequest(BaseModel):
     """获取图片出入场动画的请求模型"""
-    mode: int = Field(default=0, description="动画模式：0=所有，1=VIP，2=免费")
-    type: Literal["in", "out", "loop"] = Field(..., description="动画类型：in=入场，out=出场，loop=循环")
+    mode: Optional[int] = Field(default=0, description="动画模式：0=所有，1=VIP，2=免费")
+    type: Optional[Literal["in", "out", "loop"]] = Field(
+        default=None, description="动画类型：in=入场，out=出场，loop=循环；不传则返回全部"
+    )
 
 
 class ImageAnimationItem(BaseModel):
@@ -22,7 +24,7 @@ class ImageAnimationItem(BaseModel):
     name: str = Field(..., description="动画名称")
     request_id: str = Field(default="", description="请求ID")
     start: int = Field(default=0, description="动画开始时间")
-    icon_url: str = Field(..., description="动画图标URL")
+    icon_url: str = Field(default="", description="动画图标URL")
     material_type: str = Field(default="sticker", description="素材类型")
     panel: str = Field(default="", description="面板信息")
     path: str = Field(default="", description="路径信息")

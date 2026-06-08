@@ -1,15 +1,14 @@
 services:
   capcut-mate:
     image: gogoshine/capcut-mate:latest
-    #image: gogoshine/capcut-mate:sha-190a61f
     platform: linux/amd64
     ports:
       - "30000:30000"
     volumes:
-      - ./output:/app/output  # 挂载配置文件目录
+      - ./html/output:/app/output
       - ./logs:/app/logs
-      - /etc/localtime:/etc/localtime:ro  # 挂载主机时区
-      - /etc/timezone:/etc/timezone:ro    # 挂载时区名称（可选）
+      # - /etc/localtime:/etc/localtime:ro
+      # - /etc/timezone:/etc/timezone:ro
     environment:
       # 草稿下载URL
       - DRAFT_URL=http://127.0.0.1/openapi/capcut-mate/v1/get_draft
@@ -21,30 +20,31 @@ services:
       - DOWNLOAD_FILE_SIZE_LIMIT=209715200
     networks:
       - capcut-mate-network
-    mem_limit: 2G     # 内存限制
-    memswap_limit: 2G # 总内存（物理内存 + Swap）限制
-    cpus: '2'       # CPU使用率限制为150%，即容器最多可以使用1.5个完整的CPU核心
-    oom_score_adj: -500  # 调整 OOM 杀手优先级
-    restart: unless-stopped  # 除非手动停止，否则总是重启容器
-    container_name: capcut-mate # 这里指容器名称，非必需，不指定时，名称为：<项目名称>-<服务名称>-<序号>
-    #entrypoint: ["/bin/sh", "-c", "sleep 10000"]
+    mem_limit: 1G
+    memswap_limit: 1G
+    cpus: '1' 
+    oom_score_adj: -500
+    restart: unless-stopped
+    container_name: capcut-mate
   
-  linux: # nginx服务器
-    image: gogoshine/linux:latest
+  nginx: # nginx服务器
+    image: gogoshine/nginx:latest
     platform: linux/amd64
     ports:
       - "80:80"
+    environment:
+      - PROXY_PASS_URL_1=http://capcut-mate:30000/openapi/capcut-mate/
+      - PROXY_LOCATION_1=/openapi/capcut-mate/
     volumes:
-      - ./output:/app/www/output
+      - ./html:/usr/share/nginx/html
     networks:
       - capcut-mate-network
-    mem_limit: 2G     # 内存限制
-    memswap_limit: 2G # 总内存（物理内存 + Swap）限制
-    cpus: '2.0'       # CPU使用率限制为150%，即容器最多可以使用1.5个完整的CPU核心
-    oom_score_adj: -500  # 调整 OOM 杀手优先级
-    restart: unless-stopped  # 除非手动停止，否则总是重启容器
-    container_name: linux # 这里指容器名称，非必需，不指定时，名称为：<项目名称>-<服务名称>-<序号>
-    #entrypoint: ["/bin/sh", "-c", "sleep 10000"]
+    mem_limit: 1G
+    memswap_limit: 1G
+    cpus: '1.0'
+    oom_score_adj: -500
+    restart: unless-stopped
+    container_name: nginx
 
 networks:
   capcut-mate-network:

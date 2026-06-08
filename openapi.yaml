@@ -131,20 +131,107 @@ components:
             value:
                 ReqExample:
                     alpha: 1
-                    draft_url: https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=202511262111301f5fceff
+                    draft_url: https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=20260605205335287005be
                     scale_x: 1
                     scale_y: 1
                     scene_timelines: []
-                    transform_x: 0
-                    transform_y: 0
-                    video_infos: '[{"video_url": "https://assets.jcaigc.cn/min.mp4","width": 1920,"height": 1080,"start": 0,"end": 3000000,"duration": 6000000,"mask": "","transition": "","transition_duration": 500000,"volume": 1}]'
+                    video_infos: '[{"video_url": "https://rh-images.xiaoyaoyou.com/68c43b8dd6479a18e2509c5422c191e8/output/r-wan22-i2v-aijuxi_00003_p83_pcrns_1780663190.mp4", "start": 0, "end": 4080000, "duration": 4080000, "transition": "叠化", "transition_duration": 500000, "volume": 6.0}, {"video_url": "https://rh-images.xiaoyaoyou.com/68c43b8dd6479a18e2509c5422c191e8/output/r-wan22-i2v-aijuxi_00001_p83_cmrnj_1780663233.mp4", "start": 4080000, "end": 9120000, "duration": 5040000, "transition": "叠化", "transition_duration": 500000, "volume": 6.0}, {"video_url": "https://rh-images.xiaoyaoyou.com/3ba55b2db6981a64324aa1050fae37ce/output/r-wan22-i2v-aijuxi_00001_p83_xgpct_1780663283.mp4", "start": 9120000, "end": 14160000, "duration": 5040000, "transition": "叠化", "transition_duration": 500000, "volume": 6.0}, {"video_url": "https://rh-images.xiaoyaoyou.com/3ba55b2db6981a64324aa1050fae37ce/output/r-wan22-i2v-aijuxi_00001_p85_ntjip_1780663233.mp4", "start": 14160000, "end": 19152000, "duration": 4992000, "transition": "叠化", "transition_duration": 500000, "volume": 6.0}, {"video_url": "https://rh-images.xiaoyaoyou.com/3ba55b2db6981a64324aa1050fae37ce/output/r-wan22-i2v-aijuxi_00001_p82_iiltp_1780663258.mp4", "start": 19152000, "end": 22680000, "duration": 3528000, "transition": "叠化", "transition_duration": 500000, "volume": 6.0}, {"video_url": "https://rh-images.xiaoyaoyou.com/35a6ca62e6ebd5e6f844c21d00f0ea41/output/r-wan22-i2v-aijuxi_00001_p80_pstek_1780663250.mp4", "start": 22680000, "end": 26520000, "duration": 3840000, "transition": "叠化", "transition_duration": 500000, "volume": 6.0}, {"video_url": "https://rh-images.xiaoyaoyou.com/35a6ca62e6ebd5e6f844c21d00f0ea41/output/r-wan22-i2v-aijuxi_00001_p80_flazh_1780663185.mp4", "start": 26520000, "end": 30504000, "duration": 3984000, "transition": "叠化", "transition_duration": 500000, "volume": 6.0}, {"video_url": "https://rh-images.xiaoyaoyou.com/35a6ca62e6ebd5e6f844c21d00f0ea41/output/r-wan22-i2v-aijuxi_00001_p84_prisx_1780663225.mp4", "start": 30504000, "end": 34944000, "duration": 4440000, "transition": "叠化", "transition_duration": 500000, "volume": 6.0}, {"video_url": "https://rh-images.xiaoyaoyou.com/b29d00c791278b340074ea8f2e764389/output/r-wan22-i2v-aijuxi_00001_p84_lfbhp_1780663212.mp4", "start": 34944000, "end": 38064000, "duration": 3120000, "transition": "叠化", "transition_duration": 500000, "volume": 6.0}, {"video_url": "https://rh-images.xiaoyaoyou.com/b29d00c791278b340074ea8f2e764389/output/r-wan22-i2v-aijuxi_00001_p80_kpmsg_1780663219.mp4", "start": 38064000, "end": 41376000, "duration": 3312000, "transition": "叠化", "transition_duration": 500000, "volume": 6.0}, {"video_url": "https://rh-images.xiaoyaoyou.com/b29d00c791278b340074ea8f2e764389/output/r-wan22-i2v-aijuxi_00001_p84_pjmzt_1780663221.mp4", "start": 41376000, "end": 45504000, "duration": 4128000, "transition": "叠化", "transition_duration": 500000, "volume": 6.0}, {"video_url": "https://rh-images.xiaoyaoyou.com/a9aaab195248b62c2329c4d3e7b852ee/output/r-wan22-i2v-aijuxi_00001_p86_fmhgv_1780663288.mp4", "start": 45504000, "end": 49848000, "duration": 4344000, "transition": "叠化", "transition_duration": 500000, "volume": 6.0}, {"video_url": "https://rh-images.xiaoyaoyou.com/a9aaab195248b62c2329c4d3e7b852ee/output/r-wan22-i2v-aijuxi_00001_p83_ljite_1780663243.mp4", "start": 49848000, "end": 53976000, "duration": 4128000, "transition": "叠化", "transition_duration": 500000, "volume": 6.0}, {"video_url": "https://rh-images.xiaoyaoyou.com/a9aaab195248b62c2329c4d3e7b852ee/output/r-wan22-i2v-aijuxi_00001_p81_bbhap_1780663300.mp4", "start": 53976000, "end": 58032000, "duration": 4056000, "transition": "叠化", "transition_duration": 500000, "volume": 6.0}, {"video_url": "https://rh-images.xiaoyaoyou.com/b762f3c75fa4fdcce299da39fc23c3a5/output/r-wan22-i2v-aijuxi_00001_p87_ipleb_1780663225.mp4", "start": 58032000, "end": 61824000, "duration": 3792000, "transition": "叠化", "transition_duration": 500000, "volume": 6.0}]'
                 RespExample:
-                    draft_url: https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=202511262111301f5fceff
+                    draft_url: https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=20260605205335287005be
                     segment_ids:
-                        - 20285056b4194e2c8944b587ceb592a7
-                    track_id: 720274203a11442280b64570caf362c4
+                        - 6fcd1c8e0e9d4024a962100941d1361c
+                        - 69db3b929a4d4c98ba66c72d9353a168
+                        - 2b7ac684465240928bd081a47a56530e
+                        - 6644ed40be784d8885a811f6a39f4c6e
+                        - a8a49838a2974553ac84a0e105721160
+                        - c65348ec8727480f99d78e1207f62be5
+                        - 9dc1809502684734b934f043e30d2a21
+                        - 60467b24b92b46d2a58e709e9aa47a38
+                        - 95783464611f419082fe201a85b959ad
+                        - dcd221a3ae024bda9a7c9e9445837ef3
+                        - f5586dba4b004afe9963f97f17e1c0ff
+                        - bb0a9576d5284e42ad2007d678c0ed8b
+                        - bbfc608e25374e1abc4bdfccd8575252
+                        - 9a991aebc28047d4895c4128d68e98d4
+                        - ba3d59983e8f48eeb1c1a8e2a57d2e4a
+                    segment_infos:
+                        - end: 4080000
+                          id: 6fcd1c8e0e9d4024a962100941d1361c
+                          start: 0
+                        - end: 9120000
+                          id: 69db3b929a4d4c98ba66c72d9353a168
+                          start: 4080000
+                        - end: 14160000
+                          id: 2b7ac684465240928bd081a47a56530e
+                          start: 9120000
+                        - end: 19152000
+                          id: 6644ed40be784d8885a811f6a39f4c6e
+                          start: 14160000
+                        - end: 22680000
+                          id: a8a49838a2974553ac84a0e105721160
+                          start: 19152000
+                        - end: 26520000
+                          id: c65348ec8727480f99d78e1207f62be5
+                          start: 22680000
+                        - end: 30504000
+                          id: 9dc1809502684734b934f043e30d2a21
+                          start: 26520000
+                        - end: 34944000
+                          id: 60467b24b92b46d2a58e709e9aa47a38
+                          start: 30504000
+                        - end: 38064000
+                          id: 95783464611f419082fe201a85b959ad
+                          start: 34944000
+                        - end: 41376000
+                          id: dcd221a3ae024bda9a7c9e9445837ef3
+                          start: 38064000
+                        - end: 45504000
+                          id: f5586dba4b004afe9963f97f17e1c0ff
+                          start: 41376000
+                        - end: 49848000
+                          id: bb0a9576d5284e42ad2007d678c0ed8b
+                          start: 45504000
+                        - end: 53976000
+                          id: bbfc608e25374e1abc4bdfccd8575252
+                          start: 49848000
+                        - end: 58032000
+                          id: 9a991aebc28047d4895c4128d68e98d4
+                          start: 53976000
+                        - end: 61824000
+                          id: ba3d59983e8f48eeb1c1a8e2a57d2e4a
+                          start: 58032000
+                    track_id: 31884bd0fec349b29c85779b1353e42c
                     video_ids:
-                        - 9b9f47126f384a6f95434cdc3fed5b7c
+                        - 5eaf864064ae4a40bb946f186d3f1189
+                        - 79522939444e4d759d34147030c62c67
+                        - 3d348671f87c417d9ae7418ee39406fd
+                        - 24f5c02c48b5411e99e6172e4d27cce3
+                        - decb1da82f50433abb5a79f2c56e100f
+                        - 329d78a4da6843c1bdbf711eff5be316
+                        - 8635608d3fbd43a78a0e5941732eea21
+                        - ad4e4e3d55984fda9542595225090e5a
+                        - 765bf39c7c8548859e8e244cbd95d2eb
+                        - a6531c36a9504fdd98e015841c2a7082
+                        - 6fff7287912a403a873168ba8d1dee0d
+                        - 723de7b372a14cc79fba4424a467130e
+                        - 9a7cfce408c0425b8f6edc51d159c0e9
+                        - 239171003bf24226ad4a781a94888051
+                        - 9335b98b8f854ca99ae83112a01d46a5
+                        - 477e681c07b24882873df04f1a7a678e
+                        - 8d35314812604255820f00539c11a3a4
+                        - 78e956c1d589435f917945db167942db
+                        - b9b7db78d7eb431bb2410459b26cb7e3
+                        - 4ad786f5a5a6424486471e5408afb55a
+                        - aa97afa563fb4942a6336263973bea18
+                        - 28d05d2a624e43328f0262e857f661e5
+                        - 492296a47abf4398a0a39c525362c2bb
+                        - 091436e1db27449c87028fc825c4fe34
+                        - 432ae654117e462f91eb35201288d3ff
+                        - 67df59f29d9d405cbde5cad89aad8c75
+                        - 4180c300b54f4af68f807763a22ca1b5
+                        - 439e9fd8e03e450d8a2f7514031badbb
+                        - 705ad53005fe4c6fad0db54741fcca07
+                        - 4d65b41c9cef4b7eab25870474c8cdb9
         audio_infos:
             value:
                 ReqExample:
@@ -12684,13 +12771,11 @@ paths:
                                         type: object
                                     type: array
                                 transform_x:
-                                    default: 0
                                     description: 剪映x位置
-                                    type: number
+                                    type: integer
                                 transform_y:
-                                    default: 0
                                     description: 剪映y位置
-                                    type: number
+                                    type: integer
                                 video_infos:
                                     description: '[ { "video_url": "https://example.com/video1.mp4", "duration": 12000000, // 视频时长，以秒*1000000为单位 "width": 1920, // 视频宽度 "height": 1080, // 视频高度 "start": 0, // 视频在时间轴上的开始时间 "end": 12000000 // 视频在时间轴上的结束时间 } ]'
                                     type: string
@@ -12715,6 +12800,17 @@ paths:
                                     segment_ids:
                                         items:
                                             type: string
+                                        type: array
+                                    segment_infos:
+                                        items:
+                                            properties:
+                                                end:
+                                                    type: number
+                                                id:
+                                                    type: string
+                                                start:
+                                                    type: number
+                                            type: object
                                         type: array
                                     track_id:
                                         type: string
@@ -12941,7 +13037,7 @@ paths:
                                     type: integer
                                 width:
                                     default: 1080
-                                    description: 高
+                                    description: 宽
                                     type: integer
                             type: object
             responses:
