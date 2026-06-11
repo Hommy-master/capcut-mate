@@ -1,3 +1,16 @@
+# Copyright 2026 Hommy <taohongmin@sina.cn>.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 from src.utils.logger import logger
 from src.pyJianYingDraft import ScriptFile, trange, AudioSceneEffectType, VideoSceneEffectType, VideoCharacterEffectType
 import src.pyJianYingDraft as draft
@@ -531,6 +544,24 @@ def validate_numeric_ranges(processed_item: Dict[str, Any], index: int):
     if processed_item["volume"] < 0.0 or processed_item["volume"] > 2.0:
         logger.warning(f"Volume value {processed_item['volume']} out of range [0.0, 2.0], using default 1.0")
         processed_item["volume"] = 1.0
+
+    if not isinstance(processed_item["start"], (int, float)) or processed_item["start"] < 0:
+        logger.error(f"the {index}th item has invalid start time: {processed_item['start']}")
+        raise CustomException(CustomError.INVALID_AUDIO_INFO, f"the {index}th item has invalid start time")
+
+    if not isinstance(processed_item["end"], (int, float)) or processed_item["end"] <= processed_item["start"]:
+        logger.error(f"the {index}th item has invalid end time: {processed_item['end']}")
+        raise CustomException(CustomError.INVALID_AUDIO_INFO, f"the {index}th item has invalid end time")
+
+    # 将时间转换为整数（微秒），兼容 start/end 为小数的情况
+    processed_item["start"] = int(processed_item["start"])
+    processed_item["end"] = int(processed_item["end"])
+    if processed_item["end"] <= processed_item["start"]:
+        logger.error(
+            f"the {index}th item has invalid end time after int conversion: "
+            f"start={processed_item['start']}, end={processed_item['end']}"
+        )
+        raise CustomException(CustomError.INVALID_AUDIO_INFO, f"the {index}th item has invalid end time")
     
     # 如果提供了 duration 且小于等于 0，则报错
     if processed_item["duration"] is not None and processed_item["duration"] <= 0:

@@ -1,3 +1,16 @@
+# Copyright 2026 Hommy <taohongmin@sina.cn>.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 from src.pyJianYingDraft.video_segment import VideoSegment
 
 import asyncio
@@ -491,17 +504,34 @@ def parse_video_data(json_str: str) -> List[Dict[str, Any]]:
         
         if missing_fields:
             raise CustomException(CustomError.INVALID_VIDEO_INFO, f"the {i}th item is missing required fields: {', '.join(missing_fields)}")
-        
-        # 如果没有提供duration，则计算为end-start
-        duration = item.get("duration", item["end"] - item["start"])
+
+        if not isinstance(item["start"], (int, float)) or item["start"] < 0:
+            raise CustomException(CustomError.INVALID_VIDEO_INFO, f"the {i}th item has invalid start time")
+
+        if not isinstance(item["end"], (int, float)) or item["end"] <= item["start"]:
+            raise CustomException(CustomError.INVALID_VIDEO_INFO, f"the {i}th item has invalid end time")
+
+        # 将时间转换为整数（微秒），兼容 start/end 为小数的情况
+        start = int(item["start"])
+        end = int(item["end"])
+        if end <= start:
+            raise CustomException(CustomError.INVALID_VIDEO_INFO, f"the {i}th item has invalid end time")
+
+        if "duration" in item:
+            duration = item["duration"]
+            if not isinstance(duration, (int, float)) or duration <= 0:
+                raise CustomException(CustomError.INVALID_VIDEO_INFO, f"the {i}th item has invalid duration")
+            duration = int(duration)
+        else:
+            duration = end - start
         
         # 创建处理后的对象，设置默认值
         processed_item = {
             "video_url": item["video_url"],
             "width": item.get("width"),  # 可选参数
             "height": item.get("height"),  # 可选参数
-            "start": item["start"],
-            "end": item["end"],
+            "start": start,
+            "end": end,
             "duration": duration,
             "mask": item.get("mask", None),  # 默认值 None
             "transition": item.get("transition", None),  # 默认值 None
