@@ -1,3 +1,16 @@
+# Copyright 2026 Hommy <taohongmin@sina.cn>.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 from src.utils.logger import logger
 from src.pyJianYingDraft import ScriptFile, trange
 import src.pyJianYingDraft as draft
@@ -562,8 +575,8 @@ def parse_image_data(json_str: str) -> List[Dict[str, Any]]:
             "image_url": item["image_url"],
             "width": width,
             "height": height,
-            "start": int(item["start"]),
-            "end": int(item["end"]),
+            "start": item["start"],
+            "end": item["end"],
             "in_animation": item.get("in_animation", None),  # 默认无入场动画
             "out_animation": item.get("out_animation", None),  # 默认无出场动画
             "loop_animation": item.get("loop_animation", None),  # 默认无循环动画
@@ -582,10 +595,24 @@ def parse_image_data(json_str: str) -> List[Dict[str, Any]]:
                 f"Invalid image dimensions: width={processed_item['width']}, height={processed_item['height']}"
             )
             raise CustomException(CustomError.INVALID_IMAGE_INFO, f"the {i}th item has invalid image dimensions")
-        
-        if processed_item["start"] < 0 or processed_item["end"] <= processed_item["start"]:
-            logger.error(f"Invalid time range: start={processed_item['start']}, end={processed_item['end']}")
-            raise CustomException(CustomError.INVALID_IMAGE_INFO, f"the {i}th item has invalid time range")
+
+        if not isinstance(processed_item["start"], (int, float)) or processed_item["start"] < 0:
+            logger.error(f"the {i}th item has invalid start time: {processed_item['start']}")
+            raise CustomException(CustomError.INVALID_IMAGE_INFO, f"the {i}th item has invalid start time")
+
+        if not isinstance(processed_item["end"], (int, float)) or processed_item["end"] <= processed_item["start"]:
+            logger.error(f"the {i}th item has invalid end time: {processed_item['end']}")
+            raise CustomException(CustomError.INVALID_IMAGE_INFO, f"the {i}th item has invalid end time")
+
+        # 将时间转换为整数（微秒），兼容 start/end 为小数的情况
+        processed_item["start"] = int(processed_item["start"])
+        processed_item["end"] = int(processed_item["end"])
+        if processed_item["end"] <= processed_item["start"]:
+            logger.error(
+                f"the {i}th item has invalid end time after int conversion: "
+                f"start={processed_item['start']}, end={processed_item['end']}"
+            )
+            raise CustomException(CustomError.INVALID_IMAGE_INFO, f"the {i}th item has invalid end time")
         
         # 验证转场时长范围
         if processed_item["transition_duration"] < 100000 or processed_item["transition_duration"] > 2500000:
