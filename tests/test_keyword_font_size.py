@@ -85,9 +85,32 @@ def test_keyword_font_size_default():
     print("✓ keyword_font_size parameter default value test passed")
 
 
+def test_caption_float_start_end_conversion():
+    """测试 start/end 为小数时自动转换为整数"""
+    print("Testing float start/end conversion...")
+    
+    test_captions = [
+        {
+            "start": 0.5,
+            "end": 10000000.9,
+            "text": "小数时间字幕"
+        }
+    ]
+    
+    parsed_captions = parse_captions_data(json.dumps(test_captions))
+    
+    assert len(parsed_captions) == 1
+    assert parsed_captions[0]["start"] == 0
+    assert parsed_captions[0]["end"] == 10000000
+    assert isinstance(parsed_captions[0]["start"], int)
+    assert isinstance(parsed_captions[0]["end"], int)
+    print("✓ float start/end conversion test passed")
+
+
 if __name__ == "__main__":
     print("Running keyword_font_size tests...")
     test_keyword_font_size_parsing()
     test_keyword_font_size_application()
     test_keyword_font_size_default()
+    test_caption_float_start_end_conversion()
     print("All tests passed!")
