@@ -34,6 +34,12 @@ DRAFT_DOWNLOAD_MAX_CONCURRENT = 3
 # gen_video：上传到对象存储的最大并发，超出部分在 _upload_executor 队列中排队
 OBJECT_STORAGE_UPLOAD_MAX_CONCURRENT = 2
 
+# 剪映 original_path 为 None 导致 shutil.move 失败时，仅重试导出（复用已下载草稿）的次数
+EXPORT_RENAME_SRC_NONE_MAX_RETRIES = 2
+EXPORT_RENAME_SRC_NONE_ERROR_MARKER = (
+    "rename: src should be string, bytes or os.PathLike, not NoneType"
+)
+
 # 如果是Linux系统，则不导入uiautomation，并避免执行相关代码
 try:
     from uiautomation import UIAutomationInitializerInThread  # type: ignore
@@ -459,9 +465,30 @@ class VideoGenTaskManager:
             )
             return f"导出草稿失败: {exc}"
 
+    @staticmethod
+    def _is_export_rename_src_none_error(error_message: str) -> bool:
+        """是否为 original_path 为 None 触发的 shutil.move/rename 失败。"""
+        return EXPORT_RENAME_SRC_NONE_ERROR_MARKER in error_message
+
+    def _prepare_export_retry_outfile(self, task: VideoGenTask) -> None:
+        """导出重试前生成新的 outfile，并清理上一次可能残留的本地 mp4。"""
+        old_outfile = task.outfile
+        task.outfile = os.path.join(config.DRAFT_DIR, f"{helper.gen_unique_id()}.mp4")
+        if old_outfile and os.path.exists(old_outfile):
+            try:
+                os.remove(old_outfile)
+            except OSError as exc:
+                logger.warning(
+                    "Failed to remove partial export file before retry: path=%s error=%s",
+                    old_outfile,
+                    exc,
+                )
+
     def _phase_export_only(self, task: VideoGenTask) -> str:
         """
         仅执行剪映导出（在 export_video_lock 内，全局串行）。
+        若因 original_path 为 None 导致 rename 失败，最多额外重试
+        EXPORT_RENAME_SRC_NONE_MAX_RETRIES 次，复用已下载草稿、不重新下载。
 
         Returns:
             错误信息，成功时返回空字符串。
@@ -476,15 +503,38 @@ class VideoGenTaskManager:
             task.draft_id,
         )
         try:
-            try:
-                if not self._export_video(task, task.outfile):
-                    return "导出草稿失败"
-                return ""
-            except Exception as exc:
-                logger.exception(
-                    f"Export draft failed: draft_id={task.draft_id}, error={exc}"
-                )
-                return f"导出草稿失败: {exc}"
+            max_attempts = 1 + EXPORT_RENAME_SRC_NONE_MAX_RETRIES
+            last_error = ""
+
+            for attempt in range(1, max_attempts + 1):
+                try:
+                    if not self._export_video(task, task.outfile):
+                        return "导出草稿失败"
+                    return ""
+                except Exception as exc:
+                    last_error = f"导出草稿失败: {exc}"
+                    logger.exception(
+                        "Export draft failed: draft_id=%s attempt=%d/%d error=%s",
+                        task.draft_id,
+                        attempt,
+                        max_attempts,
+                        exc,
+                    )
+                    if not self._is_export_rename_src_none_error(last_error):
+                        return last_error
+                    if attempt >= max_attempts:
+                        return last_error
+
+                    logger.warning(
+                        "Export rename-src-none error, retrying export without "
+                        "re-downloading draft: draft_id=%s retry=%d/%d",
+                        task.draft_id,
+                        attempt,
+                        EXPORT_RENAME_SRC_NONE_MAX_RETRIES,
+                    )
+                    self._prepare_export_retry_outfile(task)
+
+            return last_error
         finally:
             with self._export_metrics_lock:
                 self._export_phase_active -= 1
