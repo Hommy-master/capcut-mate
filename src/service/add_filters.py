@@ -1,3 +1,16 @@
+# Copyright 2024 Hommy <taohongmin@sina.cn>.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 import json
 from typing import List, Dict, Any, Tuple, Optional
 import asyncio
@@ -317,9 +330,15 @@ def parse_filters_data(json_str: str) -> List[Dict[str, Any]]:
             logger.error(f"the {i}th item has invalid intensity: {processed_item['intensity']}")
             raise CustomException(CustomError.INVALID_FILTER_INFO, f"the {i}th item has invalid intensity (must be 0-100)")
         
-        # 将时间转换为整数（微秒）
+        # 将时间转换为整数（微秒），兼容 start/end 为小数的情况
         processed_item["start"] = int(processed_item["start"])
         processed_item["end"] = int(processed_item["end"])
+        if processed_item["end"] <= processed_item["start"]:
+            logger.error(
+                f"the {i}th item has invalid end time after int conversion: "
+                f"start={processed_item['start']}, end={processed_item['end']}"
+            )
+            raise CustomException(CustomError.INVALID_FILTER_INFO, f"the {i}th item has invalid end time")
         processed_item["intensity"] = float(processed_item["intensity"])
         
         result.append(processed_item)
