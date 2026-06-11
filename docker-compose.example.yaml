@@ -18,6 +18,8 @@ services:
       - TIP_URL=https://docs.jcaigc.cn
       # 文件下载大小限制（字节），默认200MB（209715200）
       - DOWNLOAD_FILE_SIZE_LIMIT=209715200
+      # 草稿清理策略（本模块内定义；保留数量可由环境变量 DRAFT_CLEANUP_MAX_DRAFT_COUNT 覆盖，默认 1000）
+      - DRAFT_CLEANUP_MAX_DRAFT_COUNT=6000
     mem_limit: 2G     # 内存限制
     memswap_limit: 2G # 总内存（物理内存 + Swap）限制
     cpus: '2'       # CPU使用率限制为150%，即容器最多可以使用1.5个完整的CPU核心
