@@ -8,10 +8,11 @@ import threading
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from enum import Enum
-from typing import Dict, Optional, Tuple, Any
-from dataclasses import dataclass
+from typing import Dict, List, Optional, Tuple, Any
+from dataclasses import dataclass, field
 from src.utils.logger import logger
 from src.utils import helper
+from src.utils.deferred_delete import enqueue_path, enqueue_paths
 from src.utils.video_task_store import (
     get_completed_by_draft_id,
     prune_if_needed,
@@ -20,7 +21,6 @@ from src.utils.video_task_store import (
 import src.pyJianYingDraft as draft
 import config
 import os
-import shutil
 import sys
 import subprocess
 import json
@@ -74,6 +74,7 @@ class VideoGenTask:
     progress: int = 0  # 进度百分比 0-100
     api_key: Optional[str] = None  # 存储API密钥用于计费
     outfile: str = ""  # 导出目标路径，在下载阶段生成
+    export_outfile_history: List[str] = field(default_factory=list)  # 含重试产生的历史路径
 
 
 class VideoGenTaskManager:
@@ -306,7 +307,7 @@ class VideoGenTaskManager:
             task.error_message = str(e)
             task.progress = 0
             logger.exception(f"Upload/finalize exception: {task.draft_url}, error: {e}")
-            self._cleanup_files(getattr(task, "outfile", "") or "", task.draft_id)
+            self._cleanup_files(task)
         finally:
             self._persist_terminal_task(task)
 
@@ -334,7 +335,7 @@ class VideoGenTaskManager:
                 task.error_message = prep_error
                 task.progress = 0
                 logger.error(f"Task failed: {task.draft_url}, error: {prep_error}")
-                self._cleanup_files(task.outfile, task.draft_id)
+                self._cleanup_files(task)
                 self._persist_terminal_task(task)
                 return
 
@@ -348,7 +349,7 @@ class VideoGenTaskManager:
                 task.error_message = export_error
                 task.progress = 0
                 logger.error(f"Task failed: {task.draft_url}, error: {export_error}")
-                self._cleanup_files(task.outfile, task.draft_id)
+                self._cleanup_files(task)
                 self._persist_terminal_task(task)
                 return
 
@@ -360,7 +361,7 @@ class VideoGenTaskManager:
             task.error_message = str(e)
             task.progress = 0
             logger.exception(f"Task exception: {task.draft_url}, error: {e}")
-            self._cleanup_files(getattr(task, "outfile", "") or "", task.draft_id)
+            self._cleanup_files(task)
             self._persist_terminal_task(task)
     
     def _check_draft_duration(self, task: VideoGenTask) -> bool:
@@ -439,7 +440,7 @@ class VideoGenTaskManager:
         """
         try:
             task.progress = 20
-            task.outfile = os.path.join(config.DRAFT_DIR, f"{helper.gen_unique_id()}.mp4")
+            self._assign_export_outfile(task)
 
             if not sys.platform.startswith("win"):
                 return "视频生成功能仅在Windows系统上可用"
@@ -470,19 +471,21 @@ class VideoGenTaskManager:
         """是否为 original_path 为 None 触发的 shutil.move/rename 失败。"""
         return EXPORT_RENAME_SRC_NONE_ERROR_MARKER in error_message
 
+    @staticmethod
+    def _assign_export_outfile(task: VideoGenTask) -> str:
+        """分配新的导出 mp4 路径并记入历史，便于上传后统一清理。"""
+        path = os.path.join(config.DRAFT_DIR, f"{helper.gen_unique_id()}.mp4")
+        task.outfile = path
+        if path not in task.export_outfile_history:
+            task.export_outfile_history.append(path)
+        return path
+
     def _prepare_export_retry_outfile(self, task: VideoGenTask) -> None:
-        """导出重试前生成新的 outfile，并清理上一次可能残留的本地 mp4。"""
+        """导出重试前生成新的 outfile，并将旧 mp4 加入延迟删除队列。"""
         old_outfile = task.outfile
-        task.outfile = os.path.join(config.DRAFT_DIR, f"{helper.gen_unique_id()}.mp4")
-        if old_outfile and os.path.exists(old_outfile):
-            try:
-                os.remove(old_outfile)
-            except OSError as exc:
-                logger.warning(
-                    "Failed to remove partial export file before retry: path=%s error=%s",
-                    old_outfile,
-                    exc,
-                )
+        self._assign_export_outfile(task)
+        if old_outfile:
+            enqueue_path(old_outfile, is_dir=False)
 
     def _phase_export_only(self, task: VideoGenTask) -> str:
         """
@@ -561,7 +564,7 @@ class VideoGenTaskManager:
             )
             return "", f"导出草稿失败: {exc}"
         finally:
-            self._cleanup_files(task.outfile, task.draft_id)
+            self._cleanup_files(task)
     
     def _download_draft(self, task: VideoGenTask) -> bool:
         """
@@ -720,27 +723,35 @@ class VideoGenTaskManager:
             except Exception as charge_error:
                 logger.error(f"Error calculating or charging for video duration: {charge_error}")
     
-    def _cleanup_files(self, outfile: str, draft_id: str) -> None:
+    @staticmethod
+    def _collect_export_outfile_paths(task: VideoGenTask) -> List[str]:
+        """汇总本任务关联的全部本地导出 mp4 路径（含重试历史）。"""
+        paths: List[str] = []
+        for path in [*task.export_outfile_history, task.outfile]:
+            if path and path not in paths:
+                paths.append(path)
+        return paths
+
+    def _cleanup_files(self, task: VideoGenTask) -> None:
         """
-        清理临时文件
-        
-        Args:
-            outfile: 输出文件路径
-            draft_id: 草稿ID
+        将任务产生的临时文件加入延迟删除队列，由后台定时任务无限重试删除。
         """
-        try:
-            # 清理本地视频文件
-            if os.path.exists(outfile):
-                os.remove(outfile)
-                logger.info(f"Cleaned up local video file: {outfile}")
-            
-            # 清理下载的草稿文件
-            draft_path = os.path.join(config.DRAFT_SAVE_PATH, draft_id)
-            if os.path.exists(draft_path):
-                shutil.rmtree(draft_path)
-                logger.info(f"Cleaned up draft directory: {draft_path}")
-        except Exception as cleanup_error:
-            logger.warning(f"Failed to clean up files: {cleanup_error}")
+        mp4_paths = self._collect_export_outfile_paths(task)
+        if mp4_paths:
+            enqueue_paths(mp4_paths, is_dir=False)
+            logger.info(
+                "Enqueued export mp4 for deferred delete: draft_id=%s count=%s",
+                task.draft_id,
+                len(mp4_paths),
+            )
+
+        draft_path = os.path.join(config.DRAFT_SAVE_PATH, task.draft_id)
+        enqueue_path(draft_path, is_dir=True)
+        logger.info(
+            "Enqueued draft directory for deferred delete: draft_id=%s path=%s",
+            task.draft_id,
+            draft_path,
+        )
     
     def _handle_result(self, upload_url: str, upload_failed: bool) -> Tuple[str, str]:
         """
