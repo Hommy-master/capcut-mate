@@ -366,23 +366,28 @@ class JianyingController:
             pass  # 某些情况下可能失败，但继续执行
         time.sleep(1)
 
-    def wait_for_export_completion(self, timeout: float) -> None:
+    def wait_for_export_completion(self, timeout: float) -> bool:
         """等待导出完成
         
         Args:
             timeout (float): 超时时间（秒）
+            
+        Returns:
+            bool: 是否已关闭导出成功弹窗（表示导出已完成）
             
         Raises:
             AutomationError: 导出超时
         """
         # 点击继续导出按钮次数
         continue_export_click_count = 0
+        export_succeeded = False
 
         # 等待导出完成
         st = time.time()
         while True:
             self.get_window()
-            if self.app_status != "pre_export": break
+            if self.app_status != "pre_export":
+                break
 
             if self._find_export_succeed_close_btn() is not None:
                 logger.info("Export finished, closing success dialog")
@@ -391,6 +396,7 @@ class JianyingController:
                     "wait_for_export_completion.close_success",
                 )
                 time.sleep(2)
+                export_succeeded = True
                 break
 
             if time.time() - st > timeout:
@@ -404,6 +410,7 @@ class JianyingController:
 
             time.sleep(1)
         time.sleep(2)
+        return export_succeeded
 
     def return_to_home(self) -> None:
         """回到目录页并稍作延迟"""
@@ -451,6 +458,7 @@ class JianyingController:
         self.switch_to_home()
 
         original_path = None
+        export_completed = False
 
         for i in range(16):
             # 确保窗口有焦点
@@ -459,6 +467,15 @@ class JianyingController:
                 logger.info("[%d]app is already in home page", i)
                 self.find_and_click_draft(draft_name, draft_dir=draft_dir)
             elif self.app_status == "edit":
+                if export_completed or (
+                    original_path and os.path.isfile(original_path)
+                ):
+                    logger.info(
+                        "[%d]export already finished, skip re-export and return home",
+                        i,
+                    )
+                    self.return_to_home()
+                    break
                 logger.info("[%d]app is already in edit page", i)
                 # 点击导出按钮进入导出界面
                 self.click_export_button()
@@ -477,9 +494,22 @@ class JianyingController:
                     self.get_window()
                 elif self.app_sub_status == "exporting":
                     logger.info("[%d]app is already in pre_export[exporting] page", i)
-                    self.wait_for_export_completion(timeout)                    
+                    if self.wait_for_export_completion(timeout):
+                        export_completed = True
+                        self.return_to_home()
+                        break
+                    self.get_window()
+                    if original_path and os.path.isfile(original_path):
+                        logger.info(
+                            "[%d]export output file exists after wait, treating as success",
+                            i,
+                        )
+                        export_completed = True
+                        self.return_to_home()
+                        break
                 elif self.app_sub_status == "export_succeed":
                     logger.info("[%d]app is already in pre_export[export_succeed] page", i)
+                    export_completed = True
                     self.return_to_home()
                     break
                 else:
