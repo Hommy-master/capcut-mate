@@ -348,7 +348,11 @@ class VideoGenTaskManager:
                 task.status = TaskStatus.FAILED
                 task.error_message = export_error
                 task.progress = 0
-                logger.error(f"Task failed: {task.draft_url}, error: {export_error}")
+                logger.error(
+                    "Task failed: draft_id=%s, error=%s",
+                    task.draft_id,
+                    export_error,
+                )
                 self._cleanup_files(task)
                 self._persist_terminal_task(task)
                 return
@@ -637,15 +641,20 @@ class VideoGenTaskManager:
                 draft_dir = os.path.join(config.DRAFT_SAVE_PATH, task.draft_id)
                 try:
                     ctrl.export_draft(task.draft_id, outfile, draft_dir=draft_dir)
-                except Exception:
+                except Exception as exc:
+                    logger.error(
+                        "Export draft failed: draft_id=%s, error=%r",
+                        task.draft_id,
+                        exc,
+                    )
                     recover_from_export_failure()
                     raise
 
             # 个别版本剪映不会抛异常，但文件未生成
             if not os.path.exists(outfile):
                 logger.error(
-                    "export finished but output file missing (check disk space / "
-                    "Jianying version): path=%s",
+                    "export finished but output file missing: draft_id=%s path=%s",
+                    task.draft_id,
                     outfile,
                 )
                 recover_from_export_failure()
