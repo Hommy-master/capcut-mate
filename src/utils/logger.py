@@ -2,6 +2,7 @@ from logging.config import dictConfig
 from typing import Optional
 import logging
 import os
+import sys
 import config
 
 
@@ -9,6 +10,31 @@ LOG_DIR = config.LOG_DIR
 LOG_FILE = os.path.join(LOG_DIR, "capcut-mate.log")
 LOG_MAX_BYTES = 20 * 1024 * 1024  # 20MB
 LOG_BACKUP_COUNT = 10
+
+_ENABLE_EXTENDED_FLAGS = 0x0080
+_ENABLE_QUICK_EDIT_MODE = 0x0040
+
+
+def disable_quick_edit() -> None:
+    """Turn off console QuickEdit mode on Windows so selecting text in cmd.exe
+    does not freeze the process while it writes to stdout."""
+    if sys.platform != "win32":
+        return
+
+    import ctypes
+
+    kernel32 = ctypes.windll.kernel32
+    handle = kernel32.GetStdHandle(-10)  # STD_INPUT_HANDLE
+    mode = ctypes.c_uint32()
+    if not kernel32.GetConsoleMode(handle, ctypes.byref(mode)):
+        return
+
+    mode.value &= ~_ENABLE_QUICK_EDIT_MODE
+    mode.value |= _ENABLE_EXTENDED_FLAGS
+    kernel32.SetConsoleMode(handle, mode.value)
+
+
+disable_quick_edit()
 
 os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
 
