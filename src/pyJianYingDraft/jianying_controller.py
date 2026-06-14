@@ -44,6 +44,9 @@ from src.utils.logger import logger
 # Windows UI Automation COM 错误（EVENT_E_ALL_SUBSCRIBERS_FAILED）
 COM_UIA_ERROR_HRESULT = -2147220991
 COM_UIA_ERROR_MARKER = "事件无法调用任何订户"
+# UIA 遍历 UI 树时偶发（E_FAIL / 未指定的错误）
+COM_E_FAIL_HRESULT = -2147467259
+COM_E_FAIL_MARKER = "未指定的错误"
 UIA_CLICK_MAX_RETRIES = 4
 UIA_CLICK_RETRY_INTERVAL = 1.0
 
@@ -51,12 +54,19 @@ UIA_CLICK_RETRY_INTERVAL = 1.0
 def is_com_uia_error(exc: BaseException) -> bool:
     if isinstance(exc, ctypes.COMError):
         args = getattr(exc, "args", ())
-        if args and args[0] == COM_UIA_ERROR_HRESULT:
+        if args and args[0] in (COM_UIA_ERROR_HRESULT, COM_E_FAIL_HRESULT):
             return True
-        if len(args) >= 2 and COM_UIA_ERROR_MARKER in str(args[1]):
-            return True
+        if len(args) >= 2:
+            msg = str(args[1])
+            if COM_UIA_ERROR_MARKER in msg or COM_E_FAIL_MARKER in msg:
+                return True
     text = str(exc)
-    return str(COM_UIA_ERROR_HRESULT) in text or COM_UIA_ERROR_MARKER in text
+    return (
+        str(COM_UIA_ERROR_HRESULT) in text
+        or str(COM_E_FAIL_HRESULT) in text
+        or COM_UIA_ERROR_MARKER in text
+        or COM_E_FAIL_MARKER in text
+    )
 
 
 class ExportResolution(Enum):
@@ -159,23 +169,70 @@ class JianyingController:
         if last_exc is not None:
             raise last_exc
 
-    def _find_export_succeed_close_btn(self) -> Optional[uia.Control]:
-        """在当前窗口或「导出」子窗口中查找导出成功关闭按钮。"""
-        btn = self.app.TextControl(
-            searchDepth=3,
+    def _safe_exists(
+        self,
+        get_control: Callable[[], uia.Control],
+        operation: str,
+        *,
+        timeout: float = 0.5,
+        max_retries: int = UIA_CLICK_MAX_RETRIES,
+        retry_interval: float = UIA_CLICK_RETRY_INTERVAL,
+    ) -> bool:
+        """带 COM 重试的控件 Exists 检测；每次尝试重新查找控件，失效时刷新窗口。"""
+        last_exc: Optional[BaseException] = None
+        for attempt in range(1, max_retries + 1):
+            try:
+                return get_control().Exists(timeout, 0.5)
+            except Exception as exc:
+                last_exc = exc
+                if not is_com_uia_error(exc) or attempt >= max_retries:
+                    logger.error(
+                        "UIA Exists failed: operation=%s attempt=%d/%d error=%r",
+                        operation,
+                        attempt,
+                        max_retries,
+                        exc,
+                        exc_info=not is_com_uia_error(exc),
+                    )
+                    raise
+                logger.warning(
+                    "UIA COM error on Exists, retrying: operation=%s attempt=%d/%d",
+                    operation,
+                    attempt,
+                    max_retries,
+                )
+                time.sleep(retry_interval)
+                self.get_window()
+        if last_exc is not None:
+            raise last_exc
+        return False
+
+    def _make_export_succeed_close_btn(self, *, from_export_window: bool = False) -> uia.Control:
+        root = self.app
+        if from_export_window:
+            root = self.app.WindowControl(searchDepth=2, Name="导出")
+        return root.TextControl(
+            searchDepth=2 if from_export_window else 3,
             Compare=ControlFinder.desc_matcher("ExportSucceedCloseBtn"),
         )
-        if btn.Exists(0.5):
-            return btn
 
-        export_window = self.app.WindowControl(searchDepth=2, Name="导出")
-        if export_window.Exists(0.5):
-            btn = export_window.TextControl(
-                searchDepth=2,
-                Compare=ControlFinder.desc_matcher("ExportSucceedCloseBtn"),
-            )
-            if btn.Exists(0.5):
-                return btn
+    def _find_export_succeed_close_btn(self) -> Optional[uia.Control]:
+        """在当前窗口或「导出」子窗口中查找导出成功关闭按钮。"""
+        if self._safe_exists(
+            lambda: self._make_export_succeed_close_btn(from_export_window=False),
+            "find_export_succeed_close_btn.main",
+        ):
+            return self._make_export_succeed_close_btn(from_export_window=False)
+
+        if self._safe_exists(
+            lambda: self.app.WindowControl(searchDepth=2, Name="导出"),
+            "find_export_succeed_close_btn.export_window",
+        ):
+            if self._safe_exists(
+                lambda: self._make_export_succeed_close_btn(from_export_window=True),
+                "find_export_succeed_close_btn.in_export_window",
+            ):
+                return self._make_export_succeed_close_btn(from_export_window=True)
         return None
 
     def _require_export_succeed_close_btn(self) -> uia.Control:
@@ -186,7 +243,18 @@ class JianyingController:
 
     def _dismiss_export_success_dialog(self) -> bool:
         """关闭导出成功弹窗；返回是否找到并点击了关闭按钮。"""
-        if self._find_export_succeed_close_btn() is None:
+        try:
+            close_btn = self._find_export_succeed_close_btn()
+        except Exception as exc:
+            if is_com_uia_error(exc):
+                logger.warning(
+                    "COM error while locating export success close button: %r",
+                    exc,
+                )
+                self.get_window()
+                return False
+            raise
+        if close_btn is None:
             return False
         logger.info("Dismissing export success dialog")
         self._safe_click(
@@ -644,8 +712,11 @@ class JianyingController:
                 return
 
             # 2. 检查窗口是否停留在导出完成页面
-            succeed_close_btn = self.app.TextControl(searchDepth=2, Compare=ControlFinder.desc_matcher("ExportSucceedCloseBtn"))
-            if succeed_close_btn.Exists(0):
+            if self._safe_exists(
+                lambda: self._make_export_succeed_close_btn(from_export_window=False),
+                "init_export_sub_status.export_succeed",
+                timeout=0,
+            ):
                 self.app_sub_status = "export_succeed"
                 return
         else:
