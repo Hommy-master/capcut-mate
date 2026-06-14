@@ -39,6 +39,20 @@ def enqueue_paths(paths: Iterable[str], *, is_dir: bool = False) -> None:
         enqueue_path(path, is_dir=is_dir)
 
 
+def dequeue_path(path: str) -> bool:
+    """从待删除队列中移除路径；重新下载同一草稿前应调用，避免与延迟删除竞态。"""
+    if not path or not str(path).strip():
+        return False
+    key = _normalize_path(path)
+    with _lock:
+        removed = key in _pending
+        if removed:
+            del _pending[key]
+    if removed:
+        logger.info("Deferred delete dequeued: path=%s", key)
+    return removed
+
+
 def pending_count() -> int:
     with _lock:
         return len(_pending)

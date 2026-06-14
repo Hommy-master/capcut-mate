@@ -11,6 +11,7 @@ import requests
 from urllib.parse import urlparse, parse_qs
 from typing import Optional, Dict, Any, List
 from src.utils.logger import logger
+from src.utils.deferred_delete import dequeue_path
 import config
 import subprocess
 import os
@@ -182,7 +183,10 @@ def download_draft(draft_url: str, save_path: Optional[str] = None) -> bool:
     
     # 构建并创建目标目录
     target_dir = prepare_target_directory(save_path, draft_id)
-    
+
+    # 重试/并发导出同一草稿时，取消此前任务入队的延迟删除，避免下载后被 sweep 删掉
+    dequeue_path(target_dir)
+
     logger.info(f"Downloading draft {draft_id} to {target_dir}")
     
     # 获取草稿文件列表

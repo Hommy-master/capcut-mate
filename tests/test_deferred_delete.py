@@ -72,6 +72,25 @@ class TestDeferredDeleteQueue:
             assert remaining == 0
             assert not os.path.exists(sub)
 
+    def test_dequeue_path_removes_pending_entry(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            sub = os.path.join(td, "draft_dir")
+            os.makedirs(sub)
+            dd.enqueue_path(sub, is_dir=True)
+            assert dd.pending_count() == 1
+
+            assert dd.dequeue_path(sub) is True
+            assert dd.pending_count() == 0
+
+            removed, remaining = dd.run_pending_deletes()
+            assert removed == 0
+            assert remaining == 0
+            assert os.path.exists(sub)
+
+    def test_dequeue_path_noop_when_not_enqueued(self) -> None:
+        assert dd.dequeue_path("/nonexistent/draft") is False
+        assert dd.pending_count() == 0
+
 
 class TestVideoTaskManagerDeferredCleanup:
     def test_cleanup_enqueues_mp4_and_draft_dir(self) -> None:
