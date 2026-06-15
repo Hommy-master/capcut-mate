@@ -48,6 +48,9 @@ COS_SECRET_KEY = os.getenv("COS_SECRET_KEY", "")
 COS_BUCKET_NAME = os.getenv("COS_BUCKET_NAME", "")
 COS_REGION = os.getenv("COS_REGION", "")
 
+# 对象存储上传目录前缀（根目录）；为空则 key 为 yyyy-MM-dd/文件名
+STORAGE_UPLOAD_PREFIX = os.getenv("STORAGE_UPLOAD_PREFIX", "")
+
 # 阿里云对象存储配置（COS 未配置时作为兜底）
 OSS_ACCESS_KEY_ID = os.getenv("OSS_ACCESS_KEY_ID", "")
 OSS_ACCESS_KEY_SECRET = os.getenv("OSS_ACCESS_KEY_SECRET", "")
