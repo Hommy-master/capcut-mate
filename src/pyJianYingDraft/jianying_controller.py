@@ -12,7 +12,7 @@
 # Modified by Hommy <taohongmin@sina.cn> on 2026-06-12
 """剪映自动化控制，主要与自动导出有关"""
 
-import ctypes
+import _ctypes
 import os
 import time
 import shutil
@@ -52,7 +52,7 @@ UIA_CLICK_RETRY_INTERVAL = 1.0
 
 
 def is_com_uia_error(exc: BaseException) -> bool:
-    if isinstance(exc, ctypes.COMError):
+    if isinstance(exc, _ctypes.COMError):
         args = getattr(exc, "args", ())
         if args and args[0] in (COM_UIA_ERROR_HRESULT, COM_E_FAIL_HRESULT):
             return True
