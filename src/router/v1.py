@@ -42,6 +42,7 @@ from src.schemas.audio_timelines import AudioTimelinesRequest, AudioTimelinesRes
 from src.schemas.audio_infos import AudioInfosRequest, AudioInfosResponse
 from src.schemas.imgs_infos import ImgsInfosRequest, ImgsInfosResponse
 from src.schemas.caption_infos import CaptionInfosRequest, CaptionInfosResponse
+from src.schemas.srt_infos import SrtInfosRequest, SrtInfosResponse
 from src.schemas.effect_infos import EffectInfosRequest, EffectInfosResponse
 from src.schemas.filter_infos import FilterInfosRequest, FilterInfosResponse
 from src.schemas.get_filters import GetFiltersRequest, GetFiltersResponse
@@ -610,6 +611,36 @@ def caption_infos(request: CaptionInfosRequest) -> CaptionInfosResponse:
     )
     
     return CaptionInfosResponse(infos=infos_json)
+
+
+@router.post(path="/srt_infos", response_model=SrtInfosResponse)
+def srt_infos(request: SrtInfosRequest) -> SrtInfosResponse:
+    """
+    根据 SRT 字幕文件生成字幕信息 (v1版本)
+
+    下载并解析 SRT 文件，自动提取文本与时间线，生成可直接用于 add_captions 的字幕 JSON
+    """
+    logger.info("Received request to generate caption infos from SRT file")
+
+    # 调用service层处理业务逻辑
+    infos_json, count = service.srt_infos(
+        srt_url=str(request.srt_url),
+        font_size=request.font_size,
+        keyword_color=request.keyword_color,
+        keyword_border_color=request.keyword_border_color,
+        keyword_font_size=request.keyword_font_size,
+        keywords=request.keywords,
+        in_animation=request.in_animation,
+        in_animation_duration=request.in_animation_duration,
+        loop_animation=request.loop_animation,
+        loop_animation_duration=request.loop_animation_duration,
+        out_animation=request.out_animation,
+        out_animation_duration=request.out_animation_duration,
+        transition=request.transition,
+        transition_duration=request.transition_duration
+    )
+
+    return SrtInfosResponse(infos=infos_json, count=count)
 
 
 @router.post(path="/effect_infos", response_model=EffectInfosResponse)
