@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from src.utils.video_task_manager import (
+    EXPORT_COM_UIA_MAX_RETRIES,
     EXPORT_RENAME_SRC_NONE_ERROR_MARKER,
     EXPORT_RENAME_SRC_NONE_MAX_RETRIES,
     TaskStatus,
@@ -26,6 +27,9 @@ def _task(draft_id: str = "d_retry") -> VideoGenTask:
 RENAME_ERROR = (
     f"导出草稿失败: {EXPORT_RENAME_SRC_NONE_ERROR_MARKER}"
 )
+COM_UIA_ERROR = (
+    "导出草稿失败: (-2147220991, '事件无法调用任何订户', (None, None, None, 0, None))"
+)
 
 
 class TestExportRenameSrcNoneRetry:
@@ -33,6 +37,11 @@ class TestExportRenameSrcNoneRetry:
         mgr = VideoGenTaskManager()
         assert mgr._is_export_rename_src_none_error(RENAME_ERROR) is True
         assert mgr._is_export_rename_src_none_error("导出草稿失败: other") is False
+
+    def test_is_export_com_uia_error(self) -> None:
+        mgr = VideoGenTaskManager()
+        assert mgr._is_export_com_uia_error(COM_UIA_ERROR) is True
+        assert mgr._is_export_com_uia_error("导出草稿失败: 导出超时") is False
 
     @patch.object(VideoGenTaskManager, "_export_video")
     def test_retries_twice_then_succeeds(self, m_export: MagicMock) -> None:
@@ -63,6 +72,40 @@ class TestExportRenameSrcNoneRetry:
         assert EXPORT_RENAME_SRC_NONE_ERROR_MARKER in err
         assert m_export.call_count == 1 + EXPORT_RENAME_SRC_NONE_MAX_RETRIES
         assert m_prepare.call_count == EXPORT_RENAME_SRC_NONE_MAX_RETRIES
+
+    @patch.object(VideoGenTaskManager, "_export_video")
+    def test_com_uia_error_retries_then_succeeds(self, m_export: MagicMock) -> None:
+        com_exc = Exception(
+            "(-2147220991, '事件无法调用任何订户', (None, None, None, 0, None))"
+        )
+        m_export.side_effect = [com_exc, True]
+        task = _task()
+
+        with patch.object(
+            VideoGenTaskManager, "_prepare_export_retry_outfile"
+        ) as m_prepare:
+            err = VideoGenTaskManager()._phase_export_only(task)
+
+        assert err == ""
+        assert m_export.call_count == 2
+        m_prepare.assert_called_once()
+
+    @patch.object(VideoGenTaskManager, "_export_video")
+    def test_com_uia_error_exhausts_retries(self, m_export: MagicMock) -> None:
+        com_exc = Exception(
+            "(-2147220991, '事件无法调用任何订户', (None, None, None, 0, None))"
+        )
+        m_export.side_effect = com_exc
+        task = _task()
+
+        with patch.object(
+            VideoGenTaskManager, "_prepare_export_retry_outfile"
+        ) as m_prepare:
+            err = VideoGenTaskManager()._phase_export_only(task)
+
+        assert "事件无法调用任何订户" in err
+        assert m_export.call_count == 1 + EXPORT_COM_UIA_MAX_RETRIES
+        assert m_prepare.call_count == EXPORT_COM_UIA_MAX_RETRIES
 
     @patch.object(VideoGenTaskManager, "_export_video")
     def test_other_export_error_not_retried(self, m_export: MagicMock) -> None:

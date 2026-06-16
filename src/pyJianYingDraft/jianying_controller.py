@@ -1,5 +1,18 @@
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# Modified by Hommy <taohongmin@sina.cn> on 2026-06-12
 """剪映自动化控制，主要与自动导出有关"""
 
+import _ctypes
 import os
 import time
 import shutil
@@ -27,6 +40,34 @@ from .exceptions import AutomationError
 
 # 添加logger导入
 from src.utils.logger import logger
+
+# Windows UI Automation COM 错误（EVENT_E_ALL_SUBSCRIBERS_FAILED）
+COM_UIA_ERROR_HRESULT = -2147220991
+COM_UIA_ERROR_MARKER = "事件无法调用任何订户"
+# UIA 遍历 UI 树时偶发（E_FAIL / 未指定的错误）
+COM_E_FAIL_HRESULT = -2147467259
+COM_E_FAIL_MARKER = "未指定的错误"
+UIA_CLICK_MAX_RETRIES = 4
+UIA_CLICK_RETRY_INTERVAL = 1.0
+
+
+def is_com_uia_error(exc: BaseException) -> bool:
+    if isinstance(exc, _ctypes.COMError):
+        args = getattr(exc, "args", ())
+        if args and args[0] in (COM_UIA_ERROR_HRESULT, COM_E_FAIL_HRESULT):
+            return True
+        if len(args) >= 2:
+            msg = str(args[1])
+            if COM_UIA_ERROR_MARKER in msg or COM_E_FAIL_MARKER in msg:
+                return True
+    text = str(exc)
+    return (
+        str(COM_UIA_ERROR_HRESULT) in text
+        or str(COM_E_FAIL_HRESULT) in text
+        or COM_UIA_ERROR_MARKER in text
+        or COM_E_FAIL_MARKER in text
+    )
+
 
 class ExportResolution(Enum):
     """导出分辨率"""
@@ -86,6 +127,186 @@ class JianyingController:
     def __init__(self):
         """初始化剪映控制器, 此时剪映应该处于目录页"""
         self.get_window()
+
+    def _safe_click(
+        self,
+        get_control: Callable[[], uia.Control],
+        operation: str,
+        *,
+        exists_timeout: float = 1.0,
+        max_retries: int = UIA_CLICK_MAX_RETRIES,
+        retry_interval: float = UIA_CLICK_RETRY_INTERVAL,
+    ) -> None:
+        """带 COM 重试的控件点击；每次尝试重新查找控件，失效时刷新窗口。"""
+        last_exc: Optional[BaseException] = None
+        for attempt in range(1, max_retries + 1):
+            try:
+                control = get_control()
+                if not control.Exists(exists_timeout, 0.5):
+                    raise AutomationError(f"{operation}: control not found")
+                control.Click(simulateMove=False)
+                return
+            except Exception as exc:
+                last_exc = exc
+                if not is_com_uia_error(exc) or attempt >= max_retries:
+                    logger.error(
+                        "UIA click failed: operation=%s attempt=%d/%d error=%r",
+                        operation,
+                        attempt,
+                        max_retries,
+                        exc,
+                        exc_info=not is_com_uia_error(exc),
+                    )
+                    raise
+                logger.warning(
+                    "UIA COM error on click, retrying: operation=%s attempt=%d/%d",
+                    operation,
+                    attempt,
+                    max_retries,
+                )
+                time.sleep(retry_interval)
+                self.get_window()
+        if last_exc is not None:
+            raise last_exc
+
+    def _exists_with_com_retry(
+        self,
+        control: uia.Control,
+        operation: str,
+        *,
+        timeout: float = 0,
+        max_retries: int = UIA_CLICK_MAX_RETRIES,
+        retry_interval: float = UIA_CLICK_RETRY_INTERVAL,
+        raise_on_exhausted: bool = True,
+    ) -> bool:
+        """对单个控件的 Exists 调用做 COM 重试；遍历 UI 树时偶发失效元素可由此消化。"""
+        search_interval = 0.5 if timeout > 0 else 0
+        last_exc: Optional[BaseException] = None
+        for attempt in range(1, max_retries + 1):
+            try:
+                return control.Exists(timeout, search_interval)
+            except Exception as exc:
+                last_exc = exc
+                if not is_com_uia_error(exc) or attempt >= max_retries:
+                    logger.error(
+                        "UIA Exists failed: operation=%s attempt=%d/%d error=%r",
+                        operation,
+                        attempt,
+                        max_retries,
+                        exc,
+                        exc_info=not is_com_uia_error(exc),
+                    )
+                    if raise_on_exhausted:
+                        raise
+                    return False
+                logger.warning(
+                    "UIA COM error on Exists, retrying: operation=%s attempt=%d/%d",
+                    operation,
+                    attempt,
+                    max_retries,
+                )
+                time.sleep(retry_interval)
+        if last_exc is not None:
+            if raise_on_exhausted:
+                raise last_exc
+            return False
+        return False
+
+    def _safe_exists(
+        self,
+        get_control: Callable[[], uia.Control],
+        operation: str,
+        *,
+        timeout: float = 0.5,
+        max_retries: int = UIA_CLICK_MAX_RETRIES,
+        retry_interval: float = UIA_CLICK_RETRY_INTERVAL,
+    ) -> bool:
+        """带 COM 重试的控件 Exists 检测；每次尝试重新查找控件，失效时刷新窗口。"""
+        last_exc: Optional[BaseException] = None
+        for attempt in range(1, max_retries + 1):
+            try:
+                return get_control().Exists(timeout, 0.5)
+            except Exception as exc:
+                last_exc = exc
+                if not is_com_uia_error(exc) or attempt >= max_retries:
+                    logger.error(
+                        "UIA Exists failed: operation=%s attempt=%d/%d error=%r",
+                        operation,
+                        attempt,
+                        max_retries,
+                        exc,
+                        exc_info=not is_com_uia_error(exc),
+                    )
+                    raise
+                logger.warning(
+                    "UIA COM error on Exists, retrying: operation=%s attempt=%d/%d",
+                    operation,
+                    attempt,
+                    max_retries,
+                )
+                time.sleep(retry_interval)
+                self.get_window()
+        if last_exc is not None:
+            raise last_exc
+        return False
+
+    def _make_export_succeed_close_btn(self, *, from_export_window: bool = False) -> uia.Control:
+        root = self.app
+        if from_export_window:
+            root = self.app.WindowControl(searchDepth=2, Name="导出")
+        return root.TextControl(
+            searchDepth=2 if from_export_window else 3,
+            Compare=ControlFinder.desc_matcher("ExportSucceedCloseBtn"),
+        )
+
+    def _find_export_succeed_close_btn(self) -> Optional[uia.Control]:
+        """在当前窗口或「导出」子窗口中查找导出成功关闭按钮。"""
+        if self._safe_exists(
+            lambda: self._make_export_succeed_close_btn(from_export_window=False),
+            "find_export_succeed_close_btn.main",
+        ):
+            return self._make_export_succeed_close_btn(from_export_window=False)
+
+        if self._safe_exists(
+            lambda: self.app.WindowControl(searchDepth=2, Name="导出"),
+            "find_export_succeed_close_btn.export_window",
+        ):
+            if self._safe_exists(
+                lambda: self._make_export_succeed_close_btn(from_export_window=True),
+                "find_export_succeed_close_btn.in_export_window",
+            ):
+                return self._make_export_succeed_close_btn(from_export_window=True)
+        return None
+
+    def _require_export_succeed_close_btn(self) -> uia.Control:
+        btn = self._find_export_succeed_close_btn()
+        if btn is None:
+            raise AutomationError("export succeed close button not found")
+        return btn
+
+    def _dismiss_export_success_dialog(self) -> bool:
+        """关闭导出成功弹窗；返回是否找到并点击了关闭按钮。"""
+        try:
+            close_btn = self._find_export_succeed_close_btn()
+        except Exception as exc:
+            if is_com_uia_error(exc):
+                logger.warning(
+                    "COM error while locating export success close button: %r",
+                    exc,
+                )
+                self.get_window()
+                return False
+            raise
+        if close_btn is None:
+            return False
+        logger.info("Dismissing export success dialog")
+        self._safe_click(
+            self._require_export_succeed_close_btn,
+            "dismiss_export_success_dialog",
+        )
+        time.sleep(2)
+        self.get_window()
+        return True
 
     def find_and_click_draft(
         self,
@@ -256,26 +477,37 @@ class JianyingController:
             pass  # 某些情况下可能失败，但继续执行
         time.sleep(1)
 
-    def wait_for_export_completion(self, timeout: float) -> None:
+    def wait_for_export_completion(self, timeout: float) -> bool:
         """等待导出完成
         
         Args:
             timeout (float): 超时时间（秒）
+            
+        Returns:
+            bool: 是否已关闭导出成功弹窗（表示导出已完成）
             
         Raises:
             AutomationError: 导出超时
         """
         # 点击继续导出按钮次数
         continue_export_click_count = 0
+        export_succeeded = False
 
         # 等待导出完成
         st = time.time()
         while True:
             self.get_window()
-            if self.app_status != "pre_export": break
+            if self.app_status != "pre_export":
+                break
 
-            succeed_close_btn = self.app.TextControl(searchDepth=2, Compare=ControlFinder.desc_matcher("ExportSucceedCloseBtn"))
-            if succeed_close_btn.Exists(0):
+            if self._find_export_succeed_close_btn() is not None:
+                logger.info("Export finished, closing success dialog")
+                self._safe_click(
+                    self._require_export_succeed_close_btn,
+                    "wait_for_export_completion.close_success",
+                )
+                time.sleep(2)
+                export_succeeded = True
                 break
 
             if time.time() - st > timeout:
@@ -289,10 +521,12 @@ class JianyingController:
 
             time.sleep(1)
         time.sleep(2)
+        return export_succeeded
 
     def return_to_home(self) -> None:
         """回到目录页并稍作延迟"""
         self.get_window()
+        self._dismiss_export_success_dialog()
         self.switch_to_home()
         time.sleep(2)
 
@@ -335,6 +569,7 @@ class JianyingController:
         self.switch_to_home()
 
         original_path = None
+        export_completed = False
 
         for i in range(16):
             # 确保窗口有焦点
@@ -343,6 +578,15 @@ class JianyingController:
                 logger.info("[%d]app is already in home page", i)
                 self.find_and_click_draft(draft_name, draft_dir=draft_dir)
             elif self.app_status == "edit":
+                if export_completed or (
+                    original_path and os.path.isfile(original_path)
+                ):
+                    logger.info(
+                        "[%d]export already finished, skip re-export and return home",
+                        i,
+                    )
+                    self.return_to_home()
+                    break
                 logger.info("[%d]app is already in edit page", i)
                 # 点击导出按钮进入导出界面
                 self.click_export_button()
@@ -361,9 +605,22 @@ class JianyingController:
                     self.get_window()
                 elif self.app_sub_status == "exporting":
                     logger.info("[%d]app is already in pre_export[exporting] page", i)
-                    self.wait_for_export_completion(timeout)                    
+                    if self.wait_for_export_completion(timeout):
+                        export_completed = True
+                        self.return_to_home()
+                        break
+                    self.get_window()
+                    if original_path and os.path.isfile(original_path):
+                        logger.info(
+                            "[%d]export output file exists after wait, treating as success",
+                            i,
+                        )
+                        export_completed = True
+                        self.return_to_home()
+                        break
                 elif self.app_sub_status == "export_succeed":
                     logger.info("[%d]app is already in pre_export[export_succeed] page", i)
+                    export_completed = True
                     self.return_to_home()
                     break
                 else:
@@ -379,24 +636,58 @@ class JianyingController:
     def switch_to_home(self) -> None:
         """切换到剪映主页"""
         for i in range(8):
+            self.get_window()
             if self.app_status == "home":
                 return
-            elif self.app_status == "pre_export":
-                if self.app_sub_status == "export_succeed":
-                    succeed_close_btn = self.app.TextControl(searchDepth=2, Compare=ControlFinder.desc_matcher("ExportSucceedCloseBtn"))
-                    if succeed_close_btn.Exists(0):
-                        succeed_close_btn.Click(simulateMove=False)
+
+            if self._dismiss_export_success_dialog():
+                continue
+
+            if self.app_status == "pre_export":
+                # 导出弹窗未识别为 export_succeed 时，仍尝试关闭成功页或按 ESC 退出
+                if self.app_sub_status in ("export_succeed", "exporting", "export_start"):
+                    if self._find_export_succeed_close_btn() is not None:
+                        self._safe_click(
+                            self._require_export_succeed_close_btn,
+                            f"switch_to_home.pre_export_close[{i}]",
+                        )
                         time.sleep(2)
-                        self.get_window()
-            elif self.app_status == "edit":
-                close_btn = self.app.GroupControl(searchDepth=1, ClassName="TitleBarButton", foundIndex=3)
-                close_btn.Click(simulateMove=False)
+                        continue
+                logger.warning(
+                    "switch_to_home: stuck in pre_export sub_status=%s, attempt=%d",
+                    self.app_sub_status,
+                    i,
+                )
+                time.sleep(1)
+                continue
+
+            if self.app_status == "edit":
+                close_btn = self.app.GroupControl(
+                    searchDepth=1,
+                    ClassName="TitleBarButton",
+                    foundIndex=3,
+                )
+                if not close_btn.Exists(1, 0.5):
+                    logger.warning(
+                        "switch_to_home: edit close button missing, attempt=%d",
+                        i,
+                    )
+                    time.sleep(1)
+                    continue
+                self._safe_click(
+                    lambda: self.app.GroupControl(
+                        searchDepth=1,
+                        ClassName="TitleBarButton",
+                        foundIndex=3,
+                    ),
+                    f"switch_to_home.edit_close[{i}]",
+                )
                 time.sleep(2)
-                self.get_window()
-            else:
-                raise AutomationError("invalid app status: %s" % self.app_status)
-        
-        logger.info("Cannot switch to home page after 32 attempts")
+                continue
+
+            raise AutomationError("invalid app status: %s" % self.app_status)
+
+        logger.warning("Cannot switch to home page after %d attempts", 8)
 
     def get_window(
         self,
@@ -409,12 +700,31 @@ class JianyingController:
         if retry_interval is None:
             retry_interval = self.WINDOW_FIND_RETRY_INTERVAL
 
-        if hasattr(self, "app") and self.app.Exists(0):
-            self.app.SetTopmost(False)
+        if hasattr(self, "app"):
+            try:
+                if self._exists_with_com_retry(
+                    self.app,
+                    "get_window.clear_topmost",
+                    timeout=0,
+                    raise_on_exhausted=False,
+                ):
+                    self.app.SetTopmost(False)
+            except Exception as exc:
+                if not is_com_uia_error(exc):
+                    raise
+                logger.warning(
+                    "Stale Jianying window handle when clearing topmost: %r",
+                    exc,
+                )
 
         for attempt in range(max_retries):
             self.app = uia.WindowControl(searchDepth=1, Compare=self.__jianying_window_cmp)
-            if self.app.Exists(0):
+            if self._exists_with_com_retry(
+                self.app,
+                "get_window.find_main",
+                timeout=0,
+                raise_on_exhausted=False,
+            ):
                 if attempt > 0:
                     logger.info(
                         "Jianying main window matched on attempt %d/%d",
@@ -439,7 +749,12 @@ class JianyingController:
 
         # 寻找可能存在的导出窗口
         export_window = self.app.WindowControl(searchDepth=1, Name="导出")
-        if export_window.Exists(0):
+        if self._exists_with_com_retry(
+            export_window,
+            "get_window.find_export",
+            timeout=0,
+            raise_on_exhausted=False,
+        ):
             self.app = export_window
             self.app_status = "pre_export"
 
@@ -464,22 +779,38 @@ class JianyingController:
                 return
 
             # 2. 检查窗口是否停留在导出完成页面
-            succeed_close_btn = self.app.TextControl(searchDepth=2, Compare=ControlFinder.desc_matcher("ExportSucceedCloseBtn"))
-            if succeed_close_btn.Exists(0):
+            if self._safe_exists(
+                lambda: self._make_export_succeed_close_btn(from_export_window=False),
+                "init_export_sub_status.export_succeed",
+                timeout=0,
+            ):
                 self.app_sub_status = "export_succeed"
                 return
         else:
             self.app_sub_status = "none"
 
     def __jianying_window_cmp(self, control: uia.WindowControl, depth: int) -> bool:
-        if control.Name != "剪映专业版":
+        try:
+            name = control.Name
+        except Exception as exc:
+            if is_com_uia_error(exc):
+                return False
+            raise
+        if name != "剪映专业版":
             return False
-        if "HomePage".lower() in control.ClassName.lower():
+        try:
+            class_name = control.ClassName
+        except Exception as exc:
+            if is_com_uia_error(exc):
+                return False
+            raise
+        class_name_lower = class_name.lower()
+        if "homepage" in class_name_lower:
             self.app_status = "home"
             return True
-        if "MainWindow".lower() in control.ClassName.lower():
+        if "mainwindow" in class_name_lower:
             self.app_status = "edit"
             return True
 
-        logger.info(f"ClassName: {control.ClassName.lower()}, Name: {control.Name.lower()}")
+        logger.info("ClassName: %s, Name: %s", class_name_lower, name.lower())
         return False

@@ -7,6 +7,7 @@ import config
 from qcloud_cos import CosConfig
 from qcloud_cos import CosS3Client
 from src.utils.logger import logger
+from src.utils.storage_key import build_storage_object_key
 from src.utils.storage_upload_retry import run_with_storage_retry
 from exceptions import CustomException, CustomError
 
@@ -28,11 +29,8 @@ def cos_upload_file(file_path: str, expire_days: Optional[int] = None) -> str:
     if expire_days is None:
         expire_days = config.VIDEO_GEN_RETENTION_DAYS
 
-    now = datetime.datetime.now()
-    current_date = now.strftime("%Y-%m-%d")
-    current_hour = now.strftime("%H")
     filename = os.path.basename(file_path)
-    key = f"{current_date}/{current_hour}/{filename}"
+    key = build_storage_object_key(filename)
 
     cfg = CosConfig(
         Region=config.COS_REGION,
