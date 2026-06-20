@@ -54,6 +54,17 @@ OSS_ACCESS_KEY_SECRET = os.getenv("OSS_ACCESS_KEY_SECRET", "")
 OSS_BUCKET_NAME = os.getenv("OSS_BUCKET_NAME", "")
 OSS_ENDPOINT = os.getenv("OSS_ENDPOINT", "")
 
+# 对象存储上传目录前缀（根目录），COS / OSS 共用。
+# 最终 object key 格式：[前缀/]yyyy-MM-dd/文件名；前缀为空时文件落在桶根目录下的日期目录中。
+# 首尾多余的 / 会自动去除。
+#
+# 配置示例（环境变量 STORAGE_UPLOAD_PREFIX）：
+#   未设置或留空     -> 2026-06-15/video.mp4
+#   capcut-mate       -> capcut-mate/2026-06-15/video.mp4
+#   prod/capcut-mate  -> prod/capcut-mate/2026-06-15/video.mp4
+#   /capcut-mate/     -> capcut-mate/2026-06-15/video.mp4（与上相同）
+STORAGE_UPLOAD_PREFIX = os.getenv("STORAGE_UPLOAD_PREFIX", "")
+
 # APIKEY启用配置-默认启用 -- 云渲染必需配置（环境变量 true / false，大小写不敏感）
 ENABLE_APIKEY = os.getenv("ENABLE_APIKEY", "true").strip().lower() == "true"
 

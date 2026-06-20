@@ -12,7 +12,7 @@
 # Modified by Hommy <taohongmin@sina.cn> on 2026-06-12
 """剪映自动化控制，主要与自动导出有关"""
 
-import ctypes
+import _ctypes
 import os
 import time
 import shutil
@@ -52,7 +52,7 @@ UIA_CLICK_RETRY_INTERVAL = 1.0
 
 
 def is_com_uia_error(exc: BaseException) -> bool:
-    if isinstance(exc, ctypes.COMError):
+    if isinstance(exc, _ctypes.COMError):
         args = getattr(exc, "args", ())
         if args and args[0] in (COM_UIA_ERROR_HRESULT, COM_E_FAIL_HRESULT):
             return True
@@ -168,6 +168,49 @@ class JianyingController:
                 self.get_window()
         if last_exc is not None:
             raise last_exc
+
+    def _exists_with_com_retry(
+        self,
+        control: uia.Control,
+        operation: str,
+        *,
+        timeout: float = 0,
+        max_retries: int = UIA_CLICK_MAX_RETRIES,
+        retry_interval: float = UIA_CLICK_RETRY_INTERVAL,
+        raise_on_exhausted: bool = True,
+    ) -> bool:
+        """对单个控件的 Exists 调用做 COM 重试；遍历 UI 树时偶发失效元素可由此消化。"""
+        search_interval = 0.5 if timeout > 0 else 0
+        last_exc: Optional[BaseException] = None
+        for attempt in range(1, max_retries + 1):
+            try:
+                return control.Exists(timeout, search_interval)
+            except Exception as exc:
+                last_exc = exc
+                if not is_com_uia_error(exc) or attempt >= max_retries:
+                    logger.error(
+                        "UIA Exists failed: operation=%s attempt=%d/%d error=%r",
+                        operation,
+                        attempt,
+                        max_retries,
+                        exc,
+                        exc_info=not is_com_uia_error(exc),
+                    )
+                    if raise_on_exhausted:
+                        raise
+                    return False
+                logger.warning(
+                    "UIA COM error on Exists, retrying: operation=%s attempt=%d/%d",
+                    operation,
+                    attempt,
+                    max_retries,
+                )
+                time.sleep(retry_interval)
+        if last_exc is not None:
+            if raise_on_exhausted:
+                raise last_exc
+            return False
+        return False
 
     def _safe_exists(
         self,
@@ -657,12 +700,31 @@ class JianyingController:
         if retry_interval is None:
             retry_interval = self.WINDOW_FIND_RETRY_INTERVAL
 
-        if hasattr(self, "app") and self.app.Exists(0):
-            self.app.SetTopmost(False)
+        if hasattr(self, "app"):
+            try:
+                if self._exists_with_com_retry(
+                    self.app,
+                    "get_window.clear_topmost",
+                    timeout=0,
+                    raise_on_exhausted=False,
+                ):
+                    self.app.SetTopmost(False)
+            except Exception as exc:
+                if not is_com_uia_error(exc):
+                    raise
+                logger.warning(
+                    "Stale Jianying window handle when clearing topmost: %r",
+                    exc,
+                )
 
         for attempt in range(max_retries):
             self.app = uia.WindowControl(searchDepth=1, Compare=self.__jianying_window_cmp)
-            if self.app.Exists(0):
+            if self._exists_with_com_retry(
+                self.app,
+                "get_window.find_main",
+                timeout=0,
+                raise_on_exhausted=False,
+            ):
                 if attempt > 0:
                     logger.info(
                         "Jianying main window matched on attempt %d/%d",
@@ -687,7 +749,12 @@ class JianyingController:
 
         # 寻找可能存在的导出窗口
         export_window = self.app.WindowControl(searchDepth=1, Name="导出")
-        if export_window.Exists(0):
+        if self._exists_with_com_retry(
+            export_window,
+            "get_window.find_export",
+            timeout=0,
+            raise_on_exhausted=False,
+        ):
             self.app = export_window
             self.app_status = "pre_export"
 
@@ -723,14 +790,27 @@ class JianyingController:
             self.app_sub_status = "none"
 
     def __jianying_window_cmp(self, control: uia.WindowControl, depth: int) -> bool:
-        if control.Name != "剪映专业版":
+        try:
+            name = control.Name
+        except Exception as exc:
+            if is_com_uia_error(exc):
+                return False
+            raise
+        if name != "剪映专业版":
             return False
-        if "HomePage".lower() in control.ClassName.lower():
+        try:
+            class_name = control.ClassName
+        except Exception as exc:
+            if is_com_uia_error(exc):
+                return False
+            raise
+        class_name_lower = class_name.lower()
+        if "homepage" in class_name_lower:
             self.app_status = "home"
             return True
-        if "MainWindow".lower() in control.ClassName.lower():
+        if "mainwindow" in class_name_lower:
             self.app_status = "edit"
             return True
 
-        logger.info(f"ClassName: {control.ClassName.lower()}, Name: {control.Name.lower()}")
+        logger.info("ClassName: %s, Name: %s", class_name_lower, name.lower())
         return False

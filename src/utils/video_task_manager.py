@@ -39,6 +39,8 @@ EXPORT_RENAME_SRC_NONE_MAX_RETRIES = 2
 EXPORT_RENAME_SRC_NONE_ERROR_MARKER = (
     "rename: src should be string, bytes or os.PathLike, not NoneType"
 )
+# UI Automation COM 瞬时错误（窗口切换/元素失效）时，额外重试导出阶段的次数
+EXPORT_COM_UIA_MAX_RETRIES = 2
 
 # 如果是Linux系统，则不导入uiautomation，并避免执行相关代码
 try:
@@ -476,6 +478,20 @@ class VideoGenTaskManager:
         return EXPORT_RENAME_SRC_NONE_ERROR_MARKER in error_message
 
     @staticmethod
+    def _is_export_com_uia_error(error_message: str) -> bool:
+        """是否为 Windows UI Automation 的瞬时 COM 错误（可重试）。"""
+        from src.pyJianYingDraft.jianying_controller import is_com_uia_error
+
+        return is_com_uia_error(Exception(error_message))
+
+    @staticmethod
+    def _is_export_retryable_error(error_message: str) -> bool:
+        return (
+            VideoGenTaskManager._is_export_rename_src_none_error(error_message)
+            or VideoGenTaskManager._is_export_com_uia_error(error_message)
+        )
+
+    @staticmethod
     def _assign_export_outfile(task: VideoGenTask) -> str:
         """分配新的导出 mp4 路径并记入历史，便于上传后统一清理。"""
         path = os.path.join(config.DRAFT_DIR, f"{helper.gen_unique_id()}.mp4")
@@ -510,7 +526,10 @@ class VideoGenTaskManager:
             task.draft_id,
         )
         try:
-            max_attempts = 1 + EXPORT_RENAME_SRC_NONE_MAX_RETRIES
+            max_attempts = 1 + max(
+                EXPORT_RENAME_SRC_NONE_MAX_RETRIES,
+                EXPORT_COM_UIA_MAX_RETRIES,
+            )
             last_error = ""
 
             for attempt in range(1, max_attempts + 1):
@@ -527,18 +546,27 @@ class VideoGenTaskManager:
                         max_attempts,
                         exc,
                     )
-                    if not self._is_export_rename_src_none_error(last_error):
+                    if not self._is_export_retryable_error(last_error):
                         return last_error
                     if attempt >= max_attempts:
                         return last_error
 
-                    logger.warning(
-                        "Export rename-src-none error, retrying export without "
-                        "re-downloading draft: draft_id=%s retry=%d/%d",
-                        task.draft_id,
-                        attempt,
-                        EXPORT_RENAME_SRC_NONE_MAX_RETRIES,
-                    )
+                    if self._is_export_com_uia_error(last_error):
+                        logger.warning(
+                            "Export COM/UIA transient error, retrying export without "
+                            "re-downloading draft: draft_id=%s retry=%d/%d",
+                            task.draft_id,
+                            attempt,
+                            EXPORT_COM_UIA_MAX_RETRIES,
+                        )
+                    else:
+                        logger.warning(
+                            "Export rename-src-none error, retrying export without "
+                            "re-downloading draft: draft_id=%s retry=%d/%d",
+                            task.draft_id,
+                            attempt,
+                            EXPORT_RENAME_SRC_NONE_MAX_RETRIES,
+                        )
                     self._prepare_export_retry_outfile(task)
 
             return last_error
