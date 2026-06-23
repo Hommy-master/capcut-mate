@@ -6,19 +6,25 @@ import os
 import re
 import json
 import time
+import shutil
 import mimetypes
 import requests
+import subprocess
 from urllib.parse import urlparse, parse_qs
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Tuple
 from src.utils.logger import logger
 from src.utils.deferred_delete import dequeue_path
 import config
-import subprocess
-import os
 
 _REQUEST_CONNECT_TIMEOUT = 10
 _REQUEST_READ_TIMEOUT = 30
 _MAX_RETRIES = 5
+_REQUEST_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    ),
+}
 
 # 网关/限流等暂时不可用，退避重试有效（与 desktop-client 一致；不含 500 等持久故障）
 _RETRYABLE_TRANSIENT_HTTP_STATUSES = frozenset({408, 429, 502, 503, 504})
@@ -33,9 +39,22 @@ _NON_RETRYABLE_NETWORK_MARKERS = (
     "failed to establish a new connection",
 )
 
+# JSON/复制粘贴可能带入的不可见字符，会导致 OSS 对象 key 不匹配而 404
+_INVISIBLE_URL_CHARS = ("\ufeff", "\u200b", "\u200c", "\u200d")
+
 
 def _is_retryable_http_status(status_code: int) -> bool:
     return status_code in _RETRYABLE_TRANSIENT_HTTP_STATUSES
+
+
+def _normalize_http_url(url: str) -> str:
+    """去除首尾空白及零宽字符，避免 OSS 因 object key 偏差返回 404。"""
+    if not isinstance(url, str):
+        return url
+    cleaned = url
+    for ch in _INVISIBLE_URL_CHARS:
+        cleaned = cleaned.replace(ch, "")
+    return cleaned.strip()
 
 
 def _is_retryable_request_exception(exc: requests.exceptions.RequestException) -> bool:
@@ -90,6 +109,70 @@ def _sleep_transient_http_backoff(
 
 def _sleep_network_retry_backoff() -> None:
     time.sleep(_DEFAULT_NETWORK_RETRY_DELAY_SECONDS)
+
+
+def _http_get(url: str, **kwargs) -> requests.Response:
+    """发起 GET 请求，附带与 desktop-client / download.py 一致的 User-Agent。"""
+    url = _normalize_http_url(url)
+    headers = dict(_REQUEST_HEADERS)
+    extra = kwargs.pop("headers", None)
+    if extra:
+        headers.update(extra)
+    return requests.get(url, headers=headers, **kwargs)
+
+
+def _resolve_download_target_path(
+    file_url: str, target_dir: str
+) -> Tuple[str, Optional[str]]:
+    """解析 file_url 对应的本地完整路径及 URL 中的草稿 ID。"""
+    parsed_url = urlparse(file_url)
+    path_parts = parsed_url.path.split("/")
+    url_draft_id = None
+    for part in path_parts:
+        if re.match(r"^\d{8,}.*$", part) and len(part) >= 10:
+            url_draft_id = part
+            break
+    draft_id_index = -1
+    if url_draft_id:
+        for i, part in enumerate(path_parts):
+            if url_draft_id in part:
+                draft_id_index = i
+                break
+    if draft_id_index != -1:
+        rel_path_parts = path_parts[draft_id_index + 1:]
+        rel_path = os.path.join(*rel_path_parts)
+    else:
+        rel_path = os.path.join(*path_parts[1:])
+    full_file_path = os.path.join(target_dir, rel_path)
+    return full_file_path, url_draft_id
+
+
+def _is_draft_info_target(file_url: str, target_dir: str) -> bool:
+    full_file_path, _ = _resolve_download_target_path(file_url, target_dir)
+    return os.path.basename(full_file_path) == "draft_info.json"
+
+
+def _sync_draft_info_from_content(target_dir: str) -> bool:
+    """draft_content.json 与 draft_info.json 内容一致，由前者复制生成后者。"""
+    content_path = os.path.join(target_dir, "draft_content.json")
+    info_path = os.path.join(target_dir, "draft_info.json")
+    if not os.path.isfile(content_path):
+        logger.error(
+            "draft_content.json missing, cannot create draft_info.json: %s",
+            target_dir,
+        )
+        return False
+    try:
+        shutil.copy2(content_path, info_path)
+        logger.info("draft_info.json copied from draft_content.json: %s", info_path)
+        return True
+    except OSError as e:
+        logger.error(
+            "Failed to copy draft_content.json to draft_info.json: %s, error: %s",
+            info_path,
+            e,
+        )
+        return False
 
 
 def safe_write_file(file_path: str, file_content: bytes, is_binary: bool = True):
@@ -211,7 +294,7 @@ def get_draft_files_list(draft_url: str) -> list:
     """
     for attempt in range(_MAX_RETRIES + 1):
         try:
-            response = requests.get(
+            response = _http_get(
                 draft_url,
                 timeout=(_REQUEST_CONNECT_TIMEOUT, _REQUEST_READ_TIMEOUT),
             )
@@ -291,20 +374,36 @@ def download_all_files(files: list, target_dir: str, draft_id: str) -> bool:
     """
     success_count = 0
     total_files = len(files)
-    
+    skipped_draft_info = 0
+
     for file_url in files:
+        if _is_draft_info_target(file_url, target_dir):
+            skipped_draft_info += 1
+            logger.debug(
+                "Skip draft_info.json download (will copy from draft_content.json): %s",
+                file_url,
+            )
+            continue
         if download_single_file(file_url, target_dir):
             success_count += 1
         else:
             logger.error(f"Failed to download file: {file_url}")
 
+    files_to_download = total_files - skipped_draft_info
+    all_downloaded = success_count == files_to_download
+    if all_downloaded and skipped_draft_info > 0:
+        if _sync_draft_info_from_content(target_dir):
+            success_count += skipped_draft_info
+        else:
+            all_downloaded = False
+
     trigger_directory_scan_with_robocopy(target_dir)
-    
+
     logger.info(
         f"Draft {draft_id} download finished: total={total_files}, "
         f"ok={success_count}, failed={total_files - success_count}"
     )
-    return success_count == total_files
+    return all_downloaded and success_count == total_files
 
 
 def download_single_file(file_url: str, target_dir: str) -> bool:
@@ -321,30 +420,11 @@ def download_single_file(file_url: str, target_dir: str) -> bool:
     max_retries = 5
     retry_count = 0
 
-    # 仅从 URL 解析目标路径，避免请求挂起时无效等待；与原先路径规则一致
-    parsed_url = urlparse(file_url)
-    path_parts = parsed_url.path.split("/")
-    url_draft_id = None
-    for part in path_parts:
-        if re.match(r"^\d{8,}.*$", part) and len(part) >= 10:
-            url_draft_id = part
-            break
-    draft_id_index = -1
-    if url_draft_id:
-        for i, part in enumerate(path_parts):
-            if url_draft_id in part:
-                draft_id_index = i
-                break
-    if draft_id_index != -1:
-        rel_path_parts = path_parts[draft_id_index + 1:]
-        rel_path = os.path.join(*rel_path_parts)
-    else:
-        rel_path = os.path.join(*path_parts[1:])
-    full_file_path = os.path.join(target_dir, rel_path)
+    full_file_path, url_draft_id = _resolve_download_target_path(file_url, target_dir)
 
     while retry_count <= max_retries:
         try:
-            response = requests.get(
+            response = _http_get(
                 file_url,
                 timeout=(_REQUEST_CONNECT_TIMEOUT, _REQUEST_READ_TIMEOUT),
                 stream=True,
@@ -388,8 +468,8 @@ def download_single_file(file_url: str, target_dir: str) -> bool:
             finally:
                 response.close()
 
-            # draft_info / draft_content：路径重写与 URL 素材本地化；失败则本文件下载失败
-            if full_file_path.endswith(("draft_info.json", "draft_content.json")):
+            # draft_content：路径重写与 URL 素材本地化；draft_info 由下载结束后从 content 复制
+            if full_file_path.endswith("draft_content.json"):
                 if not update_json_file_paths(full_file_path, target_dir, url_draft_id):
                     return False
 
@@ -539,7 +619,7 @@ def update_single_path(path: str, remote_prefix: str, local_prefix: str) -> str:
 def _is_http_url(value: Any) -> bool:
     if not isinstance(value, str) or not value:
         return False
-    parsed = urlparse(value)
+    parsed = urlparse(_normalize_http_url(value))
     return parsed.scheme in ("http", "https") and bool(parsed.netloc)
 
 
@@ -604,7 +684,7 @@ def _download_remote_material(
     for attempt in range(_MAX_RETRIES + 1):
         response = None
         try:
-            response = requests.get(
+            response = _http_get(
                 file_url,
                 timeout=(_REQUEST_CONNECT_TIMEOUT, _REQUEST_READ_TIMEOUT),
                 stream=True,
@@ -675,7 +755,7 @@ def _download_remote_file(file_url: str, local_path: str) -> bool:
     """下载单个 URL 素材；网络异常或非 200 时最多重试 _MAX_RETRIES 次。"""
     for attempt in range(_MAX_RETRIES + 1):
         try:
-            response = requests.get(
+            response = _http_get(
                 file_url,
                 timeout=(_REQUEST_CONNECT_TIMEOUT, _REQUEST_READ_TIMEOUT),
                 stream=True,
@@ -755,7 +835,15 @@ def localize_remote_material_paths(data: Dict[str, Any], target_dir: str) -> boo
         for item in items:
             if not isinstance(item, dict):
                 continue
-            remote_path = item.get("path")
+            raw_path = item.get("path")
+            remote_path = _normalize_http_url(raw_path)
+            if remote_path != raw_path:
+                logger.warning(
+                    "Normalized remote material URL (removed outer/invisible whitespace): "
+                    "%r -> %r",
+                    raw_path,
+                    remote_path,
+                )
             if not _is_http_url(remote_path):
                 continue
 
@@ -969,7 +1057,7 @@ def execute_download(draft_url: str, target_dir: str, draft_id: str) -> bool:
         bool: 下载是否成功
     """
     try:
-        response = requests.get(
+        response = _http_get(
             draft_url,
             timeout=(_REQUEST_CONNECT_TIMEOUT, _REQUEST_READ_TIMEOUT),
             stream=True,
