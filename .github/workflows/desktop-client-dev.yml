@@ -2,10 +2,8 @@ name: Build
 
 on:
   push:
-    branches: [ main, dev ]
-    tags: [ 'v*' ]
-  pull_request:
-    branches: [ main, dev ]
+    tags:
+      - 'v*'  # 仅在推送 v 开头的 tag 时触发打包
 
 jobs:
   build:

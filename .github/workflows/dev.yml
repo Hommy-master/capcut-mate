@@ -2,11 +2,8 @@ name: Docker Image CI Dev
 
 on:
   push:
-    branches: [ "main", "dev" ]
     tags:
-      - 'v*'  # 当推送v开头的tag时触发
-  pull_request:
-    branches: [ "main", "dev" ]
+      - 'v*'  # 仅在推送 v 开头的 tag 时触发打包
 
 jobs:
   build:
@@ -40,7 +37,6 @@ jobs:
 
       # 登录到Docker Hub
       - name: 登录Docker Hub
-        if: github.event_name != 'pull_request'  # PR时不登录
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
@@ -54,10 +50,9 @@ jobs:
           images: |
             ${{ secrets.DOCKERHUB_USERNAME }}/capcut-mate  # 统一使用DOCKERHUB_USERNAME（无下划线）
           tags: |
-            type=ref,event=branch
             type=ref,event=tag
             type=sha,format=short
-            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=latest
 
       # 调试步骤：检查生成的标签
       - name: 显示生成的镜像标签
@@ -75,7 +70,7 @@ jobs:
         with:
           context: .
           file: ./Dockerfile
-          push: ${{ github.event_name != 'pull_request' }}
+          push: true
           tags: ${{ steps.meta.outputs.tags }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
