@@ -232,9 +232,13 @@ The Jianying Assistant client provides a convenient desktop interface. Here are 
 
 ### macOS: Install the DMG (Unsigned Package)
 
-If you downloaded the `.dmg` installer from [Releases](https://github.com/Hommy-master/capcut-mate/releases) and macOS shows **"cannot be opened"** or **"from an unidentified developer"**, that's expected — the installer is not Apple-signed. Follow these steps once to fix it:
+After downloading the `.dmg` from [Releases](https://github.com/Hommy-master/capcut-mate/releases), macOS may show this when you try to open or install:
 
-> **What this does:** Removes macOS's quarantine flag on the file so you can open the installer normally.
+> **"Jianying Assistant" is damaged and can't be opened. You should move it to the trash.**
+
+**Don't worry — the app is NOT actually damaged, and do NOT move it to the Trash.** This is a misleading macOS security warning for unsigned apps. Follow these steps once to fix it:
+
+> **What this does:** Removes macOS's quarantine flag so you can open and install normally.
 
 | Step | What to do |
 |------|------------|
@@ -242,7 +246,9 @@ If you downloaded the `.dmg` installer from [Releases](https://github.com/Hommy-
 | 2 | Type `xattr -cr ` — **keep the trailing space**, do not press Enter yet |
 | 3 | **Drag** the `.dmg` file into the Terminal window (the full path fills in automatically) |
 | 4 | Press **Enter** to run the command |
-| 5 | **Double-click** the `.dmg` again — it should mount and install normally |
+| 5 | **Double-click** the `.dmg` again — mount it, drag the app to **Applications**, then open it |
+
+**Still seeing the same error after installing?** Repeat steps 2–4, but drag `/Applications/Jianying Assistant.app` (or the app name shown in the error) into Terminal instead.
 
 > ⚠️ Only run this on installers you trust (e.g. official releases from this project).
 
