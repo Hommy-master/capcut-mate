@@ -230,6 +230,22 @@ curl -X POST "http://localhost:30000/openapi/capcut-mate/v1/add_videos" \
 
 The Jianying Assistant client provides a convenient desktop interface. Here are the startup methods:
 
+### macOS: Install the DMG (Unsigned Package)
+
+If you downloaded the `.dmg` installer from [Releases](https://github.com/Hommy-master/capcut-mate/releases) and macOS shows **"cannot be opened"** or **"from an unidentified developer"**, that's expected — the installer is not Apple-signed. Follow these steps once to fix it:
+
+> **What this does:** Removes macOS's quarantine flag on the file so you can open the installer normally.
+
+| Step | What to do |
+|------|------------|
+| 1 | Press `Command + Space`, type **Terminal**, press Enter |
+| 2 | Type `xattr -cr ` — **keep the trailing space**, do not press Enter yet |
+| 3 | **Drag** the `.dmg` file into the Terminal window (the full path fills in automatically) |
+| 4 | Press **Enter** to run the command |
+| 5 | **Double-click** the `.dmg` again — it should mount and install normally |
+
+> ⚠️ Only run this on installers you trust (e.g. official releases from this project).
+
 ### macOS Sandbox Permissions Guide
 
 When running on macOS, the application may request access permissions for specific folders. Please follow these steps:
