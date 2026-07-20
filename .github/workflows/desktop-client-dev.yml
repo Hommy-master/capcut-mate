@@ -4,6 +4,8 @@ on:
   push:
     tags:
       - 'v*'  # 仅在推送 v 开头的 tag 时触发打包
+    paths:
+      - 'desktop-client/**'   # 只有该目录下的文件被修改时才触发
 
 jobs:
   build:
