@@ -51,7 +51,7 @@ def add_videos(
                 "duration": 12000000.0, // [可选] 视频总时长 (微秒)，如果不传则默认为 end-start
                 "mask": "", // 遮罩类型 [可选]，默认值为 None
                 "transition": "", // 转场效果名称 [可选]，默认值为 None
-                "transition_duration": 500000.0, // 转场持续时间 (微秒)[可选]，默认值为 500000
+                "transition_duration": "", // [可选] 转场时长(微秒)，未指定则用转场类型默认时长
                 "volume": 1.0, // 音量大小 [0, 10][可选]，默认值为 1.0，10 为最大音量
             } 
         ] // [必选]
@@ -407,7 +407,11 @@ def add_video_to_draft(
         if transition_name:
             transition_type = find_transition_type_by_name(transition_name)
             if transition_type:
-                transition_duration = video.get('transition_duration', 500000)  # 默认500ms
+                transition_duration = video.get('transition_duration')
+                if transition_duration is not None and transition_duration != "":
+                    transition_duration = int(transition_duration)
+                else:
+                    transition_duration = None
                 try:
                     video_segment.add_transition(transition_type, duration=transition_duration)
                     logger.info(f"Added transition '{transition_name}' with duration {transition_duration}us")
@@ -470,7 +474,7 @@ def parse_video_data(json_str: str) -> List[Dict[str, Any]]:
                 "duration": 12000000.0, // [可选] 视频总时长(微秒)，如果不传则默认为end-start
                 "mask": "", // 遮罩类型[可选]，默认值为None
                 "transition": "", // 转场效果名称[可选]，默认值为None
-                "transition_duration": 500000.0, // 转场持续时间(微秒)[可选]，默认值为500000
+                "transition_duration": "", // [可选] 转场时长(微秒)，未指定则用转场类型默认时长
                 "volume": 1.0, // 音量大小[0, 10][可选]，默认值为1.0，10为最大音量
             } 
         ]
@@ -535,18 +539,14 @@ def parse_video_data(json_str: str) -> List[Dict[str, Any]]:
             "duration": duration,
             "mask": item.get("mask", None),  # 默认值 None
             "transition": item.get("transition", None),  # 默认值 None
-            "transition_duration": item.get("transition_duration", 500000),  # 默认值 500000
-            "volume": item.get("volume", 1.0)  # 默认值 1.0
+            "transition_duration": item.get("transition_duration", None),  # 默认用转场类型自身时长
+            "volume": 1.0 if item.get("volume") is None else item.get("volume"),
         }
         
         # 验证数值范围：用户传入范围 [0, 10]，超范围时给默认值
         if processed_item["volume"] < 0 or processed_item["volume"] > 10:
             logger.warning(f"Volume {processed_item['volume']} out of range [0, 10], using default 1.0")
             processed_item["volume"] = 1.0
-        
-        if processed_item["transition_duration"] < 0:
-            # 转场持续时间必须为非负数，给默认值
-            processed_item["transition_duration"] = 500000
         
         result.append(processed_item)
     
