@@ -453,9 +453,14 @@ class VideoGenTaskManager:
 
             task.progress = 30
 
-            if not self._download_draft(task):
-                logger.error("draft download failed: draft_url=%s", task.draft_url)
-                return f"草稿下载失败: {task.draft_url}"
+            download_error = self._download_draft(task)
+            if download_error:
+                logger.error(
+                    "draft download failed: draft_url=%s error=%s",
+                    task.draft_url,
+                    download_error,
+                )
+                return download_error
 
             if not self._check_draft_duration(task):
                 logger.error(
@@ -598,26 +603,36 @@ class VideoGenTaskManager:
         finally:
             self._cleanup_files(task)
     
-    def _download_draft(self, task: VideoGenTask) -> bool:
+    def _download_draft(self, task: VideoGenTask) -> str:
         """
         下载草稿
-        
+
         Args:
             task: 视频生成任务
-        
+
         Returns:
-            bool: 下载是否成功
+            错误信息，成功时返回空字符串。
         """
         logger.info(f"Start downloading draft before export: {task.draft_url}")
-        from src.utils.draft_downloader import download_draft
-        download_success = download_draft(task.draft_url)
-        
-        if download_success:
+        from src.utils.draft_downloader import (
+            download_draft_with_result,
+            format_draft_download_failure_message,
+        )
+
+        result = download_draft_with_result(task.draft_url)
+
+        if result.ok:
             logger.info(f"Draft downloaded successfully: {task.draft_url}")
-        else:
-            logger.error(f"Failed to download draft: {task.draft_url}")
-        
-        return download_success
+            return ""
+
+        error_message = format_draft_download_failure_message(result, task.draft_url)
+        logger.error(
+            "Failed to download draft: draft_url=%s kind=%s detail=%s",
+            task.draft_url,
+            result.kind.value if result.kind else None,
+            result.detail,
+        )
+        return error_message
     
     def _export_video(self, task: VideoGenTask, outfile: str) -> bool:
         """

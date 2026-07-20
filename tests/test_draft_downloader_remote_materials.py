@@ -248,7 +248,7 @@ class TestLocalizeRemoteMaterialPaths:
         data = {"materials": {"audios": [], "videos": [{"path": "C:\\local\\x.mp4"}]}}
         assert dd.localize_remote_material_paths(data, "/tmp/y") is True
 
-    @patch.object(dd, "_download_remote_material")
+    @patch.object(dd, "_download_remote_material_raising")
     def test_rewrites_path_on_success(self, m_dl) -> None:
         with tempfile.TemporaryDirectory() as td:
             url = "https://cdn.example.com/v.mp4"
@@ -273,7 +273,7 @@ class TestLocalizeRemoteMaterialPaths:
             assert "assets" in new_path.replace("\\", "/")
             assert new_path.endswith(".mp4")
 
-    @patch.object(dd, "_download_remote_material")
+    @patch.object(dd, "_download_remote_material_raising")
     def test_byteimg_png_url_saved_with_png_extension(self, m_dl) -> None:
         url = TestDownloadRemoteMaterial.BYTEIMG_PNG_URL
         with tempfile.TemporaryDirectory() as td:
@@ -298,7 +298,11 @@ class TestLocalizeRemoteMaterialPaths:
             assert not new_path.endswith(".image")
             m_dl.assert_called_once_with(url, td, "images", "双行", ".mp4")
 
-    @patch.object(dd, "_download_remote_material", return_value=None)
+    @patch.object(
+        dd,
+        "_download_remote_material_raising",
+        side_effect=dd.DraftDownloadAbort(dd.DraftDownloadFailureKind.RESOURCE_UNAVAILABLE),
+    )
     def test_returns_false_when_download_fails(self, m_dl) -> None:
         with tempfile.TemporaryDirectory() as td:
             url = "https://cdn.example.com/miss.mp4"
@@ -311,7 +315,7 @@ class TestLocalizeRemoteMaterialPaths:
             assert dd.localize_remote_material_paths(data, td) is False
             assert data["materials"]["videos"][0]["path"] == url
 
-    @patch.object(dd, "_download_remote_material")
+    @patch.object(dd, "_download_remote_material_raising")
     def test_same_url_shared_across_items(self, m_dl) -> None:
         u = "https://cdn.example.com/same.mp3"
         with tempfile.TemporaryDirectory() as td:
@@ -346,7 +350,13 @@ class TestUpdateJsonFilePaths:
             with open(path, "w", encoding="utf-8") as f:
                 f.write(original)
 
-            with patch.object(dd, "localize_remote_material_paths", return_value=False):
+            with patch.object(
+                dd,
+                "_localize_remote_material_paths",
+                side_effect=dd.DraftDownloadAbort(
+                    dd.DraftDownloadFailureKind.RESOURCE_UNAVAILABLE
+                ),
+            ):
                 assert (
                     dd.update_json_file_paths(path, td, "20260101120000abc")
                     is False
@@ -355,7 +365,7 @@ class TestUpdateJsonFilePaths:
             with open(path, "r", encoding="utf-8") as f:
                 assert f.read() == original
 
-    @patch.object(dd, "localize_remote_material_paths", return_value=True)
+    @patch.object(dd, "_localize_remote_material_paths")
     @patch.object(dd, "config")
     def test_writes_when_localize_ok(self, m_config, m_loc) -> None:
         m_config.DRAFT_SAVE_PATH = "D:/mock/draft"
@@ -506,7 +516,7 @@ class TestDownloadSingleFile:
                 # retry_count 0..5 共 6 次尝试后放弃（与原先 max_retries=5 语义一致）
                 assert m_req.get.call_count == 6
 
-    @patch.object(dd, "update_json_file_paths")
+    @patch.object(dd, "_update_json_file_paths")
     def test_plain_file_does_not_touch_json_paths(self, m_upd, no_sleep) -> None:
         file_url = (
             f"{self._BASE}/app/output/draft/20251204214904ccb1af38/only.bin"
@@ -518,7 +528,7 @@ class TestDownloadSingleFile:
                 assert dd.download_single_file(file_url, td) is True
             m_upd.assert_not_called()
 
-    @patch.object(dd, "update_json_file_paths", return_value=True)
+    @patch.object(dd, "_update_json_file_paths")
     def test_json_files_invoke_path_update(self, m_upd, no_sleep) -> None:
         file_url = (
             f"{self._BASE}/app/output/draft/20251204214904ccb1af38/"
@@ -534,7 +544,11 @@ class TestDownloadSingleFile:
             assert call_kw[0][1] == td
             assert call_kw[0][2] == "20251204214904ccb1af38"
 
-    @patch.object(dd, "update_json_file_paths", return_value=False)
+    @patch.object(
+        dd,
+        "_update_json_file_paths",
+        side_effect=dd.DraftDownloadAbort(dd.DraftDownloadFailureKind.RESOURCE_UNAVAILABLE),
+    )
     def test_json_update_failure_returns_false(self, m_upd, no_sleep) -> None:
         file_url = (
             f"{self._BASE}/app/output/draft/20251204214904ccb1af38/"
@@ -575,7 +589,7 @@ class TestDownloadAllFiles:
                     return r
 
                 m_req.get.side_effect = fake_get
-                with patch.object(dd, "update_json_file_paths", return_value=True):
+                with patch.object(dd, "_update_json_file_paths"):
                     assert dd.download_all_files(
                         [other_url, content_url, info_url], td, self._DRAFT
                     ) is True
@@ -590,7 +604,7 @@ class TestDownloadAllFiles:
                 assert f1.read() == f2.read()
 
     @patch.object(dd, "trigger_directory_scan_with_robocopy")
-    @patch.object(dd, "download_single_file", return_value=True)
+    @patch.object(dd, "_download_single_file")
     def test_fails_when_draft_content_missing_for_copy(
         self, m_dl, m_scan
     ) -> None:

@@ -72,7 +72,7 @@ class TestPhaseDownloadPrepareMessage:
     """时长不通过时，阶段函数返回带 draft_id 的提示文案。"""
 
     @patch("src.utils.video_task_manager.sys.platform", "win32")
-    @patch.object(VideoGenTaskManager, "_download_draft", return_value=True)
+    @patch.object(VideoGenTaskManager, "_download_draft", return_value="")
     def test_phase_returns_duration_too_short_message(
         self, m_dl, draft_home
     ) -> None:
