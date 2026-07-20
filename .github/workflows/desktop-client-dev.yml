@@ -6,37 +6,7 @@ on:
       - 'v*'  # 仅在推送 v 开头的 tag 时触发打包
 
 jobs:
-  check-changes:
-    runs-on: ubuntu-latest
-    outputs:
-      changed: ${{ steps.check.outputs.changed }}
-    steps:
-      - name: 准备代码
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: 检查 desktop-client 是否有变更
-        id: check
-        run: |
-          CURRENT_TAG="${{ github.ref_name }}"
-          PREV_TAG=$(git tag -l 'v*' --sort=-v:refname | grep -Fxv "$CURRENT_TAG" | head -1)
-          if [ -n "$PREV_TAG" ]; then
-            BASE="$PREV_TAG"
-          else
-            BASE=$(git rev-list --max-parents=0 HEAD)
-          fi
-          if git diff --name-only "$BASE" "${{ github.sha }}" | grep -q '^desktop-client/'; then
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-            echo "desktop-client 目录存在变更 (${BASE}..${{ github.sha }})，继续打包"
-          else
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-            echo "desktop-client 目录无变更，跳过打包"
-          fi
-
   build:
-    needs: check-changes
-    if: needs.check-changes.outputs.changed == 'true'
     runs-on: ${{ matrix.os }}
 
     strategy:
