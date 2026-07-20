@@ -59,7 +59,7 @@ def add_images(
                 "out_animation_duration": "", // [可选] 出场动画时长(微秒)
                 "loop_animation_duration": "", // [可选] 循环动画时长(微秒)
                 "transition": "", // [可选] 转场效果类型
-                "transition_duration": 500000 // [可选] 转场效果时长(微秒，范围100000-2500000)
+                "transition_duration": "" // [可选] 转场时长(微秒)，未指定则用转场类型默认时长
             }
         ]
         alpha: 全局透明度[0, 1]，默认值为1.0
@@ -432,8 +432,10 @@ def add_image_to_draft(
                 
                 if transition_enum:
                     transition_duration = image.get('transition_duration')
-                    if transition_duration is not None:
+                    if transition_duration is not None and transition_duration != "":
                         transition_duration = int(transition_duration)
+                    else:
+                        transition_duration = None
                     video_segment.add_transition(transition_enum, duration=transition_duration)
                     logger.info(f"Successfully added transition '{image['transition']}' to image segment")
                 else:
@@ -526,7 +528,7 @@ def parse_image_data(json_str: str) -> List[Dict[str, Any]]:
                 "out_animation_duration": "", // [可选] 出场动画时长(微秒)
                 "loop_animation_duration": "", // [可选] 循环动画时长(微秒)
                 "transition": "", // [可选] 转场效果类型
-                "transition_duration": 500000 // [可选] 转场效果时长(微秒，范围100000-2500000)
+                "transition_duration": "" // [可选] 转场时长(微秒)，未指定则用转场类型默认时长
             }
         ]
         
@@ -584,7 +586,7 @@ def parse_image_data(json_str: str) -> List[Dict[str, Any]]:
             "out_animation_duration": item.get("out_animation_duration", None),  # 默认无出场动画时长
             "loop_animation_duration": item.get("loop_animation_duration", None),  # 默认无循环动画时长
             "transition": item.get("transition", None),  # 默认无转场
-            "transition_duration": item.get("transition_duration", 500000)  # 默认转场时长500000微秒
+            "transition_duration": item.get("transition_duration", None),  # 默认用转场类型自身时长
         }
         
         # 验证数值范围（仅校验显式传入的尺寸）
@@ -613,11 +615,6 @@ def parse_image_data(json_str: str) -> List[Dict[str, Any]]:
                 f"start={processed_item['start']}, end={processed_item['end']}"
             )
             raise CustomException(CustomError.INVALID_IMAGE_INFO, f"the {i}th item has invalid end time")
-        
-        # 验证转场时长范围
-        if processed_item["transition_duration"] < 100000 or processed_item["transition_duration"] > 2500000:
-            logger.warning(f"Transition duration {processed_item['transition_duration']} out of range [100000, 2500000], using default 500000")
-            processed_item["transition_duration"] = 500000
         
         result.append(processed_item)
         logger.debug(f"Processed image item {i+1}: {processed_item}")
