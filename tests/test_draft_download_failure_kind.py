@@ -1,4 +1,7 @@
 """草稿下载失败分类：404/资源不可用 vs 网络重试耗尽。"""
+import json
+import os
+import tempfile
 from datetime import datetime
 from unittest.mock import MagicMock, patch
 
@@ -56,6 +59,53 @@ class TestFormatDraftDownloadFailureMessage:
             dd.format_draft_download_failure_message(result)
             == "草稿下载失败: 本地文件写入失败"
         )
+
+    def test_never_uses_jianying_prefix(self) -> None:
+        for kind in dd.DraftDownloadFailureKind:
+            msg = dd.format_draft_download_failure_message(
+                dd.DraftDownloadResult(ok=False, kind=kind, http_status=404)
+            )
+            assert msg.startswith("草稿下载失败")
+            assert not msg.startswith("剪映草稿下载失败")
+
+
+class TestLocalizeDraftMetaInfo:
+    def test_rewrites_stale_draft_name_and_paths(self) -> None:
+        draft_id = "202607081926322fd047aa"
+        with tempfile.TemporaryDirectory() as td:
+            meta_path = os.path.join(td, "draft_meta_info.json")
+            with open(meta_path, "w", encoding="utf-8") as f:
+                json.dump(
+                    {
+                        "draft_name": "035ae208-ec69-4068-b479-777cb3bab17a",
+                        "draft_fold_path": "C:/old/035ae208-ec69-4068-b479-777cb3bab17a",
+                        "draft_root_path": "C:/old",
+                    },
+                    f,
+                )
+            with patch.object(dd, "config") as m_cfg:
+                m_cfg.DRAFT_SAVE_PATH = td
+                dd._localize_draft_meta_info(td, draft_id)
+            with open(meta_path, encoding="utf-8") as f:
+                meta = json.load(f)
+            assert meta["draft_name"] == draft_id
+            assert os.path.normpath(meta["draft_fold_path"]) == os.path.normpath(td)
+
+    def test_verify_ready_rejects_mismatched_draft_name(self) -> None:
+        draft_id = "202607081926322fd047aa"
+        with tempfile.TemporaryDirectory() as root:
+            draft_dir = os.path.join(root, draft_id)
+            os.makedirs(draft_dir)
+            open(os.path.join(draft_dir, "draft_content.json"), "w", encoding="utf-8").write("{}")
+            with open(
+                os.path.join(draft_dir, "draft_meta_info.json"), "w", encoding="utf-8"
+            ) as f:
+                json.dump({"draft_name": "other-uuid"}, f)
+            result = dd.verify_local_draft_ready(draft_id, save_path=root)
+            assert result.ok is False
+            msg = dd.format_draft_download_failure_message(result)
+            assert msg.startswith("草稿下载失败")
+
 
 
 class TestDownloadSingleFileFailureKind:
@@ -245,3 +295,19 @@ class TestVideoTaskManagerDownloadMessages:
         ):
             out = VideoGenTaskManager()._phase_download_and_prepare(_task())
         assert out == fail_msg
+        assert out.startswith("草稿下载失败")
+
+    @patch("src.utils.video_task_manager.sys.platform", "win32")
+    @patch.object(VideoGenTaskManager, "_check_draft_duration")
+    @patch.object(VideoGenTaskManager, "_assign_export_outfile")
+    def test_local_not_ready_blocks_export_prep(self, m_out, m_dur) -> None:
+        with patch.object(VideoGenTaskManager, "_download_draft", return_value=""):
+            with patch.object(
+                VideoGenTaskManager,
+                "_ensure_local_draft_ready",
+                return_value="草稿下载失败: 草稿或素材不存在/URL无效",
+            ):
+                out = VideoGenTaskManager()._phase_download_and_prepare(_task())
+        assert out.startswith("草稿下载失败")
+        assert "剪映草稿下载失败" not in out
+        m_dur.assert_not_called()

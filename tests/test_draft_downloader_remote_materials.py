@@ -573,6 +573,15 @@ class TestDownloadAllFiles:
         content_url = self._url("draft_content.json")
         info_url = self._url("draft_info.json")
         other_url = self._url("assets/x.bin")
+        meta_url = self._url("draft_meta_info.json")
+        stale_meta = json.dumps(
+            {
+                "draft_name": "035ae208-ec69-4068-b479-777cb3bab17a",
+                "draft_fold_path": "C:/old/path/035ae208-ec69-4068-b479-777cb3bab17a",
+                "draft_root_path": "C:/old/path",
+            },
+            ensure_ascii=False,
+        ).encode("utf-8")
 
         with tempfile.TemporaryDirectory() as td:
             with patch.object(dd, "requests") as m_req:
@@ -583,6 +592,8 @@ class TestDownloadAllFiles:
                     r.status_code = 200
                     if url == content_url:
                         r.iter_content = MagicMock(return_value=[b"{}\n"])
+                    elif url == meta_url:
+                        r.iter_content = MagicMock(return_value=[stale_meta])
                     else:
                         r.iter_content = MagicMock(return_value=[b"\x00"])
                     r.close = MagicMock()
@@ -590,18 +601,27 @@ class TestDownloadAllFiles:
 
                 m_req.get.side_effect = fake_get
                 with patch.object(dd, "_update_json_file_paths"):
-                    assert dd.download_all_files(
-                        [other_url, content_url, info_url], td, self._DRAFT
-                    ) is True
+                    with patch.object(dd, "config") as m_cfg:
+                        m_cfg.DRAFT_SAVE_PATH = td
+                        assert dd.download_all_files(
+                            [other_url, content_url, info_url, meta_url],
+                            td,
+                            self._DRAFT,
+                        ) is True
 
             called_urls = [call.args[0] for call in m_req.get.call_args_list]
             assert info_url not in called_urls
             assert content_url in called_urls
+            assert meta_url in called_urls
             info_path = os.path.join(td, "draft_info.json")
             content_path = os.path.join(td, "draft_content.json")
             assert os.path.isfile(info_path)
             with open(content_path, "rb") as f1, open(info_path, "rb") as f2:
                 assert f1.read() == f2.read()
+            with open(os.path.join(td, "draft_meta_info.json"), encoding="utf-8") as f:
+                meta = json.load(f)
+            assert meta["draft_name"] == self._DRAFT
+            assert os.path.normpath(meta["draft_fold_path"]) == os.path.normpath(td)
 
     @patch.object(dd, "trigger_directory_scan_with_robocopy")
     @patch.object(dd, "_download_single_file")

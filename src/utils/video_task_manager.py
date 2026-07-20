@@ -1,4 +1,4 @@
-""" 
+﻿""" 
 视频生成异步任务队列管理器
 支持任务排队、状态跟踪和结果查询
 """
@@ -460,7 +460,17 @@ class VideoGenTaskManager:
                     task.draft_url,
                     download_error,
                 )
+                # 下载失败必须在此返回，禁止进入剪映导出流程
                 return download_error
+
+            ready_error = self._ensure_local_draft_ready(task)
+            if ready_error:
+                logger.error(
+                    "local draft not ready after download: draft_id=%s error=%s",
+                    task.draft_id,
+                    ready_error,
+                )
+                return ready_error
 
             if not self._check_draft_duration(task):
                 logger.error(
@@ -473,9 +483,11 @@ class VideoGenTaskManager:
             return ""
         except Exception as exc:
             logger.exception(
-                f"Export draft failed: draft_id={task.draft_id}, error={exc}"
+                "Draft download/prepare failed: draft_id=%s, error=%s",
+                task.draft_id,
+                exc,
             )
-            return f"导出草稿失败: {exc}"
+            return f"草稿下载失败: {exc}"
 
     @staticmethod
     def _is_export_rename_src_none_error(error_message: str) -> bool:
@@ -612,6 +624,7 @@ class VideoGenTaskManager:
 
         Returns:
             错误信息，成功时返回空字符串。
+            失败时一律返回以「草稿下载失败」开头的文案。
         """
         logger.info(f"Start downloading draft before export: {task.draft_url}")
         from src.utils.draft_downloader import (
@@ -619,7 +632,15 @@ class VideoGenTaskManager:
             format_draft_download_failure_message,
         )
 
-        result = download_draft_with_result(task.draft_url)
+        try:
+            result = download_draft_with_result(task.draft_url)
+        except Exception as exc:
+            logger.exception(
+                "Draft download raised unexpectedly: draft_url=%s error=%s",
+                task.draft_url,
+                exc,
+            )
+            return f"草稿下载失败: {exc}"
 
         if result.ok:
             logger.info(f"Draft downloaded successfully: {task.draft_url}")
@@ -633,6 +654,18 @@ class VideoGenTaskManager:
             result.detail,
         )
         return error_message
+
+    def _ensure_local_draft_ready(self, task: VideoGenTask) -> str:
+        """下载后校验本地草稿是否可导出；失败返回「草稿下载失败」文案。"""
+        from src.utils.draft_downloader import (
+            format_draft_download_failure_message,
+            verify_local_draft_ready,
+        )
+
+        result = verify_local_draft_ready(task.draft_id)
+        if result.ok:
+            return ""
+        return format_draft_download_failure_message(result, task.draft_url)
     
     def _export_video(self, task: VideoGenTask, outfile: str) -> bool:
         """

@@ -67,17 +67,18 @@ def _abort(
 def format_draft_download_failure_message(
     result: DraftDownloadResult, draft_url: str = ""
 ) -> str:
-    """将结构化失败结果转为用户可见错误文案。"""
+    """将结构化失败结果转为用户可见错误文案（格式：草稿下载失败: XXX）。"""
     if result.ok:
         return ""
+    prefix = "草稿下载失败"
     if result.kind == DraftDownloadFailureKind.NETWORK_RETRY_EXHAUSTED:
-        return "草稿下载失败: 网络不稳定，已多次重试仍失败，请稍后重试"
+        return f"{prefix}: 网络不稳定，已多次重试仍失败，请稍后重试"
     if result.kind == DraftDownloadFailureKind.RESOURCE_UNAVAILABLE:
         suffix = f" (HTTP {result.http_status})" if result.http_status else ""
-        return f"草稿下载失败: 草稿或素材不存在/URL无效{suffix}"
+        return f"{prefix}: 草稿或素材不存在/URL无效{suffix}"
     if result.kind == DraftDownloadFailureKind.LOCAL_IO:
-        return "草稿下载失败: 本地文件写入失败"
-    return f"草稿下载失败: {draft_url or result.url or 'unknown'}"
+        return f"{prefix}: 本地文件写入失败"
+    return f"{prefix}: {draft_url or result.url or 'unknown'}"
 
 
 def _result_from_abort(exc: DraftDownloadAbort) -> DraftDownloadResult:
@@ -88,6 +89,121 @@ def _result_from_abort(exc: DraftDownloadAbort) -> DraftDownloadResult:
         url=exc.url,
         http_status=exc.http_status,
     )
+
+
+_REQUIRED_DRAFT_FILES = (
+    "draft_content.json",
+    "draft_meta_info.json",
+)
+
+
+def verify_local_draft_ready(draft_id: str, save_path: Optional[str] = None) -> DraftDownloadResult:
+    """
+    校验本地草稿目录是否具备进入剪映导出的最低条件。
+    不完整时视为下载失败，避免误入导出流程后报 DraftNotFound。
+    """
+    if save_path is None:
+        save_path = config.DRAFT_SAVE_PATH
+    target_dir = os.path.join(save_path, draft_id)
+    if not os.path.isdir(target_dir):
+        return DraftDownloadResult(
+            ok=False,
+            kind=DraftDownloadFailureKind.RESOURCE_UNAVAILABLE,
+            detail=f"Local draft directory missing: {target_dir}",
+            url=target_dir,
+        )
+    for name in _REQUIRED_DRAFT_FILES:
+        path = os.path.join(target_dir, name)
+        if not os.path.isfile(path):
+            return DraftDownloadResult(
+                ok=False,
+                kind=DraftDownloadFailureKind.RESOURCE_UNAVAILABLE,
+                detail=f"Required draft file missing: {name}",
+                url=path,
+            )
+    meta_path = os.path.join(target_dir, "draft_meta_info.json")
+    try:
+        with open(meta_path, "r", encoding="utf-8") as f:
+            meta = json.load(f)
+        if not isinstance(meta, dict):
+            return DraftDownloadResult(
+                ok=False,
+                kind=DraftDownloadFailureKind.RESOURCE_UNAVAILABLE,
+                detail="draft_meta_info.json is not an object",
+                url=meta_path,
+            )
+        if meta.get("draft_name") != draft_id:
+            return DraftDownloadResult(
+                ok=False,
+                kind=DraftDownloadFailureKind.RESOURCE_UNAVAILABLE,
+                detail=(
+                    f"draft_name mismatch: expected={draft_id}, "
+                    f"actual={meta.get('draft_name')!r}"
+                ),
+                url=meta_path,
+            )
+    except (OSError, json.JSONDecodeError) as e:
+        return DraftDownloadResult(
+            ok=False,
+            kind=DraftDownloadFailureKind.LOCAL_IO,
+            detail=f"Failed to read draft_meta_info.json: {e}",
+            url=meta_path,
+        )
+    return DraftDownloadResult(ok=True)
+
+
+def _localize_draft_meta_info(target_dir: str, draft_id: str) -> None:
+    """
+    将 draft_meta_info.json 中的名称与路径改写为本地草稿目录。
+
+    服务端下发的 meta 常残留创建端 UUID（draft_name / draft_fold_path），
+    与本地文件夹名 draft_id 不一致时，剪映首页标题对不上，导出阶段会 DraftNotFound。
+    """
+    meta_path = os.path.join(target_dir, "draft_meta_info.json")
+    if not os.path.isfile(meta_path):
+        _abort(
+            DraftDownloadFailureKind.RESOURCE_UNAVAILABLE,
+            detail="draft_meta_info.json missing after download",
+            url=meta_path,
+        )
+    try:
+        with open(meta_path, "r", encoding="utf-8") as f:
+            meta = json.load(f)
+        if not isinstance(meta, dict):
+            _abort(
+                DraftDownloadFailureKind.RESOURCE_UNAVAILABLE,
+                detail="draft_meta_info.json is not an object",
+                url=meta_path,
+            )
+
+        root_path = os.path.normpath(config.DRAFT_SAVE_PATH)
+        fold_path = os.path.normpath(target_dir)
+        old_name = meta.get("draft_name")
+        meta["draft_name"] = draft_id
+        meta["draft_fold_path"] = fold_path
+        meta["draft_root_path"] = root_path
+
+        json_content = json.dumps(meta, ensure_ascii=False, indent=2)
+        try:
+            os.remove(meta_path)
+        except OSError:
+            pass
+        safe_write_file(meta_path, json_content, is_binary=False)
+        logger.info(
+            "Localized draft_meta_info: draft_id=%s old_name=%r fold_path=%s",
+            draft_id,
+            old_name,
+            fold_path,
+        )
+    except DraftDownloadAbort:
+        raise
+    except (OSError, json.JSONDecodeError) as e:
+        logger.error("Failed to localize draft_meta_info.json: %s, error=%s", meta_path, e)
+        _abort(
+            DraftDownloadFailureKind.LOCAL_IO,
+            detail=f"Failed to localize draft_meta_info.json: {e}",
+            url=meta_path,
+        )
 
 _REQUEST_CONNECT_TIMEOUT = 10
 _REQUEST_READ_TIMEOUT = 30
@@ -559,6 +675,14 @@ def _download_all_files(files: list, target_dir: str, draft_id: str) -> None:
                     DraftDownloadFailureKind.LOCAL_IO,
                     detail="Failed to sync draft_info.json from draft_content.json",
                 )
+
+    if first_abort is None and all_downloaded and success_count == total_files:
+        try:
+            # 必须在 robocopy 扫描前改写 meta，否则剪映可能按错误 draft_name 索引
+            _localize_draft_meta_info(target_dir, draft_id)
+        except DraftDownloadAbort as exc:
+            first_abort = exc
+            all_downloaded = False
 
     trigger_directory_scan_with_robocopy(target_dir)
 
