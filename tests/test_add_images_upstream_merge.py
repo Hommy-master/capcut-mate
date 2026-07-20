@@ -40,6 +40,7 @@ class AddImagesUpstreamMergeTests(unittest.TestCase):
         )[0]
 
         self.assertEqual(750_000, parsed["transition_duration"])
+        self.assertIsInstance(parsed["transition_duration"], int)
 
 
 if __name__ == "__main__":
