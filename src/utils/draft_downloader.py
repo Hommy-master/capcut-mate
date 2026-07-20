@@ -10,11 +10,200 @@ import shutil
 import mimetypes
 import requests
 import subprocess
+from dataclasses import dataclass
+from enum import Enum
 from urllib.parse import urlparse, parse_qs
 from typing import Optional, Dict, Any, List, Tuple
 from src.utils.logger import logger
 from src.utils.deferred_delete import dequeue_path
 import config
+
+
+class DraftDownloadFailureKind(str, Enum):
+    """草稿下载失败分类。"""
+
+    RESOURCE_UNAVAILABLE = "resource_unavailable"  # 404/URL 无效/不可达等，不应重试
+    NETWORK_RETRY_EXHAUSTED = "network_retry_exhausted"  # 可重试错误耗尽
+    LOCAL_IO = "local_io"  # 本地写盘等
+
+
+@dataclass(frozen=True)
+class DraftDownloadResult:
+    """草稿下载结构化结果；ok=True 时其余字段为空。"""
+
+    ok: bool
+    kind: Optional[DraftDownloadFailureKind] = None
+    detail: str = ""
+    url: str = ""
+    http_status: Optional[int] = None
+
+
+class DraftDownloadAbort(Exception):
+    """下载链路内部中止，携带失败分类；由 with_result 转为 DraftDownloadResult。"""
+
+    def __init__(
+        self,
+        kind: DraftDownloadFailureKind,
+        detail: str = "",
+        url: str = "",
+        http_status: Optional[int] = None,
+    ) -> None:
+        self.kind = kind
+        self.detail = detail
+        self.url = url
+        self.http_status = http_status
+        super().__init__(detail or kind.value)
+
+
+def _abort(
+    kind: DraftDownloadFailureKind,
+    detail: str = "",
+    url: str = "",
+    http_status: Optional[int] = None,
+) -> None:
+    raise DraftDownloadAbort(kind, detail=detail, url=url, http_status=http_status)
+
+
+def format_draft_download_failure_message(
+    result: DraftDownloadResult, draft_url: str = ""
+) -> str:
+    """将结构化失败结果转为用户可见错误文案（格式：草稿下载失败: XXX）。"""
+    if result.ok:
+        return ""
+    prefix = "草稿下载失败"
+    if result.kind == DraftDownloadFailureKind.NETWORK_RETRY_EXHAUSTED:
+        return f"{prefix}: 网络不稳定，已多次重试仍失败，请稍后重试"
+    if result.kind == DraftDownloadFailureKind.RESOURCE_UNAVAILABLE:
+        suffix = f" (HTTP {result.http_status})" if result.http_status else ""
+        return f"{prefix}: 草稿或素材不存在/URL无效{suffix}"
+    if result.kind == DraftDownloadFailureKind.LOCAL_IO:
+        return f"{prefix}: 本地文件写入失败"
+    return f"{prefix}: {draft_url or result.url or 'unknown'}"
+
+
+def _result_from_abort(exc: DraftDownloadAbort) -> DraftDownloadResult:
+    return DraftDownloadResult(
+        ok=False,
+        kind=exc.kind,
+        detail=exc.detail,
+        url=exc.url,
+        http_status=exc.http_status,
+    )
+
+
+_REQUIRED_DRAFT_FILES = (
+    "draft_content.json",
+    "draft_meta_info.json",
+)
+
+
+def verify_local_draft_ready(draft_id: str, save_path: Optional[str] = None) -> DraftDownloadResult:
+    """
+    校验本地草稿目录是否具备进入剪映导出的最低条件。
+    不完整时视为下载失败，避免误入导出流程后报 DraftNotFound。
+    """
+    if save_path is None:
+        save_path = config.DRAFT_SAVE_PATH
+    target_dir = os.path.join(save_path, draft_id)
+    if not os.path.isdir(target_dir):
+        return DraftDownloadResult(
+            ok=False,
+            kind=DraftDownloadFailureKind.RESOURCE_UNAVAILABLE,
+            detail=f"Local draft directory missing: {target_dir}",
+            url=target_dir,
+        )
+    for name in _REQUIRED_DRAFT_FILES:
+        path = os.path.join(target_dir, name)
+        if not os.path.isfile(path):
+            return DraftDownloadResult(
+                ok=False,
+                kind=DraftDownloadFailureKind.RESOURCE_UNAVAILABLE,
+                detail=f"Required draft file missing: {name}",
+                url=path,
+            )
+    meta_path = os.path.join(target_dir, "draft_meta_info.json")
+    try:
+        with open(meta_path, "r", encoding="utf-8") as f:
+            meta = json.load(f)
+        if not isinstance(meta, dict):
+            return DraftDownloadResult(
+                ok=False,
+                kind=DraftDownloadFailureKind.RESOURCE_UNAVAILABLE,
+                detail="draft_meta_info.json is not an object",
+                url=meta_path,
+            )
+        if meta.get("draft_name") != draft_id:
+            return DraftDownloadResult(
+                ok=False,
+                kind=DraftDownloadFailureKind.RESOURCE_UNAVAILABLE,
+                detail=(
+                    f"draft_name mismatch: expected={draft_id}, "
+                    f"actual={meta.get('draft_name')!r}"
+                ),
+                url=meta_path,
+            )
+    except (OSError, json.JSONDecodeError) as e:
+        return DraftDownloadResult(
+            ok=False,
+            kind=DraftDownloadFailureKind.LOCAL_IO,
+            detail=f"Failed to read draft_meta_info.json: {e}",
+            url=meta_path,
+        )
+    return DraftDownloadResult(ok=True)
+
+
+def _localize_draft_meta_info(target_dir: str, draft_id: str) -> None:
+    """
+    将 draft_meta_info.json 中的名称与路径改写为本地草稿目录。
+
+    服务端下发的 meta 常残留创建端 UUID（draft_name / draft_fold_path），
+    与本地文件夹名 draft_id 不一致时，剪映首页标题对不上，导出阶段会 DraftNotFound。
+    """
+    meta_path = os.path.join(target_dir, "draft_meta_info.json")
+    if not os.path.isfile(meta_path):
+        _abort(
+            DraftDownloadFailureKind.RESOURCE_UNAVAILABLE,
+            detail="draft_meta_info.json missing after download",
+            url=meta_path,
+        )
+    try:
+        with open(meta_path, "r", encoding="utf-8") as f:
+            meta = json.load(f)
+        if not isinstance(meta, dict):
+            _abort(
+                DraftDownloadFailureKind.RESOURCE_UNAVAILABLE,
+                detail="draft_meta_info.json is not an object",
+                url=meta_path,
+            )
+
+        root_path = os.path.normpath(config.DRAFT_SAVE_PATH)
+        fold_path = os.path.normpath(target_dir)
+        old_name = meta.get("draft_name")
+        meta["draft_name"] = draft_id
+        meta["draft_fold_path"] = fold_path
+        meta["draft_root_path"] = root_path
+
+        json_content = json.dumps(meta, ensure_ascii=False, indent=2)
+        try:
+            os.remove(meta_path)
+        except OSError:
+            pass
+        safe_write_file(meta_path, json_content, is_binary=False)
+        logger.info(
+            "Localized draft_meta_info: draft_id=%s old_name=%r fold_path=%s",
+            draft_id,
+            old_name,
+            fold_path,
+        )
+    except DraftDownloadAbort:
+        raise
+    except (OSError, json.JSONDecodeError) as e:
+        logger.error("Failed to localize draft_meta_info.json: %s, error=%s", meta_path, e)
+        _abort(
+            DraftDownloadFailureKind.LOCAL_IO,
+            detail=f"Failed to localize draft_meta_info.json: {e}",
+            url=meta_path,
+        )
 
 _REQUEST_CONNECT_TIMEOUT = 10
 _REQUEST_READ_TIMEOUT = 30
@@ -254,32 +443,59 @@ def download_draft(draft_url: str, save_path: Optional[str] = None) -> bool:
     Returns:
         bool: 下载是否成功
     """
-    # 提取draft_id
+    return download_draft_with_result(draft_url, save_path).ok
+
+
+def download_draft_with_result(
+    draft_url: str, save_path: Optional[str] = None
+) -> DraftDownloadResult:
+    """
+    下载草稿并返回结构化结果（含失败分类）。
+
+    Returns:
+        DraftDownloadResult: ok=True 表示成功；失败时 kind 区分资源不可用与网络重试耗尽等。
+    """
     draft_id = extract_draft_id_from_url(draft_url)
     if not draft_id:
         logger.error(f"Cannot extract draft_id from URL: {draft_url}")
-        return False
-    
-    # 设置保存路径
+        return DraftDownloadResult(
+            ok=False,
+            kind=DraftDownloadFailureKind.RESOURCE_UNAVAILABLE,
+            detail="Cannot extract draft_id from URL",
+            url=draft_url,
+        )
+
     if save_path is None:
         save_path = config.DRAFT_SAVE_PATH
-    
-    # 构建并创建目标目录
-    target_dir = prepare_target_directory(save_path, draft_id)
 
-    # 重试/并发导出同一草稿时，取消此前任务入队的延迟删除，避免下载后被 sweep 删掉
+    target_dir = prepare_target_directory(save_path, draft_id)
     dequeue_path(target_dir)
 
     logger.info(f"Downloading draft {draft_id} to {target_dir}")
-    
-    # 获取草稿文件列表
-    files = get_draft_files_list(draft_url)
-    if not files:
-        logger.error(f"Cannot get draft file list: {draft_id}")
-        return False
-    
-    # 下载所有文件
-    return download_all_files(files, target_dir, draft_id)
+
+    try:
+        files = _get_draft_files_list(draft_url)
+        if not files:
+            logger.error(f"Cannot get draft file list: {draft_id}")
+            _abort(
+                DraftDownloadFailureKind.RESOURCE_UNAVAILABLE,
+                detail=f"Empty draft file list: {draft_id}",
+                url=draft_url,
+            )
+        _download_all_files(files, target_dir, draft_id)
+        return DraftDownloadResult(ok=True)
+    except DraftDownloadAbort as exc:
+        if not exc.url:
+            exc.url = draft_url
+        logger.error(
+            "Draft download failed: draft_id=%s kind=%s detail=%s url=%s http_status=%s",
+            draft_id,
+            exc.kind.value,
+            exc.detail,
+            exc.url,
+            exc.http_status,
+        )
+        return _result_from_abort(exc)
 
 
 def get_draft_files_list(draft_url: str) -> list:
@@ -290,8 +506,16 @@ def get_draft_files_list(draft_url: str) -> list:
         draft_url: 草稿URL
         
     Returns:
-        list: 文件URL列表
+        list: 文件URL列表；失败时返回空列表（兼容旧调用方）
     """
+    try:
+        return _get_draft_files_list(draft_url)
+    except DraftDownloadAbort:
+        return []
+
+
+def _get_draft_files_list(draft_url: str) -> list:
+    """获取草稿文件列表；失败时抛出 DraftDownloadAbort。"""
     for attempt in range(_MAX_RETRIES + 1):
         try:
             response = _http_get(
@@ -314,41 +538,68 @@ def get_draft_files_list(draft_url: str) -> list:
                     response.close()
                     _sleep_transient_http_backoff(retry_no, response)
                     continue
-                logger.error(
-                    f"Failed to get draft file list, HTTP status: {response.status_code}"
-                )
+                status = response.status_code
                 response.close()
-                return []
+                logger.error(
+                    f"Failed to get draft file list, HTTP status: {status}"
+                )
+                if _is_retryable_http_status(status):
+                    _abort(
+                        DraftDownloadFailureKind.NETWORK_RETRY_EXHAUSTED,
+                        detail=f"Draft file list HTTP {status} after retries",
+                        url=draft_url,
+                        http_status=status,
+                    )
+                _abort(
+                    DraftDownloadFailureKind.RESOURCE_UNAVAILABLE,
+                    detail=f"Draft file list HTTP {status}",
+                    url=draft_url,
+                    http_status=status,
+                )
 
-            # 解析JSON响应
             try:
                 json_data = response.json()
             except json.JSONDecodeError as e:
                 logger.error(f"Failed to parse draft list JSON: {e}")
-                return []
-
-            # 检查响应状态
-            if json_data.get('code') != 0:
-                logger.error(
-                    f"Failed to get draft file list: {json_data.get('message', 'unknown error')}"
+                _abort(
+                    DraftDownloadFailureKind.RESOURCE_UNAVAILABLE,
+                    detail=f"Failed to parse draft list JSON: {e}",
+                    url=draft_url,
                 )
-                return []
 
-            # 返回files列表
+            if json_data.get('code') != 0:
+                message = json_data.get('message', 'unknown error')
+                logger.error(f"Failed to get draft file list: {message}")
+                _abort(
+                    DraftDownloadFailureKind.RESOURCE_UNAVAILABLE,
+                    detail=f"Draft file list API error: {message}",
+                    url=draft_url,
+                )
+
             files = json_data.get('files', [])
             logger.info(f"Fetched {len(files)} draft file(s)")
             return files
+        except DraftDownloadAbort:
+            raise
         except requests.exceptions.RequestException as e:
             if not _is_retryable_request_exception(e) or attempt >= _MAX_RETRIES:
-                if attempt >= _MAX_RETRIES:
+                if attempt >= _MAX_RETRIES and _is_retryable_request_exception(e):
                     logger.error(
                         f"Network error while fetching draft file list after {_MAX_RETRIES} retries: {e}"
                     )
-                else:
-                    logger.error(
-                        f"Network error while fetching draft file list is not retryable: {e}"
+                    _abort(
+                        DraftDownloadFailureKind.NETWORK_RETRY_EXHAUSTED,
+                        detail=str(e),
+                        url=draft_url,
                     )
-                return []
+                logger.error(
+                    f"Network error while fetching draft file list is not retryable: {e}"
+                )
+                _abort(
+                    DraftDownloadFailureKind.RESOURCE_UNAVAILABLE,
+                    detail=str(e),
+                    url=draft_url,
+                )
 
             retry_no = attempt + 1
             logger.warning(
@@ -357,7 +608,17 @@ def get_draft_files_list(draft_url: str) -> list:
             _sleep_network_retry_backoff()
         except Exception as e:
             logger.error(f"Unexpected error while fetching draft file list: {e}")
-            return []
+            _abort(
+                DraftDownloadFailureKind.RESOURCE_UNAVAILABLE,
+                detail=f"Unexpected error: {e}",
+                url=draft_url,
+            )
+    _abort(
+        DraftDownloadFailureKind.NETWORK_RETRY_EXHAUSTED,
+        detail="Draft file list fetch exhausted retries",
+        url=draft_url,
+    )
+    return []  # pragma: no cover
 
 
 def download_all_files(files: list, target_dir: str, draft_id: str) -> bool:
@@ -372,9 +633,19 @@ def download_all_files(files: list, target_dir: str, draft_id: str) -> bool:
     Returns:
         bool: 是否全部下载成功
     """
+    try:
+        _download_all_files(files, target_dir, draft_id)
+        return True
+    except DraftDownloadAbort:
+        return False
+
+
+def _download_all_files(files: list, target_dir: str, draft_id: str) -> None:
+    """下载所有草稿文件；任一失败抛出 DraftDownloadAbort（保留首个失败原因）。"""
     success_count = 0
     total_files = len(files)
     skipped_draft_info = 0
+    first_abort: Optional[DraftDownloadAbort] = None
 
     for file_url in files:
         if _is_draft_info_target(file_url, target_dir):
@@ -384,17 +655,33 @@ def download_all_files(files: list, target_dir: str, draft_id: str) -> bool:
                 file_url,
             )
             continue
-        if download_single_file(file_url, target_dir):
+        try:
+            _download_single_file(file_url, target_dir)
             success_count += 1
-        else:
+        except DraftDownloadAbort as exc:
             logger.error(f"Failed to download file: {file_url}")
+            if first_abort is None:
+                first_abort = exc
 
     files_to_download = total_files - skipped_draft_info
-    all_downloaded = success_count == files_to_download
+    all_downloaded = success_count == files_to_download and first_abort is None
     if all_downloaded and skipped_draft_info > 0:
         if _sync_draft_info_from_content(target_dir):
             success_count += skipped_draft_info
         else:
+            all_downloaded = False
+            if first_abort is None:
+                first_abort = DraftDownloadAbort(
+                    DraftDownloadFailureKind.LOCAL_IO,
+                    detail="Failed to sync draft_info.json from draft_content.json",
+                )
+
+    if first_abort is None and all_downloaded and success_count == total_files:
+        try:
+            # 必须在 robocopy 扫描前改写 meta，否则剪映可能按错误 draft_name 索引
+            _localize_draft_meta_info(target_dir, draft_id)
+        except DraftDownloadAbort as exc:
+            first_abort = exc
             all_downloaded = False
 
     trigger_directory_scan_with_robocopy(target_dir)
@@ -403,7 +690,13 @@ def download_all_files(files: list, target_dir: str, draft_id: str) -> bool:
         f"Draft {draft_id} download finished: total={total_files}, "
         f"ok={success_count}, failed={total_files - success_count}"
     )
-    return all_downloaded and success_count == total_files
+    if first_abort is not None:
+        raise first_abort
+    if not (all_downloaded and success_count == total_files):
+        _abort(
+            DraftDownloadFailureKind.RESOURCE_UNAVAILABLE,
+            detail=f"Draft {draft_id} incomplete download",
+        )
 
 
 def download_single_file(file_url: str, target_dir: str) -> bool:
@@ -417,6 +710,15 @@ def download_single_file(file_url: str, target_dir: str) -> bool:
     Returns:
         bool: 是否下载成功
     """
+    try:
+        _download_single_file(file_url, target_dir)
+        return True
+    except DraftDownloadAbort:
+        return False
+
+
+def _download_single_file(file_url: str, target_dir: str) -> None:
+    """下载单个文件；失败时抛出 DraftDownloadAbort。"""
     max_retries = 5
     retry_count = 0
 
@@ -432,21 +734,33 @@ def download_single_file(file_url: str, target_dir: str) -> bool:
             try:
                 if response.status_code != 200:
                     if not _is_retryable_http_status(response.status_code):
+                        status = response.status_code
                         logger.error(
                             "Download failed (HTTP %s, not retryable), URL: %s",
-                            response.status_code,
+                            status,
                             file_url,
                         )
-                        return False
+                        _abort(
+                            DraftDownloadFailureKind.RESOURCE_UNAVAILABLE,
+                            detail=f"HTTP {status}, not retryable",
+                            url=file_url,
+                            http_status=status,
+                        )
                     retry_count += 1
                     if retry_count > max_retries:
+                        status = response.status_code
                         logger.error(
                             "Transient HTTP %s, download failed after %s retries, URL: %s",
-                            response.status_code,
+                            status,
                             max_retries,
                             file_url,
                         )
-                        return False
+                        _abort(
+                            DraftDownloadFailureKind.NETWORK_RETRY_EXHAUSTED,
+                            detail=f"HTTP {status} after {max_retries} retries",
+                            url=file_url,
+                            http_status=status,
+                        )
                     logger.warning(
                         "Transient HTTP %s, retry (%s/%s), URL: %s",
                         response.status_code,
@@ -468,71 +782,108 @@ def download_single_file(file_url: str, target_dir: str) -> bool:
             finally:
                 response.close()
 
-            # draft_content：路径重写与 URL 素材本地化；draft_info 由下载结束后从 content 复制
             if full_file_path.endswith("draft_content.json"):
-                if not update_json_file_paths(full_file_path, target_dir, url_draft_id):
-                    return False
+                _update_json_file_paths(full_file_path, target_dir, url_draft_id)
 
-            return True
+            return
 
+        except DraftDownloadAbort:
+            raise
         except requests.exceptions.RequestException as e:
             if not _is_retryable_request_exception(e):
                 logger.error(
                     f"Network error is not retryable: {e}, URL: {file_url}"
                 )
-                return False
+                _abort(
+                    DraftDownloadFailureKind.RESOURCE_UNAVAILABLE,
+                    detail=str(e),
+                    url=file_url,
+                )
             retry_count += 1
             if retry_count > max_retries:
                 logger.error(
                     f"Network error, download failed after {max_retries} retries: {e}, URL: {file_url}"
                 )
-                return False
+                _abort(
+                    DraftDownloadFailureKind.NETWORK_RETRY_EXHAUSTED,
+                    detail=str(e),
+                    url=file_url,
+                )
             logger.warning(
                 f"Network error, retry ({retry_count}/{max_retries}): {e}, URL: {file_url}"
             )
             _sleep_network_retry_backoff()
         except OSError as e:
             logger.error(f"File write error, download failed: {e}, URL: {file_url}")
-            return False
+            _abort(
+                DraftDownloadFailureKind.LOCAL_IO,
+                detail=str(e),
+                url=file_url,
+            )
         except Exception as e:
             logger.error(f"Unexpected error while downloading file: {e}, URL: {file_url}")
-            return False
+            _abort(
+                DraftDownloadFailureKind.RESOURCE_UNAVAILABLE,
+                detail=f"Unexpected error: {e}",
+                url=file_url,
+            )
 
 
 def update_json_file_paths(json_file_path: str, target_dir: str, draft_id: str) -> bool:
     """将服务端路径前缀换成本地，并下载 materials 中的 URL 素材；失败返回 False。"""
     try:
-        # 读取JSON文件
+        _update_json_file_paths(json_file_path, target_dir, draft_id)
+        return True
+    except DraftDownloadAbort:
+        return False
+
+
+def _update_json_file_paths(json_file_path: str, target_dir: str, draft_id: str) -> None:
+    """更新 draft_content 路径并本地化远程素材；失败抛出 DraftDownloadAbort。"""
+    try:
         with open(json_file_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
-        
-        # 构造替换路径
+
         remote_prefix = f"/app/output/draft/{draft_id}/"
         local_prefix = os.path.join(config.DRAFT_SAVE_PATH, draft_id).replace('/', os.sep) + os.sep
-        
-        # 更新数据中的路径（服务端草稿内本地路径 -> 客户端目标路径）
+
         updated_data = update_material_paths(data, remote_prefix, local_prefix)
 
-        # materials 中仍为 URL 的 path：下载到本地并回写；任一失败则整稿失败且不写回
-        if not localize_remote_material_paths(updated_data, target_dir):
+        try:
+            _localize_remote_material_paths(updated_data, target_dir)
+        except DraftDownloadAbort:
             logger.error(
                 f"Remote material localization failed after retries; skip JSON update: {json_file_path}"
             )
-            return False
+            raise
 
-        # 写回 JSON
         json_content = json.dumps(updated_data, ensure_ascii=False, indent=2)
         safe_write_file(json_file_path, json_content, is_binary=False)
-        
+
         logger.debug(f"Updated paths in JSON file: {json_file_path}")
-        return True
-    
+    except DraftDownloadAbort:
+        raise
     except json.JSONDecodeError as e:
         logger.error(f"JSON decode error: {e}, file: {json_file_path}")
-        return False
+        _abort(
+            DraftDownloadFailureKind.RESOURCE_UNAVAILABLE,
+            detail=f"JSON decode error: {e}",
+            url=json_file_path,
+        )
+    except OSError as e:
+        logger.error(f"Failed to update JSON paths: {e}, file: {json_file_path}")
+        _abort(
+            DraftDownloadFailureKind.LOCAL_IO,
+            detail=str(e),
+            url=json_file_path,
+        )
     except Exception as e:
         logger.error(f"Failed to update JSON paths: {e}, file: {json_file_path}")
-        return False
+        _abort(
+            DraftDownloadFailureKind.RESOURCE_UNAVAILABLE,
+            detail=str(e),
+            url=json_file_path,
+        )
 
 
 def update_material_paths(data, remote_prefix: str, local_prefix: str):
@@ -680,7 +1031,23 @@ def _download_remote_material(
     base_name: str,
     fallback_ext: str,
 ) -> Optional[str]:
-    """下载 URL 素材，根据响应 Content-Type 确定扩展名并保存到本地。"""
+    """下载 URL 素材，根据响应 Content-Type 确定扩展名并保存到本地。失败返回 None。"""
+    try:
+        return _download_remote_material_raising(
+            file_url, target_dir, sub_dir, base_name, fallback_ext
+        )
+    except DraftDownloadAbort:
+        return None
+
+
+def _download_remote_material_raising(
+    file_url: str,
+    target_dir: str,
+    sub_dir: str,
+    base_name: str,
+    fallback_ext: str,
+) -> str:
+    """下载 URL 素材；失败抛出 DraftDownloadAbort。"""
     for attempt in range(_MAX_RETRIES + 1):
         response = None
         try:
@@ -691,17 +1058,29 @@ def _download_remote_material(
             )
             if response.status_code != 200:
                 if not _is_retryable_http_status(response.status_code):
+                    status = response.status_code
                     logger.error(
-                        f"Remote material download failed (HTTP {response.status_code}), "
+                        f"Remote material download failed (HTTP {status}), "
                         f"not retryable: {file_url}"
                     )
-                    return None
+                    _abort(
+                        DraftDownloadFailureKind.RESOURCE_UNAVAILABLE,
+                        detail=f"HTTP {status}, not retryable",
+                        url=file_url,
+                        http_status=status,
+                    )
                 if attempt >= _MAX_RETRIES:
+                    status = response.status_code
                     logger.error(
-                        f"Remote material download failed (HTTP {response.status_code}) "
+                        f"Remote material download failed (HTTP {status}) "
                         f"after {_MAX_RETRIES} retries: {file_url}"
                     )
-                    return None
+                    _abort(
+                        DraftDownloadFailureKind.NETWORK_RETRY_EXHAUSTED,
+                        detail=f"HTTP {status} after {_MAX_RETRIES} retries",
+                        url=file_url,
+                        http_status=status,
+                    )
                 retry_no = attempt + 1
                 logger.warning(
                     f"Remote material download transient HTTP {response.status_code}, "
@@ -725,17 +1104,27 @@ def _download_remote_material(
                     if chunk:
                         f.write(chunk)
             return local_path
+        except DraftDownloadAbort:
+            raise
         except requests.exceptions.RequestException as e:
             if not _is_retryable_request_exception(e):
                 logger.error(
                     f"Remote material download failed, not retryable: {file_url}, error: {e}"
                 )
-                return None
+                _abort(
+                    DraftDownloadFailureKind.RESOURCE_UNAVAILABLE,
+                    detail=str(e),
+                    url=file_url,
+                )
             if attempt >= _MAX_RETRIES:
                 logger.error(
                     f"Remote material download failed after {_MAX_RETRIES} retries: {file_url}, error: {e}"
                 )
-                return None
+                _abort(
+                    DraftDownloadFailureKind.NETWORK_RETRY_EXHAUSTED,
+                    detail=str(e),
+                    url=file_url,
+                )
             retry_no = attempt + 1
             logger.warning(
                 f"Remote material download network error, retry ({retry_no}/{_MAX_RETRIES}): "
@@ -744,15 +1133,33 @@ def _download_remote_material(
             _sleep_network_retry_backoff()
         except OSError as e:
             logger.error(f"Failed to write remote material to disk: {file_url}, {e}")
-            return None
+            _abort(
+                DraftDownloadFailureKind.LOCAL_IO,
+                detail=str(e),
+                url=file_url,
+            )
         finally:
             if response is not None:
                 response.close()
-    return None
+    _abort(
+        DraftDownloadFailureKind.NETWORK_RETRY_EXHAUSTED,
+        detail="Remote material download exhausted retries",
+        url=file_url,
+    )
+    return ""  # pragma: no cover
 
 
 def _download_remote_file(file_url: str, local_path: str) -> bool:
     """下载单个 URL 素材；网络异常或非 200 时最多重试 _MAX_RETRIES 次。"""
+    try:
+        _download_remote_file_raising(file_url, local_path)
+        return True
+    except DraftDownloadAbort:
+        return False
+
+
+def _download_remote_file_raising(file_url: str, local_path: str) -> None:
+    """下载单个 URL 素材；失败抛出 DraftDownloadAbort。"""
     for attempt in range(_MAX_RETRIES + 1):
         try:
             response = _http_get(
@@ -762,17 +1169,29 @@ def _download_remote_file(file_url: str, local_path: str) -> bool:
             )
             if response.status_code != 200:
                 if not _is_retryable_http_status(response.status_code):
+                    status = response.status_code
                     logger.error(
-                        f"Remote material download failed (HTTP {response.status_code}), "
+                        f"Remote material download failed (HTTP {status}), "
                         f"not retryable: {file_url}"
                     )
-                    return False
+                    _abort(
+                        DraftDownloadFailureKind.RESOURCE_UNAVAILABLE,
+                        detail=f"HTTP {status}, not retryable",
+                        url=file_url,
+                        http_status=status,
+                    )
                 if attempt >= _MAX_RETRIES:
+                    status = response.status_code
                     logger.error(
-                        f"Remote material download failed (HTTP {response.status_code}) "
+                        f"Remote material download failed (HTTP {status}) "
                         f"after {_MAX_RETRIES} retries: {file_url}"
                     )
-                    return False
+                    _abort(
+                        DraftDownloadFailureKind.NETWORK_RETRY_EXHAUSTED,
+                        detail=f"HTTP {status} after {_MAX_RETRIES} retries",
+                        url=file_url,
+                        http_status=status,
+                    )
                 retry_no = attempt + 1
                 logger.warning(
                     f"Remote material download transient HTTP {response.status_code}, "
@@ -789,18 +1208,28 @@ def _download_remote_file(file_url: str, local_path: str) -> bool:
                 for chunk in response.iter_content(chunk_size=8192):
                     if chunk:
                         f.write(chunk)
-            return True
+            return
+        except DraftDownloadAbort:
+            raise
         except requests.exceptions.RequestException as e:
             if not _is_retryable_request_exception(e):
                 logger.error(
                     f"Remote material download failed, not retryable: {file_url}, error: {e}"
                 )
-                return False
+                _abort(
+                    DraftDownloadFailureKind.RESOURCE_UNAVAILABLE,
+                    detail=str(e),
+                    url=file_url,
+                )
             if attempt >= _MAX_RETRIES:
                 logger.error(
                     f"Remote material download failed after {_MAX_RETRIES} retries: {file_url}, error: {e}"
                 )
-                return False
+                _abort(
+                    DraftDownloadFailureKind.NETWORK_RETRY_EXHAUSTED,
+                    detail=str(e),
+                    url=file_url,
+                )
             retry_no = attempt + 1
             logger.warning(
                 f"Remote material download network error, retry ({retry_no}/{_MAX_RETRIES}): "
@@ -809,8 +1238,16 @@ def _download_remote_file(file_url: str, local_path: str) -> bool:
             _sleep_network_retry_backoff()
         except OSError as e:
             logger.error(f"Failed to write remote material to disk: {local_path}, {e}")
-            return False
-    return False
+            _abort(
+                DraftDownloadFailureKind.LOCAL_IO,
+                detail=str(e),
+                url=file_url,
+            )
+    _abort(
+        DraftDownloadFailureKind.NETWORK_RETRY_EXHAUSTED,
+        detail="Remote file download exhausted retries",
+        url=file_url,
+    )
 
 
 def localize_remote_material_paths(data: Dict[str, Any], target_dir: str) -> bool:
@@ -818,12 +1255,22 @@ def localize_remote_material_paths(data: Dict[str, Any], target_dir: str) -> boo
     将 materials 里仍为 URL 的 path 下载到本地并回写。
     同一 URL 只拉取一次；任一 URL 重试仍失败则返回 False，且不写 JSON（由上层中止下载与导出）。
     """
+    try:
+        _localize_remote_material_paths(data, target_dir)
+        return True
+    except DraftDownloadAbort:
+        return False
+
+
+def _localize_remote_material_paths(data: Dict[str, Any], target_dir: str) -> None:
+    """本地化远程素材路径；任一失败抛出首个 DraftDownloadAbort。"""
     materials = data.get("materials", {}) if isinstance(data, dict) else {}
     if not isinstance(materials, dict):
-        return True
+        return
 
     url_cache: Dict[str, str] = {}
     failed_urls: set = set()
+    first_abort: Optional[DraftDownloadAbort] = None
     target_lists: Dict[str, List[Dict[str, Any]]] = {
         "audios": materials.get("audios", []),
         "videos": materials.get("videos", []),
@@ -858,21 +1305,25 @@ def localize_remote_material_paths(data: Dict[str, Any], target_dir: str) -> boo
             fallback_ext = ".mp3" if material_type == "audios" else ".mp4"
             base_name = _safe_name(str(item.get("material_name") or item.get("name") or item.get("id") or "material"))
 
-            local_path = _download_remote_material(
-                remote_path, target_dir, sub_dir, base_name, fallback_ext
-            )
-            if not local_path:
+            try:
+                local_path = _download_remote_material_raising(
+                    remote_path, target_dir, sub_dir, base_name, fallback_ext
+                )
+            except DraftDownloadAbort as exc:
                 failed_urls.add(remote_path)
                 logger.error(
                     f"Remote material localization failed (draft download will fail): {remote_path}"
                 )
+                if first_abort is None:
+                    first_abort = exc
                 continue
 
             logger.info(f"Remote material saved and path updated: {remote_path} -> {local_path}")
             item["path"] = local_path
             url_cache[remote_path] = local_path
 
-    return len(failed_urls) == 0
+    if first_abort is not None:
+        raise first_abort
 
 def trigger_directory_scan_with_robocopy(target_dir: str):
     """
