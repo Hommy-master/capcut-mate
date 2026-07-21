@@ -176,3 +176,15 @@ Expected: `origin/main` advances to the merge commit without force-push.
 Run in `.cache/capcut-mate`: `git merge --ff-only origin/main`
 
 Expected: local `main` matches `origin/main`; the untracked `src/capcut_mate.egg-info/` remains untouched.
+
+### Task 4: Preserve Fork CI Coverage After Upstream Merge
+
+**Files:**
+- Modify: `.github/workflows/dev.yml`
+- Modify: `.github/workflows/desktop-client-dev.yml`
+- Test: `tests/test_add_images_upstream_merge.py`
+
+- [ ] Restore `main`/`dev` push and pull-request triggers while retaining `v*` tag builds.
+- [ ] Keep Docker login and image push disabled for pull requests.
+- [ ] Make desktop change detection select the correct comparison base for pull requests, branch pushes, and tags.
+- [ ] Exercise `add_image_to_draft` directly and assert scale/X/Y keyframes plus a `None` transition duration.
