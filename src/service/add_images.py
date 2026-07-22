@@ -14,6 +14,7 @@
 from src.utils.logger import logger
 from src.pyJianYingDraft import ScriptFile, trange
 import src.pyJianYingDraft as draft
+from src.pyJianYingDraft.keyframe import KeyframeProperty
 from src.utils.draft_cache import DRAFT_CACHE
 from exceptions import CustomException, CustomError
 from src.schemas.add_images import SegmentInfo
@@ -41,7 +42,7 @@ def add_images(
 ) -> Tuple[str, str, List[str], List[str], List[SegmentInfo]]:
     """
     添加图片到剪映草稿的业务逻辑
-    
+
     Args:
         draft_url: 草稿URL，必选参数
         image_infos: 图片信息JSON字符串，格式如下：
@@ -59,7 +60,15 @@ def add_images(
                 "out_animation_duration": "", // [可选] 出场动画时长(微秒)
                 "loop_animation_duration": "", // [可选] 循环动画时长(微秒)
                 "transition": "", // [可选] 转场效果类型
-                "transition_duration": "" // [可选] 转场时长(微秒)，未指定则用转场类型默认时长
+                "transition_duration": "", // [可选] 转场时长(微秒)，未指定则用转场类型默认时长
+                "ken_burns": { // [可选] Ken Burns 关键帧动画
+                    "start_scale": 1.0, // 起始缩放比例
+                    "end_scale": 1.06, // 结束缩放比例
+                    "start_x": 0, // [可选] 起始X位置偏移（比例）
+                    "end_x": 0.03, // [可选] 结束X位置偏移（比例）
+                    "start_y": 0, // [可选] 起始Y位置偏移（比例）
+                    "end_y": -0.02 // [可选] 结束Y位置偏移（比例）
+                }
             }
         ]
         alpha: 全局透明度[0, 1]，默认值为1.0
@@ -67,7 +76,7 @@ def add_images(
         scale_y: Y轴缩放比例，默认值为1.0
         transform_x: X轴位置偏移(像素)，默认值为0
         transform_y: Y轴位置偏移(像素)，默认值为0
-    
+
     Returns:
         draft_url: 草稿URL
         track_id: 图片轨道ID（非主轨道）
@@ -314,6 +323,13 @@ def add_image_to_draft(
             loop_animation_duration: 循环动画时长(微秒，可选)
             transition: 转场效果类型(可选)
             transition_duration: 转场效果时长(微秒，可选)
+            ken_burns: Ken Burns 关键帧动画配置(可选)，包含：
+                start_scale: 起始缩放比例
+                end_scale: 结束缩放比例
+                start_x: 起始X位置偏移(可选)
+                end_x: 结束X位置偏移(可选)
+                start_y: 起始Y位置偏移(可选)
+                end_y: 结束Y位置偏移(可选)
         alpha: 图片透明度
         scale_x: 横向缩放
         scale_y: 纵向缩放
@@ -365,7 +381,36 @@ def add_image_to_draft(
             target_timerange=trange(start=image['start'], duration=segment_duration),
             clip_settings=clip_settings
         )
-        
+
+        # 2.5 添加 Ken Burns 关键帧动画（如果指定了）
+        kb_config = image.get('ken_burns')
+        if kb_config:
+            try:
+                start_scale = float(kb_config.get('start_scale', 1.0))
+                end_scale = float(kb_config.get('end_scale', 1.05))
+
+                video_segment.add_keyframe(KeyframeProperty.uniform_scale, 0, start_scale)
+                video_segment.add_keyframe(KeyframeProperty.uniform_scale, segment_duration, end_scale)
+
+                logger.info(f"Added Ken Burns scale: {start_scale} -> {end_scale} over {segment_duration/1000000:.2f}s")
+
+                if 'start_x' in kb_config and 'end_x' in kb_config:
+                    start_x = float(kb_config['start_x'])
+                    end_x = float(kb_config['end_x'])
+                    video_segment.add_keyframe(KeyframeProperty.position_x, 0, start_x)
+                    video_segment.add_keyframe(KeyframeProperty.position_x, segment_duration, end_x)
+                    logger.info(f"Added Ken Burns X pan: {start_x} -> {end_x}")
+
+                if 'start_y' in kb_config and 'end_y' in kb_config:
+                    start_y = float(kb_config['start_y'])
+                    end_y = float(kb_config['end_y'])
+                    video_segment.add_keyframe(KeyframeProperty.position_y, 0, start_y)
+                    video_segment.add_keyframe(KeyframeProperty.position_y, segment_duration, end_y)
+                    logger.info(f"Added Ken Burns Y pan: {start_y} -> {end_y}")
+
+            except Exception as e:
+                logger.warning(f"Failed to add Ken Burns keyframes: {str(e)}")
+
         # 3. 添加动画效果（如果指定了）
         if image.get('in_animation'):
             try:
@@ -511,7 +556,7 @@ def map_video_animation_name_to_enum(animation_name: str, animation_type: str):
 def parse_image_data(json_str: str) -> List[Dict[str, Any]]:
     """
     解析图片数据的JSON字符串，处理可选字段的默认值
-    
+
     Args:
         json_str: 包含图片数据的JSON字符串，格式如下：
         [
@@ -528,13 +573,21 @@ def parse_image_data(json_str: str) -> List[Dict[str, Any]]:
                 "out_animation_duration": "", // [可选] 出场动画时长(微秒)
                 "loop_animation_duration": "", // [可选] 循环动画时长(微秒)
                 "transition": "", // [可选] 转场效果类型
-                "transition_duration": "" // [可选] 转场时长(微秒)，未指定则用转场类型默认时长
+                "transition_duration": "", // [可选] 转场时长(微秒)，未指定则用转场类型默认时长
+                "ken_burns": { // [可选] Ken Burns 关键帧动画
+                    "start_scale": 1.0, // 起始缩放比例
+                    "end_scale": 1.06, // 结束缩放比例
+                    "start_x": 0, // [可选] 起始X位置偏移（比例）
+                    "end_x": 0.03, // [可选] 结束X位置偏移（比例）
+                    "start_y": 0, // [可选] 起始Y位置偏移（比例）
+                    "end_y": -0.02 // [可选] 结束Y位置偏移（比例）
+                }
             }
         ]
-        
+
     Returns:
         包含图片对象的数组，每个对象都处理了默认值
-        
+
     Raises:
         CustomException: 当JSON格式错误或缺少必选字段时抛出
     """
@@ -586,8 +639,12 @@ def parse_image_data(json_str: str) -> List[Dict[str, Any]]:
             "out_animation_duration": item.get("out_animation_duration", None),  # 默认无出场动画时长
             "loop_animation_duration": item.get("loop_animation_duration", None),  # 默认无循环动画时长
             "transition": item.get("transition", None),  # 默认无转场
-            "transition_duration": item.get("transition_duration", None),  # 默认用转场类型自身时长
+            "transition_duration": item.get("transition_duration", None),
+            "ken_burns": item.get("ken_burns", None),
         }
+
+        if processed_item["transition_duration"] == "":
+            processed_item["transition_duration"] = None
         
         # 验证数值范围（仅校验显式传入的尺寸）
         if (processed_item["width"] is not None and processed_item["width"] <= 0) or (
