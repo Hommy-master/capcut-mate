@@ -165,6 +165,7 @@ The following are the core interfaces provided by CapCut Mate API, supporting a 
 | Interface | Function | Description | Documentation Link |
 |-----------|----------|-------------|-------------------|
 | **get_text_animations** | Text Animations | Get available text entrance, exit, and loop animations | [📖 View Documentation](./docs/get_text_animations.md) |
+| **get_text_effects** | Text Effects | Get available decorative text flower effects list | [📖 View Documentation](./docs/get_text_effects.md) |
 | **get_image_animations** | Image Animations | Get available image animation effects list | [📖 View Documentation](./docs/get_image_animations.md) |
 
 ### 🎬 Video Generation

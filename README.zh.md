@@ -165,6 +165,7 @@ docker-compose pull && docker-compose up -d
 | 接口 | 功能 | 描述 | 文档链接 |
 |------|------|------|----------|
 | **get_text_animations** | 文本动画 | 获取可用的文本入场、出场、循环动画 | [📖 查看文档](./docs/get_text_animations.zh.md) |
+| **get_text_effects** | 花字效果 | 获取可用的花字效果列表 | [📖 查看文档](./docs/get_text_effects.zh.md) |
 | **get_image_animations** | 图片动画 | 获取可用的图片动画效果列表 | [📖 查看文档](./docs/get_image_animations.zh.md) |
 
 ### 🎬 视频生成
