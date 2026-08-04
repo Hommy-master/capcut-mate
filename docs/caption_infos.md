@@ -50,6 +50,8 @@ Generate caption information based on text and timelines. This interface convert
 | font_size | number |❌ | 24 | Font size |
 | keyword_color | string |❌ | "#FF0000" | Keyword color |
 | keyword_font_size | number |❌ | 28 | Keyword font size |
+| keyword_has_shadow | boolean |❌ | null | Whether to enable keyword shadow |
+| keyword_shadow_info | object |❌ | null | Keyword shadow parameters (same fields as add_captions shadow_info) |
 | keywords | array[string] |❌ | [] | Keyword array |
 | in_animation | string |❌ | None | Entrance animation effect |
 | in_animation_duration | number |❌ | 500000 | Entrance animation duration (microseconds) |

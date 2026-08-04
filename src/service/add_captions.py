@@ -142,6 +142,8 @@ def add_captions(
                     "keyword_color": "#457616",  # 关键词颜色，可选参数
                     "keyword_border_color": "#000000",  # 关键词边框颜色，可选参数
                     "keyword_font_size": 15,  # 关键词字体大小，可选参数
+                    "keyword_has_shadow": False,  # 是否启用关键词阴影，可选参数
+                    "keyword_shadow_info": None,  # 关键词阴影参数，可选参数
                     "font_size": 15,  # 文本字体大小，可选参数
                     "in_animation": None,  # 入场动画，可选参数
                     "out_animation": None,  # 出场动画，可选参数
@@ -432,6 +434,8 @@ def add_caption_to_draft(
             keyword_color: 关键词颜色，可选
             keyword_border_color: 关键词边框颜色，可选
             keyword_font_size: 关键词字体大小，可选
+            keyword_has_shadow: 是否启用关键词阴影，可选
+            keyword_shadow_info: 关键词阴影参数，可选
             font_size: 文本字体大小，可选
             in_animation: 入场动画，可选
             out_animation: 出场动画，可选
@@ -473,6 +477,7 @@ def add_caption_to_draft(
 
         # 0. 在函数开头统一处理参数约束：
         # 当花字有效时，直接将 text_color / border_color / has_shadow 重置为默认值
+        disable_keyword_shadow = False
         if text_effect:
             try:
                 if resolve_text_effect(text_effect):
@@ -483,6 +488,7 @@ def add_caption_to_draft(
                     text_color = "#ffffff"
                     border_color = None
                     has_shadow = False
+                    disable_keyword_shadow = True
                 else:
                     logger.warning(f"Text effect not found: {text_effect}")
             except Exception as e:
@@ -592,7 +598,7 @@ def add_caption_to_draft(
             except Exception as e:
                 logger.error(f"Failed to add text effect '{text_effect}': {str(e)}")
         
-        # 11. 处理动画效果
+        # 11. 处理关键词高亮
         if caption.get('keyword'):
             keyword_color = caption.get('keyword_color', '#ff7100')  # 默认橙色
             keyword_rgb_color = hex_to_rgb(keyword_color)
@@ -605,11 +611,29 @@ def add_caption_to_draft(
                 keyword_border_rgb_color = hex_to_rgb(border_color)
             else:
                 keyword_border_rgb_color = None
+
+            keyword_has_shadow = bool(caption.get('keyword_has_shadow', False))
+            if disable_keyword_shadow:
+                keyword_has_shadow = False
+            keyword_shadow_info = caption.get('keyword_shadow_info')
+
             # 应用关键词颜色和字体大小到文本样式中
-            apply_keyword_highlight(text_segment, caption['keyword'], keyword_rgb_color, keyword_font_size, keyword_border_rgb_color)
-            logger.info(f"Applied keyword highlighting: {caption['keyword']} with color {keyword_color}, font size {keyword_font_size}, border color {keyword_border_color or border_color}")
+            apply_keyword_highlight(
+                text_segment,
+                caption['keyword'],
+                keyword_rgb_color,
+                keyword_font_size,
+                keyword_border_rgb_color,
+                keyword_has_shadow=keyword_has_shadow,
+                keyword_shadow_info=keyword_shadow_info,
+            )
+            logger.info(
+                f"Applied keyword highlighting: {caption['keyword']} with color {keyword_color}, "
+                f"font size {keyword_font_size}, border color {keyword_border_color or border_color}, "
+                f"has_shadow {keyword_has_shadow}"
+            )
         
-        # 10. 处理动画效果
+        # 12. 处理动画效果
         if caption.get('in_animation'):
             in_animation_name = caption['in_animation']
             in_animation_enum = map_animation_name_to_enum(in_animation_name, "in")
@@ -652,10 +676,10 @@ def add_caption_to_draft(
             else:
                 logger.warning(f"Loop animation not found: {loop_animation_name}")
 
-        # 12. 向指定轨道添加片段
+        # 13. 向指定轨道添加片段
         script.add_segment(text_segment, track_name)
 
-        # 13. 构造片段信息
+        # 14. 构造片段信息
         segment_info = {
             "id": text_segment.segment_id,
             "start": caption['start'],
@@ -673,7 +697,15 @@ def add_caption_to_draft(
         raise CustomException(CustomError.CAPTION_ADD_FAILED)
 
 
-def apply_keyword_highlight(text_segment: TextSegment, keywords: str, keyword_color: tuple, keyword_font_size: float = None, keyword_border_color: tuple = None):
+def apply_keyword_highlight(
+    text_segment: TextSegment,
+    keywords: str,
+    keyword_color: tuple,
+    keyword_font_size: float = None,
+    keyword_border_color: tuple = None,
+    keyword_has_shadow: bool = False,
+    keyword_shadow_info: Optional[dict] = None,
+):
     """
     应用关键词高亮到文本片段
     
@@ -683,6 +715,8 @@ def apply_keyword_highlight(text_segment: TextSegment, keywords: str, keyword_co
         keyword_color: 关键词颜色的RGB元组 (0-1范围)
         keyword_font_size: 关键词字体大小，默认为None，使用文本默认字体大小
         keyword_border_color: 关键词边框颜色的RGB元组 (0-1范围)，默认为None
+        keyword_has_shadow: 是否启用关键词阴影，默认 False
+        keyword_shadow_info: 关键词阴影参数字典，字段与 ShadowInfo 一致，默认为None
     """
     # 分割关键词
     keyword_list = keywords.split('|')
@@ -690,6 +724,33 @@ def apply_keyword_highlight(text_segment: TextSegment, keywords: str, keyword_co
     
     # 使用关键词字体大小，如果没有指定则使用文本默认字体大小
     font_size = keyword_font_size if keyword_font_size is not None else text_segment.style.size
+
+    # 预构建关键词阴影（与字幕级 TextShadow.export_json 格式一致）
+    keyword_shadows = None
+    if keyword_has_shadow:
+        if keyword_shadow_info is None:
+            shadow_rgb_color = hex_to_rgb("#000000")
+            shadow_alpha = 0.9
+            shadow_diffuse = 15.0
+            shadow_distance = 5.0
+            shadow_angle = -45.0
+        else:
+            shadow_rgb_color = hex_to_rgb(keyword_shadow_info.get("shadow_color", "#000000"))
+            shadow_alpha = float(keyword_shadow_info.get("shadow_alpha", 1.0))
+            shadow_diffuse = float(keyword_shadow_info.get("shadow_diffuse", 15.0))
+            shadow_distance = float(keyword_shadow_info.get("shadow_distance", 5.0))
+            shadow_angle = float(keyword_shadow_info.get("shadow_angle", -45.0))
+        keyword_shadows = [{
+            "diffuse": shadow_diffuse / 100.0 / 6,  # /6是剪映自带的映射
+            "alpha": shadow_alpha,
+            "distance": shadow_distance,
+            "content": {
+                "solid": {
+                    "color": list(shadow_rgb_color),
+                }
+            },
+            "angle": shadow_angle
+        }]
     
     # 为每个关键词创建高亮样式
     for keyword in keyword_list:
@@ -740,6 +801,9 @@ def apply_keyword_highlight(text_segment: TextSegment, keywords: str, keyword_co
                     "width": 0.08  # 默认边框宽度（与剪映内部表示一致）
                 }]
             # 注意：当keyword_border_color为None时（即既没有指定keyword_border_color也没有指定border_color），不添加描边
+
+            if keyword_shadows is not None:
+                highlight_style["shadows"] = keyword_shadows
             
             # 添加到文本片段的额外样式中
             text_segment.extra_styles.append(highlight_style)
@@ -761,6 +825,8 @@ def parse_captions_data(json_str: str) -> List[Dict[str, Any]]:
                 "keyword_color": "#457616",  # [可选] 关键词颜色，默认"#ff7100"
                 "keyword_border_color": "#000000",  # [可选] 关键词边框颜色，默认None
                 "keyword_font_size": 15,  # [可选] 关键词字体大小，默认15
+                "keyword_has_shadow": False,  # [可选] 是否启用关键词阴影，默认False
+                "keyword_shadow_info": None,  # [可选] 关键词阴影参数，默认None
                 "font_size": 15,  # [可选] 文本字体大小，默认15
                 "in_animation": None,  # [可选] 入场动画，默认None
                 "out_animation": None,  # [可选] 出场动画，默认None
@@ -814,6 +880,8 @@ def parse_captions_data(json_str: str) -> List[Dict[str, Any]]:
             "keyword_color": item.get("keyword_color", "#ff7100"),
             "keyword_border_color": item.get("keyword_border_color", None),
             "keyword_font_size": item.get("keyword_font_size", 15),
+            "keyword_has_shadow": bool(item.get("keyword_has_shadow", False)),
+            "keyword_shadow_info": _normalize_keyword_shadow_info(item.get("keyword_shadow_info")),
             "font_size": item.get("font_size", None),
             "in_animation": item.get("in_animation", None),
             "out_animation": item.get("out_animation", None),
@@ -857,6 +925,33 @@ def parse_captions_data(json_str: str) -> List[Dict[str, Any]]:
     
     logger.info(f"Successfully parsed {len(result)} caption items")
     return result
+
+
+def _normalize_keyword_shadow_info(shadow_info: Any) -> Optional[Dict[str, Any]]:
+    """将关键词阴影参数规范化为与 ShadowInfo 一致的字典。"""
+    if shadow_info is None:
+        return None
+
+    if isinstance(shadow_info, ShadowInfo):
+        return {
+            "shadow_alpha": shadow_info.shadow_alpha,
+            "shadow_color": shadow_info.shadow_color,
+            "shadow_diffuse": shadow_info.shadow_diffuse,
+            "shadow_distance": shadow_info.shadow_distance,
+            "shadow_angle": shadow_info.shadow_angle,
+        }
+
+    if not isinstance(shadow_info, dict):
+        logger.warning(f"Invalid keyword_shadow_info type: {type(shadow_info)}, ignoring")
+        return None
+
+    return {
+        "shadow_alpha": float(shadow_info.get("shadow_alpha", 1.0)),
+        "shadow_color": str(shadow_info.get("shadow_color", "#000000")),
+        "shadow_diffuse": float(shadow_info.get("shadow_diffuse", 15.0)),
+        "shadow_distance": float(shadow_info.get("shadow_distance", 5.0)),
+        "shadow_angle": float(shadow_info.get("shadow_angle", -45.0)),
+    }
 
 
 def map_animation_name_to_enum(animation_name: str, animation_type: str):

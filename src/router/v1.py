@@ -598,6 +598,12 @@ def caption_infos(request: CaptionInfosRequest) -> CaptionInfosResponse:
         keyword_color=request.keyword_color,
         keyword_border_color=request.keyword_border_color,
         keyword_font_size=request.keyword_font_size,
+        keyword_has_shadow=request.keyword_has_shadow,
+        keyword_shadow_info=(
+            request.keyword_shadow_info.model_dump()
+            if request.keyword_shadow_info is not None
+            else None
+        ),
         keywords=request.keywords,
         in_animation=request.in_animation,
         in_animation_duration=request.in_animation_duration,

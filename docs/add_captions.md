@@ -86,6 +86,9 @@ Batch add captions to existing drafts. This interface is used to add captions to
 - `keyword`: Keyword to highlight
 - `keyword_color`: Keyword highlight color
 - `keyword_font_size`: Keyword font size
+- `keyword_border_color`: Keyword border color
+- `keyword_has_shadow`: Whether to enable keyword shadow
+- `keyword_shadow_info`: Keyword shadow parameters (same fields as `shadow_info`)
 - `font_size`: Base font size
 
 #### Time Parameters

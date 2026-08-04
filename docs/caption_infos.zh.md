@@ -50,6 +50,8 @@ POST /openapi/capcut-mate/v1/caption_infos
 | font_size | number |❌ | 24 | 字体大小 |
 | keyword_color | string |❌ | "#FF0000" | 关键词颜色 |
 | keyword_font_size | number | ❌ | 28 | 关键词字体大小 |
+| keyword_has_shadow | boolean | ❌ | null | 是否启用关键词阴影 |
+| keyword_shadow_info | object | ❌ | null | 关键词阴影参数（字段同 add_captions 的 shadow_info） |
 | keywords | array[string] | ❌ | [] | 关键词数组 |
 | in_animation | string | ❌ | None |入动画效果 |
 | in_animation_duration | number | ❌ | 500000 |入场动画时长(微秒) |

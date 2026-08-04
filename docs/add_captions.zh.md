@@ -73,6 +73,9 @@ captions是一个JSON字符串，包含字幕数组，每个字幕对象包含�
 | keyword | string | ❌ | null | 关键词（用\|分隔多个关键词） |
 | keyword_color | string | ❌ | "#ff7100" | 关键词颜色 |
 | keyword_font_size | integer | ❌ | 15 | 关键词字体大小 |
+| keyword_border_color | string | ❌ | null | 关键词边框颜色 |
+| keyword_has_shadow | boolean | ❌ | false | 是否启用关键词阴影 |
+| keyword_shadow_info | object | ❌ | null | 关键词阴影参数（字段同 shadow_info） |
 | font_size | integer | ❌ | 15 | 文本字体大小 |
 | in_animation | string | ❌ | null | 入场动画 |
 | out_animation | string | ❌ | null | 出场动画 |
@@ -156,6 +159,10 @@ captions是一个JSON字符串，包含字幕数组，每个字幕对象包含�
   "shadow_angle": -45
 }
 ```
+
+#### 关键词阴影参数
+
+`keyword_has_shadow` / `keyword_shadow_info` 作用于 captions 单项中的关键词高亮范围，字段与接口级 `shadow_info` 完全一致。当 `keyword_has_shadow` 为 `true` 且未提供 `keyword_shadow_info` 时，使用与上文相同的默认阴影配置。有效花字效果启用时，关键词阴影会被禁用（与整段 `has_shadow` 行为一致）。
 
 ## 响应格式
 

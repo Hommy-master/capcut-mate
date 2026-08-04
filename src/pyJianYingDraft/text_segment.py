@@ -400,7 +400,12 @@ class TextSegment(VisualSegment):
             check_flag |= 8
         if self.background:
             check_flag |= 16
-        if self.shadow:
+        # 整段阴影，或关键词等 extra_styles 上的阴影，都需要打开阴影位
+        has_extra_shadow = any(
+            isinstance(style, dict) and style.get("shadows")
+            for style in self.extra_styles
+        )
+        if self.shadow or has_extra_shadow:
             check_flag |= 32
 
         # 创建基础样式
