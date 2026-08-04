@@ -11,7 +11,7 @@ POST /openapi/capcut-mate/v1/add_captions
 
 ## Function Description
 
-Batch add captions to existing drafts. This interface is used to add captions to Jianying drafts within specified time periods, supporting rich caption style settings including text color, border color, alignment, transparency, font, font size, letter spacing, line spacing, scaling, and position adjustments.
+Batch-add captions to an existing CapCut/Jianying draft. Supports text color, border, alignment, opacity, font, size, letter/line spacing, scale, position, underline/italic/bold, full-text shadow, keyword highlight and keyword shadow, text animations, and text effects (花字).
 
 ## More Documentation
 
@@ -19,93 +19,146 @@ Batch add captions to existing drafts. This interface is used to add captions to
 
 ## Request Parameters
 
-```json
-{
-  "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
-  "captions": "[{\"start\":0,\"end\":10000000,\"text\":\"Hello, Jianying\",\"keyword\":\"Hello\",\"keyword_color\":\"#457616\",\"keyword_font_size\":15,\"font_size\":15}]",
-  "text_color": "#ffffff",
-  "border_color": null,
-  "alignment": 1,
-  "alpha": 1.0,
-  "font": null,
-  "font_size": 15,
-  "letter_spacing": null,
-  "line_spacing": null,
-  "scale_x": 1.0,
-  "scale_y": 1.0,
-  "transform_x": 0.0,
-  "transform_y": 0.0,
-  "style_text": false
-}
-```
-
-### Parameter Description
+### Top-level Parameters
 
 | Parameter | Type | Required | Default | Description |
 |-----------|------|----------|---------|-------------|
-| draft_url | string |✅ | - | Complete URL of the target draft |
-| captions | string |✅ | - | JSON string of caption information list |
-| text_color | string | ❌ | "#ffffff" | Text color (hexadecimal) |
-| border_color | string |❌ | null | Border color (hexadecimal) |
-| alignment | integer |❌ | 1 | Text alignment (0-5) |
-| alpha | number |❌ | 1.0 | Text transparency (0.0-1.0) |
-| font | string |❌ | null | Font name |
-| font_size | integer |❌ | 15 | Font size |
-| letter_spacing | number |❌ | null | Letter spacing |
-| line_spacing | number | ❌ | null | Line spacing |
-| scale_x | number |❌ | 1.0 | Horizontal scaling factor |
-| scale_y | number | ❌ | 1.0 | Vertical scaling factor |
-| transform_x | number | ❌ | 0.0 | Horizontal position offset |
-| transform_y | number | ❌ | 0.0 | Vertical position offset |
-| style_text | boolean |❌ | false | Whether to apply rich text styling |
+| draft_url | string | ✅ | - | Full draft URL including `draft_id` |
+| captions | string | ✅ | - | Caption list as a **JSON string** (not a raw JSON array) |
+| text_color | string | ❌ | `"#ffffff"` | Normal text color (hex) |
+| border_color | string | ❌ | `null` | Normal text stroke color (hex); `null` means no stroke |
+| alignment | integer | ❌ | `1` | Alignment: `0` left, `1` center, `2` right (`3`-`5` reserved) |
+| alpha | number | ❌ | `1.0` | Opacity in `[0.0, 1.0]` |
+| font | string | ❌ | `null` | Font name (enum/display/alias); `null` uses default |
+| font_size | integer | ❌ | `15` | Default font size when a caption item omits `font_size`; must be `>= 1` |
+| letter_spacing | number | ❌ | `null` | Letter spacing; `null` means `0` |
+| line_spacing | number | ❌ | `null` | Line spacing; `null` means `0` |
+| scale_x | number | ❌ | `1.0` | Horizontal scale (`1.0` = original) |
+| scale_y | number | ❌ | `1.0` | Vertical scale (`1.0` = original) |
+| transform_x | number | ❌ | `0.0` | Horizontal offset in pixels (positive = right) |
+| transform_y | number | ❌ | `0.0` | Vertical offset in pixels (positive = down) |
+| style_text | boolean | ❌ | `false` | Rich-text style switch (reserved) |
+| underline | boolean | ❌ | `false` | Underline |
+| italic | boolean | ❌ | `false` | Italic |
+| bold | boolean | ❌ | `false` | Bold |
+| has_shadow | boolean | ❌ | `false` | Enable **full-caption** text shadow |
+| shadow_info | object | ❌ | `null` | Full-caption shadow params; defaults apply if `has_shadow=true` and this is `null` |
+| text_effect | string | ❌ | `null` | Text effect name or `effect_id`; a valid effect resets color/border/shadow |
 
-### Parameter Details
+### captions Fields
 
-#### captions Array Structure
+`captions` is a JSON string that parses to an array of caption objects:
 
-`captions` is a JSON string containing an array of caption objects, each with the following fields:
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| start | integer | ✅ | - | Start time in microseconds (`1s = 1_000_000µs`), must be `>= 0` |
+| end | integer | ✅ | - | End time in microseconds, must be greater than `start` |
+| text | string | ✅ | - | Caption text, non-empty |
+| keyword | string | ❌ | `null` | Keywords separated by `\|`, e.g. `"Hello\|World"` |
+| keyword_color | string | ❌ | `"#ff7100"` | Keyword fill color (hex) |
+| keyword_border_color | string | ❌ | `null` | Keyword stroke color; falls back to top-level `border_color` |
+| keyword_font_size | integer | ❌ | `15` | Keyword font size, must be `> 0` |
+| keyword_has_shadow | boolean | ❌ | `false` | Enable **keyword-range** shadow |
+| keyword_shadow_info | object | ❌ | `null` | Keyword shadow params (same fields as `shadow_info`) |
+| font_size | integer | ❌ | `null` | Per-caption normal text size; falls back to top-level `font_size` |
+| in_animation | string | ❌ | `null` | Intro animation name from `get_text_animations`, e.g. `"向上滑动"` |
+| out_animation | string | ❌ | `null` | Outro animation name, e.g. `"向下滑动"` |
+| loop_animation | string | ❌ | `null` | Loop animation name, e.g. `"弹幕滚动"` |
+| in_animation_duration | integer | ❌ | `null` | Intro duration (µs); omit to use animation default |
+| out_animation_duration | integer | ❌ | `null` | Outro duration (µs); omit to use animation default |
+| loop_animation_duration | integer | ❌ | `null` | Single loop duration (µs); omit to use animation default |
+
+### shadow_info / keyword_shadow_info Fields
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| shadow_alpha | number | ❌ | `1.0` | Shadow opacity `[0, 1]` |
+| shadow_color | string | ❌ | `"#000000"` | Shadow color (hex) |
+| shadow_diffuse | number | ❌ | `15.0` | Diffuse amount `[0, 100]` |
+| shadow_distance | number | ❌ | `5.0` | Distance `[0, 100]` |
+| shadow_angle | number | ❌ | `-45.0` | Angle `[-180, 180]` |
+
+Default shadow when enabled without `*_shadow_info`:
 
 ```json
-[
-  {
-    "start": 0,
-    "end": 10000000,
-    "text": "Hello, Jianying",
-    "keyword": "Hello",
-    "keyword_color": "#457616",
-    "keyword_font_size": 15,
-    "font_size": 15
-  }
-]
+{
+  "shadow_color": "#000000",
+  "shadow_alpha": 0.9,
+  "shadow_diffuse": 15,
+  "shadow_distance": 5,
+  "shadow_angle": -45
+}
 ```
 
-**Field Description**:
-- `start`: Caption start time (microseconds)
-- `end`: Caption end time (microseconds)
-- `text`: Caption text content
-- `keyword`: Keyword to highlight
-- `keyword_color`: Keyword highlight color
-- `keyword_font_size`: Keyword font size
-- `keyword_border_color`: Keyword border color
-- `keyword_has_shadow`: Whether to enable keyword shadow
-- `keyword_shadow_info`: Keyword shadow parameters (same fields as `shadow_info`)
-- `font_size`: Base font size
+### Notes on text_effect vs shadow
 
-#### Time Parameters
+If `text_effect` resolves to a valid effect, the API resets `text_color` to `#ffffff`, `border_color` to `null`, `has_shadow` to `false`, and disables keyword shadow. Omit/leave `text_effect` null when you need custom colors or shadows.
 
-- **start**: Start time of the caption on the timeline, unit microseconds (1 second = 1,000,000 microseconds)
-- **end**: End time of the caption on the timeline, unit microseconds
-- **Duration**: Caption duration = end - start
+## Fully Annotated Request Example
 
-#### Style Parameters
+`//` comments are for documentation only and are **not** valid in a real request body.
 
-- **text_color**: Main text color in hexadecimal format (e.g., "#ffffff" for white)
-- **border_color**: Text border color, null means no border
-- **alignment**: Text alignment mode (0-5)
-- **alpha**: Text transparency (0.0 = fully transparent, 1.0 = fully opaque)
-- **font_size**: Base font size in pixels
-- **scale_x/scale_y**: Horizontal/vertical scaling factors
-- **transform_x/transform_y**: Position offset values
+```js
+{
+  // [Required] Draft URL with draft_id
+  "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
+
+  // [Required] Caption list JSON string (shown as array for readability)
+  "captions": [
+    {
+      "start": 0,                              // [Required] start time (µs)
+      "end": 3000000,                          // [Required] end time (µs), must be > start
+      "text": "Hello, CapCut captions",        // [Required] caption text
+      "keyword": "CapCut|captions",            // [Optional] keywords separated by |
+      "keyword_color": "#ff7100",              // [Optional] keyword color
+      "keyword_border_color": "#000000",       // [Optional] keyword stroke color
+      "keyword_font_size": 22,                 // [Optional] keyword font size
+      "keyword_has_shadow": true,              // [Optional] enable keyword shadow
+      "keyword_shadow_info": {                 // [Optional] keyword shadow params
+        "shadow_alpha": 0.85,
+        "shadow_color": "#000000",
+        "shadow_diffuse": 18.0,
+        "shadow_distance": 6.0,
+        "shadow_angle": -45.0
+      },
+      "font_size": 18,                         // [Optional] this caption's normal font size
+      "in_animation": "向上滑动",               // [Optional] intro animation name
+      "out_animation": "向下滑动",              // [Optional] outro animation name
+      "loop_animation": "弹幕滚动",             // [Optional] loop animation name
+      "in_animation_duration": 500000,         // [Optional] intro duration (µs)
+      "out_animation_duration": 500000,        // [Optional] outro duration (µs)
+      "loop_animation_duration": 1000000       // [Optional] single loop duration (µs)
+    }
+  ],
+
+  "text_color": "#ffffff",                     // [Optional] normal text color
+  "border_color": "#333333",                   // [Optional] normal stroke color
+  "alignment": 1,                              // [Optional] 0 left / 1 center / 2 right
+  "alpha": 1.0,                                // [Optional] opacity [0,1]
+  "font": "思源黑体",                           // [Optional] font name
+  "font_size": 15,                             // [Optional] top-level default font size
+  "letter_spacing": 0,                         // [Optional] letter spacing
+  "line_spacing": 0,                           // [Optional] line spacing
+  "scale_x": 1.0,                              // [Optional] horizontal scale
+  "scale_y": 1.0,                              // [Optional] vertical scale
+  "transform_x": 0.0,                          // [Optional] X offset (px)
+  "transform_y": -200.0,                       // [Optional] Y offset (px)
+  "style_text": false,                         // [Optional] style-text switch
+  "underline": false,                          // [Optional] underline
+  "italic": false,                             // [Optional] italic
+  "bold": true,                                // [Optional] bold
+  "has_shadow": true,                          // [Optional] full-text shadow switch
+  "shadow_info": {                             // [Optional] full-text shadow params
+    "shadow_alpha": 0.9,
+    "shadow_color": "#000000",
+    "shadow_diffuse": 15.0,
+    "shadow_distance": 5.0,
+    "shadow_angle": -45.0
+  },
+  // [Optional] set null so custom colors/shadows remain effective
+  "text_effect": null
+}
+```
 
 ## Response Format
 
@@ -121,7 +174,7 @@ Batch add captions to existing drafts. This interface is used to add captions to
     {
       "id": "segment1-uuid",
       "start": 0,
-      "end": 5000000
+      "end": 3000000
     }
   ]
 }
@@ -133,9 +186,9 @@ Batch add captions to existing drafts. This interface is used to add captions to
 |-------|------|-------------|
 | draft_url | string | Updated draft URL |
 | track_id | string | Caption track ID |
-| text_ids | array | List of added text IDs |
-| segment_ids | array | List of segment IDs |
-| segment_infos | array | Segment information array |
+| text_ids | array | Added text material IDs |
+| segment_ids | array | Segment IDs |
+| segment_infos | array | Segment info objects (`id` / `start` / `end`) |
 
 ### Error Response (4xx/5xx)
 
@@ -149,49 +202,131 @@ Batch add captions to existing drafts. This interface is used to add captions to
 
 ### cURL Examples
 
-#### 1. Basic Caption Addition
+#### 1. Full-parameter request (all required + optional fields)
+
+> Runnable curl with a legal value for every parameter. `captions` must be a JSON string. `text_effect` is `null` so full-text and keyword shadows stay effective.
 
 ```bash
 curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_captions \
   -H "Content-Type: application/json" \
   -d '{
-    "draft_url": "YOUR_DRAFT_URL",
-    "captions": "[{\"start\":0,\"end\":5000000,\"text\":\"Welcome to Jianying\"}]",
+    "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
+    "captions": "[{\"start\":0,\"end\":3000000,\"text\":\"Hello, CapCut captions\",\"keyword\":\"CapCut|captions\",\"keyword_color\":\"#ff7100\",\"keyword_border_color\":\"#000000\",\"keyword_font_size\":22,\"keyword_has_shadow\":true,\"keyword_shadow_info\":{\"shadow_alpha\":0.85,\"shadow_color\":\"#000000\",\"shadow_diffuse\":18.0,\"shadow_distance\":6.0,\"shadow_angle\":-45.0},\"font_size\":18,\"in_animation\":\"向上滑动\",\"out_animation\":\"向下滑动\",\"loop_animation\":\"弹幕滚动\",\"in_animation_duration\":500000,\"out_animation_duration\":500000,\"loop_animation_duration\":1000000},{\"start\":3000000,\"end\":6000000,\"text\":\"Welcome to caption features\",\"keyword\":\"caption\",\"keyword_color\":\"#457616\",\"keyword_border_color\":\"#111111\",\"keyword_font_size\":20,\"keyword_has_shadow\":true,\"keyword_shadow_info\":{\"shadow_alpha\":0.9,\"shadow_color\":\"#000000\",\"shadow_diffuse\":15.0,\"shadow_distance\":5.0,\"shadow_angle\":-45.0},\"font_size\":16,\"in_animation\":\"右上弹入\",\"out_animation\":\"右上弹出\",\"loop_animation\":\"VHS\",\"in_animation_duration\":400000,\"out_animation_duration\":400000,\"loop_animation_duration\":800000}]",
     "text_color": "#ffffff",
-    "font_size": 18
+    "border_color": "#333333",
+    "alignment": 1,
+    "alpha": 1.0,
+    "font": "思源黑体",
+    "font_size": 15,
+    "letter_spacing": 0,
+    "line_spacing": 0,
+    "scale_x": 1.0,
+    "scale_y": 1.0,
+    "transform_x": 0.0,
+    "transform_y": -200.0,
+    "style_text": false,
+    "underline": false,
+    "italic": false,
+    "bold": true,
+    "has_shadow": true,
+    "shadow_info": {
+      "shadow_alpha": 0.9,
+      "shadow_color": "#000000",
+      "shadow_diffuse": 15.0,
+      "shadow_distance": 5.0,
+      "shadow_angle": -45.0
+    },
+    "text_effect": null
   }'
 ```
 
-#### 2. Caption with Keyword Highlighting
+**Top-level parameter meanings:**
+
+| Parameter | Example | Meaning |
+|-----------|---------|---------|
+| draft_url | `...draft_id=2025092811473036584258` | [Required] Target draft URL |
+| captions | JSON string with 2 captions | [Required] Caption content + per-item style/animation/keyword config |
+| text_color | `#ffffff` | [Optional] Normal text color |
+| border_color | `#333333` | [Optional] Normal stroke color |
+| alignment | `1` | [Optional] Center align |
+| alpha | `1.0` | [Optional] Fully opaque |
+| font | `思源黑体` | [Optional] Font name |
+| font_size | `15` | [Optional] Top-level default size |
+| letter_spacing / line_spacing | `0` | [Optional] Spacing |
+| scale_x / scale_y | `1.0` | [Optional] No scaling |
+| transform_x | `0.0` | [Optional] No horizontal offset |
+| transform_y | `-200.0` | [Optional] Move up 200 px |
+| style_text | `false` | [Optional] Style-text switch off |
+| underline / italic | `false` | [Optional] No underline / italic |
+| bold | `true` | [Optional] Bold on |
+| has_shadow | `true` | [Optional] Full-text shadow on |
+| shadow_info.* | see above | [Optional] Full-text shadow details |
+| text_effect | `null` | [Optional] No 花字, keep colors/shadows |
+
+**Per-caption field meanings:**
+
+| Field | Example | Meaning |
+|-------|---------|---------|
+| start / end | `0` / `3000000` | [Required] Time range (µs) |
+| text | `Hello, CapCut captions` | [Required] Caption text |
+| keyword | `CapCut\|captions` | [Optional] Highlight keywords |
+| keyword_color | `#ff7100` | [Optional] Keyword color |
+| keyword_border_color | `#000000` | [Optional] Keyword stroke |
+| keyword_font_size | `22` | [Optional] Keyword size |
+| keyword_has_shadow | `true` | [Optional] Keyword shadow on |
+| keyword_shadow_info.* | see above | [Optional] Keyword shadow params |
+| font_size | `18` | [Optional] This caption's normal size |
+| in/out/loop_animation | names above | [Optional] Animation names |
+| *_animation_duration | `500000` etc. | [Optional] Animation durations (µs) |
+
+#### 2. Required parameters only
 
 ```bash
 curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_captions \
   -H "Content-Type: application/json" \
   -d '{
-    "draft_url": "YOUR_DRAFT_URL",
-    "captions": "[{\"start\":0,\"end\":3000000,\"text\":\"Hello World\",\"keyword\":\"Hello\",\"keyword_color\":\"#ff0000\",\"keyword_font_size\":20}]",
-    "text_color": "#ffffff",
-    "font_size": 16
+    "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
+    "captions": "[{\"start\":0,\"end\":5000000,\"text\":\"Hello, CapCut\"}]"
   }'
 ```
 
-#### 3. Styled Caption with Positioning
+#### 3. Keyword highlight + keyword shadow
 
 ```bash
 curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_captions \
   -H "Content-Type: application/json" \
   -d '{
-    "draft_url": "YOUR_DRAFT_URL",
-    "captions": "[{\"start\":2000000,\"end\":7000000,\"text\":\"Styled Caption\"}]",
-    "text_color": "#00ff00",
-    "border_color": "#000000",
-    "alignment": 2,
-    "alpha": 0.8,
+    "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
+    "captions": "[{\"start\":0,\"end\":5000000,\"text\":\"Hello CapCut\",\"keyword\":\"CapCut\",\"keyword_color\":\"#ff0000\",\"keyword_font_size\":22,\"keyword_has_shadow\":true,\"keyword_shadow_info\":{\"shadow_alpha\":0.8,\"shadow_color\":\"#000000\",\"shadow_diffuse\":20.0,\"shadow_distance\":8.0,\"shadow_angle\":-45.0}}]",
+    "text_color": "#ffffff",
+    "font_size": 16,
+    "alignment": 1
+  }'
+```
+
+#### 4. Full-text shadow with default shadow_info
+
+```bash
+curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_captions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
+    "captions": "[{\"start\":0,\"end\":5000000,\"text\":\"Hello, CapCut\"}]",
+    "text_color": "#ffffff",
     "font_size": 20,
-    "scale_x": 1.2,
-    "scale_y": 1.2,
-    "transform_x": 100,
-    "transform_y": 50
+    "has_shadow": true
+  }'
+```
+
+#### 5. Text effect (花字)
+
+```bash
+curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_captions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
+    "captions": "[{\"start\":0,\"end\":5000000,\"text\":\"Effect demo\"}]",
+    "text_effect": "白字橘色发光花字"
   }'
 ```
 
@@ -199,47 +334,29 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_captions \
 
 | Error Code | Error Message | Description | Solution |
 |------------|---------------|-------------|----------|
-| 400 | draft_url is required | Missing draft URL parameter | Provide a valid draft URL |
-| 400 | captions is required | Missing caption information parameter | Provide valid caption information JSON |
-| 400 | captions format error | JSON format is incorrect | Check JSON string format |
-| 400 | Caption configuration validation failed | Caption parameters do not meet requirements | Check parameters for each caption |
-| 400 | start is required | Caption start time missing | Provide start time for each caption |
-| 400 | end is required | Caption end time missing | Provide end time for each caption |
-| 400 | text is required | Caption text content missing | Provide text content for each caption |
-| 400 | Time range invalid | end must be greater than start | Ensure end time is greater than start time |
-| 400 | Font size invalid | font_size must be positive | Use positive font size value |
-| 400 | Alpha value invalid | alpha not in 0.0-1.0 range | Use alpha value between 0.0-1.0 |
-| 404 | Draft does not exist | Specified draft URL invalid | Check if draft URL is correct |
-| 500 | Caption processing failed | Internal processing error | Contact technical support |
+| 400 | draft_url is required | Missing draft URL | Provide a valid `draft_url` |
+| 400 | captions is required | Missing captions | Provide valid `captions` |
+| 400 | captions format error | Invalid JSON | Fix JSON string format |
+| 400 | Time range invalid | end must be > start | Fix start/end |
+| 404 | Draft does not exist | Invalid/missing draft | Check draft URL |
+| 500 | Caption processing failed | Internal error | Contact support |
 
 ## Notes
 
-1. **JSON Format**: captions must be a valid JSON string
-2. **Time Unit**: All time parameters use microseconds (1 second = 1,000,000 microseconds)
-3. **Color Format**: Colors use hexadecimal format (e.g., "#ffffff")
-4. **Font Support**: Ensure font names are supported by the system
-5. **Position Range**: transform_x and transform_y values should be within reasonable ranges
-6. **Scaling**: Scale factors should typically be between 0.1-5.0
-7. **Track Management**: Multiple captions will be added to the same caption track
-
-## Workflow
-
-1. Validate required parameters (draft_url, captions)
-2. Parse captions JSON string
-3. Validate parameter configuration for each caption
-4. Obtain and decrypt draft content
-5. Create caption track
-6. Add text segments to track
-7. Apply styling and positioning
-8. Save and encrypt draft
-9. Return processing result
+1. **Time unit**: microseconds (`1s = 1_000_000µs`)
+2. **captions format**: must be a valid JSON **string** inside the request JSON
+3. **Color format**: hex, e.g. `#ffffff`
+4. **Animation names**: from `get_text_animations`
+5. **Text effect names**: from `get_text_effects`
+6. **Coordinates**: `transform_x` / `transform_y` are pixels, converted internally by canvas size
+7. **Keyword shadow**: applies only to keyword ranges; full-text shadow uses `has_shadow` / `shadow_info`
 
 ## Related Interfaces
 
 - [Create Draft](./create_draft.md)
-- [Add Videos](./add_videos.md)
-- [Add Images](./add_images.md)
-- [Add Text Style](./add_text_style.md)
+- [Caption Infos](./caption_infos.md)
+- [Get Text Animations](./get_text_animations.md)
+- [Get Text Effects](./get_text_effects.md)
 - [Save Draft](./save_draft.md)
 
 ---
