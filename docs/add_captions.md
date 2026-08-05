@@ -94,6 +94,12 @@ Default shadow when enabled without `*_shadow_info`:
 
 If `text_effect` resolves to a valid effect, the API resets `text_color` to `#ffffff`, `border_color` to `null`, `has_shadow` to `false`, and disables keyword shadow. Omit/leave `text_effect` null when you need custom colors or shadows.
 
+### Notes on keyword shadow
+
+`keyword_has_shadow` / `keyword_shadow_info` work like `keyword_color` / `keyword_border_color`: they stay on the **same caption segment** and do not create an extra text line.
+
+When keyword shadow is enabled, the caption is split into non-overlapping `styles` partitions: normal ranges get `shadows: []`, keyword ranges get the shadow params. Without keyword shadow fields, the original base + keyword overlay path is unchanged.
+
 ## Fully Annotated Request Example
 
 `//` comments are for documentation only and are **not** valid in a real request body.

@@ -107,6 +107,12 @@ POST /openapi/capcut-mate/v1/add_captions
 
 当 `text_effect` 能解析到有效花字时，系统会将 `text_color` 重置为 `#ffffff`、`border_color` 重置为 `null`、`has_shadow` 重置为 `false`，并禁用关键词阴影（`keyword_has_shadow` 不生效）。若需要自定义颜色/阴影，请不要同时传有效花字。
 
+#### 关键词阴影如何生效
+
+`keyword_has_shadow` / `keyword_shadow_info` 与 `keyword_color` / `keyword_border_color` 一样，都作用在**同一条字幕**内，不会新建额外字幕行。
+
+实现上会把字幕拆成互不重叠的 `styles` 分区：普通文字分区 `shadows: []`，关键词分区写入阴影参数，从而尽量只让关键词带阴影。不传阴影相关字段时，仍走原来的「base + 关键词叠加样式」路径，行为与增加阴影功能前一致。
+
 ## 完整参数请求示例（含注释）
 
 下列为**全部接口级参数 + captions 全部字段**的示意；`//` 注释仅用于说明，不能直接作为请求体。
@@ -370,7 +376,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_captions \
 4. **动画名称**：请通过 `get_text_animations` 获取可用名称
 5. **花字名称**：请通过 `get_text_effects` 获取可用名称或 `effect_id`
 6. **坐标系统**：`transform_x` / `transform_y` 使用像素，内部会按画布尺寸换算
-7. **关键词阴影**：仅作用于关键词字符范围；整段阴影由 `has_shadow` / `shadow_info` 控制
+7. **关键词阴影**：与关键词颜色/描边一样写在同一字幕的 styles 分区内，不另建字幕行；整段阴影仍由 `has_shadow` / `shadow_info` 控制
 
 ## 工作流程
 

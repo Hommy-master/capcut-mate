@@ -307,6 +307,8 @@ class TextSegment(VisualSegment):
         self.bubble = None
         self.effect = None
         self.extra_styles = []
+        # 为 True 时 export 使用 extra_styles 作为完整 styles（互不重叠分区），不再叠加全量 base_style
+        self.use_extra_styles_only = False
 
     @classmethod
     def create_from_template(cls, text: str, timerange: Timerange, template: "TextSegment") -> "TextSegment":
@@ -400,53 +402,58 @@ class TextSegment(VisualSegment):
             check_flag |= 8
         if self.background:
             check_flag |= 16
-        # 整段阴影，或关键词等 extra_styles 上的阴影，都需要打开阴影位
-        has_extra_shadow = any(
-            isinstance(style, dict) and style.get("shadows")
-            for style in self.extra_styles
+
+        if self.use_extra_styles_only and self.extra_styles:
+            styles = list(self.extra_styles)
+        else:
+            # 创建基础样式
+            base_style = {
+                "fill": {
+                    "alpha": 1.0,
+                    "content": {
+                        "render_type": "solid",
+                        "solid": {
+                            "alpha": 1.0,
+                            "color": list(self.style.color)
+                        }
+                    }
+                },
+                "range": [0, len(self.text.encode('utf-16-le'))],
+                "size": self.style.size,
+                "bold": self.style.bold,
+                "italic": self.style.italic,
+                "underline": self.style.underline,
+                "strokes": [self.border.export_json()] if self.border else []
+            }
+            # 合并基础样式和额外样式（额外样式按 range 覆盖 fill/size/strokes 等）
+            styles = [base_style] + self.extra_styles
+
+        # 素材级 shadow，或 styles 分区内的非空 shadows，都需要打开阴影位
+        has_style_shadows = any(
+            isinstance(style, dict) and bool(style.get("shadows"))
+            for style in styles
         )
-        if self.shadow or has_extra_shadow:
+        if self.shadow or has_style_shadows:
             check_flag |= 32
 
-        # 创建基础样式
-        base_style = {
-            "fill": {
-                "alpha": 1.0,
-                "content": {
-                    "render_type": "solid",
-                    "solid": {
-                        "alpha": 1.0,
-                        "color": list(self.style.color)
-                    }
-                }
-            },
-            "range": [0, len(self.text.encode('utf-16-le'))],
-            "size": self.style.size,
-            "bold": self.style.bold,
-            "italic": self.style.italic,
-            "underline": self.style.underline,
-            "strokes": [self.border.export_json()] if self.border else []
-        }
-        
-        # 合并基础样式和额外样式
-        styles = [base_style] + self.extra_styles
-        
         content_json = {
             "styles": styles,
             "text": self.text
         }
-        if self.font:
-            content_json["styles"][0]["font"] = {
-                "id": self.font.resource_id,
-                "path": "D:"  # 并不会真正在此处放置字体文件
-            }
-        if self.effect:
-            content_json["styles"][0]["effectStyle"] = {
-                "id": self.effect.effect_id,
-                "path": "C:"  # 并不会真正在此处放置素材文件
-            }
-        if self.shadow:
-            content_json["styles"][0]["shadows"] = [self.shadow.export_json()]
+        if styles:
+            if self.font:
+                content_json["styles"][0]["font"] = {
+                    "id": self.font.resource_id,
+                    "path": "D:"  # 并不会真正在此处放置字体文件
+                }
+            if self.effect:
+                content_json["styles"][0]["effectStyle"] = {
+                    "id": self.effect.effect_id,
+                    "path": "C:"  # 并不会真正在此处放置素材文件
+                }
+            # 仅素材级整段阴影写入 styles[0]；分区阴影已在各自 style 中
+            if self.shadow:
+                content_json["styles"][0]["shadows"] = [self.shadow.export_json()]
 
         ret = {
             "id": self.material_id,
