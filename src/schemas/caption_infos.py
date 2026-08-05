@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field
 from typing import List, Optional
 from .audio_timelines import TimelineItem
+from .add_captions import ShadowInfo
 
 
 class CaptionInfosRequest(BaseModel):
@@ -11,6 +12,8 @@ class CaptionInfosRequest(BaseModel):
     keyword_color: Optional[str] = Field(None, description="关键词颜色")
     keyword_border_color: Optional[str] = Field(None, description="关键词边框颜色")
     keyword_font_size: Optional[int] = Field(None, description="关键词字体大小")
+    keyword_has_shadow: Optional[bool] = Field(None, description="是否启用关键词阴影")
+    keyword_shadow_info: Optional[ShadowInfo] = Field(None, description="关键词阴影参数")
     keywords: Optional[List[str]] = Field(None, description="文本里面的重点词列表")
     in_animation: Optional[str] = Field(None, description="入场动画名称")
     in_animation_duration: Optional[int] = Field(None, description="入场动画时长")

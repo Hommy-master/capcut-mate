@@ -10,6 +10,8 @@ def caption_infos(
     keyword_color: Optional[str] = None,
     keyword_border_color: Optional[str] = None,
     keyword_font_size: Optional[int] = None,
+    keyword_has_shadow: Optional[bool] = None,
+    keyword_shadow_info: Optional[Dict[str, Any]] = None,
     keywords: Optional[List[str]] = None,
     in_animation: Optional[str] = None,
     in_animation_duration: Optional[int] = None,
@@ -30,6 +32,8 @@ def caption_infos(
         keyword_color: 关键词颜色（可选）
         keyword_border_color: 关键词边框颜色（可选）
         keyword_font_size: 关键词字体大小（可选）
+        keyword_has_shadow: 是否启用关键词阴影（可选）
+        keyword_shadow_info: 关键词阴影参数（可选）
         keywords: 文本里面的重点词列表（可选）
         in_animation: 入场动画名称（可选）
         in_animation_duration: 入场动画时长（可选）
@@ -60,6 +64,7 @@ def caption_infos(
     for i, (text, timeline) in enumerate(zip(texts, timelines)):
         info = _build_caption_info(text, timeline, i, keywords, 
                                 font_size, keyword_color, keyword_border_color, keyword_font_size,
+                                keyword_has_shadow, keyword_shadow_info,
                                 in_animation, in_animation_duration,
                                 loop_animation, loop_animation_duration,
                                 out_animation, out_animation_duration,
@@ -76,6 +81,7 @@ def caption_infos(
 
 def _build_caption_info(text, timeline, index, keywords,
                        font_size, keyword_color, keyword_border_color, keyword_font_size,
+                       keyword_has_shadow, keyword_shadow_info,
                        in_animation, in_animation_duration,
                        loop_animation, loop_animation_duration,
                        out_animation, out_animation_duration,
@@ -104,6 +110,12 @@ def _build_caption_info(text, timeline, index, keywords,
     
     if keyword_font_size is not None:
         info["keyword_font_size"] = keyword_font_size
+
+    if keyword_has_shadow is not None:
+        info["keyword_has_shadow"] = keyword_has_shadow
+
+    if keyword_shadow_info is not None:
+        info["keyword_shadow_info"] = keyword_shadow_info
     
     if font_size is not None:
         info["font_size"] = font_size
