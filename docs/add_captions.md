@@ -62,9 +62,9 @@ Batch-add captions to an existing CapCut/Jianying draft. Supports text color, bo
 | keyword_has_shadow | boolean | ❌ | `false` | Enable **keyword-range** shadow |
 | keyword_shadow_info | object | ❌ | `null` | Keyword shadow params (same fields as `shadow_info`) |
 | font_size | integer | ❌ | `null` | Per-caption normal text size; falls back to top-level `font_size` |
-| in_animation | string | ❌ | `null` | Intro animation name from `get_text_animations`, e.g. `"向上滑动"` |
-| out_animation | string | ❌ | `null` | Outro animation name, e.g. `"向下滑动"` |
-| loop_animation | string | ❌ | `null` | Loop animation name, e.g. `"弹幕滚动"` |
+| in_animation | string | ❌ | `null` | Intro animation name from Intro animations below, e.g. `"向上滑动"` |
+| out_animation | string | ❌ | `null` | Outro animation name from Outro animations below, e.g. `"向下滑动"` |
+| loop_animation | string | ❌ | `null` | Loop animation name from Loop animations below, e.g. `"弹幕滚动"` |
 | in_animation_duration | integer | ❌ | `null` | Intro duration (µs); omit to use animation default |
 | out_animation_duration | integer | ❌ | `null` | Outro duration (µs); omit to use animation default |
 | loop_animation_duration | integer | ❌ | `null` | Single loop duration (µs); omit to use animation default |
@@ -917,6 +917,362 @@ These aliases are also valid `font` values:
 - `励字志向黑` → `励字志向黑简 特粗`
 - `励字志向黑简` → `励字志向黑简 特粗`
 <!-- FONT_LIST_END -->
+
+<!-- ANIMATION_LIST_START -->
+### Supported Text Animations (in / out / loop)
+
+Use the names below directly as in_animation, out_animation, or loop_animation (same as CapCut/Jianying titles and get_text_animations.name). Unmatched names are ignored.
+
+#### Intro animations (in_animation, 145 total)
+
+```text
+乱码故障
+二段缩放
+便利贴
+倒数
+兔子弹跳
+冰雪飘动
+冲屏位移
+卡拉OK
+发光模糊
+发光闪入
+变色输入
+叠影并入
+右上弹入
+右下擦开
+向上弹入
+向上擦除
+向上滑动
+向上翻转
+向上重叠
+向上露出
+向下擦除
+向下溶解
+向下滑动
+向下露出
+向下飞入
+向右擦除
+向右模糊 II
+向右滑动
+向右缓入
+向右集合
+向右露出
+向左擦除
+向左模糊
+向左滑动
+向左露出
+吸入
+呐喊声波
+喷绘
+圆形扫描
+圆柱体滚动
+圣诞帽弹跳
+圣诞树弹跳II
+复古打字机
+居中打字
+左上弹入
+左移弹动
+开幕
+弹入
+弹入跳动
+弹弓
+弹性伸缩
+弹性伸缩 II
+弹簧
+彩色映射
+心动瞬间
+慢速放大
+打字光标
+打字机 I
+打字机 II
+打字机 III
+打字机IV
+扭曲模糊
+抖动甩入
+折叠
+拖尾
+描边填充
+收拢
+放大
+放大震动
+故障打字机
+故障闪动
+新年打字机
+旋入
+旋转缩放
+旋转飞入
+日出
+星光闪闪
+星光闪闪 II
+星星弹跳
+晕开
+模糊
+模糊发光
+模糊滚动
+模糊缩小
+水墨晕开
+水平翻转
+汇聚
+波浪弹入
+波浪弹跳
+流光扩散
+渐显
+溶解
+滑动上升
+滚入
+激光雕刻
+爱心弹跳
+玩雪
+环绕滑入
+生长
+生长 II
+甩出
+电光
+电光 II
+碰碰车
+空翻
+站起
+缤纷冲屏
+缩小
+缩小 II
+缩放 III
+羽化向右擦开
+羽化向左擦开
+翻动
+翻页II
+背景滑入
+色散拖影
+螺旋上升
+跃进
+跳跳捣蛋鬼
+跳跳糖
+轻微放大
+辉光
+辉光扫描
+逐字弹跳
+逐字旋入
+逐字旋转
+逐字显影
+逐字翻转
+金粉飘落
+镂空跳入
+闪动
+闪烁集合
+随机上升
+随机弹跳
+随机弹跳 II
+随机打字机
+随机落下
+随机集合
+随机飞入
+雪光模糊
+音符弹跳
+顶出
+预览打字
+飞入
+鼠标点击
+```
+
+#### Outro animations (out_animation, 97 total)
+
+```text
+二段缩放
+发光闪出
+叠影并出
+右上弹出
+右下擦除
+向上擦除
+向上溶解
+向上滑动
+向上飞出
+向下弹出
+向下擦除
+向下滑动
+向下翻转
+向右擦除
+向右滑动
+向右缓出
+向左擦除
+向左模糊
+向左模糊 II
+向左滑动
+向左解散
+吸出
+喷绘
+圆形扫描
+复古打字机
+居中打字
+展开
+左上弹出
+左移弹动
+弹出
+弹出跳动
+弹弓
+弹性伸缩
+弹性伸缩 II
+弹簧
+打字光标
+打字机 I
+打字机 II
+打字机 III
+打字机IV
+扭曲模糊
+折叠
+拖尾
+描边填充
+收缩震动
+放大
+放大 II
+故障
+故障打字机
+故障闪动
+旋出
+旋转缩放
+旋转飞出
+日落
+晕开
+模糊
+模糊发光
+模糊滚动
+水墨晕开
+水平翻转
+波浪弹出
+波浪弹跳
+消散
+渐隐
+溶解
+滑动下落
+滚出
+激光雕刻
+炸开
+炸开 II
+炸开 Ⅲ
+环绕滑出
+生长
+甩回
+空翻
+缩小
+羽化向右擦除
+羽化向左擦除
+翻动
+螺旋下降
+躺下
+轻微放大
+逐字旋出
+逐字旋转
+逐字翻转
+逐字虚影
+镂空跳出
+闪动
+闪烁散开
+闭幕
+随机弹跳
+随机弹跳 II
+随机打字机
+随机飞出
+顶出
+预览打字
+飞出
+```
+
+#### Loop animations (loop_animation, 93 total)
+
+```text
+VHS
+上弧
+刷屏
+加字符
+发光模糊多行
+吹泡泡
+吹泡泡 II
+呐喊
+喷涌
+喷绘
+圆形涂鸦
+声波震动
+复古涂鸦
+字体变换
+字幕滚动
+尾巴摇摆
+弹幕
+弹幕 II
+弹幕滚动
+强调三遍
+彩色切换
+彩色火焰
+彩虹
+彩虹-情人节
+彩虹-新年
+彩虹-马卡龙
+影像叠加
+心跳
+急了
+悸动
+情绪加载
+扩音器
+扫光
+扭动
+投影颤抖
+投影颤抖 II
+抖动故障
+折叠
+拉住
+拉开
+拼贴纹理
+排队入场
+描边粉笔
+摇摆
+摇摆 I
+摇荡
+放大缩小
+放大镜
+故障闪动
+文字泛光
+旋转
+晃动
+波浪
+波浪 II
+波浪 III
+流光
+涂鸦手绘
+涂鸦手绘 II
+渐变拖尾
+漂浮
+漩涡
+爆闪
+环形滚动
+环绕
+环绕 II
+甜甜圈
+福袋炸开
+空间翻转 I
+空间翻转 II
+空间翻转 III
+竖向渐变
+翻转
+翻页I
+色差故障
+蓝黄滑动
+调皮
+超强晃动
+超强晃动 II
+超强波浪
+超强波浪 II
+跳动
+轻微跳动
+逐字放大
+钟摆
+错位
+闪烁
+随机弹跳
+雨刷
+频闪边框
+颤抖
+颤抖 II
+颤抖 III
+飘起
+```
+<!-- ANIMATION_LIST_END -->
 
 ## Fully Annotated Request Example
 
