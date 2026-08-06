@@ -57,8 +57,8 @@ POST /openapi/capcut-mate/v1/add_captions
 | keyword | string | ❌ | `null` | 关键词，多个用 `\|` 分隔，如 `"剪映\|字幕"` |
 | keyword_color | string | ❌ | `"#ff7100"` | 关键词填充颜色（十六进制） |
 | keyword_border_color | string | ❌ | `null` | 关键词描边颜色；未指定时回退使用接口级 `border_color` |
-| keyword_font | string | ❌ | `null` | 关键词字体（展示名/枚举名/别名，见下方「支持的字体」）；未指定则与接口级 `font` 一致 |
-| keyword_font_size | integer | ❌ | `15` | 关键词字号，须 `> 0` |
+| keyword_font | string | ❌ | `null` | 关键词字体（展示名/枚举名/别名，见下方「支持的字体」）；未指定则与主体字幕 `font` 一致 |
+| keyword_font_size | integer | ❌ | `null` | 关键词字号，须 `> 0`；未指定则与主体字幕字号一致（本条 `font_size`，否则接口级 `font_size`） |
 | keyword_has_shadow | boolean | ❌ | `false` | 是否启用**关键词范围**阴影 |
 | keyword_shadow_info | object | ❌ | `null` | 关键词阴影参数，字段同 `shadow_info`；未提供时用默认阴影 |
 | font_size | integer | ❌ | `null` | 本条字幕普通文本字号；未指定则使用接口级 `font_size` |
@@ -1305,8 +1305,8 @@ VHS
       "keyword": "剪映|字幕",                   // 【可选】关键词，多个用 | 分隔
       "keyword_color": "#ff7100",              // 【可选】关键词颜色
       "keyword_border_color": "#000000",       // 【可选】关键词描边颜色
-      "keyword_font": "思源中宋",               // 【可选】关键词字体；未指定则同接口级 font
-      "keyword_font_size": 22,                 // 【可选】关键词字号
+      "keyword_font": "思源中宋",               // 【可选】关键词字体；未指定则同主体字幕 font
+      "keyword_font_size": 22,                 // 【可选】关键词字号；未指定则同主体字幕字号
       "keyword_has_shadow": true,              // 【可选】是否启用关键词阴影
       "keyword_shadow_info": {                 // 【可选】关键词阴影参数
         "shadow_alpha": 0.85,                  // 阴影不透明度 [0,1]

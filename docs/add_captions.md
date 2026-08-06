@@ -57,8 +57,8 @@ Batch-add captions to an existing CapCut/Jianying draft. Supports text color, bo
 | keyword | string | ❌ | `null` | Keywords separated by `\|`, e.g. `"Hello\|World"` |
 | keyword_color | string | ❌ | `"#ff7100"` | Keyword fill color (hex) |
 | keyword_border_color | string | ❌ | `null` | Keyword stroke color; falls back to top-level `border_color` |
-| keyword_font | string | ❌ | `null` | Keyword font (display/enum/alias from Supported Fonts); falls back to top-level `font` |
-| keyword_font_size | integer | ❌ | `15` | Keyword font size, must be `> 0` |
+| keyword_font | string | ❌ | `null` | Keyword font (display/enum/alias from Supported Fonts); falls back to body caption `font` |
+| keyword_font_size | integer | ❌ | `null` | Keyword font size, must be `> 0`; falls back to body size (item `font_size`, else top-level `font_size`) |
 | keyword_has_shadow | boolean | ❌ | `false` | Enable **keyword-range** shadow |
 | keyword_shadow_info | object | ❌ | `null` | Keyword shadow params (same fields as `shadow_info`) |
 | font_size | integer | ❌ | `null` | Per-caption normal text size; falls back to top-level `font_size` |
@@ -1292,8 +1292,8 @@ VHS
       "keyword": "CapCut|captions",            // [Optional] keywords separated by |
       "keyword_color": "#ff7100",              // [Optional] keyword color
       "keyword_border_color": "#000000",       // [Optional] keyword stroke color
-      "keyword_font": "思源中宋",               // [Optional] keyword font; falls back to top-level font
-      "keyword_font_size": 22,                 // [Optional] keyword font size
+      "keyword_font": "思源中宋",               // [Optional] keyword font; falls back to body caption font
+      "keyword_font_size": 22,                 // [Optional] keyword font size; falls back to body size
       "keyword_has_shadow": true,              // [Optional] enable keyword shadow
       "keyword_shadow_info": {                 // [Optional] keyword shadow params
         "shadow_alpha": 0.85,
