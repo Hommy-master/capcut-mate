@@ -141,6 +141,7 @@ def add_captions(
                     "keyword": "好",  # 关键词（用 | 分隔多个关键词），可选参数
                     "keyword_color": "#457616",  # 关键词颜色，可选参数
                     "keyword_border_color": "#000000",  # 关键词边框颜色，可选参数
+                    "keyword_font": None,  # 关键词字体，可选参数
                     "keyword_font_size": 15,  # 关键词字体大小，可选参数
                     "keyword_has_shadow": False,  # 是否启用关键词阴影，可选参数
                     "keyword_shadow_info": None,  # 关键词阴影参数，可选参数
@@ -433,6 +434,7 @@ def add_caption_to_draft(
             keyword: 关键词（用 | 分隔多个关键词），可选
             keyword_color: 关键词颜色，可选
             keyword_border_color: 关键词边框颜色，可选
+            keyword_font: 关键词字体名称，可选（未指定则与整段 font 一致）
             keyword_font_size: 关键词字体大小，可选
             keyword_has_shadow: 是否启用关键词阴影，可选
             keyword_shadow_info: 关键词阴影参数，可选
@@ -612,6 +614,18 @@ def add_caption_to_draft(
             else:
                 keyword_border_rgb_color = None
 
+            keyword_font_meta = None
+            keyword_font_name = caption.get('keyword_font')
+            if keyword_font_name:
+                keyword_font_type = resolve_font_type(keyword_font_name)
+                if keyword_font_type is None:
+                    logger.warning(
+                        f"Keyword font '{keyword_font_name}' not found, "
+                        f"falling back to caption font"
+                    )
+                else:
+                    keyword_font_meta = keyword_font_type.value
+
             keyword_has_shadow = bool(caption.get('keyword_has_shadow', False))
             if disable_keyword_shadow:
                 keyword_has_shadow = False
@@ -636,6 +650,7 @@ def add_caption_to_draft(
                     normal_border_rgb=(
                         hex_to_rgb(border_color) if border_color else None
                     ),
+                    keyword_font_meta=keyword_font_meta,
                 )
             else:
                 apply_keyword_highlight(
@@ -644,11 +659,13 @@ def add_caption_to_draft(
                     keyword_rgb_color,
                     keyword_font_size,
                     keyword_border_rgb_color,
+                    keyword_font_meta=keyword_font_meta,
                 )
 
             logger.info(
                 f"Applied keyword highlighting: {caption['keyword']} with color {keyword_color}, "
-                f"font size {keyword_font_size}, border color {keyword_border_color or border_color}, "
+                f"font {keyword_font_name}, font size {keyword_font_size}, "
+                f"border color {keyword_border_color or border_color}, "
                 f"has_shadow {keyword_has_shadow}"
             )
         
@@ -747,6 +764,16 @@ def _find_keyword_ranges(text: str, keywords: str) -> List[Tuple[int, int]]:
     return ranges
 
 
+def _font_style_json(font_meta) -> Optional[dict]:
+    """将 EffectMeta 转为 styles[].font 结构。"""
+    if font_meta is None:
+        return None
+    return {
+        "id": font_meta.resource_id,
+        "path": "D:",
+    }
+
+
 def _build_style_partition(
     start: int,
     end: int,
@@ -759,6 +786,7 @@ def _build_style_partition(
     border_rgb: Optional[tuple] = None,
     shadows: Optional[List[dict]] = None,
     include_shadow_field: bool = False,
+    font_meta=None,
 ) -> dict:
     """构造单个互不重叠的 style 分区（range 使用字符下标，与 keyword_color 历史行为一致）。"""
     style = {
@@ -791,6 +819,9 @@ def _build_style_partition(
         }]
     if include_shadow_field:
         style["shadows"] = list(shadows) if shadows else []
+    font_json = _font_style_json(font_meta)
+    if font_json is not None:
+        style["font"] = font_json
     return style
 
 
@@ -803,6 +834,7 @@ def apply_keyword_partitioned_styles(
     keyword_shadows: Optional[List[dict]] = None,
     normal_shadows: Optional[List[dict]] = None,
     normal_border_rgb: Optional[tuple] = None,
+    keyword_font_meta=None,
 ):
     """
     用互不重叠的 styles 分区表达关键词样式（含可选局部阴影）。
@@ -815,6 +847,9 @@ def apply_keyword_partitioned_styles(
     font_size = keyword_font_size if keyword_font_size is not None else text_segment.style.size
     keyword_ranges = _find_keyword_ranges(text, keywords)
     include_shadow_field = bool(keyword_shadows or normal_shadows)
+    # 关键词字体优先；未指定则与整段字幕字体一致
+    keyword_font = keyword_font_meta if keyword_font_meta is not None else text_segment.font
+    normal_font = text_segment.font
 
     styles: List[dict] = []
     cursor = 0
@@ -831,6 +866,7 @@ def apply_keyword_partitioned_styles(
                 border_rgb=normal_border_rgb,
                 shadows=normal_shadows,
                 include_shadow_field=include_shadow_field,
+                font_meta=normal_font,
             ))
         styles.append(_build_style_partition(
             start,
@@ -843,6 +879,7 @@ def apply_keyword_partitioned_styles(
             border_rgb=keyword_border_color,
             shadows=keyword_shadows,
             include_shadow_field=include_shadow_field,
+            font_meta=keyword_font,
         ))
         cursor = end
 
@@ -858,6 +895,7 @@ def apply_keyword_partitioned_styles(
             border_rgb=normal_border_rgb,
             shadows=normal_shadows,
             include_shadow_field=include_shadow_field,
+            font_meta=normal_font,
         ))
 
     if not styles:
@@ -872,6 +910,7 @@ def apply_keyword_partitioned_styles(
             border_rgb=normal_border_rgb,
             shadows=normal_shadows,
             include_shadow_field=include_shadow_field,
+            font_meta=normal_font,
         ))
 
     text_segment.extra_styles = styles
@@ -905,9 +944,10 @@ def apply_keyword_highlight(
     keyword_border_color: tuple = None,
     keyword_has_shadow: bool = False,
     keyword_shadow_info: Optional[dict] = None,
+    keyword_font_meta=None,
 ):
     """
-    应用关键词高亮到文本片段（颜色 / 字号 / 描边）。
+    应用关键词高亮到文本片段（颜色 / 字号 / 描边 / 字体）。
 
     与历史行为一致：在同一字幕上追加 extra_styles，range 使用字符下标。
     关键词阴影请走 apply_keyword_partitioned_styles。
@@ -917,6 +957,7 @@ def apply_keyword_highlight(
     keyword_list = keywords.split('|')
     text = text_segment.text
     font_size = keyword_font_size if keyword_font_size is not None else text_segment.style.size
+    keyword_font_json = _font_style_json(keyword_font_meta)
 
     for keyword in keyword_list:
         keyword = keyword.strip()
@@ -959,6 +1000,9 @@ def apply_keyword_highlight(
                     "width": 0.08
                 }]
 
+            if keyword_font_json is not None:
+                highlight_style["font"] = dict(keyword_font_json)
+
             text_segment.extra_styles.append(highlight_style)
             start_pos = end_pos
 
@@ -977,6 +1021,7 @@ def parse_captions_data(json_str: str) -> List[Dict[str, Any]]:
                 "keyword": "好",  # [可选] 关键词（用|分隔多个关键词）
                 "keyword_color": "#457616",  # [可选] 关键词颜色，默认"#ff7100"
                 "keyword_border_color": "#000000",  # [可选] 关键词边框颜色，默认None
+                "keyword_font": None,  # [可选] 关键词字体，默认与整段 font 一致
                 "keyword_font_size": 15,  # [可选] 关键词字体大小，默认15
                 "keyword_has_shadow": False,  # [可选] 是否启用关键词阴影，默认False
                 "keyword_shadow_info": None,  # [可选] 关键词阴影参数，默认None
@@ -1032,6 +1077,7 @@ def parse_captions_data(json_str: str) -> List[Dict[str, Any]]:
             "keyword": item.get("keyword", None),
             "keyword_color": item.get("keyword_color", "#ff7100"),
             "keyword_border_color": item.get("keyword_border_color", None),
+            "keyword_font": item.get("keyword_font", None),
             "keyword_font_size": item.get("keyword_font_size", 15),
             "keyword_has_shadow": bool(item.get("keyword_has_shadow", False)),
             "keyword_shadow_info": _normalize_keyword_shadow_info(item.get("keyword_shadow_info")),
@@ -1073,6 +1119,12 @@ def parse_captions_data(json_str: str) -> List[Dict[str, Any]]:
                 processed_item["keyword_font_size"] <= 0):
             logger.warning(f"the {i}th item has invalid keyword_font_size: {processed_item['keyword_font_size']}, using default value 15")
             processed_item["keyword_font_size"] = 15
+
+        if processed_item["keyword_font"] is not None:
+            if not isinstance(processed_item["keyword_font"], str) or not processed_item["keyword_font"].strip():
+                processed_item["keyword_font"] = None
+            else:
+                processed_item["keyword_font"] = processed_item["keyword_font"].strip()
         
         result.append(processed_item)
     

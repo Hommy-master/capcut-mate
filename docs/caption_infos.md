@@ -28,6 +28,7 @@ Build a caption-info JSON string from text list + timelines. The result can be p
 | font_size | integer | ❌ | `null` | Normal text size written into each caption; omitted from output if not provided |
 | keyword_color | string | ❌ | `null` | Keyword color (hex), written into each caption |
 | keyword_border_color | string | ❌ | `null` | Keyword stroke color (hex), written into each caption |
+| keyword_font | string | ❌ | `null` | Keyword font name, written into each caption |
 | keyword_font_size | integer | ❌ | `null` | Keyword font size, written into each caption |
 | keyword_has_shadow | boolean | ❌ | `null` | Whether to enable keyword shadow, written into each caption |
 | keyword_shadow_info | object | ❌ | `null` | Keyword shadow params (same fields as `add_captions.shadow_info`) |
@@ -84,6 +85,7 @@ Build a caption-info JSON string from text list + timelines. The result can be p
   "font_size": 24,                // [Optional] normal text size
   "keyword_color": "#FF5500",     // [Optional] keyword color
   "keyword_border_color": "#000000", // [Optional] keyword stroke color
+  "keyword_font": "思源中宋",          // [Optional] keyword font
   "keyword_font_size": 28,        // [Optional] keyword font size
   "keyword_has_shadow": true,     // [Optional] enable keyword shadow
   "keyword_shadow_info": {        // [Optional] keyword shadow details
@@ -114,7 +116,7 @@ Build a caption-info JSON string from text list + timelines. The result can be p
 
 ```json
 {
-  "infos": "[{\"start\":0,\"end\":3000000,\"text\":\"Welcome to the CapCut tutorial\",\"keyword\":\"CapCut\",\"keyword_color\":\"#FF5500\",\"keyword_border_color\":\"#000000\",\"keyword_font_size\":28,\"keyword_has_shadow\":true,\"keyword_shadow_info\":{\"shadow_alpha\":0.85,\"shadow_color\":\"#000000\",\"shadow_diffuse\":18.0,\"shadow_distance\":6.0,\"shadow_angle\":-45.0},\"font_size\":24,\"in_animation\":\"向上滑动\",\"in_animation_duration\":500000,\"loop_animation\":\"弹幕滚动\",\"loop_animation_duration\":1000000,\"out_animation\":\"向下滑动\",\"out_animation_duration\":500000,\"transition\":\"淡入淡出\",\"transition_duration\":300000},{\"start\":3000000,\"end\":6000000,\"text\":\"This is a caption example\",\"keyword\":\"caption\",\"keyword_color\":\"#FF5500\",\"keyword_border_color\":\"#000000\",\"keyword_font_size\":28,\"keyword_has_shadow\":true,\"keyword_shadow_info\":{\"shadow_alpha\":0.85,\"shadow_color\":\"#000000\",\"shadow_diffuse\":18.0,\"shadow_distance\":6.0,\"shadow_angle\":-45.0},\"font_size\":24,\"in_animation\":\"向上滑动\",\"in_animation_duration\":500000,\"loop_animation\":\"弹幕滚动\",\"loop_animation_duration\":1000000,\"out_animation\":\"向下滑动\",\"out_animation_duration\":500000,\"transition\":\"淡入淡出\",\"transition_duration\":300000}]"
+  "infos": "[{\"start\":0,\"end\":3000000,\"text\":\"Welcome to the CapCut tutorial\",\"keyword\":\"CapCut\",\"keyword_color\":\"#FF5500\",\"keyword_border_color\":\"#000000\",\"keyword_font\":\"思源中宋\",\"keyword_font_size\":28,\"keyword_has_shadow\":true,\"keyword_shadow_info\":{\"shadow_alpha\":0.85,\"shadow_color\":\"#000000\",\"shadow_diffuse\":18.0,\"shadow_distance\":6.0,\"shadow_angle\":-45.0},\"font_size\":24,\"in_animation\":\"向上滑动\",\"in_animation_duration\":500000,\"loop_animation\":\"弹幕滚动\",\"loop_animation_duration\":1000000,\"out_animation\":\"向下滑动\",\"out_animation_duration\":500000,\"transition\":\"淡入淡出\",\"transition_duration\":300000},{\"start\":3000000,\"end\":6000000,\"text\":\"This is a caption example\",\"keyword\":\"caption\",\"keyword_color\":\"#FF5500\",\"keyword_border_color\":\"#000000\",\"keyword_font\":\"思源中宋\",\"keyword_font_size\":28,\"keyword_has_shadow\":true,\"keyword_shadow_info\":{\"shadow_alpha\":0.85,\"shadow_color\":\"#000000\",\"shadow_diffuse\":18.0,\"shadow_distance\":6.0,\"shadow_angle\":-45.0},\"font_size\":24,\"in_animation\":\"向上滑动\",\"in_animation_duration\":500000,\"loop_animation\":\"弹幕滚动\",\"loop_animation_duration\":1000000,\"out_animation\":\"向下滑动\",\"out_animation_duration\":500000,\"transition\":\"淡入淡出\",\"transition_duration\":300000}]"
 }
 ```
 
@@ -150,6 +152,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/caption_infos 
     "font_size": 24,
     "keyword_color": "#FF5500",
     "keyword_border_color": "#000000",
+    "keyword_font": "思源中宋",
     "keyword_font_size": 28,
     "keyword_has_shadow": true,
     "keyword_shadow_info": {
@@ -181,6 +184,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/caption_infos 
 | font_size | `24` | [Optional] Normal text size |
 | keyword_color | `#FF5500` | [Optional] Keyword color |
 | keyword_border_color | `#000000` | [Optional] Keyword stroke color |
+| keyword_font | `思源中宋` | [Optional] Keyword font |
 | keyword_font_size | `28` | [Optional] Keyword font size |
 | keyword_has_shadow | `true` | [Optional] Enable keyword shadow |
 | keyword_shadow_info.shadow_alpha | `0.85` | [Optional] Keyword shadow opacity |
@@ -223,6 +227,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/caption_infos 
     "font_size": 24,
     "keyword_color": "#FF5500",
     "keyword_border_color": "#111111",
+    "keyword_font": "思源中宋",
     "keyword_font_size": 28,
     "keyword_has_shadow": true,
     "keyword_shadow_info": {

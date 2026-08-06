@@ -28,13 +28,13 @@ POST /openapi/capcut-mate/v1/imgs_infos
   ],
   "height": 1080,
   "width": 1920,
-  "in_animation": "fade_in",
+  "in_animation": "渐显",
   "in_animation_duration": 500000,
-  "loop_animation": "bounce",
+  "loop_animation": "动感摇晃I",
   "loop_animation_duration": 1000000,
-  "out_animation": "fade_out",
+  "out_animation": "渐隐",
   "out_animation_duration": 500000,
-  "transition": "cross_fade",
+  "transition": "叠化",
   "transition_duration": 300000
 }
 ```
@@ -47,14 +47,18 @@ POST /openapi/capcut-mate/v1/imgs_infos
 | timelines | array[object] |✅ | - | 时间线配置数组 |
 | height | number |❌ | 1080 |图片高度 |
 | width | number |❌ | 1920 |图片宽度 |
-| in_animation | string |❌ | None |入动画效果 |
+| in_animation | string |❌ | None |入场动画名称，可用值见 [add_images](./add_images.zh.md) |
 | in_animation_duration | number |❌ | 500000 |入时长(微秒) |
-| loop_animation | string |❌ | None |循动画效果 |
+| loop_animation | string |❌ | None |循环动画名称，可用值见 [add_images](./add_images.zh.md) |
 | loop_animation_duration | number |❌ | 1000000 |循动画时长(微秒) |
-| out_animation | string |❌ | None |出动画效果 |
+| out_animation | string |❌ | None |出场动画名称，可用值见 [add_images](./add_images.zh.md) |
 | out_animation_duration | number |❌ | 500000 |出动画时长(微秒) |
-| transition | string |❌ | None |转场效果 |
+| transition | string |❌ | None |转场名称，可用值见 [add_images](./add_images.zh.md) / [add_videos](./add_videos.zh.md) |
 | transition_duration | number |❌ | 300000 |转场时长(微秒) |
+
+### 可用转场与动画名称
+
+转场、入场/出场/循环动画的完整可用值清单，请参见 [添加图片（add_images）](./add_images.zh.md) 文档中的「支持的转场与动画名称」。
 
 ##响应格式
 
@@ -62,7 +66,7 @@ POST /openapi/capcut-mate/v1/imgs_infos
 
 ```json
 {
-  "infos": "[{\"img_url\":\"https://assets.jcaigc.cn/img1.jpg\",\"start\":0,\"end\":3000000,\"duration\":5000000,\"height\":1080,\"width\":1920,\"in_animation\":\"fade_in\",\"in_animation_duration\":500000,\"loop_animation\":\"bounce\",\"loop_animation_duration\":1000000,\"out_animation\":\"fade_out\",\"out_animation_duration\":500000,\"transition\":\"cross_fade\",\"transition_duration\":300000},{\"img_url\":\"https://assets.jcaigc.cn/img2.png\",\"start\":3000000,\"end\":6000000,\"duration\":5000000,\"height\":1080,\"width\":1920,\"in_animation\":\"fade_in\",\"in_animation_duration\":500000,\"loop_animation\":\"bounce\",\"loop_animation_duration\":1000000,\"out_animation\":\"fade_out\",\"out_animation_duration\":500000,\"transition\":\"cross_fade\",\"transition_duration\":300000}]"
+  "infos": "[{\"img_url\":\"https://assets.jcaigc.cn/img1.jpg\",\"start\":0,\"end\":3000000,\"duration\":5000000,\"height\":1080,\"width\":1920,\"in_animation\":\"渐显\",\"in_animation_duration\":500000,\"loop_animation\":\"动感摇晃I\",\"loop_animation_duration\":1000000,\"out_animation\":\"渐隐\",\"out_animation_duration\":500000,\"transition\":\"叠化\",\"transition_duration\":300000},{\"img_url\":\"https://assets.jcaigc.cn/img2.png\",\"start\":3000000,\"end\":6000000,\"duration\":5000000,\"height\":1080,\"width\":1920,\"in_animation\":\"渐显\",\"in_animation_duration\":500000,\"loop_animation\":\"动感摇晃I\",\"loop_animation_duration\":1000000,\"out_animation\":\"渐隐\",\"out_animation_duration\":500000,\"transition\":\"叠化\",\"transition_duration\":300000}]"
 }
 ```
 
@@ -105,10 +109,10 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/imgs_infos \
   -d '{
     "imgs": ["https://assets.jcaigc.cn/slide1.jpg", "https://assets.jcaigc.cn/slide2.jpg"],
     "timelines": [{"start": 0, "end": 3000000}, {"start": 3000000, "end": 6000000}],
-    "in_animation": "fade_in",
-    "loop_animation": "bounce",
-    "out_animation": "fade_out",
-    "transition": "cross_fade"
+    "in_animation": "渐显",
+    "loop_animation": "动感摇晃I",
+    "out_animation": "渐隐",
+    "transition": "叠化"
   }'
 ```
 

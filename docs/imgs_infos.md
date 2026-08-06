@@ -28,13 +28,13 @@ Generate image information based on image URLs and timelines. This interface con
   ],
   "height": 1080,
   "width": 1920,
-  "in_animation": "fade_in",
+  "in_animation": "渐显",
   "in_animation_duration": 500000,
-  "loop_animation": "bounce",
+  "loop_animation": "动感摇晃I",
   "loop_animation_duration": 1000000,
-  "out_animation": "fade_out",
+  "out_animation": "渐隐",
   "out_animation_duration": 500000,
-  "transition": "cross_fade",
+  "transition": "叠化",
   "transition_duration": 300000
 }
 ```
@@ -47,14 +47,18 @@ Generate image information based on image URLs and timelines. This interface con
 | timelines | array[object] |✅ | - | Timeline configuration array |
 | height | number |❌ | 1080 | Image height |
 | width | number |❌ | 1920 | Image width |
-| in_animation | string |❌ | None | Entrance animation effect |
+| in_animation | string |❌ | None | Intro animation name; see [add_images](./add_images.md) |
 | in_animation_duration | number |❌ | 500000 | Entrance animation duration (microseconds) |
-| loop_animation | string |❌ | None | Loop animation effect |
+| loop_animation | string |❌ | None | Loop animation name; see [add_images](./add_images.md) |
 | loop_animation_duration | number |❌ | 1000000 | Loop animation duration (microseconds) |
-| out_animation | string |❌ | None | Exit animation effect |
+| out_animation | string |❌ | None | Outro animation name; see [add_images](./add_images.md) |
 | out_animation_duration | number |❌ | 500000 | Exit animation duration (microseconds) |
-| transition | string |❌ | None | Transition effect |
+| transition | string |❌ | None | Transition name; see [add_images](./add_images.md) / [add_videos](./add_videos.md) |
 | transition_duration | number |❌ | 300000 | Transition duration (microseconds) |
+
+### Available Transitions and Animations
+
+For the full lists of valid `transition` / `in_animation` / `out_animation` / `loop_animation` values, see [add_images](./add_images.md) → Supported Transitions and Animations.
 
 ## Response Format
 
@@ -62,7 +66,7 @@ Generate image information based on image URLs and timelines. This interface con
 
 ```json
 {
-  "infos": "[{\"img_url\":\"https://assets.jcaigc.cn/img1.jpg\",\"start\":0,\"end\":3000000,\"duration\":5000000,\"height\":1080,\"width\":1920,\"in_animation\":\"fade_in\",\"in_animation_duration\":500000,\"loop_animation\":\"bounce\",\"loop_animation_duration\":1000000,\"out_animation\":\"fade_out\",\"out_animation_duration\":500000,\"transition\":\"cross_fade\",\"transition_duration\":300000},{\"img_url\":\"https://assets.jcaigc.cn/img2.png\",\"start\":3000000,\"end\":6000000,\"duration\":5000000,\"height\":1080,\"width\":1920,\"in_animation\":\"fade_in\",\"in_animation_duration\":500000,\"loop_animation\":\"bounce\",\"loop_animation_duration\":1000000,\"out_animation\":\"fade_out\",\"out_animation_duration\":500000,\"transition\":\"cross_fade\",\"transition_duration\":300000}]"
+  "infos": "[{\"img_url\":\"https://assets.jcaigc.cn/img1.jpg\",\"start\":0,\"end\":3000000,\"duration\":5000000,\"height\":1080,\"width\":1920,\"in_animation\":\"渐显\",\"in_animation_duration\":500000,\"loop_animation\":\"动感摇晃I\",\"loop_animation_duration\":1000000,\"out_animation\":\"渐隐\",\"out_animation_duration\":500000,\"transition\":\"叠化\",\"transition_duration\":300000},{\"img_url\":\"https://assets.jcaigc.cn/img2.png\",\"start\":3000000,\"end\":6000000,\"duration\":5000000,\"height\":1080,\"width\":1920,\"in_animation\":\"渐显\",\"in_animation_duration\":500000,\"loop_animation\":\"动感摇晃I\",\"loop_animation_duration\":1000000,\"out_animation\":\"渐隐\",\"out_animation_duration\":500000,\"transition\":\"叠化\",\"transition_duration\":300000}]"
 }
 ```
 
@@ -105,10 +109,10 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/imgs_infos \
   -d '{
     "imgs": ["https://assets.jcaigc.cn/slide1.jpg", "https://assets.jcaigc.cn/slide2.jpg"],
     "timelines": [{"start": 0, "end": 3000000}, {"start": 3000000, "end": 6000000}],
-    "in_animation": "fade_in",
-    "loop_animation": "bounce",
-    "out_animation": "fade_out",
-    "transition": "cross_fade"
+    "in_animation": "渐显",
+    "loop_animation": "动感摇晃I",
+    "out_animation": "渐隐",
+    "transition": "叠化"
   }'
 ```
 

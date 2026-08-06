@@ -29,7 +29,7 @@ POST /openapi/capcut-mate/v1/video_infos
   "height": 1080,
   "width": 1920,
   "mask": "circle",
-  "transition": "cross_fade",
+  "transition": "叠化",
   "transition_duration": 300000,
   "volume": 1.0
 }
@@ -44,9 +44,13 @@ POST /openapi/capcut-mate/v1/video_infos
 | height | number |❌ | 1080 |视频高度 |
 | width | number |❌ | 1920 |视频宽度 |
 | mask | string |❌ | None |遮罩类型 |
-| transition | string |❌ | None |转场效果 |
+| transition | string |❌ | None |转场名称，可用值见 [add_videos](./add_videos.zh.md) |
 | transition_duration | number |❌ | 300000 |转场时长(微秒) |
 | volume | number |❌ | 1.0 |音量大小(0.0-2.0) |
+
+### 可用转场名称
+
+转场完整可用值清单，请参见 [添加视频（add_videos）](./add_videos.zh.md) 文档中的「支持的转场名称」。画面入场/出场/循环动画请参见 [添加图片（add_images）](./add_images.zh.md)。
 
 ##响应格式
 
@@ -54,7 +58,7 @@ POST /openapi/capcut-mate/v1/video_infos
 
 ```json
 {
-  "infos": "[{\"video_url\":\"https://assets.jcaigc.cn/video1.mp4\",\"start\":0,\"end\":3000000,\"duration\":5000000,\"height\":1080,\"width\":1920,\"mask\":\"circle\",\"transition\":\"cross_fade\",\"transition_duration\":300000,\"volume\":1.0},{\"video_url\":\"https://assets.jcaigc.cn/video2.mp4\",\"start\":3000000,\"end\":6000000,\"duration\":5000000,\"height\":1080,\"width\":1920,\"mask\":\"circle\",\"transition\":\"cross_fade\",\"transition_duration\":300000,\"volume\":1.0}]"
+  "infos": "[{\"video_url\":\"https://assets.jcaigc.cn/video1.mp4\",\"start\":0,\"end\":3000000,\"duration\":5000000,\"height\":1080,\"width\":1920,\"mask\":\"circle\",\"transition\":\"叠化\",\"transition_duration\":300000,\"volume\":1.0},{\"video_url\":\"https://assets.jcaigc.cn/video2.mp4\",\"start\":3000000,\"end\":6000000,\"duration\":5000000,\"height\":1080,\"width\":1920,\"mask\":\"circle\",\"transition\":\"叠化\",\"transition_duration\":300000,\"volume\":1.0}]"
 }
 ```
 
@@ -98,7 +102,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/video_infos \
     "video_urls": ["https://assets.jcaigc.cn/clip1.mp4", "https://assets.jcaigc.cn/clip2.mp4"],
     "timelines": [{"start": 0, "end": 3000000}, {"start": 3000000, "end": 6000000}],
     "mask": "circle",
-    "transition": "cross_fade",
+    "transition": "叠化",
     "volume": 0.8
   }'
 ```
