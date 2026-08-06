@@ -28,6 +28,7 @@ POST /openapi/capcut-mate/v1/caption_infos
 | font_size | integer | ❌ | `null` | 写入每条字幕的普通文本字号；不传则生成结果中不含该字段 |
 | keyword_color | string | ❌ | `null` | 关键词颜色（十六进制），写入每条字幕 |
 | keyword_border_color | string | ❌ | `null` | 关键词描边颜色（十六进制），写入每条字幕 |
+| keyword_font | string | ❌ | `null` | 关键词字体名称，写入每条字幕 |
 | keyword_font_size | integer | ❌ | `null` | 关键词字号，写入每条字幕 |
 | keyword_has_shadow | boolean | ❌ | `null` | 是否启用关键词阴影，写入每条字幕 |
 | keyword_shadow_info | object | ❌ | `null` | 关键词阴影参数，字段同 `add_captions` 的 `shadow_info` |
@@ -84,6 +85,7 @@ POST /openapi/capcut-mate/v1/caption_infos
   "font_size": 24,                // 【可选】普通文本字号
   "keyword_color": "#FF5500",     // 【可选】关键词颜色
   "keyword_border_color": "#000000", // 【可选】关键词描边颜色
+  "keyword_font": "思源中宋",          // 【可选】关键词字体
   "keyword_font_size": 28,        // 【可选】关键词字号
   "keyword_has_shadow": true,     // 【可选】启用关键词阴影
   "keyword_shadow_info": {        // 【可选】关键词阴影详细参数
@@ -114,7 +116,7 @@ POST /openapi/capcut-mate/v1/caption_infos
 
 ```json
 {
-  "infos": "[{\"start\":0,\"end\":3000000,\"text\":\"欢迎观看剪映教程\",\"keyword\":\"剪映\",\"keyword_color\":\"#FF5500\",\"keyword_border_color\":\"#000000\",\"keyword_font_size\":28,\"keyword_has_shadow\":true,\"keyword_shadow_info\":{\"shadow_alpha\":0.85,\"shadow_color\":\"#000000\",\"shadow_diffuse\":18.0,\"shadow_distance\":6.0,\"shadow_angle\":-45.0},\"font_size\":24,\"in_animation\":\"向上滑动\",\"in_animation_duration\":500000,\"loop_animation\":\"弹幕滚动\",\"loop_animation_duration\":1000000,\"out_animation\":\"向下滑动\",\"out_animation_duration\":500000,\"transition\":\"淡入淡出\",\"transition_duration\":300000},{\"start\":3000000,\"end\":6000000,\"text\":\"这是一个字幕示例\",\"keyword\":\"字幕\",\"keyword_color\":\"#FF5500\",\"keyword_border_color\":\"#000000\",\"keyword_font_size\":28,\"keyword_has_shadow\":true,\"keyword_shadow_info\":{\"shadow_alpha\":0.85,\"shadow_color\":\"#000000\",\"shadow_diffuse\":18.0,\"shadow_distance\":6.0,\"shadow_angle\":-45.0},\"font_size\":24,\"in_animation\":\"向上滑动\",\"in_animation_duration\":500000,\"loop_animation\":\"弹幕滚动\",\"loop_animation_duration\":1000000,\"out_animation\":\"向下滑动\",\"out_animation_duration\":500000,\"transition\":\"淡入淡出\",\"transition_duration\":300000}]"
+  "infos": "[{\"start\":0,\"end\":3000000,\"text\":\"欢迎观看剪映教程\",\"keyword\":\"剪映\",\"keyword_color\":\"#FF5500\",\"keyword_border_color\":\"#000000\",\"keyword_font\":\"思源中宋\",\"keyword_font_size\":28,\"keyword_has_shadow\":true,\"keyword_shadow_info\":{\"shadow_alpha\":0.85,\"shadow_color\":\"#000000\",\"shadow_diffuse\":18.0,\"shadow_distance\":6.0,\"shadow_angle\":-45.0},\"font_size\":24,\"in_animation\":\"向上滑动\",\"in_animation_duration\":500000,\"loop_animation\":\"弹幕滚动\",\"loop_animation_duration\":1000000,\"out_animation\":\"向下滑动\",\"out_animation_duration\":500000,\"transition\":\"淡入淡出\",\"transition_duration\":300000},{\"start\":3000000,\"end\":6000000,\"text\":\"这是一个字幕示例\",\"keyword\":\"字幕\",\"keyword_color\":\"#FF5500\",\"keyword_border_color\":\"#000000\",\"keyword_font\":\"思源中宋\",\"keyword_font_size\":28,\"keyword_has_shadow\":true,\"keyword_shadow_info\":{\"shadow_alpha\":0.85,\"shadow_color\":\"#000000\",\"shadow_diffuse\":18.0,\"shadow_distance\":6.0,\"shadow_angle\":-45.0},\"font_size\":24,\"in_animation\":\"向上滑动\",\"in_animation_duration\":500000,\"loop_animation\":\"弹幕滚动\",\"loop_animation_duration\":1000000,\"out_animation\":\"向下滑动\",\"out_animation_duration\":500000,\"transition\":\"淡入淡出\",\"transition_duration\":300000}]"
 }
 ```
 
@@ -150,6 +152,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/caption_infos 
     "font_size": 24,
     "keyword_color": "#FF5500",
     "keyword_border_color": "#000000",
+    "keyword_font": "思源中宋",
     "keyword_font_size": 28,
     "keyword_has_shadow": true,
     "keyword_shadow_info": {
@@ -181,6 +184,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/caption_infos 
 | font_size | `24` | 【可选】普通文本字号 |
 | keyword_color | `#FF5500` | 【可选】关键词颜色 |
 | keyword_border_color | `#000000` | 【可选】关键词描边颜色 |
+| keyword_font | `思源中宋` | 【可选】关键词字体 |
 | keyword_font_size | `28` | 【可选】关键词字号 |
 | keyword_has_shadow | `true` | 【可选】启用关键词阴影 |
 | keyword_shadow_info.shadow_alpha | `0.85` | 【可选】关键词阴影不透明度 |
@@ -223,6 +227,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/caption_infos 
     "font_size": 24,
     "keyword_color": "#FF5500",
     "keyword_border_color": "#111111",
+    "keyword_font": "思源中宋",
     "keyword_font_size": 28,
     "keyword_has_shadow": true,
     "keyword_shadow_info": {

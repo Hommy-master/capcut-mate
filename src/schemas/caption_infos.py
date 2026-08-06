@@ -11,6 +11,7 @@ class CaptionInfosRequest(BaseModel):
     font_size: Optional[int] = Field(None, description="字体大小")
     keyword_color: Optional[str] = Field(None, description="关键词颜色")
     keyword_border_color: Optional[str] = Field(None, description="关键词边框颜色")
+    keyword_font: Optional[str] = Field(None, description="关键词字体名称")
     keyword_font_size: Optional[int] = Field(None, description="关键词字体大小")
     keyword_has_shadow: Optional[bool] = Field(None, description="是否启用关键词阴影")
     keyword_shadow_info: Optional[ShadowInfo] = Field(None, description="关键词阴影参数")

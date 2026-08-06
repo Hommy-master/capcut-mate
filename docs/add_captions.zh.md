@@ -57,6 +57,7 @@ POST /openapi/capcut-mate/v1/add_captions
 | keyword | string | ❌ | `null` | 关键词，多个用 `\|` 分隔，如 `"剪映\|字幕"` |
 | keyword_color | string | ❌ | `"#ff7100"` | 关键词填充颜色（十六进制） |
 | keyword_border_color | string | ❌ | `null` | 关键词描边颜色；未指定时回退使用接口级 `border_color` |
+| keyword_font | string | ❌ | `null` | 关键词字体（展示名/枚举名/别名，见下方「支持的字体」）；未指定则与接口级 `font` 一致 |
 | keyword_font_size | integer | ❌ | `15` | 关键词字号，须 `> 0` |
 | keyword_has_shadow | boolean | ❌ | `false` | 是否启用**关键词范围**阴影 |
 | keyword_shadow_info | object | ❌ | `null` | 关键词阴影参数，字段同 `shadow_info`；未提供时用默认阴影 |
@@ -948,6 +949,7 @@ ZYLAA Serein
       "keyword": "剪映|字幕",                   // 【可选】关键词，多个用 | 分隔
       "keyword_color": "#ff7100",              // 【可选】关键词颜色
       "keyword_border_color": "#000000",       // 【可选】关键词描边颜色
+      "keyword_font": "思源中宋",               // 【可选】关键词字体；未指定则同接口级 font
       "keyword_font_size": 22,                 // 【可选】关键词字号
       "keyword_has_shadow": true,              // 【可选】是否启用关键词阴影
       "keyword_shadow_info": {                 // 【可选】关键词阴影参数
@@ -1052,7 +1054,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_captions \
   -H "Content-Type: application/json" \
   -d '{
     "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
-    "captions": "[{\"start\":0,\"end\":3000000,\"text\":\"你好，剪映字幕\",\"keyword\":\"剪映|字幕\",\"keyword_color\":\"#ff7100\",\"keyword_border_color\":\"#000000\",\"keyword_font_size\":22,\"keyword_has_shadow\":true,\"keyword_shadow_info\":{\"shadow_alpha\":0.85,\"shadow_color\":\"#000000\",\"shadow_diffuse\":18.0,\"shadow_distance\":6.0,\"shadow_angle\":-45.0},\"font_size\":18,\"in_animation\":\"向上滑动\",\"out_animation\":\"向下滑动\",\"loop_animation\":\"弹幕滚动\",\"in_animation_duration\":500000,\"out_animation_duration\":500000,\"loop_animation_duration\":1000000},{\"start\":3000000,\"end\":6000000,\"text\":\"欢迎使用字幕功能\",\"keyword\":\"字幕\",\"keyword_color\":\"#457616\",\"keyword_border_color\":\"#111111\",\"keyword_font_size\":20,\"keyword_has_shadow\":true,\"keyword_shadow_info\":{\"shadow_alpha\":0.9,\"shadow_color\":\"#000000\",\"shadow_diffuse\":15.0,\"shadow_distance\":5.0,\"shadow_angle\":-45.0},\"font_size\":16,\"in_animation\":\"右上弹入\",\"out_animation\":\"右上弹出\",\"loop_animation\":\"VHS\",\"in_animation_duration\":400000,\"out_animation_duration\":400000,\"loop_animation_duration\":800000}]",
+    "captions": "[{\"start\":0,\"end\":3000000,\"text\":\"你好，剪映字幕\",\"keyword\":\"剪映|字幕\",\"keyword_color\":\"#ff7100\",\"keyword_border_color\":\"#000000\",\"keyword_font\":\"思源中宋\",\"keyword_font_size\":22,\"keyword_has_shadow\":true,\"keyword_shadow_info\":{\"shadow_alpha\":0.85,\"shadow_color\":\"#000000\",\"shadow_diffuse\":18.0,\"shadow_distance\":6.0,\"shadow_angle\":-45.0},\"font_size\":18,\"in_animation\":\"向上滑动\",\"out_animation\":\"向下滑动\",\"loop_animation\":\"弹幕滚动\",\"in_animation_duration\":500000,\"out_animation_duration\":500000,\"loop_animation_duration\":1000000},{\"start\":3000000,\"end\":6000000,\"text\":\"欢迎使用字幕功能\",\"keyword\":\"字幕\",\"keyword_color\":\"#457616\",\"keyword_border_color\":\"#111111\",\"keyword_font_size\":20,\"keyword_has_shadow\":true,\"keyword_shadow_info\":{\"shadow_alpha\":0.9,\"shadow_color\":\"#000000\",\"shadow_diffuse\":15.0,\"shadow_distance\":5.0,\"shadow_angle\":-45.0},\"font_size\":16,\"in_animation\":\"右上弹入\",\"out_animation\":\"右上弹出\",\"loop_animation\":\"VHS\",\"in_animation_duration\":400000,\"out_animation_duration\":400000,\"loop_animation_duration\":800000}]",
     "text_color": "#ffffff",
     "border_color": "#333333",
     "alignment": 1,
@@ -1114,6 +1116,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_captions \
 | keyword | `剪映\|字幕` | 【可选】高亮关键词 |
 | keyword_color | `#ff7100` | 【可选】关键词颜色 |
 | keyword_border_color | `#000000` | 【可选】关键词描边 |
+| keyword_font | `思源中宋` | 【可选】关键词字体 |
 | keyword_font_size | `22` | 【可选】关键词字号 |
 | keyword_has_shadow | `true` | 【可选】启用关键词阴影 |
 | keyword_shadow_info.* | 见上 | 【可选】关键词阴影参数 |

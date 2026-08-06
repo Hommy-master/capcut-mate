@@ -597,6 +597,7 @@ def caption_infos(request: CaptionInfosRequest) -> CaptionInfosResponse:
         font_size=request.font_size,
         keyword_color=request.keyword_color,
         keyword_border_color=request.keyword_border_color,
+        keyword_font=request.keyword_font,
         keyword_font_size=request.keyword_font_size,
         keyword_has_shadow=request.keyword_has_shadow,
         keyword_shadow_info=(

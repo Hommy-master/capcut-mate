@@ -441,11 +441,15 @@ class TextSegment(VisualSegment):
             "text": self.text
         }
         if styles:
+            # 片段级字体填充到尚未单独指定 font 的分区（关键词等可在 style 内覆盖）
             if self.font:
-                content_json["styles"][0]["font"] = {
+                font_json = {
                     "id": self.font.resource_id,
                     "path": "D:"  # 并不会真正在此处放置字体文件
                 }
+                for style in content_json["styles"]:
+                    if isinstance(style, dict) and "font" not in style:
+                        style["font"] = dict(font_json)
             if self.effect:
                 content_json["styles"][0]["effectStyle"] = {
                     "id": self.effect.effect_id,

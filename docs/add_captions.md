@@ -57,6 +57,7 @@ Batch-add captions to an existing CapCut/Jianying draft. Supports text color, bo
 | keyword | string | ❌ | `null` | Keywords separated by `\|`, e.g. `"Hello\|World"` |
 | keyword_color | string | ❌ | `"#ff7100"` | Keyword fill color (hex) |
 | keyword_border_color | string | ❌ | `null` | Keyword stroke color; falls back to top-level `border_color` |
+| keyword_font | string | ❌ | `null` | Keyword font (display/enum/alias from Supported Fonts); falls back to top-level `font` |
 | keyword_font_size | integer | ❌ | `15` | Keyword font size, must be `> 0` |
 | keyword_has_shadow | boolean | ❌ | `false` | Enable **keyword-range** shadow |
 | keyword_shadow_info | object | ❌ | `null` | Keyword shadow params (same fields as `shadow_info`) |
@@ -935,6 +936,7 @@ These aliases are also valid `font` values:
       "keyword": "CapCut|captions",            // [Optional] keywords separated by |
       "keyword_color": "#ff7100",              // [Optional] keyword color
       "keyword_border_color": "#000000",       // [Optional] keyword stroke color
+      "keyword_font": "思源中宋",               // [Optional] keyword font; falls back to top-level font
       "keyword_font_size": 22,                 // [Optional] keyword font size
       "keyword_has_shadow": true,              // [Optional] enable keyword shadow
       "keyword_shadow_info": {                 // [Optional] keyword shadow params
@@ -1034,7 +1036,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_captions \
   -H "Content-Type: application/json" \
   -d '{
     "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
-    "captions": "[{\"start\":0,\"end\":3000000,\"text\":\"Hello, CapCut captions\",\"keyword\":\"CapCut|captions\",\"keyword_color\":\"#ff7100\",\"keyword_border_color\":\"#000000\",\"keyword_font_size\":22,\"keyword_has_shadow\":true,\"keyword_shadow_info\":{\"shadow_alpha\":0.85,\"shadow_color\":\"#000000\",\"shadow_diffuse\":18.0,\"shadow_distance\":6.0,\"shadow_angle\":-45.0},\"font_size\":18,\"in_animation\":\"向上滑动\",\"out_animation\":\"向下滑动\",\"loop_animation\":\"弹幕滚动\",\"in_animation_duration\":500000,\"out_animation_duration\":500000,\"loop_animation_duration\":1000000},{\"start\":3000000,\"end\":6000000,\"text\":\"Welcome to caption features\",\"keyword\":\"caption\",\"keyword_color\":\"#457616\",\"keyword_border_color\":\"#111111\",\"keyword_font_size\":20,\"keyword_has_shadow\":true,\"keyword_shadow_info\":{\"shadow_alpha\":0.9,\"shadow_color\":\"#000000\",\"shadow_diffuse\":15.0,\"shadow_distance\":5.0,\"shadow_angle\":-45.0},\"font_size\":16,\"in_animation\":\"右上弹入\",\"out_animation\":\"右上弹出\",\"loop_animation\":\"VHS\",\"in_animation_duration\":400000,\"out_animation_duration\":400000,\"loop_animation_duration\":800000}]",
+    "captions": "[{\"start\":0,\"end\":3000000,\"text\":\"Hello, CapCut captions\",\"keyword\":\"CapCut|captions\",\"keyword_color\":\"#ff7100\",\"keyword_border_color\":\"#000000\",\"keyword_font\":\"思源中宋\",\"keyword_font_size\":22,\"keyword_has_shadow\":true,\"keyword_shadow_info\":{\"shadow_alpha\":0.85,\"shadow_color\":\"#000000\",\"shadow_diffuse\":18.0,\"shadow_distance\":6.0,\"shadow_angle\":-45.0},\"font_size\":18,\"in_animation\":\"向上滑动\",\"out_animation\":\"向下滑动\",\"loop_animation\":\"弹幕滚动\",\"in_animation_duration\":500000,\"out_animation_duration\":500000,\"loop_animation_duration\":1000000},{\"start\":3000000,\"end\":6000000,\"text\":\"Welcome to caption features\",\"keyword\":\"caption\",\"keyword_color\":\"#457616\",\"keyword_border_color\":\"#111111\",\"keyword_font_size\":20,\"keyword_has_shadow\":true,\"keyword_shadow_info\":{\"shadow_alpha\":0.9,\"shadow_color\":\"#000000\",\"shadow_diffuse\":15.0,\"shadow_distance\":5.0,\"shadow_angle\":-45.0},\"font_size\":16,\"in_animation\":\"右上弹入\",\"out_animation\":\"右上弹出\",\"loop_animation\":\"VHS\",\"in_animation_duration\":400000,\"out_animation_duration\":400000,\"loop_animation_duration\":800000}]",
     "text_color": "#ffffff",
     "border_color": "#333333",
     "alignment": 1,
@@ -1095,6 +1097,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_captions \
 | keyword | `CapCut\|captions` | [Optional] Highlight keywords |
 | keyword_color | `#ff7100` | [Optional] Keyword color |
 | keyword_border_color | `#000000` | [Optional] Keyword stroke |
+| keyword_font | `思源中宋` | [Optional] Keyword font |
 | keyword_font_size | `22` | [Optional] Keyword size |
 | keyword_has_shadow | `true` | [Optional] Keyword shadow on |
 | keyword_shadow_info.* | see above | [Optional] Keyword shadow params |
