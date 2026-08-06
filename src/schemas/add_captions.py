@@ -45,7 +45,7 @@ class CaptionItem(BaseModel):
     keyword_color: str = Field(default="#ff7100", description="关键词颜色")
     keyword_border_color: Optional[str] = Field(default=None, description="关键词边框颜色")
     keyword_font: Optional[str] = Field(default=None, description="关键词字体名称（展示名/枚举名/别名）；未指定则与整段字幕 font 一致")
-    keyword_font_size: int = Field(default=15, ge=1, description="关键词字体大小")
+    keyword_font_size: Optional[int] = Field(default=None, ge=1, description="关键词字体大小；未指定则与本条普通文本字号一致")
     keyword_has_shadow: bool = Field(default=False, description="是否启用关键词阴影")
     keyword_shadow_info: Optional[ShadowInfo] = Field(default=None, description="关键词阴影参数")
     font_size: int = Field(default=15, ge=1, description="文本字体大小")

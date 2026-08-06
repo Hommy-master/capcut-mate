@@ -141,8 +141,8 @@ def add_captions(
                     "keyword": "好",  # 关键词（用 | 分隔多个关键词），可选参数
                     "keyword_color": "#457616",  # 关键词颜色，可选参数
                     "keyword_border_color": "#000000",  # 关键词边框颜色，可选参数
-                    "keyword_font": None,  # 关键词字体，可选参数
-                    "keyword_font_size": 15,  # 关键词字体大小，可选参数
+                    "keyword_font": None,  # 关键词字体，可选参数；未指定则与整段 font 一致
+                    "keyword_font_size": None,  # 关键词字体大小，可选参数；未指定则与正文 size 一致
                     "keyword_has_shadow": False,  # 是否启用关键词阴影，可选参数
                     "keyword_shadow_info": None,  # 关键词阴影参数，可选参数
                     "font_size": 15,  # 文本字体大小，可选参数
@@ -435,7 +435,7 @@ def add_caption_to_draft(
             keyword_color: 关键词颜色，可选
             keyword_border_color: 关键词边框颜色，可选
             keyword_font: 关键词字体名称，可选（未指定则与整段 font 一致）
-            keyword_font_size: 关键词字体大小，可选
+            keyword_font_size: 关键词字体大小，可选（未指定则与本条普通文本字号一致）
             keyword_has_shadow: 是否启用关键词阴影，可选
             keyword_shadow_info: 关键词阴影参数，可选
             font_size: 文本字体大小，可选
@@ -1002,6 +1002,11 @@ def apply_keyword_highlight(
 
             if keyword_font_json is not None:
                 highlight_style["font"] = dict(keyword_font_json)
+            else:
+                # 未指定 keyword_font 时显式沿用主体字幕字体，避免仅改字号时丢字体
+                body_font_json = _font_style_json(text_segment.font)
+                if body_font_json is not None:
+                    highlight_style["font"] = dict(body_font_json)
 
             text_segment.extra_styles.append(highlight_style)
             start_pos = end_pos
@@ -1022,7 +1027,7 @@ def parse_captions_data(json_str: str) -> List[Dict[str, Any]]:
                 "keyword_color": "#457616",  # [可选] 关键词颜色，默认"#ff7100"
                 "keyword_border_color": "#000000",  # [可选] 关键词边框颜色，默认None
                 "keyword_font": None,  # [可选] 关键词字体，默认与整段 font 一致
-                "keyword_font_size": 15,  # [可选] 关键词字体大小，默认15
+                "keyword_font_size": None,  # [可选] 关键词字体大小，默认与正文 size 一致
                 "keyword_has_shadow": False,  # [可选] 是否启用关键词阴影，默认False
                 "keyword_shadow_info": None,  # [可选] 关键词阴影参数，默认None
                 "font_size": 15,  # [可选] 文本字体大小，默认15
@@ -1078,7 +1083,7 @@ def parse_captions_data(json_str: str) -> List[Dict[str, Any]]:
             "keyword_color": item.get("keyword_color", "#ff7100"),
             "keyword_border_color": item.get("keyword_border_color", None),
             "keyword_font": item.get("keyword_font", None),
-            "keyword_font_size": item.get("keyword_font_size", 15),
+            "keyword_font_size": item.get("keyword_font_size", None),
             "keyword_has_shadow": bool(item.get("keyword_has_shadow", False)),
             "keyword_shadow_info": _normalize_keyword_shadow_info(item.get("keyword_shadow_info")),
             "font_size": item.get("font_size", None),
@@ -1113,12 +1118,15 @@ def parse_captions_data(json_str: str) -> List[Dict[str, Any]]:
             logger.error(f"the {i}th item has invalid text: {processed_item['text']}")
             raise CustomException(CustomError.INVALID_CAPTION_INFO, f"the {i}th item has invalid text")
         
-        # 验证keyword_font_size参数
+        # 验证keyword_font_size参数；未传或非法时置为 None，应用时回退正文 size
         if processed_item["keyword_font_size"] is not None and (
-                not isinstance(processed_item["keyword_font_size"], (int, float)) or 
+                not isinstance(processed_item["keyword_font_size"], (int, float)) or
                 processed_item["keyword_font_size"] <= 0):
-            logger.warning(f"the {i}th item has invalid keyword_font_size: {processed_item['keyword_font_size']}, using default value 15")
-            processed_item["keyword_font_size"] = 15
+            logger.warning(
+                f"the {i}th item has invalid keyword_font_size: {processed_item['keyword_font_size']}, "
+                f"falling back to caption font size"
+            )
+            processed_item["keyword_font_size"] = None
 
         if processed_item["keyword_font"] is not None:
             if not isinstance(processed_item["keyword_font"], str) or not processed_item["keyword_font"].strip():
