@@ -18,6 +18,7 @@
     "vite-plugin-electron": "^0.29.0"
   },
   "dependencies": {
+    "@fortawesome/fontawesome-free": "^6.4.0",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "axios": "^1.11.0",

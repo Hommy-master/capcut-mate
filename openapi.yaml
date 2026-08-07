@@ -12126,7 +12126,7 @@ components:
                     infos: '[{"video_url": "https://assets.jcaigc.cn/min.mp4", "start": 0, "end": 284891428, "duration": 284891428, "width": 1920, "height": 1080, "mask": "爱心", "transition": "推近", "transition_duration": 1, "volume": 1.0}, {"video_url": "https://assets.jcaigc.cn/max.mp4", "start": 284891428, "end": 579578774, "duration": 294687346, "width": 1920, "height": 1080, "mask": "爱心", "transition": "推近", "transition_duration": 1, "volume": 1.0}]'
 info:
     description: 剪映小助手一个开源且免费的剪映插件，兼容剪映V5.9及以上所有版本。
-    title: 开源剪映小助手
+    title: 超新星剪映小助手
     version: v1
 openapi: 3.0.1
 paths:
