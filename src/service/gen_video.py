@@ -23,7 +23,7 @@ def gen_video(draft_url: str, apiKey: str = None) -> str:
     
     try:
         if config.ENABLE_APIKEY:
-            if apiKey == "": # 开启API密钥验证
+            if not apiKey:  # 未传或空字符串
                 raise CustomException(CustomError.INVALID_APIKEY)
 
             # 查询用户积分
