@@ -33,6 +33,7 @@ class AddCaptionsRequest(BaseModel):
     bold: bool = Field(default=False, description="文本加粗开关")
     has_shadow: bool = Field(default=False, description="是否启用文本阴影")
     shadow_info: Optional[ShadowInfo] = Field(default=None, description="文本阴影参数")
+    text_effect: Optional[str] = Field(default=None, description="花字效果名称或 effect_id，例如：'白字橘色发光花字'")
 
 
 class CaptionItem(BaseModel):
@@ -42,14 +43,22 @@ class CaptionItem(BaseModel):
     text: str = Field(..., description="字幕文本内容")
     keyword: Optional[str] = Field(default=None, description="关键词（用|分隔多个关键词）")
     keyword_color: str = Field(default="#ff7100", description="关键词颜色")
-    keyword_font_size: int = Field(default=15, ge=1, description="关键词字体大小")
+    keyword_border_color: Optional[str] = Field(default=None, description="关键词边框颜色")
+    keyword_font: Optional[str] = Field(default=None, description="关键词字体名称（展示名/枚举名/别名）；未指定则与整段字幕 font 一致")
+    keyword_font_size: Optional[int] = Field(default=None, ge=1, description="关键词字体大小；未指定则与本条普通文本字号一致")
+    keyword_has_shadow: bool = Field(default=False, description="是否启用关键词阴影")
+    keyword_shadow_info: Optional[ShadowInfo] = Field(default=None, description="关键词阴影参数")
     font_size: int = Field(default=15, ge=1, description="文本字体大小")
     in_animation: Optional[str] = Field(default=None, description="入场动画")
     out_animation: Optional[str] = Field(default=None, description="出场动画")
     loop_animation: Optional[str] = Field(default=None, description="循环动画")
     in_animation_duration: Optional[int] = Field(default=None, description="入场动画时长")
     out_animation_duration: Optional[int] = Field(default=None, description="出场动画时长")
-    loop_animation_duration: Optional[int] = Field(default=None, description="循环动画时长")
+    loop_animation_duration: Optional[int] = Field(
+        default=None,
+        description="循环动画单次循环时长（微秒），与 get_text_animations 中 loop 的 duration 一致；不填则用该动画默认值",
+    )
+    text_effect: Optional[str] = Field(default=None, description="花字效果名称或 effect_id，例如：'白字橘色发光花字'")
 
 
 class SegmentInfo(BaseModel):

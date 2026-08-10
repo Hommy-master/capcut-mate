@@ -1,4 +1,4 @@
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, dialog, shell } = require('electron');
 const path = require('path');
 const logger = require('./nodeapi/logger');
 
@@ -15,10 +15,20 @@ function createWindow() {
     return mainWindow;
   }
 
+  // 根据平台选择合适的图标格式
+  let iconPath;
+  if (process.platform === 'darwin') {
+    iconPath = path.join(__dirname, './assets/icons/logo.icns');
+  } else if (process.platform === 'win32') {
+    iconPath = path.join(__dirname, './assets/icons/logo.ico');
+  } else {
+    iconPath = path.join(__dirname, './assets/icons/logo.png');
+  }
+
   mainWindow = new BrowserWindow({
     width: 1366,
     height: 868,
-    icon: path.join(__dirname, './assets/icons/logo.ico'),
+    icon: iconPath,
     show: false, // 创建窗口但先隐藏，等页面加载完成后再显示
     webPreferences: {
       nodeIntegration: false, // 禁用 Node.js 集成（出于安全考虑，强烈推荐）
@@ -30,9 +40,9 @@ function createWindow() {
     }
   });
 
-  
-  if (process.platform==='darwin') {
-    app.dock.setIcon(path.join(__dirname, './assets/icons/logo.png'))
+  // 在 macOS 上设置 Dock 图标
+  if (process.platform === 'darwin') {
+    app.dock.setIcon(path.join(__dirname, './assets/icons/logo.png'));
   }
 
   // 判断是否为开发模式
@@ -66,6 +76,53 @@ function createWindow() {
 
   return mainWindow;
 }
+
+// 处理未捕获的异常，特别是与文件权限相关的错误
+process.on('uncaughtException', (error) => {
+  logger.error('未捕获的异常:', error);
+  
+  // 在 macOS 沙箱环境下，某些权限错误可能在这里捕获
+  if (process.platform === 'darwin' && error.message && 
+      (error.message.includes('Operation not permitted') || error.message.includes('EPERM'))) {
+    dialog.showMessageBoxSync({
+      type: 'error',
+      title: '权限错误',
+      message: '应用缺少必要的文件访问权限，请检查系统偏好设置中的隐私与安全性设置。',
+      detail: '请在 系统偏好设置 > 安全性与隐私 > 隐私 > 文件夹访问 中允许本应用访问相关文件夹。',
+      buttons: ['确定']
+    });
+  }
+});
+
+// 判断是否为需要外跳系统浏览器的外部链接
+function isExternalUrl(url) {
+  return url && (url.startsWith('http://') || url.startsWith('https://'));
+}
+
+// 全局拦截所有 webContents 的新窗口打开行为
+app.on('web-contents-created', (event, contents) => {
+  contents.setWindowOpenHandler(({ url }) => {
+    if (isExternalUrl(url)) {
+      shell.openExternal(url);
+      return { action: 'deny' };
+    }
+    return { action: 'allow' };
+  });
+});
+
+// 兜底：任何新窗口被创建时直接销毁并甩到系统浏览器
+app.on('browser-window-created', (event, window) => {
+  // 用 getAllWindows 判断：如果当前只有这一个窗口，说明是主窗口，放过
+  if (BrowserWindow.getAllWindows().length === 1) return;
+  // 检测不是外部链接则放过
+  const url = window.webContents.getURL();
+  if (!isExternalUrl(url)) return;
+
+  window.webContents.once('did-finish-load', () => {
+    shell.openExternal(url);
+    window.destroy();
+  });
+});
 
 // 当Electron完成初始化并准备创建浏览器窗口时调用此方法
 app.whenReady().then(() => {

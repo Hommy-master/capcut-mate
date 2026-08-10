@@ -6,9 +6,10 @@ from typing import Dict, Any, Optional
 from src.utils import helper
 from src.utils.logger import logger
 from exceptions import CustomException, CustomError
+import config
 
 # 常量配置
-DEFAULT_FILE_SIZE_LIMIT = 200 * 1024 * 1024  # 200MB
+DEFAULT_FILE_SIZE_LIMIT = config.DOWNLOAD_FILE_SIZE_LIMIT  # 文件下载大小限制，默认200MB，可通过环境变量DOWNLOAD_FILE_SIZE_LIMIT配置
 DEFAULT_DOWNLOAD_TIMEOUT = 90  # 总下载超时时间90秒（用户要求）
 DEFAULT_CONNECT_TIMEOUT = 10  # 连接超时10秒，快速失败
 DEFAULT_READ_TIMEOUT = 15  # 读取超时15秒，平衡稳定性和速度
@@ -59,6 +60,8 @@ def download(url: str, save_dir: str, limit: int = DEFAULT_FILE_SIZE_LIMIT,
     Raises:
         CustomException: 下载失败时抛出异常
     """
+    # 兼容 Pydantic HttpUrl 等类型，避免切片/解析时下标报错
+    url = str(url)
     # 初始化下载环境
     download_context = _prepare_download_context(url, save_dir, timeout)
     
@@ -137,6 +140,7 @@ def _execute_download_with_retry(context: dict, limit: int, retry: int) -> str:
     consecutive_failures = 0  # 连续失败计数器
     
     for attempt in range(retry + 1):  # 总共尝试 retry + 1 次
+        response = None
         try:
             logger.info(f"Starting download attempt {attempt + 1}/{retry + 1}, URL: {url}")
             
@@ -173,6 +177,19 @@ def _execute_download_with_retry(context: dict, limit: int, retry: int) -> str:
             if not _handle_download_exception(e, attempt, retry, temp_save_path, 
                                             supports_range, consecutive_failures, context):
                 break  # 致命错误，停止重试
+        finally:
+            # 统一关闭 response/session，避免连接资源滞留
+            if response is not None:
+                try:
+                    response.close()
+                except Exception:
+                    pass
+                session = getattr(response, "_capcut_session", None)
+                if session is not None:
+                    try:
+                        session.close()
+                    except Exception:
+                        pass
     
     # 所有重试都失败，抛出异常
     return _handle_final_failure(last_exception, url)
@@ -440,7 +457,10 @@ def _assess_network_quality(url: str) -> str:
     Returns:
         str: 网络质量 ('good', 'medium', 'poor')
     """
+    response = None
     try:
+        # 兼容 pydantic HttpUrl 等对象，避免出现 decode 属性错误
+        url = str(url)
         import urllib.parse
         parsed_url = urllib.parse.urlparse(url)
         test_url = f"{parsed_url.scheme}://{parsed_url.netloc}"
@@ -467,13 +487,22 @@ def _assess_network_quality(url: str) -> str:
             return 'poor'
             
     except Exception as e:
-        logger.warning(f"Failed to assess network quality: {e}")
+        logger.info(f"Failed to assess network quality, fallback to poor: {e}")
         return 'poor'  # 默认为较差的网络环境
+    finally:
+        if response is not None:
+            try:
+                response.close()
+            except Exception:
+                pass
 
 
 def _check_range_support_with_retry(url: str, max_retries: int = 2) -> bool:
     """
     带重试的范围请求支持检测
+    
+    某些服务器（如Pixabay CDN）对HEAD请求返回403，但对GET请求正常响应。
+    当HEAD请求失败时，尝试使用GET请求检测Range支持。
     
     Args:
         url: 文件URL
@@ -482,7 +511,10 @@ def _check_range_support_with_retry(url: str, max_retries: int = 2) -> bool:
     Returns:
         bool: 是否支持Range请求
     """
+    url = str(url)
+    # 首先尝试HEAD请求
     for attempt in range(max_retries + 1):
+        response = None
         try:
             response = requests.head(
                 url, 
@@ -494,16 +526,64 @@ def _check_range_support_with_retry(url: str, max_retries: int = 2) -> bool:
             accept_ranges = response.headers.get('Accept-Ranges', '').lower()
             supports_ranges = accept_ranges == 'bytes'
             
-            logger.info(f"Range support check attempt {attempt + 1}: Accept-Ranges={accept_ranges}, supports={supports_ranges}")
+            logger.info(f"Range support check (HEAD) attempt {attempt + 1}: Accept-Ranges={accept_ranges}, supports={supports_ranges}")
             return supports_ranges
             
         except Exception as e:
             if attempt < max_retries:
-                logger.warning(f"Range support check attempt {attempt + 1} failed: {e}, retrying...")
+                logger.info(f"Range support check (HEAD) attempt {attempt + 1} failed: {e}, retrying...")
                 time.sleep(1)
             else:
-                logger.warning(f"Failed to check range support after {max_retries + 1} attempts: {e}")
-                return False
+                logger.info(f"HEAD request failed after {max_retries + 1} attempts: {e}, trying GET request...")
+        finally:
+            if response is not None:
+                try:
+                    response.close()
+                except Exception:
+                    pass
+    
+    # HEAD请求失败，尝试使用GET请求检测（只读取响应头，不下载内容）
+    session = None
+    response = None
+    try:
+        session = _create_optimized_session()
+        session.headers.update(DOWNLOAD_HEADERS)
+        # 使用Range请求测试服务器是否支持断点续传
+        headers = DOWNLOAD_HEADERS.copy()
+        headers['Range'] = 'bytes=0-0'
+        
+        response = session.get(
+            url,
+            headers=headers,
+            stream=True,
+            timeout=(DEFAULT_CONNECT_TIMEOUT, DEFAULT_READ_TIMEOUT)
+        )
+        
+        # 如果返回206 Partial Content，说明支持Range请求
+        if response.status_code == 206:
+            logger.info("Range support check (GET): Server supports Range requests (status 206)")
+            return True
+        elif response.status_code == 200:
+            # 返回200说明服务器忽略Range头，不支持断点续传
+            logger.info("Range support check (GET): Server does not support Range requests (status 200)")
+            return False
+        else:
+            response.raise_for_status()
+            
+    except Exception as e:
+        logger.info(f"Range support check (GET) failed: {e}, assuming no range support")
+        return False
+    finally:
+        if response is not None:
+            try:
+                response.close()
+            except Exception:
+                pass
+        if session is not None:
+            try:
+                session.close()
+            except Exception:
+                pass
     
     return False
 
@@ -607,6 +687,7 @@ def _download_with_resume_enhanced(url: str, resume_pos: int, timeouts: dict) ->
                 stream=True,
                 timeout=(timeouts['connect_timeout'], timeouts['read_timeout'])
             )
+            response._capcut_session = session
             
             if response.status_code == 206:
                 logger.info(f"Resume download successful, status: {response.status_code}")
@@ -623,11 +704,14 @@ def _download_with_resume_enhanced(url: str, resume_pos: int, timeouts: dict) ->
                 time.sleep(CONNECTION_RETRY_DELAY)
             else:
                 logger.error(f"Resume download failed after {attempt + 1} attempts: {e}")
+                session.close()
                 raise
         except Exception as e:
             logger.error(f"Resume download unexpected error: {e}")
+            session.close()
             raise
     
+    session.close()
     raise requests.exceptions.RequestException("Failed to establish resume connection after retries")
 
 
@@ -655,6 +739,7 @@ def _download_fresh_enhanced(url: str, timeouts: dict) -> requests.Response:
                 stream=True,
                 timeout=(timeouts['connect_timeout'], timeouts['read_timeout'])
             )
+            response._capcut_session = session
             response.raise_for_status()
             logger.info(f"Fresh download successful, status: {response.status_code}")
             return response
@@ -665,11 +750,14 @@ def _download_fresh_enhanced(url: str, timeouts: dict) -> requests.Response:
                 time.sleep(CONNECTION_RETRY_DELAY)
             else:
                 logger.error(f"Fresh download failed after {attempt + 1} attempts: {e}")
+                session.close()
                 raise
         except Exception as e:
             logger.error(f"Fresh download unexpected error: {e}")
+            session.close()
             raise
     
+    session.close()
     raise requests.exceptions.RequestException("Failed to establish fresh connection after retries")
 
 
@@ -700,6 +788,11 @@ def _download_file_with_enhanced_stability(
     last_progress_time = start_time
     stall_count = 0  # 停滞计数器
     
+    # 调试日志：打印超时配置
+    logger.info(f"Download timeouts config: total={timeouts.get('total_timeout')}, "
+                f"connect={timeouts.get('connect_timeout')}, read={timeouts.get('read_timeout')}, "
+                f"chunk={timeouts.get('chunk_timeout')}")
+    
     file_mode = 'ab' if is_resume else 'wb'
     
     try:
@@ -711,7 +804,7 @@ def _download_file_with_enhanced_stability(
                 if current_time - start_time > timeouts['total_timeout']:
                     logger.error(f"Download total timeout: {current_time - start_time:.1f}s > {timeouts['total_timeout']}s")
                     raise CustomException(
-                        CustomError.DOWNLOAD_FILE_TIMEOUT, 
+                        CustomError.DOWNLOAD_FILE_FAILED, 
                         detail=f"Download timeout, total time {current_time - start_time:.1f}s"
                     )
                 
@@ -750,7 +843,7 @@ def _download_file_with_enhanced_stability(
                         speed_mbps = (downloaded_size - existing_size) / (current_time - start_time) / 1024 / 1024
                         logger.info(
                             f"Download progress: {downloaded_size / 1024 / 1024:.1f}MB "
-                            f"({progress_percent:.1f}%), speed: {speed_mbps:.2f}MB/s, URL: {url[:50]}..."
+                            f"({progress_percent:.1f}%), speed: {speed_mbps:.2f}MB/s, URL: {str(url)[:50]}..."
                         )
                         last_progress_time = current_time
                         
@@ -781,7 +874,7 @@ def _classify_download_error(error: Exception) -> str:
     if isinstance(error, CustomException):
         if error.err == CustomError.FILE_SIZE_LIMIT_EXCEEDED:
             return 'fatal'
-        elif error.err == CustomError.DOWNLOAD_FILE_TIMEOUT:
+        elif error.err == CustomError.DOWNLOAD_FILE_FAILED:
             return 'network'
         else:
             return 'server'

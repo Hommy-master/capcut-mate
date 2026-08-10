@@ -11,6 +11,10 @@ module.exports = {
   mac: {
     icon: "assets/icons/logo.icns",
     artifactName: "capcut-mate-macos-\${arch}-green.zip",
+    hardenedRuntime: true,
+    gatekeeperAssess: false,
+    entitlements: "assets/entitlements.mac.plist",
+    entitlementsInherit: "assets/entitlements.mac.plist"
   },
   files: [
     "!node_modules/**/*",

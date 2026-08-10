@@ -1,20 +1,23 @@
-# GET_TEXT_ANIMATIONS API 接口文档
+# GET_TEXT_ANIMATIONS API Documentation
 
-## 接口信息
+## 🌐 Language Switch
+[中文版](./get_text_animations.zh.md) | [English](./get_text_animations.md)
+
+## Interface Information
 
 ```bash
 POST /openapi/capcut-mate/v1/get_text_animations
 ```
 
-## 功能描述
+## Function Description
 
-获取文字出入场动画列表，返回所有支持的且满足条件的文字出入场动画。支持根据动画类型（入场、出场、循环）和会员模式（所有、VIP、免费）进行筛选。
+Get text entrance/exit animation list, returning all supported and qualified text entrance/exit animations. Support filtering based on animation type (entrance, exit, loop) and membership mode (all, VIP, free).
 
-## 更多文档
+## More Documentation
 
-📖 更多详细文档和教程请访问：[https://docs.jcaigc.cn](https://docs.jcaigc.cn)
+📖 For more detailed documentation and tutorials, please visit: [https://docs.jcaigc.cn](https://docs.jcaigc.cn)
 
-## 请求参数
+## Request Parameters
 
 ```json
 {
@@ -23,49 +26,49 @@ POST /openapi/capcut-mate/v1/get_text_animations
 }
 ```
 
-### 参数说明
+### Parameter Description
 
-| 参数名 | 类型 | 必填 | 默认值 | 说明 |
-|--------|------|------|--------|------|
-| mode | integer | ❌ | 0 | 动画模式：0=所有，1=VIP，2=免费 |
-| type | string | ✅ | - | 动画类型：in=入场，out=出场，loop=循环 |
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| mode | integer |❌ | 0 | Animation mode: 0=all, 1=VIP, 2=free |
+| type | string |✅ | - | Animation type: in=entrance, out=exit, loop=loop |
 
-### 参数详解
+### Parameter Details
 
-#### 动画模式参数
+#### Animation Mode Parameter
 
-- **mode**: 动画筛选模式
-  - 0 = 返回所有动画（包括VIP和免费）
-  - 1 = 仅返回VIP动画
-  - 2 = 仅返回免费动画
-  - 默认值：0
+- **mode**: Animation filtering mode
+  - 0 = Return all animations (including VIP and free)
+  - 1 = VIP animations only
+  - 2 = Free animations only
+  - Default: 0
 
-#### 动画类型参数
+#### Animation Type Parameter
 
-- **type**: 动画类型，必填参数
-  - "in" = 入场动画（文字出现时的动画效果）
-  - "out" = 出场动画（文字消失时的动画效果）
-  - "loop" = 循环动画（文字持续播放的循环动画效果）
+- **type**: Animation type, required parameter
+  - "in" = Entrance animation (animation effect when text appears)
+  - "out" = Exit animation (animation effect when text disappears)
+  - "loop" = Loop animation (continuous loop animation effect while text plays)
 
-#### 动画模式说明
+#### Animation Mode Description
 
-| 模式值 | 模式名称 | 描述 |
-|--------|----------|------|
-| 0 | 所有 | 返回所有动画（包括VIP和免费） |
-| 1 | VIP | 仅返回VIP动画 |
-| 2 | 免费 | 仅返回免费动画 |
+| Mode Value | Mode Name | Description |
+|------------|-----------|-------------|
+| 0 | All | Return all animations (including VIP and free) |
+| 1 | VIP | VIP animations only |
+| 2 | Free | Free animations only |
 
-#### 动画类型说明
+#### Animation Type Description
 
-| 类型值 | 类型名称 | 描述 |
-|--------|----------|------|
-| in | 入场动画 | 文字出现时的动画效果 |
-| out | 出场动画 | 文字消失时的动画效果 |
-| loop | 循环动画 | 文字持续播放的循环动画效果 |
+| Type Value | Type Name | Description |
+|------------|-----------|-------------|
+| in | Entrance Animation | Animation effect when text appears |
+| out | Exit Animation | Animation effect when text disappears |
+| loop | Loop Animation | Continuous loop animation effect while text plays |
 
-## 响应格式
+## Response Format
 
-### 成功响应 (200)
+### Success Response (200)
 
 ```json
 {
@@ -106,46 +109,46 @@ POST /openapi/capcut-mate/v1/get_text_animations
 }
 ```
 
-### 响应字段说明
+### Response Field Description
 
-| 字段名 | 类型 | 说明 |
-|--------|------|------|
-| effects | array | 文字出入场动画对象数组 |
+| Field | Type | Description |
+|-------|------|-------------|
+| effects | array | Text entrance/exit animation object array |
 
-#### 动画对象结构
+#### Animation Object Structure
 
-每个动画对象包含以下字段：
+Each animation object contains the following fields:
 
-| 字段名 | 类型 | 描述 |
-|--------|------|------|
-| resource_id | string | 动画资源ID |
-| type | string | 动画类型（in/out/loop） |
-| category_id | string | 动画分类ID |
-| category_name | string | 动画分类名称 |
-| duration | integer | 动画时长（微秒） |
-| id | string | 动画唯一标识ID |
-| name | string | 动画名称 |
-| request_id | string | 请求ID（通常为空） |
-| start | integer | 动画开始时间 |
-| icon_url | string | 动画图标URL |
-| material_type | string | 素材类型（通常为"sticker"） |
-| panel | string | 面板信息 |
-| path | string | 路径信息 |
-| platform | string | 支持平台（通常为"all"） |
+| Field | Type | Description |
+|-------|------|-------------|
+| resource_id | string | Animation resource ID |
+| type | string | Animation type (in/out/loop) |
+| category_id | string | Animation category ID |
+| category_name | string | Animation category name |
+| duration | integer | Animation duration (microseconds) |
+| id | string | Animation unique identifier ID |
+| name | string | Animation name |
+| request_id | string | Request ID (usually empty) |
+| start | integer | Animation start time |
+| icon_url | string | Animation icon URL |
+| material_type | string | Material type (usually "sticker") |
+| panel | string | Panel information |
+| path | string | Path information |
+| platform | string | Supported platform (usually "all") |
 
-### 错误响应 (4xx/5xx)
+### Error Response (4xx/5xx)
 
 ```json
 {
-  "detail": "错误信息描述"
+  "detail": "Error message description"
 }
 ```
 
-## 使用示例
+## Usage Examples
 
-### cURL 示例
+### cURL Examples
 
-#### 1. 获取所有入场动画
+#### 1. Get All Entrance Animations
 
 ```bash
 curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_text_animations \
@@ -156,7 +159,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_text_anima
   }'
 ```
 
-#### 2. 获取VIP出场动画
+#### 2. Get VIP Exit Animations
 
 ```bash
 curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_text_animations \
@@ -167,7 +170,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_text_anima
   }'
 ```
 
-#### 3. 获取免费循环动画
+#### 3. Get Free Loop Animations
 
 ```bash
 curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_text_animations \
@@ -178,41 +181,41 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_text_anima
   }'
 ```
 
-## 错误码说明
+## Error Code Description
 
-| 错误码 | 错误信息 | 说明 | 解决方案 |
-|--------|----------|------|----------|
-| 400 | type是必填项 | 缺少动画类型参数 | 提供有效的type参数 |
-| 400 | mode参数无效 | mode参数超出范围 | 使用0、1或2作为mode值 |
-| 400 | type参数无效 | type参数值不正确 | 使用in、out或loop作为type值 |
-| 500 | 获取文字动画失败 | 内部处理错误 | 联系技术支持 |
+| Error Code | Error Message | Description | Solution |
+|------------|---------------|-------------|----------|
+| 400 | type is required | Missing animation type parameter | Provide a valid type parameter |
+| 400 | Invalid mode parameter | mode parameter out of range | Use 0, 1, or 2 as mode value |
+| 400 | Invalid type parameter | type parameter value incorrect | Use in, out, or loop as type value |
+| 500 | Failed to get text animations | Internal processing error | Contact technical support |
 
-## 注意事项
+## Notes
 
-1. **参数要求**: type参数为必填项，mode参数为可选项
-2. **动画类型**: type参数只能是"in"、"out"、"loop"中的一个
-3. **动画模式**: mode参数只能是0、1、2中的一个
-4. **响应格式**: 与旧版本不同，当前版本直接返回对象数组而非JSON字符串
-5. **数据来源**: 当前使用模拟数据，生产环境中应从数据库或API获取
+1. **Parameter Requirements**: type parameter is required, mode parameter is optional
+2. **Animation Types**: type parameter can only be one of "in", "out", "loop"
+3. **Animation Modes**: mode parameter can only be one of 0, 1, 2
+4. **Response Format**: Different from old version, current version directly returns object array instead of JSON string
+5. **Data Source**: Currently using mock data, in production environment should get from database or API
 
-## 工作流程
+## Workflow
 
-1. 验证必填参数（type）
-2. 验证参数有效性（type和mode）
-3. 根据type和mode筛选动画数据
-4. 返回符合条件的动画列表
+1. Validate required parameter (type)
+2. Validate parameter validity (type and mode)
+3. Filter animation data based on type and mode
+4. Return animation list meeting conditions
 
-## 相关接口
+## Related Interfaces
 
-- [添加字幕](./add_captions.md)
-- [创建文本样式](./add_text_style.md)
-- [获取图片动画](./get_image_animations.md)
+- [Add Captions](./add_captions.md)
+- [Create Text Style](./add_text_style.md)
+- [Get Image Animations](./get_image_animations.md)
 
 ---
 
 <div align="right">
 
-📚 **项目资源**  
+📚 **Project Resources**  
 **GitHub**: [https://github.com/Hommy-master/capcut-mate](https://github.com/Hommy-master/capcut-mate)  
 **Gitee**: [https://gitee.com/taohongmin-gitee/capcut-mate](https://gitee.com/taohongmin-gitee/capcut-mate)
 

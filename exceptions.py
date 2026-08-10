@@ -46,6 +46,14 @@ class CustomError(Enum):
     VIDEO_STATUS_QUERY_FAILED = (2032, "视频任务状态查询失败", "Video task status query failed")
     IMAGE_ANIMATION_GET_FAILED = (2033, "获取图片动画失败", "Get image animation failed")
     AUDIO_DURATION_GET_FAILED = (2034, "获取音频时长失败", "Get audio duration failed")
+    INSUFFICIENT_ACCOUNT_BALANCE = (2035, "账户余额不足，当前积分需大于 1 才可继续使用服务，请完成充值后重试", "Insufficient account balance. A minimum of 1 point is required to continue using the service. Please recharge and try again.")
+    INVALID_APIKEY = (2036, "无效的 apiKey", "Invalid apiKey")
+    INVALID_FILTER_INFO = (2037, "无效的滤镜信息，请检查 filter_infos 字段值是否正确", "Invalid filter information, please check if the value of the filter_infos field is correct.")
+    FILTER_ADD_FAILED = (2038, "滤镜添加失败", "Filter addition failed")
+    FILTER_NOT_FOUND = (2039, "滤镜未找到，请检查滤镜名称是否正确", "Filter not found, please check if the filter name is correct.")
+    FILTER_GET_FAILED = (2040, "获取滤镜列表失败", "Get filter list failed")
+    EFFECT_GET_FAILED = (2041, "获取特效列表失败", "Get effect list failed")
+    DRAFT_LOCK_TIMEOUT = (2042, "草稿锁获取超时，同一时间只允许一个操作", "Draft lock acquisition timeout, only one operation allowed at a time")
 
     # ===== 系统错误码 (9000-9999) =====
     INTERNAL_SERVER_ERROR = (9998, "系统内部错误", "Internal server error")

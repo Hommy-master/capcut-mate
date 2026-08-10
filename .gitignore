@@ -1,3 +1,8 @@
 *.pyc
 .venv
 ./dist
+/.qoder
+/output
+/temp
+/logs
+/db

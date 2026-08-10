@@ -1,4 +1,6 @@
 from typing import List, Dict, Any, Tuple, Optional
+import asyncio
+
 from src.utils.logger import logger
 from src.pyJianYingDraft import ScriptFile, MaskType
 from src.pyJianYingDraft.video_segment import VideoSegment
@@ -6,6 +8,7 @@ from src.pyJianYingDraft.segment import VisualSegment
 from src.utils.draft_cache import DRAFT_CACHE
 from exceptions import CustomException, CustomError
 from src.utils import helper
+from src.utils.draft_lock_manager import DraftLockManager
 
 
 def add_masks(
@@ -112,6 +115,96 @@ def add_masks(
     return draft_url, masks_added, affected_segments, mask_ids
 
 
+async def add_masks_async(
+    draft_url: str,
+    segment_ids: List[str],
+    name: str = "线性",
+    X: int = 0,
+    Y: int = 0,
+    width: int = 512,
+    height: int = 512,
+    feather: int = 0,
+    rotation: int = 0,
+    invert: bool = False,
+    roundCorner: int = 0,
+    lock_timeout: float = 30.0
+) -> Tuple[str, int, List[str], List[str]]:
+    """
+    向现有草稿中的指定片段添加遮罩效果的异步版本（带并发锁保护）
+    
+    功能：
+    1. 使用 DraftLockManager 防止同一草稿的并发写操作
+    2. 支持超时控制，避免无限等待
+    3. 自动释放锁，即使发生异常
+    
+    Args:
+        draft_url: 草稿 URL，格式：".../get_draft?draft_id=xxx"
+        segment_ids: 要应用遮罩的片段 ID 数组
+        name: 遮罩类型名称，默认值："线性"
+        X: 遮罩中心 X 坐标（像素），默认值：0
+        Y: 遮罩中心 Y 坐标（像素），默认值：0
+        width: 遮罩宽度（像素），默认值：512
+        height: 遮罩高度（像素），默认值：512
+        feather: 羽化程度（0-100），默认值：0
+        rotation: 旋转角度（度），默认值：0
+        invert: 是否反转遮罩，默认值：false
+        roundCorner: 圆角半径（0-100），默认值：0
+        lock_timeout: 获取锁的超时时间（秒），默认 30 秒
+    
+    Returns:
+        tuple: (draft_url, masks_added, affected_segments, mask_ids)
+    
+    Raises:
+        CustomException: 遮罩添加失败或获取锁超时
+        asyncio.TimeoutError: 等待锁超时时抛出
+    
+    Example:
+        >>> result = await add_masks_async(
+        ...     draft_url="http://.../draft_id=123",
+        ...     segment_ids=["segment-uuid"],
+        ...     name="线性"
+        ... )
+    """
+    # 提取草稿 ID
+    draft_id = helper.get_url_param(draft_url, "draft_id")
+    if not draft_id:
+        raise CustomException(CustomError.INVALID_DRAFT_URL)
+    
+    # 获取锁管理器
+    lock_manager = DraftLockManager()
+    
+    # 尝试获取锁
+    try:
+        await lock_manager.acquire_lock(draft_id, timeout=lock_timeout)
+        logger.info(f"Lock acquired for draft_id: {draft_id}")
+    except asyncio.TimeoutError:
+        logger.error(f"Timeout waiting for lock on draft_id: {draft_id}")
+        raise CustomException(
+            CustomError.DRAFT_LOCK_TIMEOUT,
+            f"Failed to acquire lock for draft {draft_id} within {lock_timeout}s"
+        )
+    
+    try:
+        # 调用内部处理函数（不获取锁，由外层控制）
+        return add_masks(
+            draft_url=draft_url,
+            segment_ids=segment_ids,
+            name=name,
+            X=X,
+            Y=Y,
+            width=width,
+            height=height,
+            feather=feather,
+            rotation=rotation,
+            invert=invert,
+            roundCorner=roundCorner
+        )
+    finally:
+        # 释放锁
+        await lock_manager.release_lock(draft_id)
+        logger.info(f"Lock released for draft_id: {draft_id}")
+
+
 def add_mask_to_segment(
     script: ScriptFile,
     segment_id: str,
@@ -166,10 +259,14 @@ def add_mask_to_segment(
             return segment.mask.global_id
         
         # 4. 计算遮罩尺寸参数
-        # 根据 add_mask 方法的要求，size 是主要尺寸（以占素材高度的比例表示）
         material_width, material_height = segment.material_size
-        size = height / material_height  # 高度比例
-        rect_width = width / material_width if mask_type == MaskType.矩形 else None
+        size, rect_width = calculate_mask_size_params(
+            mask_type=mask_type,
+            width=width,
+            height=height,
+            material_width=material_width,
+            material_height=material_height
+        )
         
         logger.info(f"Adding mask to segment {segment_id}: type={mask_type.value.name}, center=({center_x}, {center_y}), size={size}")
         logger.info(f"Mask details - width: {width}, height: {height}, feather: {feather}, rotation: {rotation}, invert: {invert}, round_corner: {round_corner}")
@@ -199,6 +296,19 @@ def add_mask_to_segment(
                 feather=float(feather),
                 invert=invert
             )
+
+        # ⭐⭐⭐ 关键修复：手动将蒙版添加到 script.materials.masks ⭐⭐⭐
+        if segment.mask is not None:
+            # 检查是否已存在（避免重复添加）
+            mask_exists = False
+            for existing_mask in script.materials.masks:
+                if existing_mask.get("id") == segment.mask.global_id:
+                    mask_exists = True
+                    break
+            
+            if not mask_exists:
+                script.materials.masks.append(segment.mask.export_json())
+                logger.info(f"Registered mask to materials.masks, mask_id: {segment.mask.global_id}")
 
         mask_id = segment.mask.global_id if segment.mask is not None else ""
         if not mask_id:
@@ -242,6 +352,40 @@ def find_segment_by_id(script: ScriptFile, segment_id: str) -> Optional[VisualSe
     
     logger.warning(f"Segment {segment_id} not found in any track")
     return None
+
+
+def calculate_mask_size_params(
+    mask_type: MaskType,
+    width: int,
+    height: int,
+    material_width: int,
+    material_height: int
+) -> Tuple[float, Optional[float]]:
+    """
+    计算遮罩的尺寸参数
+    
+    Args:
+        mask_type: 遮罩类型
+        width: 遮罩宽度（像素）
+        height: 遮罩高度（像素）
+        material_width: 素材宽度（像素）
+        material_height: 素材高度（像素）
+    
+    Returns:
+        Tuple[float, Optional[float]]: 
+        - size: 遮罩的主要尺寸比例
+        - rect_width: 矩形遮罩的宽度比例（仅矩形遮罩有效）
+    """
+    # 计算高度比例作为主要尺寸
+    size = height / material_height
+    
+    # 仅矩形遮罩需要计算宽度比例
+    if mask_type == MaskType.矩形:
+        rect_width = width / material_width
+        return size, rect_width
+    
+    # 其他遮罩类型不需要设置 rect_width
+    return size, None
 
 
 def find_mask_type_by_name(mask_name: str) -> Optional[MaskType]:

@@ -1,4 +1,4 @@
-const { ipcMain, dialog } = require('electron');
+const { ipcMain, dialog, app } = require('electron');
 
 // 引入logger模块
 const logger = require('./logger');
@@ -13,7 +13,7 @@ const {
   getDraftUrls,
   updateDraftPath,
   downloadFiles,
-  readConfig,
+  ensureAutoDetectedDraftPathInConfig,
   checkUrlAccessRight,
   readHistoryRecord,
 } = require('./download');
@@ -57,7 +57,7 @@ function setupIpcHandlers(mainWindow) {
   });
 
   ipcMain.handle('get-config-data', async (event) => {
-    return await readConfig();
+    return await ensureAutoDetectedDraftPathInConfig();
   });
 
   // 设置默认草稿路径
@@ -85,6 +85,10 @@ function setupIpcHandlers(mainWindow) {
 
   ipcMain.handle('get-history-record', async (event) => {
     return await readHistoryRecord();
+  });
+
+  ipcMain.handle('get-app-version', async () => {
+    return app.getVersion();
   });
 }
 

@@ -10,7 +10,7 @@ from typing import Optional, Literal, Union
 from typing import Dict, List, Tuple, Any
 
 from .time_util import tim, Timerange
-from .segment import VisualSegment, ClipSettings
+from .segment import VisualSegment, ClipSettings, AudioFade
 from .local_materials import VideoMaterial
 from .animation import SegmentAnimations, VideoAnimation
 
@@ -18,6 +18,7 @@ from .metadata import EffectMeta, EffectParamInstance
 from .metadata import MaskMeta, MaskType, FilterType, TransitionType
 from .metadata import IntroType, OutroType, GroupAnimationType
 from .metadata import VideoSceneEffectType, VideoCharacterEffectType
+from .metadata.mix_mode_meta import MixModeType
 
 class Mask:
     """蒙版对象"""
@@ -270,6 +271,47 @@ class BackgroundFilling:
             "source_platform": 0,
         }
 
+class MixMode:
+    """混合模式对象"""
+
+    global_id: str
+    """混合模式全局id, 由程序自动生成"""
+
+    effect_meta: EffectMeta
+    """混合模式的元数据"""
+
+    apply_target_type: Literal[0, 2]
+    """应用目标类型, 0: 片段, 2: 全局
+
+    对混合模式而言应该一直是0
+    """
+
+    def __init__(self, meta: EffectMeta, *,
+                 apply_target_type: Literal[0, 2] = 0):
+        """根据给定的混合模式元数据构造混合模式对象"""
+
+        self.global_id = uuid.uuid4().hex
+        self.effect_meta = meta
+        self.apply_target_type = apply_target_type
+
+    def export_json(self) -> Dict[str, Any]:
+        return {
+            "type": "mix_mode",
+            "name": self.effect_meta.name,
+            "effect_id": self.effect_meta.effect_id,
+            "resource_id": self.effect_meta.resource_id,
+            "value": 1.0,
+            "apply_target_type": self.apply_target_type,
+            "platform": "all",
+            "source_platform": 0,
+            "category_id": "",
+            "category_name": "",
+            "sub_type": "none",
+            "time_range": None,
+            "id": self.global_id
+        }
+
+
 class VideoSegment(VisualSegment):
     """安放在轨道上的一个视频/图片片段"""
 
@@ -278,6 +320,12 @@ class VideoSegment(VisualSegment):
     material_size: Tuple[int, int]
     """素材尺寸"""
 
+    fade: Optional[AudioFade]
+    """音频淡入淡出效果, 可能为空
+
+    在放入轨道时自动添加到素材列表中
+    """
+
     effects: List[VideoEffect]
     """特效列表
 
@@ -285,6 +333,11 @@ class VideoSegment(VisualSegment):
     """
     filters: List[Filter]
     """滤镜列表
+
+    在放入轨道时自动添加到素材列表中
+    """
+    mix_modes: List[MixMode]
+    """混合模式列表
 
     在放入轨道时自动添加到素材列表中
     """
@@ -342,9 +395,11 @@ class VideoSegment(VisualSegment):
         self.material_size = (material.width, material.height)
         self.effects = []
         self.filters = []
+        self.mix_modes = []
         self.transition = None
         self.mask = None
         self.background_filling = None
+        self.fade = None
 
     def add_animation(self, animation_type: Union[IntroType, OutroType, GroupAnimationType],
                       duration: Optional[Union[int, str]] = None) -> "VideoSegment":
@@ -398,6 +453,27 @@ class VideoSegment(VisualSegment):
 
         return self
 
+    def add_fade(self, in_duration: Union[str, int], out_duration: Union[str, int]) -> "VideoSegment":
+        """为视频片段添加音频淡入淡出效果, 仅对有音轨的视频片段有效
+
+        Args:
+            in_duration (`int` or `str`): 音频淡入时长, 单位为微秒, 若为字符串则会调用`tim()`函数进行解析
+            out_duration (`int` or `str`): 音频淡出时长, 单位为微秒, 若为字符串则会调用`tim()`函数进行解析
+
+        Raises:
+            `ValueError`: 当前片段已存在淡入淡出效果
+        """
+        if self.fade is not None:
+            raise ValueError("当前片段已存在淡入淡出效果")
+
+        if isinstance(in_duration, str): in_duration = tim(in_duration)
+        if isinstance(out_duration, str): out_duration = tim(out_duration)
+
+        self.fade = AudioFade(in_duration, out_duration)
+        self.extra_material_refs.append(self.fade.fade_id)
+
+        return self
+
     def add_filter(self, filter_type: FilterType, intensity: float = 100.0) -> "VideoSegment":
         """为视频片段添加一个滤镜
 
@@ -408,6 +484,18 @@ class VideoSegment(VisualSegment):
         filter_inst = Filter(filter_type.value, intensity / 100.0)  # 转化为0~1范围
         self.filters.append(filter_inst)
         self.extra_material_refs.append(filter_inst.global_id)
+
+        return self
+
+    def set_mix_mode(self, mode: MixModeType) -> "VideoSegment":
+        """为视频片段设置混合模式
+
+        Args:
+            mode (`MixModeType`): 混合模式类型
+        """
+        mix_mode_inst = MixMode(mode.value)
+        self.mix_modes.append(mix_mode_inst)
+        self.extra_material_refs.append(mix_mode_inst.global_id)
 
         return self
 

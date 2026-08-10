@@ -1,67 +1,254 @@
+# Copyright 2026 Hommy <taohongmin@sina.cn>.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 from src.pyJianYingDraft.video_segment import VideoSegment
 
-
+import asyncio
 from src.utils.logger import logger
 from src.pyJianYingDraft import ScriptFile, trange, IntroType
 import src.pyJianYingDraft as draft
 from src.utils.draft_cache import DRAFT_CACHE
 from exceptions import CustomException, CustomError
 import os
+from src.schemas.add_videos import SegmentInfo
 from src.utils import helper
 from src.utils.download import download
 import config
 import json
+import time
 from typing import List, Dict, Any, Tuple, Optional
+from src.utils.draft_lock_manager import get_draft_lock_manager
 
 
 def add_videos(
     draft_url: str, 
     video_infos: str,
+    scene_timelines: Optional[List[Dict[str, int]]] = None,
     alpha: float = 1.0, 
     scale_x: float = 1.0, 
     scale_y: float = 1.0, 
     transform_x: int = 0, 
     transform_y: int = 0
-) -> Tuple[str, str, List[str], List[str]]:
+) -> Tuple[str, str, List[str], List[str], List[SegmentInfo]]:
     """
-    添加视频到剪映草稿的业务逻辑
+    添加视频到剪映草稿的业务逻辑（同步版本，兼容旧代码）
     
     Args:
-        draft_url: ""  // [必选] 草稿URL
+        draft_url: ""  // [必选] 草稿 URL
         video_infos: [ 
             {
-                "video_url": "https://example.com/video1.mp4", // [必选] 视频文件的URL地址
+                "video_url": "https://example.com/video1.mp4", // [必选] 视频文件的 URL 地址
                 "width": 1920, // [可选] 视频宽度，不传则自动获取视频文件尺寸
                 "height": 1080, // [可选] 视频高度，不传则自动获取视频文件尺寸
                 "start": 0.0, // [必选] 视频在时间轴上的开始时间 (微秒)
                 "end": 12000000.0, // [必选] 视频在时间轴上的结束时间 (微秒)
-                "duration": 12000000.0, // [可选] 视频总时长(微秒)，如果不传则默认为end-start
-                "mask": "", // 遮罩类型[可选]，默认值为None
-                "transition": "", // 转场效果名称[可选]，默认值为None
-                "transition_duration": 500000.0, // 转场持续时间(微秒)[可选]，默认值为500000
-                "volume": 1.0, // 音量大小[0, 1][可选]，默认值为1.0
+                "duration": 12000000.0, // [可选] 视频总时长 (微秒)，如果不传则默认为 end-start
+                "mask": "", // 遮罩类型 [可选]，默认值为 None
+                "transition": "", // 转场效果名称 [可选]，默认值为 None
+                "transition_duration": "", // [可选] 转场时长(微秒)，未指定则用转场类型默认时长
+                "volume": 1.0, // 音量大小 [0, 10][可选]，默认值为 1.0，10 为最大音量
             } 
         ] // [必选]
-        alpha: 全局透明度[0, 1][可选]，默认值为1.0
-        scale_x: X轴缩放比例[可选]，默认值为1.0
-        scale_y: Y轴缩放比例[可选]，默认值为1.0
-        transform_x: X轴位置偏移(像素)[可选]，默认值为0
-        transform_y: Y轴位置偏移(像素)[可选]，默认值为0
+        scene_timelines: [ // [可选] 场景时间线数组，用于视频变速，与 video_infos 一一对应
+            {
+                "start": 0, // [必选] 场景开始时间 (微秒)
+                "end": 6000000 // [必选] 场景结束时间 (微秒)
+            }
+        ]
+        // 变速原理：speed = (video.end - video.start) / (scene_timeline.end - scene_timeline.start)
+        // 示例：视频时间轴 0-2000000(2 秒)，场景时间线 0-1000000(1 秒)，则视频以 2 倍速播放
+        // 如果不提供 scene_timelines 或对应项为 None，视频以正常速度 (1.0 倍) 播放
+        alpha: 全局透明度 [0, 1][可选]，默认值为 1.0
+        scale_x: X 轴缩放比例 [可选]，默认值为 1.0
+        scale_y: Y 轴缩放比例 [可选]，默认值为 1.0
+        transform_x: X 轴位置偏移 (像素)[可选]，默认值为 0
+        transform_y: Y 轴位置偏移 (像素)[可选]，默认值为 0
     
     Returns:
         "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=...",
         "track_id": "video-track-uuid",
         "video_ids": ["video1-uuid", "video2-uuid", "video3-uuid"],
         "segment_ids": ["segment1-uuid", "segment2-uuid", "segment3-uuid"],
-        "videos_count": 3, [未用]
-        "total_duration": 15000000 [未用]
+        "segment_infos": 片段信息列表，包含每个片段的ID、开始时间和结束时间
 
     Raises:
         CustomException: 视频批量添加失败
     """
-    logger.info(f"add_videos, draft_url: {draft_url}, video_infos: {video_infos}, alpha: {alpha}, scale_x: {scale_x}, scale_y: {scale_y}, transform_x: {transform_x}, transform_y: {transform_y}")
+    # 调用内部处理函数（不获取锁，由外层控制）
+    return _add_videos_internal(
+        draft_url=draft_url,
+        video_infos=video_infos,
+        scene_timelines=scene_timelines,
+        alpha=alpha,
+        scale_x=scale_x,
+        scale_y=scale_y,
+        transform_x=transform_x,
+        transform_y=transform_y,
+        prepared_videos=None,
+    )
 
-    # 1. 提取草稿ID
+
+def _prepare_videos_local_files(draft_url: str, video_infos: str) -> List[Dict[str, Any]]:
+    """
+    校验草稿、解析 video_infos、规范化时间字段并下载素材到草稿目录。
+    不含对 ScriptFile 的修改，可在草稿写锁外调用。
+    """
+    draft_id = helper.get_url_param(draft_url, "draft_id")
+    if (not draft_id) or (draft_id not in DRAFT_CACHE):
+        raise CustomException(CustomError.INVALID_DRAFT_URL)
+
+    draft_dir = os.path.join(config.DRAFT_DIR, draft_id)
+    draft_video_dir = os.path.join(draft_dir, "assets", "videos")
+    os.makedirs(name=draft_video_dir, exist_ok=True)
+
+    videos = parse_video_data(json_str=video_infos)
+    if len(videos) == 0:
+        logger.info(f"No video info, draft_id: {draft_id}")
+        raise CustomException(CustomError.INVALID_VIDEO_INFO)
+
+    for video in videos:
+        video["original_start"] = video["start"]
+        video["original_end"] = video["end"]
+        video["local_video_path"] = download(url=video["video_url"], save_dir=draft_video_dir)
+
+    return videos
+
+
+async def add_videos_async(
+    draft_url: str, 
+    video_infos: str,
+    scene_timelines: Optional[List[Dict[str, int]]] = None,
+    alpha: float = 1.0, 
+    scale_x: float = 1.0, 
+    scale_y: float = 1.0, 
+    transform_x: int = 0, 
+    transform_y: int = 0,
+    lock_timeout: float = 30.0
+) -> Tuple[str, str, List[str], List[str], List[SegmentInfo]]:
+    """
+    添加视频到剪映草稿的异步版本（带并发锁保护）
+    
+    功能：
+    1. 使用 DraftLockManager 防止同一草稿的并发写操作
+    2. 支持超时控制，避免无限等待
+    3. 自动释放锁，即使发生异常
+    4. 视频下载在获取锁之前完成，持锁阶段仅修改草稿与写盘
+    
+    Args:
+        draft_url: 草稿 URL，格式：".../get_draft?draft_id=xxx"
+        video_infos: JSON 字符串，包含视频信息列表，详见 add_videos 函数
+        scene_timelines: 场景时间线列表，用于视频变速，与 video_infos 一一对应
+        alpha: 全局透明度 [0, 1]，默认 1.0
+        scale_x: X 轴缩放比例，默认 1.0
+        scale_y: Y 轴缩放比例，默认 1.0
+        transform_x: X 轴位置偏移（像素），默认 0
+        transform_y: Y 轴位置偏移（像素），默认 0
+        lock_timeout: 获取锁的超时时间（秒），默认 30 秒
+    
+    Returns:
+        tuple: (draft_url, track_id, video_ids, segment_ids, segment_infos)
+    
+    Raises:
+        CustomException: 视频添加失败，或 `DRAFT_LOCK_TIMEOUT`（获取写锁超时）
+    
+    Example:
+        >>> result = await add_videos_async(
+        ...     draft_url="http://.../draft_id=123",
+        ...     video_infos='[{"video_url":"...", "start":0, "end":5000000}]'
+        ... )
+    """
+    # 提取草稿 ID
+    draft_id = helper.get_url_param(draft_url, "draft_id")
+    if not draft_id:
+        raise CustomException(CustomError.INVALID_DRAFT_URL)
+
+    logger.info(f"[flow:add_videos] prep_start, draft_id: {draft_id}")
+    # 解析、规范化与下载在锁外完成，缩短持锁时间
+    # 下载与预处理放到线程池，避免阻塞事件循环导致锁超时漂移
+    prep_started_at = time.monotonic()
+    prepared_videos = await asyncio.to_thread(
+        _prepare_videos_local_files,
+        draft_url,
+        video_infos,
+    )
+    logger.info(
+        f"[flow:add_videos] prep_done, draft_id: {draft_id}, "
+        f"count: {len(prepared_videos)}, elapsed: {time.monotonic() - prep_started_at:.3f}s"
+    )
+
+    lock_manager = get_draft_lock_manager()
+
+    logger.info(f"[flow:add_videos] lock_wait_start, draft_id: {draft_id}, timeout: {lock_timeout}s")
+    try:
+        await lock_manager.acquire_lock(draft_id, timeout=lock_timeout)
+        logger.info(f"[flow:add_videos] lock_acquired, draft_id: {draft_id}")
+    except asyncio.TimeoutError:
+        logger.error(f"Timeout waiting for lock on draft_id: {draft_id}")
+        raise CustomException(
+            CustomError.DRAFT_LOCK_TIMEOUT,
+            f"Failed to acquire lock for draft {draft_id} after {lock_timeout}s",
+        )
+
+    try:
+        return _add_videos_internal(
+            draft_url=draft_url,
+            video_infos=video_infos,
+            scene_timelines=scene_timelines,
+            alpha=alpha,
+            scale_x=scale_x,
+            scale_y=scale_y,
+            transform_x=transform_x,
+            transform_y=transform_y,
+            prepared_videos=prepared_videos,
+        )
+    finally:
+        await lock_manager.release_lock(draft_id)
+        logger.info(f"[flow:add_videos] lock_released, draft_id: {draft_id}")
+
+
+def _add_videos_internal(
+    draft_url: str,
+    video_infos: str,
+    scene_timelines: Optional[List[Dict[str, int]]] = None,
+    alpha: float = 1.0,
+    scale_x: float = 1.0,
+    scale_y: float = 1.0,
+    transform_x: int = 0,
+    transform_y: int = 0,
+    prepared_videos: Optional[List[Dict[str, Any]]] = None,
+) -> Tuple[str, str, List[str], List[str], List[SegmentInfo]]:
+    """
+    添加视频的内部处理函数（无锁，需外层控制并发）
+    
+    此函数不包含锁机制，必须在已获取锁的情况下调用
+    
+    Args:
+        draft_url: 草稿 URL
+        video_infos: 视频信息 JSON 字符串（当 prepared_videos 为 None 时参与解析）
+        scene_timelines: 场景时间线列表
+        alpha: 全局透明度
+        scale_x: X 轴缩放比例
+        scale_y: Y 轴缩放比例
+        transform_x: X 轴位置偏移
+        transform_y: Y 轴位置偏移
+        prepared_videos: 若已在外部完成解析与下载（含 local_video_path），则直接使用，跳过下载
+    
+    Returns:
+        tuple: (draft_url, track_id, video_ids, segment_ids, segment_infos)
+    """
+    logger.info(f"_add_videos_internal, draft_url: {draft_url}")
+
+    # 1. 提取草稿 ID
     draft_id = helper.get_url_param(draft_url, "draft_id")
     if (not draft_id) or (draft_id not in DRAFT_CACHE):
         raise CustomException(CustomError.INVALID_DRAFT_URL)
@@ -71,33 +258,64 @@ def add_videos(
     draft_video_dir = os.path.join(draft_dir, "assets", "videos")
     os.makedirs(name=draft_video_dir, exist_ok=True)
 
-    # 3. 解析视频信息
-    videos = parse_video_data(json_str=video_infos)
-    if len(videos) == 0:
-        logger.info(f"No video info, draft_id: {draft_id}")
-        raise CustomException(CustomError.INVALID_VIDEO_INFO)
+    if prepared_videos is not None:
+        videos = prepared_videos
+    else:
+        videos = parse_video_data(json_str=video_infos)
+        if len(videos) == 0:
+            logger.info(f"No video info, draft_id: {draft_id}")
+            raise CustomException(CustomError.INVALID_VIDEO_INFO)
+        for video in videos:
+            video["original_start"] = video["start"]
+            video["original_end"] = video["end"]
+
+    logger.info(f"Parsed {len(videos)} videos, scene_timelines: {scene_timelines}")
 
     # 4. 从缓存中获取草稿
     script: ScriptFile = DRAFT_CACHE[draft_id]
 
-    # 5. 添加视频轨道（明确说明不使用主轨道，并设置合适的渲染层级）
+    # 5. 添加视频轨道（非主轨；叠层与 add_images / add_captions / add_filters 等一致，按全局调用顺序递增 render_index）
     track_name = f"video_track_{helper.gen_unique_id()}"
-    # 设置 relative_index=10 确保视频轨道在主视频轨道之上，避免与主轨道冲突
-    script.add_track(track_type=draft.TrackType.video, track_name=track_name, relative_index=10)
+    script.add_track_ordered(track_type=draft.TrackType.video, track_name=track_name)
 
-    # 6. 遍历视频信息，添加视频到草稿中的指定轨道，收集片段ID
+    # 6. 遍历视频信息，添加视频到草稿中的指定轨道，收集片段 ID 与片段信息
     segment_ids = []
-    for video in videos:
-        segment_id = add_video_to_draft(script, track_name, draft_video_dir=draft_video_dir, video=video,
+    segment_infos = []
+    current_track_end = 0  # 跟踪当前轨道上的实际结束位置（用于处理变速后的连续性）
+    should_keep_continuity = _has_valid_scene_timelines(scene_timelines, len(videos))
+    logger.info(
+        f"Timeline placement mode, should_keep_continuity={should_keep_continuity}, "
+        f"scene_timelines_count={len(scene_timelines) if scene_timelines else 0}"
+    )
+    for i, video in enumerate(videos):
+        # 获取对应的场景时间线（如果有）
+        scene_timeline = scene_timelines[i] if scene_timelines and i < len(scene_timelines) else None
+        
+        # 仅在 scene_timelines 有效时，沿用历史行为：自动连续拼接（处理变速后的间隙问题）
+        # 否则严格使用 video_infos 里传入的 start/end。
+        if should_keep_continuity and i > 0 and current_track_end > 0:
+            # 使用原始时长计算新的 end
+            original_duration = video['original_end'] - video['original_start']
+            video['start'] = current_track_end
+            video['end'] = video['start'] + original_duration
+            logger.info(f"Adjusted video {i} start time to {video['start']} for continuity, original_duration: {original_duration}")
+        
+        segment_id, segment_info, actual_duration = add_video_to_draft(
+		                              script, track_name, draft_video_dir=draft_video_dir, video=video,
+                                      scene_timeline=scene_timeline,
                                       alpha=alpha, scale_x=scale_x, scale_y=scale_y, 
                                       transform_x=transform_x, transform_y=transform_y)
         segment_ids.append(segment_id)
+        segment_infos.append(segment_info)
+        # 更新当前轨道结束位置（使用实际播放时长，而非原始时间轴时长）
+        current_track_end = video['start'] + actual_duration
+        logger.info(f"Video {i} added, track end position: {current_track_end}, actual_duration: {actual_duration}")
     logger.info(f"segment_ids: {segment_ids}")
 
     # 7. 保存草稿
     script.save()
 
-    # 8. 获取当前视频轨道id
+    # 8. 获取当前视频轨道 id
     track_id = ""
     for key in script.tracks.keys():
         if script.tracks[key].name == track_name:
@@ -105,24 +323,52 @@ def add_videos(
             break
     logger.info(f"draft_id: {draft_id}, track_id: {track_id}")
 
-    # 9. 获取当前所有视频资源ID（全局唯一ID）
+    # 9. 获取当前所有视频资源 ID（全局唯一 ID）
     video_ids = [video.material_id for video in script.materials.videos]
     logger.info(f"draft_id: {draft_id}, video_ids: {video_ids}")
 
-    # TODO: 这里还是有点小问题，为什么得到的video_ids与segment_ids的结果一样
-    return draft_url, track_id, video_ids, segment_ids
+    # TODO: 这里还是有点小问题，为什么得到的 video_ids 与 segment_ids 的结果一样
+    return draft_url, track_id, video_ids, segment_ids, segment_infos
+
+
+def _is_valid_scene_timeline(scene_timeline: Any) -> bool:
+    """
+    判断单个 scene_timeline 是否为有效值。
+    有效条件：必须是字典，且包含 start/end，且 end > start。
+    """
+    if not isinstance(scene_timeline, dict):
+        return False
+    if "start" not in scene_timeline or "end" not in scene_timeline:
+        return False
+    return scene_timeline["end"] > scene_timeline["start"]
+
+
+def _has_valid_scene_timelines(
+    scene_timelines: Optional[List[Dict[str, int]]],
+    video_count: int,
+) -> bool:
+    """
+    判断 scene_timelines 是否“指定了有效值”。
+    当且仅当每个视频都存在对应且有效的 scene_timeline 时，返回 True。
+    """
+    if not scene_timelines:
+        return False
+    if len(scene_timelines) < video_count:
+        return False
+    return all(_is_valid_scene_timeline(scene_timelines[i]) for i in range(video_count))
 
 def add_video_to_draft(
     script: ScriptFile,
     track_name: str,
     draft_video_dir: str,
     video: dict, 
+    scene_timeline: Optional[Dict[str, int]] = None,
     alpha: float = 1.0, 
     scale_x: float = 1.0, 
     scale_y: float = 1.0, 
     transform_x: int = 0, 
     transform_y: int = 0
-    ) -> str:
+    ) -> Tuple[str, SegmentInfo, int]:
     """
     向剪映草稿中添加视频
     
@@ -141,6 +387,10 @@ def add_video_to_draft(
             transition: 转场效果(可选)
             transition_duration: 转场持续时间(可选)
             volume: 音量大小(可选)
+        scene_timeline: 场景时间线字典，包含以下字段：
+            start: 场景开始时间(微秒)
+            end: 场景结束时间(微秒)
+            用于计算视频变速：speed = (video.end - video.start) / (scene_timeline.end - scene_timeline.start)
         alpha: 视频透明度
         scale_x: 横向缩放
         scale_y: 纵向缩放
@@ -149,53 +399,75 @@ def add_video_to_draft(
     
     Returns:
         segment_id: 片段ID
+        segment_info: 片段信息，包含 id、start、end（与 add_images 一致，使用放置后的时间轴起止）
+        actual_duration: 视频在轨道上的实际播放时长(微秒)，考虑变速后的时长
     """
     try:
-        # 0. 下载视频
-        video_path = download(url=video['video_url'], save_dir=draft_video_dir)
+        video_path = video.get("local_video_path")
+        if video_path:
+            if not os.path.isfile(video_path):
+                raise CustomException(CustomError.VIDEO_ADD_FAILED, f"Missing local file: {video_path}")
+        else:
+            video_path = download(url=video["video_url"], save_dir=draft_video_dir)
 
-        # 1. 创建视频素材（用于获取尺寸信息）
+        # 1. 创建视频素材
         video_material = draft.VideoMaterial(video_path)
         
-        # 2. 获取视频尺寸（如果未提供则使用视频素材的实际尺寸）
-        video_width = video.get('width')
-        video_height = video.get('height')
-        if video_width is None or video_height is None:
-            video_width = video_material.width
-            video_height = video_material.height
-
-        # 3. 获取视频播放时长（target duration）
+        # 2. 获取视频播放时长（target duration）
         target_duration = video.get('duration', video['end'] - video['start'])
+        
+        # 获取草稿的宽高用于transform坐标转换
+        draft_width = script.width
+        draft_height = script.height
+        logger.info(f"draft size: {draft_width}x{draft_height}, transform_x: {transform_x}, transform_y: {transform_y}")
 
         # 4. 创建图像调节设置
         clip_settings = draft.ClipSettings(
             alpha=alpha,
             scale_x=scale_x,
             scale_y=scale_y,
-            transform_x=transform_x / video_width,  # 转换为半画布宽单位
-            transform_y=transform_y / video_height  # 转换为半画布高单位
+            transform_x=transform_x / draft_width,  #半画布宽单位
+            transform_y=transform_y / draft_height  #为半画布高单位
         )
         
         # 5. 计算在时间轴上的显示时长（source duration）
         display_duration = video['end'] - video['start']
         
+        # 5.5 计算变速（如果提供了场景时间线）
+        speed = 1.0
+        actual_duration = display_duration  # 默认实际时长等于显示时长
+        if scene_timeline:
+            scene_duration = scene_timeline['end'] - scene_timeline['start']
+            if scene_duration > 0:
+                # speed = 时间轴时长 / 场景时长
+                # 例如：时间轴2秒，场景1秒，则speed=2（2倍速）
+                speed = display_duration / scene_duration
+                actual_duration = scene_duration  # 实际播放时长为场景时长
+                logger.info(f"Video speed calculated: {speed}x (display_duration={display_duration}, scene_duration={scene_duration})")
+        
         # 6. 创建视频片段
+        # 用户传入 volume 范围为 [0, 10]，剪映内部范围为 [0, 10]
+        raw_volume = video.get('volume', 1.0)
         video_segment = draft.VideoSegment(
             material=video_material, 
             target_timerange=trange(start=video['start'], duration=display_duration),
             source_timerange=trange(start=0, duration=min(video_material.duration, display_duration)),
-            speed=1.0,  # 保持原始速度
-            volume=video.get('volume', 1.0),
+            speed=speed,  # 使用计算出的速度
+            volume=raw_volume,
             clip_settings=clip_settings
         )
-        logger.info(f"video_path: {video_path}, start: {video['start']}, target_duration: {target_duration}, display_duration: {display_duration}, video_size: {video_width}x{video_height}, volume: {video.get('volume', 1.0)}")
+        logger.info(f"video_path: {video_path}, start: {video['start']}, target_duration: {target_duration}, display_duration: {display_duration}, speed: {speed}, raw_volume: {raw_volume}")
 
         # 6. 添加转场效果（如果指定了）
         transition_name = video.get('transition')
         if transition_name:
             transition_type = find_transition_type_by_name(transition_name)
             if transition_type:
-                transition_duration = video.get('transition_duration', 500000)  # 默认500ms
+                transition_duration = video.get('transition_duration')
+                if transition_duration is not None and transition_duration != "":
+                    transition_duration = int(transition_duration)
+                else:
+                    transition_duration = None
                 try:
                     video_segment.add_transition(transition_type, duration=transition_duration)
                     logger.info(f"Added transition '{transition_name}' with duration {transition_duration}us")
@@ -207,8 +479,13 @@ def add_video_to_draft(
         # 7. 向指定轨道添加片段
         script.add_segment(video_segment, track_name)
 
-        # 8. 返回片段ID（注意：是segment_id而不是material_id）
-        return video_segment.segment_id
+        segment_info = SegmentInfo(
+            id=video_segment.segment_id,
+            start=video['start'],
+            end=video['end'],
+        )
+
+        return video_segment.segment_id, segment_info, actual_duration
     except CustomException:
         logger.info(f"Add video to draft failed, draft_video_dir: {draft_video_dir}, video: {video}")
         raise
@@ -253,8 +530,8 @@ def parse_video_data(json_str: str) -> List[Dict[str, Any]]:
                 "duration": 12000000.0, // [可选] 视频总时长(微秒)，如果不传则默认为end-start
                 "mask": "", // 遮罩类型[可选]，默认值为None
                 "transition": "", // 转场效果名称[可选]，默认值为None
-                "transition_duration": 500000.0, // 转场持续时间(微秒)[可选]，默认值为500000
-                "volume": 1.0, // 音量大小[0, 1][可选]，默认值为1.0
+                "transition_duration": "", // [可选] 转场时长(微秒)，未指定则用转场类型默认时长
+                "volume": 1.0, // 音量大小[0, 10][可选]，默认值为1.0，10为最大音量
             } 
         ]
         
@@ -287,32 +564,45 @@ def parse_video_data(json_str: str) -> List[Dict[str, Any]]:
         
         if missing_fields:
             raise CustomException(CustomError.INVALID_VIDEO_INFO, f"the {i}th item is missing required fields: {', '.join(missing_fields)}")
-        
-        # 如果没有提供duration，则计算为end-start
-        duration = item.get("duration", item["end"] - item["start"])
+
+        if not isinstance(item["start"], (int, float)) or item["start"] < 0:
+            raise CustomException(CustomError.INVALID_VIDEO_INFO, f"the {i}th item has invalid start time")
+
+        if not isinstance(item["end"], (int, float)) or item["end"] <= item["start"]:
+            raise CustomException(CustomError.INVALID_VIDEO_INFO, f"the {i}th item has invalid end time")
+
+        # 将时间转换为整数（微秒），兼容 start/end 为小数的情况
+        start = int(item["start"])
+        end = int(item["end"])
+        if end <= start:
+            raise CustomException(CustomError.INVALID_VIDEO_INFO, f"the {i}th item has invalid end time")
+
+        if "duration" in item:
+            duration = item["duration"]
+            if not isinstance(duration, (int, float)) or duration <= 0:
+                raise CustomException(CustomError.INVALID_VIDEO_INFO, f"the {i}th item has invalid duration")
+            duration = int(duration)
+        else:
+            duration = end - start
         
         # 创建处理后的对象，设置默认值
         processed_item = {
             "video_url": item["video_url"],
             "width": item.get("width"),  # 可选参数
             "height": item.get("height"),  # 可选参数
-            "start": item["start"],
-            "end": item["end"],
+            "start": start,
+            "end": end,
             "duration": duration,
             "mask": item.get("mask", None),  # 默认值 None
             "transition": item.get("transition", None),  # 默认值 None
-            "transition_duration": item.get("transition_duration", 500000),  # 默认值 500000
-            "volume": item.get("volume", 1.0)  # 默认值 1.0
+            "transition_duration": item.get("transition_duration", None),  # 默认用转场类型自身时长
+            "volume": 1.0 if item.get("volume") is None else item.get("volume"),
         }
         
-        # 验证数值范围
-        if processed_item["volume"] < 0 or processed_item["volume"] > 1:
-            # 音量值必须在[0, 1]范围内，给默认值
+        # 验证数值范围：用户传入范围 [0, 10]，超范围时给默认值
+        if processed_item["volume"] < 0 or processed_item["volume"] > 10:
+            logger.warning(f"Volume {processed_item['volume']} out of range [0, 10], using default 1.0")
             processed_item["volume"] = 1.0
-        
-        if processed_item["transition_duration"] < 0:
-            # 转场持续时间必须为非负数，给默认值
-            processed_item["transition_duration"] = 500000
         
         result.append(processed_item)
     

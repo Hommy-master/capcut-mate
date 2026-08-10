@@ -1,20 +1,23 @@
-# GET_IMAGE_ANIMATIONS API 接口文档
+# GET_IMAGE_ANIMATIONS API Documentation
 
-## 接口信息
+## 🌐 Language Switch
+[中文版](./get_image_animations.zh.md) | [English](./get_image_animations.md)
+
+## Interface Information
 
 ```
 POST /openapi/capcut-mate/v1/get_image_animations
 ```
 
-## 功能描述
+## Function Description
 
-获取图片出入场动画列表，返回所有支持的且满足条件的图片出入场动画。支持根据动画类型（入场、出场、循环）和会员模式（所有、VIP、免费）进行筛选。
+Get image entrance/exit animation list, returning all supported and qualified image entrance/exit animations. Support filtering based on animation type (entrance, exit, loop) and membership mode (all, VIP, free).
 
-## 更多文档
+## More Documentation
 
-📖 更多详细文档和教程请访问：[https://docs.jcaigc.cn](https://docs.jcaigc.cn)
+📖 For more detailed documentation and tutorials, please visit: [https://docs.jcaigc.cn](https://docs.jcaigc.cn)
 
-## 请求参数
+## Request Parameters
 
 ```json
 {
@@ -23,49 +26,49 @@ POST /openapi/capcut-mate/v1/get_image_animations
 }
 ```
 
-### 参数说明
+### Parameter Description
 
-| 参数名 | 类型 | 必填 | 默认值 | 说明 |
-|--------|------|------|--------|------|
-| mode | integer | ❌ | 0 | 动画模式：0=所有，1=VIP，2=免费 |
-| type | string | ✅ | - | 动画类型：in=入场，out=出场，loop=循环 |
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| mode | integer |❌ | 0 | Animation mode: 0=all, 1=VIP, 2=free |
+| type | string |✅ | - | Animation type: in=entrance, out=exit, loop=loop |
 
-### 参数详解
+### Parameter Details
 
-#### 动画模式参数
+#### Animation Mode Parameter
 
-- **mode**: 动画筛选模式
-  - 0 = 所有动画（包括VIP和免费）
-  - 1 = 仅VIP动画
-  - 2 = 仅免费动画
-  - 默认值：0
+- **mode**: Animation filtering mode
+  - 0 = All animations (including VIP and free)
+  - 1 = VIP animations only
+  - 2 = Free animations only
+  - Default: 0
 
-#### 动画类型参数
+#### Animation Type Parameter
 
-- **type**: 动画类型（必填）
-  - "in" = 入场动画（图片出现时的效果）
-  - "out" = 出场动画（图片消失时的效果）
-  - "loop" = 循环动画（图片持续播放的效果）
+- **type**: Animation type (required)
+  - "in" = Entrance animation (effect when image appears)
+  - "out" = Exit animation (effect when image disappears)
+  - "loop" = Loop animation (continuous effect while image plays)
 
-#### 动画模式说明
+#### Animation Mode Description
 
-| 模式值 | 模式名称 | 描述 |
-|--------|----------|------|
-| 0 | 所有 | 返回所有动画（包括VIP和免费） |
-| 1 | VIP | 仅返回VIP动画 |
-| 2 | 免费 | 仅返回免费动画 |
+| Mode Value | Mode Name | Description |
+|------------|-----------|-------------|
+| 0 | All | Return all animations (including VIP and free) |
+| 1 | VIP | Return VIP animations only |
+| 2 | Free | Return free animations only |
 
-#### 动画类型说明
+#### Animation Type Description
 
-| 类型值 | 类型名称 | 描述 |
-|--------|----------|------|
-| in | 入场动画 | 图片出现时的动画效果 |
-| out | 出场动画 | 图片消失时的动画效果 |
-| loop | 循环动画 | 图片持续播放的循环动画效果 |
+| Type Value | Type Name | Description |
+|------------|-----------|-------------|
+| in | Entrance Animation | Animation effect when image appears |
+| out | Exit Animation | Animation effect when image disappears |
+| loop | Loop Animation | Continuous loop animation effect while image plays |
 
-## 响应格式
+## Response Format
 
-### 成功响应 (200)
+### Success Response (200)
 
 ```json
 {
@@ -90,44 +93,44 @@ POST /openapi/capcut-mate/v1/get_image_animations
 }
 ```
 
-### 响应字段说明
+### Response Field Description
 
-| 字段名 | 类型 | 说明 |
-|--------|------|------|
-| effects | array | 图片动画对象数组 |
+| Field | Type | Description |
+|-------|------|-------------|
+| effects | array | Image animation object array |
 
-#### 单个动画对象字段说明
+#### Single Animation Object Field Description
 
-| 字段名 | 类型 | 说明 |
-|--------|------|------|
-| resource_id | string | 动画资源ID |
-| type | string | 动画类型（in/out/loop） |
-| category_id | string | 动画分类ID |
-| category_name | string | 动画分类名称 |
-| duration | integer | 动画时长（微秒） |
-| id | string | 动画唯一标识ID |
-| name | string | 动画名称 |
-| request_id | string | 请求ID（通常为空） |
-| start | integer | 动画开始时间 |
-| icon_url | string | 动画图标URL |
-| material_type | string | 素材类型（通常为"sticker"） |
-| panel | string | 面板信息 |
-| path | string | 路径信息 |
-| platform | string | 支持平台（通常为"all"） |
+| Field | Type | Description |
+|-------|------|-------------|
+| resource_id | string | Animation resource ID |
+| type | string | Animation type (in/out/loop) |
+| category_id | string | Animation category ID |
+| category_name | string | Animation category name |
+| duration | integer | Animation duration (microseconds) |
+| id | string | Animation unique identifier ID |
+| name | string | Animation name |
+| request_id | string | Request ID (usually empty) |
+| start | integer | Animation start time |
+| icon_url | string | Animation icon URL |
+| material_type | string | Material type (usually "sticker") |
+| panel | string | Panel information |
+| path | string | Path information |
+| platform | string | Supported platform (usually "all") |
 
-### 错误响应 (4xx/5xx)
+### Error Response (4xx/5xx)
 
 ```json
 {
-  "detail": "错误信息描述"
+  "detail": "Error message description"
 }
 ```
 
-## 使用示例
+## Usage Examples
 
-### cURL 示例
+### cURL Examples
 
-#### 1. 获取所有入场动画
+#### 1. Get All Entrance Animations
 
 ```bash
 curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_image_animations \
@@ -138,7 +141,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_image_anim
   }'
 ```
 
-#### 2. 获取VIP出场动画
+#### 2. Get VIP Exit Animations
 
 ```bash
 curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_image_animations \
@@ -149,7 +152,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_image_anim
   }'
 ```
 
-#### 3. 获取免费循环动画
+#### 3. Get Free Loop Animations
 
 ```bash
 curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_image_animations \
@@ -160,41 +163,41 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_image_anim
   }'
 ```
 
-## 错误码说明
+## Error Code Description
 
-| 错误码 | 错误信息 | 说明 | 解决方案 |
-|--------|----------|------|----------|
-| 400 | type 参数必须为 in、out 或 loop | 动画类型参数无效 | 使用正确的type值："in"、"out"或"loop" |
-| 400 | mode 参数必须为 0、1 或 2 | 动画模式参数无效 | 使用正确的mode值：0、1或2 |
-| 500 | 获取图片动画失败 | 内部处理错误 | 联系技术支持 |
+| Error Code | Error Message | Description | Solution |
+|------------|---------------|-------------|----------|
+| 400 | type parameter must be in, out, or loop | Invalid animation type parameter | Use correct type values: "in", "out", or "loop" |
+| 400 | mode parameter must be 0, 1, or 2 | Invalid animation mode parameter | Use correct mode values: 0, 1, or 2 |
+| 500 | Failed to get image animations | Internal processing error | Contact technical support |
 
-## 注意事项
+## Notes
 
-1. **type参数**：必填参数，只能选择 "in"、"out"、"loop" 中的一个
-2. **mode参数**：可选参数，默认为0（所有动画）
-3. **响应数据**：与文字动画不同，图片动画有专门的分类和效果
-4. **动画时长**：单位为微秒（1秒 = 1,000,000微秒）
-5. **VIP标识**：部分动画可能需要VIP权限才能使用
+1. **type parameter**: Required parameter, can only choose one from "in", "out", "loop"
+2. **mode parameter**: Optional parameter, default is 0 (all animations)
+3. **Response data**: Different from text animations, image animations have specialized categories and effects
+4. **Animation duration**: Unit is microseconds (1 second = 1,000,000 microseconds)
+5. **VIP identification**: Some animations may require VIP permissions to use
 
-## 工作流程
+## Workflow
 
-1. 验证必填参数（type）
-2. 验证可选参数（mode）的有效性
-3. 根据type和mode筛选图片动画数据
-4. 返回符合条件的动画对象数组
-5. 服务端自动处理数据格式化
+1. Validate required parameter (type)
+2. Validate optional parameter (mode) validity
+3. Filter image animation data based on type and mode
+4. Return animation object array meeting conditions
+5. Server automatically handles data formatting
 
-## 相关接口
+## Related Interfaces
 
-- [添加图片](./add_images.md)
-- [获取文字动画](./get_text_animations.md)
-- [添加特效](./add_effects.md)
+- [Add Images](./add_images.md)
+- [Get Text Animations](./get_text_animations.md)
+- [Add Effects](./add_effects.md)
 
 ---
 
 <div align="right">
 
-📚 **项目资源**  
+📚 **Project Resources**  
 **GitHub**: [https://github.com/Hommy-master/capcut-mate](https://github.com/Hommy-master/capcut-mate)  
 **Gitee**: [https://gitee.com/taohongmin-gitee/capcut-mate](https://gitee.com/taohongmin-gitee/capcut-mate)
 

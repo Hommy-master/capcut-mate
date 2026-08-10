@@ -26,7 +26,14 @@ from .draft_folder import DraftFolder
 # 仅在Windows系统下导入jianying_controller
 ISWIN = (sys.platform == 'win32')
 if ISWIN:
-    from .jianying_controller import JianyingController, ExportResolution, ExportFramerate
+    try:
+        from .jianying_controller import JianyingController, ExportResolution, ExportFramerate
+    except ImportError:
+        # 如果缺少Windows依赖，设置为False
+        ISWIN = False
+        JianyingController = None
+        ExportResolution = None  
+        ExportFramerate = None
 
 from .time_util import SEC, tim, trange
 

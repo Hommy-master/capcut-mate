@@ -12,6 +12,23 @@ dependencies = [
     "fastapi>=0.100.0",
     "pymediainfo>=7.0.1",
     "requests>=2.32.5",
-    "uiautomation>=2.0.29",
     "uvicorn[standard]>=0.35.0",
+    "cos-python-sdk-v5>=1.9.38",
+    "oss2",
+    "imageio>=2.37.3",
 ]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+]
+windows = [
+    "pywin32>=311; sys_platform == 'win32'",
+    "pyautogui>=0.9.54; sys_platform == 'win32'",
+    "uiautomation>=2.0.29; sys_platform == 'win32'",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q"

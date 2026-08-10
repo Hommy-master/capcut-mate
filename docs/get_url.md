@@ -1,20 +1,23 @@
-# GET_URL API 接口文档
+# GET_URL API Documentation
 
-## 接口信息
+## 🌐 Language Switch
+[中文版](./get_url.zh.md) | [English](./get_url.md)
+
+## Interface Information
 
 ```
 POST /openapi/capcut-mate/v1/get_url
 ```
 
-## 功能描述
+## Function Description
 
-提取链接。该接口用于提取输入内容中的链接信息，用于多值返回变成单值返回。
+Extract links. This interface is used to extract link information from input content, converting multiple values into single value return.
 
-## 更多文档
+## More Documentation
 
-📖 更多详细文档和教程请访问：[https://docs.jcaigc.cn](https://docs.jcaigc.cn)
+📖 For more detailed documentation and tutorials, please visit: [https://docs.jcaigc.cn](https://docs.jcaigc.cn)
 
-## 请求参数
+## Request Parameters
 
 ```json
 {
@@ -22,23 +25,23 @@ POST /openapi/capcut-mate/v1/get_url
 }
 ```
 
-### 参数说明
+### Parameter Description
 
-| 参数名 | 类型 | 必填 | 默认值 | 说明 |
-|--------|------|------|--------|------|
-| output | string | ✅ | - | 提取内容 |
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| output | string |✅ | - | Content to extract |
 
-### 参数详解
+### Parameter Details
 
 #### output
 
-- **类型**: string
-- **说明**: 需要提取链接的内容
-- **示例**: `"[魂牵梦萦https://sf.com；中国人https://jcaigc.cn],\"[]\""`
+- **Type**: string
+- **Description**: Content from which to extract links
+- **Example**: `"[魂牵梦萦https://sf.com；中国人https://jcaigc.cn],\"[]\""`
 
-## 响应格式
+## Response Format
 
-### 成功响应 (200)
+### Success Response (200)
 
 ```json
 {
@@ -46,25 +49,25 @@ POST /openapi/capcut-mate/v1/get_url
 }
 ```
 
-### 响应字段说明
+### Response Field Description
 
-| 字段名 | 类型 | 说明 |
-|--------|------|------|
-| output | string | 提取结果 |
+| Field | Type | Description |
+|-------|------|-------------|
+| output | string | Extraction result |
 
-### 错误响应 (4xx/5xx)
+### Error Response (4xx/5xx)
 
 ```json
 {
-  "detail": "错误信息描述"
+  "detail": "Error message description"
 }
 ```
 
-## 使用示例
+## Usage Examples
 
-### cURL 示例
+### cURL Examples
 
-#### 1. 基本使用
+#### 1. Basic Usage
 
 ```bash
 curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_url \
@@ -74,33 +77,33 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_url \
   }'
 ```
 
-## 错误码说明
+## Error Code Description
 
-| 错误码 | 错误信息 | 说明 | 解决方案 |
-|--------|----------|------|----------|
-| 400 | output是必填项 | 缺少output参数 | 提供有效的output参数 |
-| 500 | 提取链接失败 | 内部处理错误 | 联系技术支持 |
+| Error Code | Error Message | Description | Solution |
+|------------|---------------|-------------|----------|
+| 400 | output is required | Missing output parameter | Provide a valid output parameter |
+| 500 | Link extraction failed | Internal processing error | Contact technical support |
 
-## 注意事项
+## Notes
 
-1. **参数要求**: output参数为必填项
-2. **返回值**: 当前版本直接返回输入的内容，不做额外处理
+1. **Parameter Requirements**: output parameter is required
+2. **Return Value**: Current version directly returns input content without additional processing
 
-## 工作流程
+## Workflow
 
-1. 验证必填参数（output）
-2. 调用服务层处理业务逻辑
-3. 返回处理结果
+1. Validate required parameter (output)
+2. Call service layer to handle business logic
+3. Return processing result
 
-## 相关接口
+## Related Interfaces
 
-- [创建草稿](./create_draft.md)
+- [Create Draft](./create_draft.md)
 
 ---
 
 <div align="right">
 
-📚 **项目资源**  
+📚 **Project Resources**  
 **GitHub**: [https://github.com/Hommy-master/capcut-mate](https://github.com/Hommy-master/capcut-mate)  
 **Gitee**: [https://gitee.com/taohongmin-gitee/capcut-mate](https://gitee.com/taohongmin-gitee/capcut-mate)
 

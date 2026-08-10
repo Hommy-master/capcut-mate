@@ -18,13 +18,16 @@ def effect_infos(
         str: JSON字符串格式的特效信息
         
     Raises:
-        ValueError: 当effects和timelines长度不匹配时
+        无异常抛出，长度不匹配时以最短的为准
     """
     logger.info(f"effect_infos called with {len(effects)} effects and {len(timelines)} timelines")
     
-    # 检查参数长度是否匹配
+    # 长度不相等时以最短的为准
     if len(effects) != len(timelines):
-        raise ValueError(f"effects length ({len(effects)}) does not match timelines length ({len(timelines)})")
+        min_len = min(len(effects), len(timelines))
+        logger.warning(f"effects length ({len(effects)}) does not match timelines length ({len(timelines)}), using shorter length: {min_len}")
+        effects = effects[:min_len]
+        timelines = timelines[:min_len]
     
     # 构建特效信息列表
     infos = []

@@ -8,7 +8,11 @@ def caption_infos(
     timelines: List[Dict[str, int]],
     font_size: Optional[int] = None,
     keyword_color: Optional[str] = None,
+    keyword_border_color: Optional[str] = None,
+    keyword_font: Optional[str] = None,
     keyword_font_size: Optional[int] = None,
+    keyword_has_shadow: Optional[bool] = None,
+    keyword_shadow_info: Optional[Dict[str, Any]] = None,
     keywords: Optional[List[str]] = None,
     in_animation: Optional[str] = None,
     in_animation_duration: Optional[int] = None,
@@ -27,12 +31,16 @@ def caption_infos(
         timelines: 时间线数组
         font_size: 字体大小（可选）
         keyword_color: 关键词颜色（可选）
+        keyword_border_color: 关键词边框颜色（可选）
+        keyword_font: 关键词字体名称（可选）
         keyword_font_size: 关键词字体大小（可选）
+        keyword_has_shadow: 是否启用关键词阴影（可选）
+        keyword_shadow_info: 关键词阴影参数（可选）
         keywords: 文本里面的重点词列表（可选）
         in_animation: 入场动画名称（可选）
         in_animation_duration: 入场动画时长（可选）
         loop_animation: 组合动画名称（可选）
-        loop_animation_duration: 组合动画时长（可选）
+        loop_animation_duration: 循环动画单次循环时长，微秒（可选）
         out_animation: 出场动画名称（可选）
         out_animation_duration: 出场动画时长（可选）
         transition: 转场名称（可选）
@@ -42,19 +50,23 @@ def caption_infos(
         str: JSON字符串格式的字幕信息
         
     Raises:
-        ValueError: 当texts和timelines长度不匹配时
+        无异常抛出，长度不匹配时以最短的为准
     """
     logger.info(f"caption_infos called with {len(texts)} texts and {len(timelines)} timelines")
     
-    # 检查参数长度是否匹配
+    # 长度不相等时以最短的为准
     if len(texts) != len(timelines):
-        raise ValueError(f"texts length ({len(texts)}) does not match timelines length ({len(timelines)})")
+        min_len = min(len(texts), len(timelines))
+        logger.warning(f"texts length ({len(texts)}) does not match timelines length ({len(timelines)}), using shorter length: {min_len}")
+        texts = texts[:min_len]
+        timelines = timelines[:min_len]
     
     # 构建字幕信息列表
     infos = []
     for i, (text, timeline) in enumerate(zip(texts, timelines)):
         info = _build_caption_info(text, timeline, i, keywords, 
-                                font_size, keyword_color, keyword_font_size,
+                                font_size, keyword_color, keyword_border_color, keyword_font, keyword_font_size,
+                                keyword_has_shadow, keyword_shadow_info,
                                 in_animation, in_animation_duration,
                                 loop_animation, loop_animation_duration,
                                 out_animation, out_animation_duration,
@@ -70,7 +82,8 @@ def caption_infos(
 
 
 def _build_caption_info(text, timeline, index, keywords,
-                       font_size, keyword_color, keyword_font_size,
+                       font_size, keyword_color, keyword_border_color, keyword_font, keyword_font_size,
+                       keyword_has_shadow, keyword_shadow_info,
                        in_animation, in_animation_duration,
                        loop_animation, loop_animation_duration,
                        out_animation, out_animation_duration,
@@ -94,8 +107,20 @@ def _build_caption_info(text, timeline, index, keywords,
     if keyword_color is not None:
         info["keyword_color"] = keyword_color
     
+    if keyword_border_color is not None:
+        info["keyword_border_color"] = keyword_border_color
+
+    if keyword_font is not None:
+        info["keyword_font"] = keyword_font
+    
     if keyword_font_size is not None:
         info["keyword_font_size"] = keyword_font_size
+
+    if keyword_has_shadow is not None:
+        info["keyword_has_shadow"] = keyword_has_shadow
+
+    if keyword_shadow_info is not None:
+        info["keyword_shadow_info"] = keyword_shadow_info
     
     if font_size is not None:
         info["font_size"] = font_size

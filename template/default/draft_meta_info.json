@@ -8,47 +8,38 @@
     "draft_materials": [
         {
             "type": 0,
-            "value": [
-            ]
+            "value": []
         },
         {
             "type": 1,
-            "value": [
-            ]
+            "value": []
         },
         {
             "type": 2,
-            "value": [
-            ]
+            "value": []
         },
         {
             "type": 3,
-            "value": [
-            ]
+            "value": []
         },
         {
             "type": 6,
-            "value": [
-            ]
+            "value": []
         },
         {
             "type": 7,
-            "value": [
-            ]
+            "value": []
         },
         {
             "type": 8,
-            "value": [
-            ]
+            "value": []
         }
     ],
-    "draft_materials_copied_info": [
-    ],
+    "draft_materials_copied_info": [],
     "draft_name": "",
     "draft_removable_storage_device": "",
     "draft_root_path": "",
-    "draft_segment_extra_info": [
-    ],
+    "draft_segment_extra_info": [],
     "draft_timeline_materials_size_": 1524,
     "tm_draft_cloud_completed": "",
     "tm_draft_cloud_modified": 0,

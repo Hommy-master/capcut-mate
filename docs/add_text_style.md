@@ -1,20 +1,23 @@
-# ADD_TEXT_STYLE API 接口文档
+# ADD_TEXT_STYLE API Documentation
 
-## 接口信息
+## 🌐 Language Switch
+[中文版](./add_text_style.zh.md) | [English](./add_text_style.md)
+
+## Interface Information
 
 ```bash
 POST /openapi/capcut-mate/v1/add_text_style
 ```
 
-## 功能描述
+## Function Description
 
-为文本创建富文本样式，支持关键词高亮、颜色设置、字体大小调整等功能。该接口可以将普通文本转换为包含样式信息的富文本格式，实现关键词突出显示、多样化的文本展示效果。
+Create rich text styles for text, supporting keyword highlighting, color settings, font size adjustments, and other functions. This interface can convert plain text into rich text format containing style information, achieving keyword highlighting and diverse text display effects.
 
-## 更多文档
+## More Documentation
 
-📖 更多详细文档和教程请访问：[https://docs.jcaigc.cn](https://docs.jcaigc.cn)
+📖 For more detailed documentation and tutorials, please visit: [https://docs.jcaigc.cn](https://docs.jcaigc.cn)
 
-## 请求参数
+## Request Parameters
 
 ```json
 {
@@ -26,49 +29,49 @@ POST /openapi/capcut-mate/v1/add_text_style
 }
 ```
 
-### 参数说明
+### Parameter Description
 
-| 参数名 | 类型 | 必填 | 默认值 | 说明 |
-|--------|------|------|--------|------|
-| text | string | ✅ | - | 要处理的文本内容 |
-| keyword | string | ✅ | - | 关键词，多个用 \| 分隔 |
-| font_size | number | ❌ | 12 | 普通文本的字体大小 |
-| keyword_color | string | ❌ | "#ff7100" | 关键词文本颜色（十六进制） |
-| keyword_font_size | number | ❌ | 15 | 关键词字体大小 |
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| text | string |✅ | - | Text content to process |
+| keyword | string |✅ | - | Keywords, multiple separated by \| |
+| font_size | number |❌ | 12 | Font size of plain text |
+| keyword_color | string |❌ | "#ff7100" | Keyword text color (hexadecimal) |
+| keyword_font_size | number |❌ | 15 | Keyword font size |
 
-### 参数详解
+### Parameter Details
 
-#### 文本参数
+#### Text Parameters
 
-- **text**: 需要进行样式处理的原始文本内容
-  - 示例：`"五个快乐到死的顶级思维"`
+- **text**: Original text content to be processed for styling
+  - Example: `"五个快乐到死的顶级思维"`
 
-#### 关键词参数
+#### Keyword Parameters
 
-- **keyword**: 需要高亮显示的关键词，支持多个关键词用竖线（|）分隔
-  - 示例：`"快乐|顶级思维"`
-  - 注意：系统会按关键词长度优先匹配，避免短关键词覆盖长关键词
+- **keyword**: Keywords to be highlighted, support multiple keywords separated by vertical bar (|)
+  - Example: `"快乐|顶级思维"`
+  - Note: System matches keywords by length priority to avoid short keywords overriding long keywords
 
-#### 字体大小参数
+#### Font Size Parameters
 
-- **font_size**: 普通文本（非关键词）的字体大小
-  - 默认值：12
-  - 建议范围：8-72
+- **font_size**: Font size of plain text (non-keywords)
+  - Default: 12
+  - Recommended range: 8-72
 
-- **keyword_font_size**: 关键词的字体大小
-  - 默认值：15
-  - 建议范围：8-72
+- **keyword_font_size**: Font size of keywords
+  - Default: 15
+  - Recommended range: 8-72
 
-#### 颜色参数
+#### Color Parameters
 
-- **keyword_color**: 关键词的文本颜色，使用十六进制格式
-  - 默认值：`"#ff7100"` (橙色)
-  - 格式：#RRGGBB
-  - 示例：`"#ff0000"` (红色), `"#00ff00"` (绿色), `"#0000ff"` (蓝色)
+- **keyword_color**: Text color of keywords, using hexadecimal format
+  - Default: `"#ff7100"` (orange)
+  - Format: #RRGGBB
+  - Examples: `"#ff0000"` (red), `"#00ff00"` (green), `"#0000ff"` (blue)
 
-## 响应格式
+## Response Format
 
-### 成功响应 (200)
+### Success Response (200)
 
 ```json
 {
@@ -76,26 +79,26 @@ POST /openapi/capcut-mate/v1/add_text_style
 }
 ```
 
-### 响应字段说明
+### Response Field Description
 
-| 字段名 | 类型 | 说明 |
-|--------|------|------|
-| text_style | string | 文本样式JSON字符串，包含styles数组和text字段 |
+| Field | Type | Description |
+|-------|------|-------------|
+| text_style | string | Text style JSON string, containing styles array and text field |
 
-### 错误响应 (4xx/5xx)
+### Error Response (4xx/5xx)
 
 ```json
 {
   "code": 2026,
-  "message": "无效的文本样式信息，请检查文本或关键词参数"
+  "message": "Invalid text style information, please check text or keyword parameters"
 }
 ```
 
-## 使用示例
+## Usage Examples
 
-### cURL 示例
+### cURL Examples
 
-#### 1. 基本文本样式创建
+#### 1. Basic Text Style Creation
 
 ```bash
 curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_text_style \
@@ -106,7 +109,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_text_style
   }'
 ```
 
-#### 2. 自定义字体大小
+#### 2. Custom Font Sizes
 
 ```bash
 curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_text_style \
@@ -119,7 +122,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_text_style
   }'
 ```
 
-#### 3. 自定义关键词颜色
+#### 3. Custom Keyword Color
 
 ```bash
 curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_text_style \
@@ -131,43 +134,43 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_text_style
   }'
 ```
 
-## 错误码说明
+## Error Code Description
 
-| 错误码 | 错误信息 | 说明 | 解决方案 |
-|--------|----------|------|----------|
-| 2026 | 无效的文本样式信息，请检查文本或关键词参数 | 文本或关键词参数格式错误或值无效 | 检查text和keyword参数是否符合要求 |
-| 2027 | 文本样式创建失败 | 创建文本样式过程中发生错误 | 联系技术支持 |
+| Error Code | Error Message | Description | Solution |
+|------------|---------------|-------------|----------|
+| 2026 | Invalid text style information, please check text or keyword parameters | Text or keyword parameter format error or invalid value | Check if text and keyword parameters meet requirements |
+| 2027 | Text style creation failed | Error occurred during text style creation | Contact technical support |
 
-## 注意事项
+## Notes
 
-1. **关键词匹配**: 关键词按长度优先匹配，长关键词优先于短关键词
-2. **颜色格式**: 使用标准十六进制颜色格式 #RRGGBB
-3. **字体大小**: 建议在8-72范围内
-4. **关键词分隔**: 多个关键词使用竖线 | 分隔
-5. **大小写敏感**: 关键词匹配区分大小写
+1. **Keyword Matching**: Keywords are matched by length priority, longer keywords take precedence over shorter ones
+2. **Color Format**: Use standard hexadecimal color format #RRGGBB
+3. **Font Size**: Recommended within 8-72 range
+4. **Keyword Separation**: Multiple keywords separated by vertical bar |
+5. **Case Sensitivity**: Keyword matching is case-sensitive
 
-## 工作流程
+## Workflow
 
-1. 验证必填参数（text, keyword）
-2. 解析关键词字符串
-3. 在文本中查找关键词位置
-4. 转换颜色值为RGB格式
-5. 生成文本样式数组
-6. 构建响应对象
-7. 返回文本样式信息
+1. Validate required parameters (text, keyword)
+2. Parse keyword string
+3. Find keyword positions in text
+4. Convert color values to RGB format
+5. Generate text style array
+6. Build response object
+7. Return text style information
 
-## 相关接口
+## Related Interfaces
 
-- [添加字幕](./add_captions.md)
-- [创建草稿](./create_draft.md)
-- [保存草稿](./save_draft.md)
-- [生成视频](./gen_video.md)
+- [Add Captions](./add_captions.md)
+- [Create Draft](./create_draft.md)
+- [Save Draft](./save_draft.md)
+- [Generate Video](./gen_video.md)
 
 ---
 
 <div align="right">
 
-📚 **项目资源**  
+📚 **Project Resources**  
 **GitHub**: [https://github.com/Hommy-master/capcut-mate](https://github.com/Hommy-master/capcut-mate)  
 **Gitee**: [https://gitee.com/taohongmin-gitee/capcut-mate](https://gitee.com/taohongmin-gitee/capcut-mate)
 

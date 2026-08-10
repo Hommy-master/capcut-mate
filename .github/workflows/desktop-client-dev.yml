@@ -2,25 +2,56 @@ name: Build
 
 on:
   push:
-    branches: [ main, dev ]
-    tags: [ 'v*' ]
-  pull_request:
-    branches: [ main, dev ]
+    tags:
+      - 'v*'  # 仅在推送 v 开头的 tag 时触发打包
 
 jobs:
+  # tag 推送时官方不评估 paths，用门禁 job 对比上一 v* tag
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      desktop: ${{ steps.check.outputs.desktop }}
+    steps:
+      - name: 准备代码
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 检查 desktop-client 是否有变更
+        id: check
+        run: |
+          CURRENT="${{ github.ref_name }}"
+          PREV=$(git tag -l 'v*' --sort=-v:refname | grep -vxF "$CURRENT" | head -n1 || true)
+          if [ -z "$PREV" ]; then
+            echo "No previous v* tag; will build."
+            echo "desktop=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "Comparing $PREV..$GITHUB_SHA for desktop-client/"
+          if git diff --quiet "$PREV" "$GITHUB_SHA" -- desktop-client/; then
+            echo "No changes in desktop-client/; skip build."
+            echo "desktop=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "desktop-client/ changed; will build."
+            echo "desktop=true" >> "$GITHUB_OUTPUT"
+          fi
+
   build:
+    needs: changes
+    if: needs.changes.outputs.desktop == 'true'
     runs-on: ${{ matrix.os }}
 
     strategy:
       matrix:
         include:
-          - os: windows-latest
+          # 固定 runner 大版本，避免 -latest 自动迁移导致构建环境突变
+          - os: windows-2022
             platform: win
             artifact_name: windows-build
             build_command: build-win
             installer_command: build-win-installer
             green_command: build-win-green
-          - os: macos-latest
+          - os: macos-14
             platform: mac
             artifact_name: macos-build
             build_command: build-mac
@@ -40,9 +71,17 @@ jobs:
       - name: 设置Node.js环境
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '22.14.0'
           cache: 'npm'
           cache-dependency-path: desktop-client/package-lock.json
+
+      - name: 打印构建环境信息
+        run: |
+          echo "Runner OS: ${{ runner.os }}"
+          echo "Runner image: ${{ matrix.os }}"
+          node -v
+          npm -v
+        shell: bash
 
       - name: 安装Electron依赖
         run: npm ci

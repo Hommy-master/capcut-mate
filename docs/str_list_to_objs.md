@@ -1,20 +1,23 @@
-# STR_LIST_TO_OBJS API 接口文档
+# STR_LIST_TO_OBJS API Documentation
 
-## 接口信息
+## 🌐 Language Switch
+[中文版](./str_list_to_objs.zh.md) | [English](./str_list_to_objs.md)
+
+## Interface Information
 
 ```
 POST /openapi/capcut-mate/v1/str_list_to_objs
 ```
 
-## 功能描述
+## Function Description
 
-字符串列表转化成对象列表。该接口用于将输入的字符串列表转换为对象列表格式。
+Convert string list to object list. This interface is used to convert input string list to object list format.
 
-## 更多文档
+## More Documentation
 
-📖 更多详细文档和教程请访问：[https://docs.jcaigc.cn](https://docs.jcaigc.cn)
+📖 For more detailed documentation and tutorials, please visit: [https://docs.jcaigc.cn](https://docs.jcaigc.cn)
 
-## 请求参数
+## Request Parameters
 
 ```json
 {
@@ -25,23 +28,23 @@ POST /openapi/capcut-mate/v1/str_list_to_objs
 }
 ```
 
-### 参数说明
+### Parameter Description
 
-| 参数名 | 类型 | 必填 | 默认值 | 说明 |
-|--------|------|------|--------|------|
-| infos | array[string] | ✅ | - | 字符串列表 |
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| infos | array[string] |✅ | - | String list |
 
-### 参数详解
+### Parameter Details
 
 #### infos
 
-- **类型**: array[string]
-- **说明**: 需要转换的字符串列表
-- **示例**: `["https://assets.jcaigc.cn/min.mp4", "https://assets.jcaigc.cn/max.mp4"]`
+- **Type**: array[string]
+- **Description**: String list to convert
+- **Example**: `["https://assets.jcaigc.cn/min.mp4", "https://assets.jcaigc.cn/max.mp4"]`
 
-## 响应格式
+## Response Format
 
-### 成功响应 (200)
+### Success Response (200)
 
 ```json
 {
@@ -56,26 +59,26 @@ POST /openapi/capcut-mate/v1/str_list_to_objs
 }
 ```
 
-### 响应字段说明
+### Response Field Description
 
-| 字段名 | 类型 | 说明 |
-|--------|------|------|
-| infos | array[object] | 对象列表 |
-| output | string | URL地址 |
+| Field | Type | Description |
+|-------|------|-------------|
+| infos | array[object] | Object list |
+| output | string | URL address |
 
-### 错误响应 (4xx/5xx)
+### Error Response (4xx/5xx)
 
 ```json
 {
-  "detail": "错误信息描述"
+  "detail": "Error message description"
 }
 ```
 
-## 使用示例
+## Usage Examples
 
-### cURL 示例
+### cURL Examples
 
-#### 1. 基本使用
+#### 1. Basic Usage
 
 ```bash
 curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/str_list_to_objs \
@@ -88,33 +91,33 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/str_list_to_ob
   }'
 ```
 
-## 错误码说明
+## Error Code Description
 
-| 错误码 | 错误信息 | 说明 | 解决方案 |
-|--------|----------|------|----------|
-| 400 | infos是必填项 | 缺少infos参数 | 提供有效的infos参数 |
-| 500 | 字符串列表转换失败 | 内部处理错误 | 联系技术支持 |
+| Error Code | Error Message | Description | Solution |
+|------------|---------------|-------------|----------|
+| 400 | infos is required | Missing infos parameter | Provide a valid infos parameter |
+| 500 | String list conversion failed | Internal processing error | Contact technical support |
 
-## 注意事项
+## Notes
 
-1. **参数要求**: infos参数为必填项
-2. **返回值**: 将输入的字符串列表转换为包含output字段的对象列表
+1. **Parameter Requirements**: infos parameter is required
+2. **Return Value**: Convert input string list to object list containing output fields
 
-## 工作流程
+## Workflow
 
-1. 验证必填参数（infos）
-2. 调用服务层处理业务逻辑
-3. 返回转换后的对象列表
+1. Validate required parameter (infos)
+2. Call service layer to handle business logic
+3. Return converted object list
 
-## 相关接口
+## Related Interfaces
 
-- [创建草稿](./create_draft.md)
+- [Create Draft](./create_draft.md)
 
 ---
 
 <div align="right">
 
-📚 **项目资源**  
+📚 **Project Resources**  
 **GitHub**: [https://github.com/Hommy-master/capcut-mate](https://github.com/Hommy-master/capcut-mate)  
 **Gitee**: [https://gitee.com/taohongmin-gitee/capcut-mate](https://gitee.com/taohongmin-gitee/capcut-mate)
 

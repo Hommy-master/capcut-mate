@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { toast } from "react-toastify";
 import electronService from "../../services/electronService";
 import ExternalWebpage from "../../components/ExternalWebpage";
@@ -7,8 +7,9 @@ import Tabs from "../../components/Tabs";
 import DownloadControls from "../../components/DownloadControls";
 import DownloadButton from "../../components/DownloadButton";
 import LogModule from "../../components/LogModule";
+import { applyLogBatch } from "../../utils/downloadLog";
 
-import "./index.css";
+import "./index.less";
 
 function MainPage() {
   const [textareaValue, setTextareaValue] = useState("");
@@ -18,12 +19,38 @@ function MainPage() {
 
   // 外层容器的ref，用于实现自动滚动
   const downloadPageRef = useRef(null);
+  const pendingLogsRef = useRef([]);
+  const flushScheduledRef = useRef(false);
+
+  const flushLogQueue = useCallback(() => {
+    flushScheduledRef.current = false;
+    if (pendingLogsRef.current.length === 0) {
+      return;
+    }
+    const batch = pendingLogsRef.current.splice(0);
+    setLogs((prevLogs) => applyLogBatch(prevLogs, batch));
+    if (pendingLogsRef.current.length > 0) {
+      flushScheduledRef.current = true;
+      queueMicrotask(flushLogQueue);
+    }
+  }, []);
+
+  const enqueueLogEntry = useCallback(
+    (logEntry) => {
+      pendingLogsRef.current.push(logEntry);
+      if (!flushScheduledRef.current) {
+        flushScheduledRef.current = true;
+        queueMicrotask(flushLogQueue);
+      }
+    },
+    [flushLogQueue]
+  );
 
   // 加载配置
   useEffect(() => {
-    // 监听日志更新
+    // 监听日志更新（支持按 id 更新草稿下载状态）
     electronService.onFileOperationLog((logEntry) => {
-      setLogs((prevLogs) => [...prevLogs, logEntry]);
+      enqueueLogEntry(logEntry);
     });
 
     return () => {
@@ -33,7 +60,7 @@ function MainPage() {
         console.error("取消订阅日志失败:", error);
       }
     };
-  }, []);
+  }, [enqueueLogEntry]);
 
   // 当日志更新时，将外层容器滚动到底部
   useEffect(() => {
@@ -43,12 +70,14 @@ function MainPage() {
   }, [logs]);
 
   const handleDownload = async () => {
-    if (!textareaValue) {
+    const trimmedValue = textareaValue.trim();
+    if (!trimmedValue) {
       toast.warn("请输入草稿地址，多个使用回车换行分隔");
       return;
     }
 
-    const valArray = textareaValue.split("\n").map((line) => line.trim());
+    const valArray = trimmedValue.split("\n").map((line) => line.trim());
+    setLogs([]);
     for (const val of valArray) {
       if (val) {
         await saveFile(val);
@@ -84,15 +113,13 @@ function MainPage() {
         return;
       }
 
-      setLogs([]);
-
       await electronService.saveFile({
         sourceUrl: value,
         remoteFileUrls: matchedFiles,
         targetId,
         isOpenDir: isDownloadOpen,
       });
-      toast.success(`剪映草稿下载完成！请前往剪映查看`);
+      toast.success(`获取草稿 ${targetId} 成功`);
     } catch (error) {
       toast.error("保存文件失败", error);
     }
@@ -107,7 +134,7 @@ function MainPage() {
 
         <Textarea
           value={textareaValue}
-          onChange={(val) => setTextareaValue(val?.trim())}
+          onChange={(val) => setTextareaValue(val)}
         />
 
         <Tabs

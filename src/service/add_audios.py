@@ -1,3 +1,16 @@
+# Copyright 2026 Hommy <taohongmin@sina.cn>.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 from src.utils.logger import logger
 from src.pyJianYingDraft import ScriptFile, trange, AudioSceneEffectType, VideoSceneEffectType, VideoCharacterEffectType
 import src.pyJianYingDraft as draft
@@ -9,7 +22,10 @@ from src.utils import helper
 from src.utils.download import download
 import config
 import json
-from typing import List, Dict, Any, Tuple
+import asyncio
+import time
+from typing import List, Dict, Any, Tuple, Optional
+from src.utils.draft_lock_manager import DraftLockManager
 
 
 def add_audios(
@@ -31,33 +47,124 @@ def add_audios(
     Raises:
         CustomException: 音频批量添加失败
     """
-    logger.info(f"add_audios, draft_url: {draft_url}, audio_infos: {audio_infos}")
-    
-    # 验证草稿ID并获取草稿对象
+    return _add_audios_internal(draft_url, audio_infos, prepared_audios=None)
+
+
+def _prepare_audios_local_files(draft_url: str, audio_infos: str) -> List[Dict[str, Any]]:
+    """
+    校验草稿、解析 audio_infos 并下载素材到草稿目录。
+    不修改 ScriptFile，可在草稿写锁外调用。
+    """
     draft_id = validate_and_get_draft_id(draft_url)
-    script: ScriptFile = DRAFT_CACHE[draft_id]
-    
-    # 创建音频资源目录
     draft_audio_dir = create_audio_directory(draft_id)
-    
-    # 解析音频信息
     audios = parse_audio_data(json_str=audio_infos)
     validate_audio_data(audios, draft_id)
-    
-    # 添加音频轨道
+    for audio in audios:
+        audio["local_audio_path"] = download_audio_file(audio, draft_audio_dir)
+    return audios
+
+
+def _add_audios_internal(
+    draft_url: str,
+    audio_infos: str,
+    prepared_audios: Optional[List[Dict[str, Any]]] = None,
+) -> Tuple[str, str, List[str]]:
+    logger.info(f"add_audios, draft_url: {draft_url}, audio_infos: {audio_infos}")
+
+    draft_id = validate_and_get_draft_id(draft_url)
+    script: ScriptFile = DRAFT_CACHE[draft_id]
+
+    draft_audio_dir = create_audio_directory(draft_id)
+
+    if prepared_audios is not None:
+        audios = prepared_audios
+    else:
+        audios = parse_audio_data(json_str=audio_infos)
+        validate_audio_data(audios, draft_id)
+
     track_name = add_audio_track(script)
-    
-    # 添加音频到轨道
+
     audio_ids = add_audio_segments(script, track_name, draft_audio_dir, audios)
-    
-    # 保存草稿并返回结果
+
     script.save()
     logger.info(f"Draft saved successfully")
-    
+
     track_id = get_track_id(script, track_name)
     logger.info(f"Audio track created, draft_id: {draft_id}, track_id: {track_id}")
-    
+
     return draft_url, track_id, audio_ids
+
+
+async def add_audios_async(
+    draft_url: str,
+    audio_infos: str,
+    lock_timeout: float = 30.0
+) -> Tuple[str, str, List[str]]:
+    """
+    添加音频到剪映草稿的异步版本（带并发锁保护）
+    
+    功能：
+    1. 使用 DraftLockManager 防止同一草稿的并发写操作
+    2. 支持超时控制，避免无限等待
+    3. 自动释放锁，即使发生异常
+    4. 音频下载在获取锁之前完成，持锁阶段仅修改草稿与写盘
+    
+    Args:
+        draft_url: 草稿 URL，格式：".../get_draft?draft_id=xxx"
+        audio_infos: JSON 字符串，包含音频信息列表，详见 add_audios 函数
+        lock_timeout: 获取锁的超时时间（秒），默认 30 秒
+    
+    Returns:
+        tuple: (draft_url, track_id, audio_ids)
+    
+    Raises:
+        CustomException: 音频添加失败，或 `DRAFT_LOCK_TIMEOUT`（获取写锁超时）
+    
+    Example:
+        >>> result = await add_audios_async(
+        ...     draft_url="http://.../draft_id=123",
+        ...     audio_infos='[{"audio_url":"...", "start":0, "end":5000000}]'
+        ... )
+    """
+    draft_id = helper.get_url_param(draft_url, "draft_id")
+    if not draft_id:
+        raise CustomException(CustomError.INVALID_DRAFT_URL)
+
+    logger.info(f"[flow:add_audios] prep_start, draft_id: {draft_id}")
+    # 下载与预处理放到线程池，避免阻塞事件循环导致锁超时漂移
+    prep_started_at = time.monotonic()
+    prepared_audios = await asyncio.to_thread(
+        _prepare_audios_local_files,
+        draft_url,
+        audio_infos,
+    )
+    logger.info(
+        f"[flow:add_audios] prep_done, draft_id: {draft_id}, "
+        f"count: {len(prepared_audios)}, elapsed: {time.monotonic() - prep_started_at:.3f}s"
+    )
+
+    lock_manager = DraftLockManager()
+
+    logger.info(f"[flow:add_audios] lock_wait_start, draft_id: {draft_id}, timeout: {lock_timeout}s")
+    try:
+        await lock_manager.acquire_lock(draft_id, timeout=lock_timeout)
+        logger.info(f"[flow:add_audios] lock_acquired, draft_id: {draft_id}")
+    except asyncio.TimeoutError:
+        logger.error(f"Timeout waiting for lock on draft_id: {draft_id}")
+        raise CustomException(
+            CustomError.DRAFT_LOCK_TIMEOUT,
+            f"Failed to acquire lock for draft {draft_id} within {lock_timeout}s",
+        )
+
+    try:
+        return _add_audios_internal(
+            draft_url=draft_url,
+            audio_infos=audio_infos,
+            prepared_audios=prepared_audios,
+        )
+    finally:
+        await lock_manager.release_lock(draft_id)
+        logger.info(f"[flow:add_audios] lock_released, draft_id: {draft_id}")
 
 
 def validate_and_get_draft_id(draft_url: str) -> str:
@@ -230,8 +337,16 @@ def add_audio_to_draft(
         CustomException: 添加音频失败
     """
     try:
-        # 1. 下载音频文件并获取实际时长
-        audio_path = download_audio_file(audio, draft_audio_dir)
+        audio_path = audio.get("local_audio_path")
+        if audio_path:
+            if not os.path.isfile(audio_path):
+                raise CustomException(
+                    CustomError.AUDIO_ADD_FAILED,
+                    f"Missing local file: {audio_path}",
+                )
+            logger.info(f"Using local audio: {audio_path}")
+        else:
+            audio_path = download_audio_file(audio, draft_audio_dir)
         actual_duration = get_audio_actual_duration(audio_path)
         
         # 2. 处理音频时长参数
@@ -445,7 +560,7 @@ def process_single_audio_item(item: Any, index: int) -> Dict[str, Any]:
     processed_item = create_processed_item(item)
     
     # 验证数值范围
-    validate_numeric_ranges(processed_item)
+    validate_numeric_ranges(processed_item, index)
     
     logger.debug(f"Processed audio item {index+1}: {processed_item}")
     return processed_item
@@ -480,13 +595,31 @@ def create_processed_item(item: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def validate_numeric_ranges(processed_item: Dict[str, Any]):
+def validate_numeric_ranges(processed_item: Dict[str, Any], index: int):
     """验证数值范围"""
     if processed_item["volume"] < 0.0 or processed_item["volume"] > 2.0:
         logger.warning(f"Volume value {processed_item['volume']} out of range [0.0, 2.0], using default 1.0")
         processed_item["volume"] = 1.0
+
+    if not isinstance(processed_item["start"], (int, float)) or processed_item["start"] < 0:
+        logger.error(f"the {index}th item has invalid start time: {processed_item['start']}")
+        raise CustomException(CustomError.INVALID_AUDIO_INFO, f"the {index}th item has invalid start time")
+
+    if not isinstance(processed_item["end"], (int, float)) or processed_item["end"] <= processed_item["start"]:
+        logger.error(f"the {index}th item has invalid end time: {processed_item['end']}")
+        raise CustomException(CustomError.INVALID_AUDIO_INFO, f"the {index}th item has invalid end time")
+
+    # 将时间转换为整数（微秒），兼容 start/end 为小数的情况
+    processed_item["start"] = int(processed_item["start"])
+    processed_item["end"] = int(processed_item["end"])
+    if processed_item["end"] <= processed_item["start"]:
+        logger.error(
+            f"the {index}th item has invalid end time after int conversion: "
+            f"start={processed_item['start']}, end={processed_item['end']}"
+        )
+        raise CustomException(CustomError.INVALID_AUDIO_INFO, f"the {index}th item has invalid end time")
     
-    # 如果提供了duration且小于等于0，则报错
+    # 如果提供了 duration 且小于等于 0，则报错
     if processed_item["duration"] is not None and processed_item["duration"] <= 0:
         logger.error(f"Invalid duration: {processed_item['duration']}")
         raise CustomException(CustomError.INVALID_AUDIO_INFO, f"the {index}th item has invalid duration")

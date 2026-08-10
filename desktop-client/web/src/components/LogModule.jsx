@@ -1,16 +1,28 @@
 import { formatToTime } from '../utils/date';
+import { partitionLogsForDisplay } from '../utils/downloadLog';
 import { useEffect, useRef } from 'react';
+
+function LogItem({ log, index, logIconMap }) {
+  return (
+    <li className={`log-item ${log.level}`}>
+      <span className="log-time">[{formatToTime(log.time)}]</span>
+      <i className={`log-icon show ${logIconMap[log.level] || 'hide'}`}></i>
+      <span className="log-message">{log.message}</span>
+    </li>
+  );
+}
 
 function LogModule({ logs, onClear }) {
   const logIconMap = {
-      // info: "fas fa-info-circle",
-      // success: "fas fa-check-circle",
       error: "fas fa-times-circle",
-      // loading: "fas fa-spinner fa-spin",
-      all: "fas fa-check-circle", // check-square
+      loading: "fas fa-spinner fa-spin",
+      success: "fas fa-check-circle",
+      all: "fas fa-check-circle",
   };
   const logListRef = useRef(null);
-  // 当日志列表变化时，自动滚动到底部
+  const { settled, active } = partitionLogsForDisplay(logs);
+
+  // 当日志列表变化时，自动滚动到底部，便于查看正在下载的配置/资源
   useEffect(() => {
     if (logListRef.current) {
       logListRef.current.scrollTop = logListRef.current.scrollHeight;
@@ -29,14 +41,24 @@ function LogModule({ logs, onClear }) {
         <div className="log-empty">暂无日志记录</div>
       ) : (
         <ul className="log-list" ref={logListRef}>
-          {logs.map((log, index) => (
-            <li key={index} className={`log-item ${log.level}`}>
-              <span className="log-time">[{formatToTime(log.time)}]</span>
-              <i className={`log-icon show ${logIconMap[log.level] || 'hide'}`}></i>
-              <span className={`log-message`}>
-                {log.message}
+          {settled.map((log, index) => (
+            <LogItem key={log.id || `${log.time}-${index}`} log={log} index={index} logIconMap={logIconMap} />
+          ))}
+          {active.length > 0 && (
+            <li className="log-active-divider" aria-label="正在下载">
+              <span className="log-active-divider-label">
+                <i className="fas fa-spinner fa-spin"></i>
+                正在下载 ({active.length})
               </span>
             </li>
+          )}
+          {active.map((log, index) => (
+            <LogItem
+              key={log.id || `${log.time}-active-${index}`}
+              log={log}
+              index={index}
+              logIconMap={logIconMap}
+            />
           ))}
         </ul>
       )}

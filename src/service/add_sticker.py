@@ -6,7 +6,9 @@ from exceptions import CustomException, CustomError
 import os
 from src.utils import helper
 import config
+import asyncio
 from typing import Tuple
+from src.utils.draft_lock_manager import DraftLockManager
 
 
 def add_sticker(
@@ -72,13 +74,18 @@ def add_sticker(
         raise CustomException(CustomError.STICKER_ADD_FAILED)
 
     # 5. 创建图像调节设置
+    # 获取草稿的宽高用于transform坐标转换
+    draft_width = script.width
+    draft_height = script.height
+    logger.info(f"draft size: {draft_width}x{draft_height}, transform_x: {transform_x}, transform_y: {transform_y}")
+    
     clip_settings = ClipSettings(
         scale_x=scale,
         scale_y=scale,
-        transform_x=transform_x / 960,  # 转换为半画布宽单位（假设画布宽度1920）
-        transform_y=transform_y / 540   # 转换为半画布高单位（假设画布高度1080）
+        transform_x=transform_x / draft_width,  # 转换为半画布宽单位
+        transform_y=transform_y / draft_height   # 转换为半画布高单位
     )
-    logger.info(f"Created clip settings - scale: {scale}, transform_x: {transform_x/960}, transform_y: {transform_y/540}")
+    logger.info(f"Created clip settings - scale: {scale}, transform_x: {transform_x/draft_width}, transform_y: {transform_y/draft_height}")
 
     # 6. 创建贴纸片段
     try:
@@ -128,3 +135,82 @@ def add_sticker(
     logger.info(f"add_sticker completed successfully - draft_id: {draft_id}, track_id: {track_id}, segment_id: {segment_id}, duration: {duration}")
     
     return draft_url, sticker_id, track_id, segment_id, duration
+
+
+async def add_sticker_async(
+    draft_url: str,
+    sticker_id: str,
+    start: int,
+    end: int,
+    scale: float = 1.0,
+    transform_x: int = 0,
+    transform_y: int = 0,
+    lock_timeout: float = 30.0
+) -> Tuple[str, str, str, str, int]:
+    """
+    添加贴纸到剪映草稿的异步版本（带并发锁保护）
+    
+    功能：
+    1. 使用 DraftLockManager 防止同一草稿的并发写操作
+    2. 支持超时控制，避免无限等待
+    3. 自动释放锁，即使发生异常
+    
+    Args:
+        draft_url: 草稿 URL，格式：".../get_draft?draft_id=xxx"
+        sticker_id: 贴纸的唯一标识 ID，必选参数
+        start: 贴纸开始时间（微秒），必选参数
+        end: 贴纸结束时间（微秒），必选参数
+        scale: 贴纸缩放比例，默认 1.0
+        transform_x: X 轴位置偏移（像素），默认 0
+        transform_y: Y 轴位置偏移（像素），默认 0
+        lock_timeout: 获取锁的超时时间（秒），默认 30 秒
+    
+    Returns:
+        tuple: (draft_url, sticker_id, track_id, segment_id, duration)
+    
+    Raises:
+        CustomException: 贴纸添加失败或获取锁超时
+        asyncio.TimeoutError: 等待锁超时时抛出
+    
+    Example:
+        >>> result = await add_sticker_async(
+        ...     draft_url="http://.../draft_id=123",
+        ...     sticker_id="sticker-uuid",
+        ...     start=0,
+        ...     end=5000000
+        ... )
+    """
+    # 提取草稿 ID
+    draft_id = helper.get_url_param(draft_url, "draft_id")
+    if not draft_id:
+        raise CustomException(CustomError.INVALID_DRAFT_URL)
+    
+    # 获取锁管理器
+    lock_manager = DraftLockManager()
+    
+    # 尝试获取锁
+    try:
+        await lock_manager.acquire_lock(draft_id, timeout=lock_timeout)
+        logger.info(f"Lock acquired for draft_id: {draft_id}")
+    except asyncio.TimeoutError:
+        logger.error(f"Timeout waiting for lock on draft_id: {draft_id}")
+        raise CustomException(
+            CustomError.DRAFT_LOCK_TIMEOUT,
+            f"Failed to acquire lock for draft {draft_id} within {lock_timeout}s"
+        )
+    
+    try:
+        # 调用内部处理函数（不获取锁，由外层控制）
+        return add_sticker(
+            draft_url=draft_url,
+            sticker_id=sticker_id,
+            start=start,
+            end=end,
+            scale=scale,
+            transform_x=transform_x,
+            transform_y=transform_y
+        )
+    finally:
+        # 释放锁
+        await lock_manager.release_lock(draft_id)
+        logger.info(f"Lock released for draft_id: {draft_id}")

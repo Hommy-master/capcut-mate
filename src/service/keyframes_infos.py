@@ -1,4 +1,5 @@
 from src.utils.logger import logger
+from src.utils.keyframe_value import normalize_keyframe_value
 import json
 from typing import List, Dict, Any
 
@@ -15,28 +16,6 @@ def calculate_relative_time_offset(offset_percent: int, duration: int) -> int:
         int: 相对时间偏移（微秒）
     """
     return int((offset_percent / 100.0) * duration)
-
-
-def normalize_keyframe_value(ctype: str, value: float, height: int = None, width: int = None) -> float:
-    """
-    根据关键帧类型对值进行归一化处理
-    
-    Args:
-        ctype: 关键帧类型
-        value: 原始值
-        height: 视频高度
-        width: 视频宽度
-        
-    Returns:
-        float: 归一化后的值
-    """
-    normalized_value = value
-    if ctype == "KFTypePositionX" and width is not None and width > 0:
-        normalized_value = value / width
-    elif ctype == "KFTypePositionY" and height is not None and height > 0:
-        normalized_value = value / height
-    
-    return normalized_value
 
 
 def keyframes_infos(
@@ -90,7 +69,9 @@ def keyframes_infos(
             relative_time_offset = calculate_relative_time_offset(offset_percent, duration)
             
             # 根据关键帧类型处理值的归一化
-            normalized_value = normalize_keyframe_value(ctype, value, height, width)
+            normalized_value = normalize_keyframe_value(
+                ctype, value, width, height, assume_pixel=True
+            )
             
             keyframe = {
                 "offset": relative_time_offset,  # 使用片段相对时间而不是轨道绝对时间

@@ -7,6 +7,7 @@ import uuid
 from pathlib import Path
 from src.utils.logger import logger
 from exceptions import CustomException, CustomError
+import config
 
 
 def get_url_param(url: str, key: str, default=None):
@@ -45,3 +46,4 @@ def get_all_files(dir: str) -> list:
     # 使用 rglob('*') 递归匹配所有条目，并用 is_file() 过滤出文件
     file_list = [str(file_path) for file_path in path_obj.rglob('*') if file_path.is_file()]
     return file_list
+

@@ -1,20 +1,23 @@
-# STR_TO_LIST API 接口文档
+# STR_TO_LIST API Documentation
 
-## 接口信息
+## 🌐 Language Switch
+[中文版](./str_to_list.zh.md) | [English](./str_to_list.md)
+
+## Interface Information
 
 ```
 POST /openapi/capcut-mate/v1/str_to_list
 ```
 
-## 功能描述
+## Function Description
 
-字符转列表。该接口用于将输入的字符串转换为列表格式。
+Convert string to list. This interface is used to convert input string to list format.
 
-## 更多文档
+## More Documentation
 
-📖 更多详细文档和教程请访问：[https://docs.jcaigc.cn](https://docs.jcaigc.cn)
+📖 For more detailed documentation and tutorials, please visit: [https://docs.jcaigc.cn](https://docs.jcaigc.cn)
 
-## 请求参数
+## Request Parameters
 
 ```json
 {
@@ -22,23 +25,23 @@ POST /openapi/capcut-mate/v1/str_to_list
 }
 ```
 
-### 参数说明
+### Parameter Description
 
-| 参数名 | 类型 | 必填 | 默认值 | 说明 |
-|--------|------|------|--------|------|
-| obj | string | ✅ | - | 对象内容 |
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| obj | string |✅ | - | Object content |
 
-### 参数详解
+### Parameter Details
 
 #### obj
 
-- **类型**: string
-- **说明**: 需要转换的字符串内容
-- **示例**: `"{   \"infos\": [     \"https://assets.jcaigc.cn/min.mp4\",     \"https://assets.jcaigc.cn/max.mp4\"   ] }"`
+- **Type**: string
+- **Description**: String content to convert
+- **Example**: `"{   \"infos\": [     \"https://assets.jcaigc.cn/min.mp4\",     \"https://assets.jcaigc.cn/max.mp4\"   ] }"`
 
-## 响应格式
+## Response Format
 
-### 成功响应 (200)
+### Success Response (200)
 
 ```json
 {
@@ -48,25 +51,25 @@ POST /openapi/capcut-mate/v1/str_to_list
 }
 ```
 
-### 响应字段说明
+### Response Field Description
 
-| 字段名 | 类型 | 说明 |
-|--------|------|------|
-| infos | array[string] | 字符串列表 |
+| Field | Type | Description |
+|-------|------|-------------|
+| infos | array[string] | String list |
 
-### 错误响应 (4xx/5xx)
+### Error Response (4xx/5xx)
 
 ```json
 {
-  "detail": "错误信息描述"
+  "detail": "Error message description"
 }
 ```
 
-## 使用示例
+## Usage Examples
 
-### cURL 示例
+### cURL Examples
 
-#### 1. 基本使用
+#### 1. Basic Usage
 
 ```bash
 curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/str_to_list \
@@ -76,33 +79,33 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/str_to_list \
   }'
 ```
 
-## 错误码说明
+## Error Code Description
 
-| 错误码 | 错误信息 | 说明 | 解决方案 |
-|--------|----------|------|----------|
-| 400 | obj是必填项 | 缺少obj参数 | 提供有效的obj参数 |
-| 500 | 字符转列表失败 | 内部处理错误 | 联系技术支持 |
+| Error Code | Error Message | Description | Solution |
+|------------|---------------|-------------|----------|
+| 400 | obj is required | Missing obj parameter | Provide a valid obj parameter |
+| 500 | String to list conversion failed | Internal processing error | Contact technical support |
 
-## 注意事项
+## Notes
 
-1. **参数要求**: obj参数为必填项
-2. **返回值**: 将输入的字符串作为单个元素放入列表中返回
+1. **Parameter Requirements**: obj parameter is required
+2. **Return Value**: Put input string as single element in list and return
 
-## 工作流程
+## Workflow
 
-1. 验证必填参数（obj）
-2. 调用服务层处理业务逻辑
-3. 返回转换后的字符串列表
+1. Validate required parameter (obj)
+2. Call service layer to handle business logic
+3. Return converted string list
 
-## 相关接口
+## Related Interfaces
 
-- [创建草稿](./create_draft.md)
+- [Create Draft](./create_draft.md)
 
 ---
 
 <div align="right">
 
-📚 **项目资源**  
+📚 **Project Resources**  
 **GitHub**: [https://github.com/Hommy-master/capcut-mate](https://github.com/Hommy-master/capcut-mate)  
 **Gitee**: [https://gitee.com/taohongmin-gitee/capcut-mate](https://gitee.com/taohongmin-gitee/capcut-mate)
 
