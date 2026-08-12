@@ -316,6 +316,33 @@ class TestLocalizeRemoteMaterialPaths:
             assert data["materials"]["videos"][0]["path"] == url
 
     @patch.object(dd, "_download_remote_material_raising")
+    def test_fail_fast_skips_remaining_urls(self, m_dl) -> None:
+        """任一远程素材失败后立即中止，不再下载后续 URL。"""
+        u1 = "https://cdn.example.com/a.mp4"
+        u2 = "https://cdn.example.com/b.mp4"
+        abort = dd.DraftDownloadAbort(
+            dd.DraftDownloadFailureKind.NETWORK_RETRY_EXHAUSTED,
+            detail="timeout",
+            url=u1,
+        )
+        m_dl.side_effect = abort
+        with tempfile.TemporaryDirectory() as td:
+            data: dict = {
+                "materials": {
+                    "audios": [],
+                    "videos": [
+                        {"path": u1, "id": "1"},
+                        {"path": u2, "id": "2"},
+                    ],
+                }
+            }
+            assert dd.localize_remote_material_paths(data, td) is False
+            assert m_dl.call_count == 1
+            assert m_dl.call_args.args[0] == u1
+            assert data["materials"]["videos"][0]["path"] == u1
+            assert data["materials"]["videos"][1]["path"] == u2
+
+    @patch.object(dd, "_download_remote_material_raising")
     def test_same_url_shared_across_items(self, m_dl) -> None:
         u = "https://cdn.example.com/same.mp3"
         with tempfile.TemporaryDirectory() as td:
@@ -632,6 +659,24 @@ class TestDownloadAllFiles:
         with tempfile.TemporaryDirectory() as td:
             assert dd.download_all_files(files, td, self._DRAFT) is False
             m_dl.assert_called_once()
+
+    @patch.object(dd, "trigger_directory_scan_with_robocopy")
+    @patch.object(dd, "_download_single_file")
+    def test_fail_fast_skips_remaining_files(self, m_dl, m_scan) -> None:
+        """任一草稿文件下载失败后立即中止，不再下载后续文件。"""
+        first = self._url("assets/a.bin")
+        second = self._url("assets/b.bin")
+        abort = dd.DraftDownloadAbort(
+            dd.DraftDownloadFailureKind.NETWORK_RETRY_EXHAUSTED,
+            detail="timeout",
+            url=first,
+        )
+        m_dl.side_effect = abort
+        with tempfile.TemporaryDirectory() as td:
+            assert dd.download_all_files([first, second], td, self._DRAFT) is False
+            assert m_dl.call_count == 1
+            assert m_dl.call_args.args[0] == first
+            m_scan.assert_not_called()
 
 
 class TestExecuteDownload:

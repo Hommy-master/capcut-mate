@@ -641,11 +641,10 @@ def download_all_files(files: list, target_dir: str, draft_id: str) -> bool:
 
 
 def _download_all_files(files: list, target_dir: str, draft_id: str) -> None:
-    """下载所有草稿文件；任一失败抛出 DraftDownloadAbort（保留首个失败原因）。"""
+    """下载所有草稿文件；任一失败立即抛出 DraftDownloadAbort（快速失败）。"""
     success_count = 0
     total_files = len(files)
     skipped_draft_info = 0
-    first_abort: Optional[DraftDownloadAbort] = None
 
     for file_url in files:
         if _is_draft_info_target(file_url, target_dir):
@@ -658,41 +657,34 @@ def _download_all_files(files: list, target_dir: str, draft_id: str) -> None:
         try:
             _download_single_file(file_url, target_dir)
             success_count += 1
-        except DraftDownloadAbort as exc:
-            logger.error(f"Failed to download file: {file_url}")
-            if first_abort is None:
-                first_abort = exc
+        except DraftDownloadAbort:
+            logger.error(f"Failed to download file (fail fast): {file_url}")
+            raise
 
     files_to_download = total_files - skipped_draft_info
-    all_downloaded = success_count == files_to_download and first_abort is None
-    if all_downloaded and skipped_draft_info > 0:
-        if _sync_draft_info_from_content(target_dir):
-            success_count += skipped_draft_info
-        else:
-            all_downloaded = False
-            if first_abort is None:
-                first_abort = DraftDownloadAbort(
-                    DraftDownloadFailureKind.LOCAL_IO,
-                    detail="Failed to sync draft_info.json from draft_content.json",
-                )
+    if success_count != files_to_download:
+        _abort(
+            DraftDownloadFailureKind.RESOURCE_UNAVAILABLE,
+            detail=f"Draft {draft_id} incomplete download",
+        )
 
-    if first_abort is None and all_downloaded and success_count == total_files:
-        try:
-            # 必须在 robocopy 扫描前改写 meta，否则剪映可能按错误 draft_name 索引
-            _localize_draft_meta_info(target_dir, draft_id)
-        except DraftDownloadAbort as exc:
-            first_abort = exc
-            all_downloaded = False
+    if skipped_draft_info > 0:
+        if not _sync_draft_info_from_content(target_dir):
+            _abort(
+                DraftDownloadFailureKind.LOCAL_IO,
+                detail="Failed to sync draft_info.json from draft_content.json",
+            )
+        success_count += skipped_draft_info
 
+    # 必须在 robocopy 扫描前改写 meta，否则剪映可能按错误 draft_name 索引
+    _localize_draft_meta_info(target_dir, draft_id)
     trigger_directory_scan_with_robocopy(target_dir)
 
     logger.info(
         f"Draft {draft_id} download finished: total={total_files}, "
         f"ok={success_count}, failed={total_files - success_count}"
     )
-    if first_abort is not None:
-        raise first_abort
-    if not (all_downloaded and success_count == total_files):
+    if success_count != total_files:
         _abort(
             DraftDownloadFailureKind.RESOURCE_UNAVAILABLE,
             detail=f"Draft {draft_id} incomplete download",
@@ -1253,7 +1245,8 @@ def _download_remote_file_raising(file_url: str, local_path: str) -> None:
 def localize_remote_material_paths(data: Dict[str, Any], target_dir: str) -> bool:
     """
     将 materials 里仍为 URL 的 path 下载到本地并回写。
-    同一 URL 只拉取一次；任一 URL 重试仍失败则返回 False，且不写 JSON（由上层中止下载与导出）。
+    同一 URL 只拉取一次；任一 URL 重试仍失败则立即返回 False（快速失败），
+    且不写 JSON（由上层中止下载与导出）。
     """
     try:
         _localize_remote_material_paths(data, target_dir)
@@ -1263,14 +1256,12 @@ def localize_remote_material_paths(data: Dict[str, Any], target_dir: str) -> boo
 
 
 def _localize_remote_material_paths(data: Dict[str, Any], target_dir: str) -> None:
-    """本地化远程素材路径；任一失败抛出首个 DraftDownloadAbort。"""
+    """本地化远程素材路径；任一失败立即抛出 DraftDownloadAbort（快速失败）。"""
     materials = data.get("materials", {}) if isinstance(data, dict) else {}
     if not isinstance(materials, dict):
         return
 
     url_cache: Dict[str, str] = {}
-    failed_urls: set = set()
-    first_abort: Optional[DraftDownloadAbort] = None
     target_lists: Dict[str, List[Dict[str, Any]]] = {
         "audios": materials.get("audios", []),
         "videos": materials.get("videos", []),
@@ -1294,9 +1285,6 @@ def _localize_remote_material_paths(data: Dict[str, Any], target_dir: str) -> No
             if not _is_http_url(remote_path):
                 continue
 
-            if remote_path in failed_urls:
-                continue
-
             if remote_path in url_cache:
                 item["path"] = url_cache[remote_path]
                 continue
@@ -1309,21 +1297,15 @@ def _localize_remote_material_paths(data: Dict[str, Any], target_dir: str) -> No
                 local_path = _download_remote_material_raising(
                     remote_path, target_dir, sub_dir, base_name, fallback_ext
                 )
-            except DraftDownloadAbort as exc:
-                failed_urls.add(remote_path)
+            except DraftDownloadAbort:
                 logger.error(
-                    f"Remote material localization failed (draft download will fail): {remote_path}"
+                    f"Remote material localization failed (fail fast): {remote_path}"
                 )
-                if first_abort is None:
-                    first_abort = exc
-                continue
+                raise
 
             logger.info(f"Remote material saved and path updated: {remote_path} -> {local_path}")
             item["path"] = local_path
             url_cache[remote_path] = local_path
-
-    if first_abort is not None:
-        raise first_abort
 
 def trigger_directory_scan_with_robocopy(target_dir: str):
     """
