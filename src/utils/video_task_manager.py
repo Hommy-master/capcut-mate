@@ -786,8 +786,8 @@ class VideoGenTaskManager:
                     # 将微秒转换为秒
                     video_duration = duration_us / 1_000_000  # 微秒转秒
                     
-                    # 计算费用：0.01积分/秒
-                    cost = video_duration * 0.01
+                    # 计算费用：0.005积分/秒
+                    cost = video_duration * 0.005
                     
                     # 导入扣费函数
                     from src.utils.points import deduct_user_points
