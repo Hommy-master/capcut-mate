@@ -226,7 +226,7 @@ async function ensureWindowsDraftFilesWritable(rootDir) {
   }
 }
 
-const MAX_DOWNLOAD_ATTEMPTS = 6;
+const MAX_DOWNLOAD_ATTEMPTS = 10;
 
 /** 拉取 get_draft：首次请求 + 2 次重试（共 3 次），自开始起硬截止 3000ms 内必须结束 */
 const GET_DRAFT_FETCH_MAX_ATTEMPTS = 3;
