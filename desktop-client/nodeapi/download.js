@@ -1,11 +1,11 @@
 const path = require("path");
 const axios = require("axios");
 const { app, dialog, shell } = require("electron");
-const { createWriteStream } = require("fs");
 const fs = require("fs").promises; // 使用 fs.promises 进行异步文件操作
 const logger = require("./logger");
 const { detectJianyingDraftRoot } = require("./draftPathDetect");
 const { v4: uuidv4 } = require('uuid');
+const { downloadBinaryToFile } = require("./resumableDownload");
 
 const RECORD_MAX = 500;
 
@@ -177,34 +177,17 @@ async function markFileDownloadFailed(parentWindow, tracker, sourceUrl) {
 }
 
 async function downloadRemoteMaterial(fileUrl, draftRootDir, subDir, baseName, fallbackExt) {
-  const response = await axios({
-    ...axiosConfig,
-    url: fileUrl,
-    responseType: "stream",
-  });
-  if (response.status !== 200) {
-    throw new Error(`[error] [material] request failed, status code: ${response.status}`);
-  }
+  const destDir = path.join(draftRootDir, "assets", subDir);
+  const fallbackPath = path.join(destDir, buildMaterialFilename(baseName, fallbackExt));
 
-  const ext = inferExtFromContentType(response.headers["content-type"], fallbackExt);
-  const fileName = buildMaterialFilename(baseName, ext);
-  const localPath = path.join(draftRootDir, "assets", subDir, fileName);
-
-  await fs.mkdir(path.dirname(localPath), { recursive: true });
-  const writer = response.data.pipe(createWriteStream(localPath, { flags: "w", mode: 0o666 }));
-  await new Promise((resolve, reject) => {
-    writer.on("close", resolve);
-    writer.on("error", (err) => {
-      fs.unlink(localPath).catch(() => { });
-      reject(err);
-    });
-    response.data.on("error", (err) => {
-      writer.destroy();
-      fs.unlink(localPath).catch(() => { });
-      reject(err);
-    });
+  return downloadBinaryToFile(fileUrl, {
+    destPath: fallbackPath,
+    resolveDestPath: (headers) => {
+      const ext = inferExtFromContentType(headers["content-type"], fallbackExt);
+      return path.join(destDir, buildMaterialFilename(baseName, ext));
+    },
+    requestHeaders: axiosConfig.headers,
   });
-  return localPath;
 }
 
 function sanitizeFilename(value) {
@@ -1031,38 +1014,9 @@ async function downloadNotJsonFile(
   parentWindow
 ) {
   try {
-    // 1. 使用 Axios 下载非 JSON 文件
-    const response = await axios({
-      ...axiosConfig,
-      url: fileUrl,
-      responseType: "stream", // 设置响应类型为 'stream' 以处理大文件
-    });
-
-    // 检查HTTP状态码
-    if (response.status !== 200) {
-      throw new Error(
-        `[error] [stream] request failed, status code: ${response.status}`
-      );
-    }
-
-    logger.info(`[log] start create writable stream: ${filePath}`);
-
-    // 创建可写流
-    // 显式指定 flags 和 mode，避免 Windows 下文件句柄共享模式异常
-    const writer = response.data.pipe(createWriteStream(filePath, { flags: "w", mode: 0o666 }));
-
-    return new Promise((resolve, reject) => {
-      // 监听 close 而非 finish：finish 仅表示数据写完，close 才表示文件句柄已释放
-      // 在 Windows 上，句柄未释放时其他进程访问该文件会出现权限异常（EACCES）
-      writer.on("close", resolve);
-      writer.on("error", (err) => {
-        // 尝试删除可能不完整的文件
-        fs.unlink(filePath).catch(() => { });
-        reject(new Error(`[error] write file failed: ${err.message}`));
-      });
-      response.data.on("error", (err) => {
-        reject(new Error(`[error] download stream error: ${err.message}`));
-      });
+    await downloadBinaryToFile(fileUrl, {
+      destPath: filePath,
+      requestHeaders: axiosConfig.headers,
     });
   } catch (error) {
     logger.error(`下载非JSON文件失败: ${fileUrl}`, error);
