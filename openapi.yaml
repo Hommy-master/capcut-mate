@@ -263,19 +263,22 @@ components:
         caption_infos:
             value:
                 ReqExample:
-                    font_size: 12
-                    keyword_border_color: '#ff0000'
-                    keyword_color: '#ffef00'
-                    keyword_font_size: 12
+                    keyword_font: "-45"
+                    keyword_has_shadow: true
+                    keyword_shadow_info:
+                        shadow_alpha: 0.3
+                        shadow_color: '#ff0000'
+                        shadow_diffuse: 50
+                        shadow_distance: 50
                     keywords:
-                        - '["明月"]'
+                        - 明月
                     texts:
-                        - '["床前明月光"]'
+                        - 床前明月光
                     timelines:
-                        - end: 5000000
+                        - end: 1000000
                           start: 0
                 RespExample:
-                    infos: '[{"start": 0, "end": 5000000, "text": "[\"床前明月光\"]", "keyword": "[\"明月\"]", "keyword_color": "#ffef00", "keyword_border_color": "#ff0000", "keyword_font_size": 12, "font_size": 12}]'
+                    infos: '[{"start": 0, "end": 1000000, "text": "床前明月光", "keyword": "明月"}]'
         create_draft:
             value:
                 ReqExample:
@@ -12183,7 +12186,7 @@ paths:
                             properties:
                                 alignment:
                                     default: 1
-                                    description: 文本对齐方式：0左/1中/2右（横排），3垂直居中/4垂直左对齐/5垂直右对齐（竖排）
+                                    description: 文本对齐方式（0-5）
                                     type: integer
                                 alpha:
                                     default: 1
@@ -12957,9 +12960,35 @@ paths:
                                 keyword_color:
                                     description: 关键词颜色
                                     type: string
+                                keyword_font:
+                                    description: 关键词字体
+                                    type: string
                                 keyword_font_size:
                                     description: 关键词字大小
                                     type: integer
+                                keyword_has_shadow:
+                                    default: false
+                                    description: 是否启用关键词阴影
+                                    type: boolean
+                                keyword_shadow_info:
+                                    description: 关键词阴影配置
+                                    properties:
+                                        shadow_alpha:
+                                            description: 阴影不透明度，取值范围 [0, 1]
+                                            type: number
+                                        shadow_angle:
+                                            description: ' 阴影角度，取值范围 [-180, 180]'
+                                            type: number
+                                        shadow_color:
+                                            description: 阴影颜色（十六进制）
+                                            type: string
+                                        shadow_diffuse:
+                                            description: ' 阴影扩散程度，取值范围 [0, 100]'
+                                            type: number
+                                        shadow_distance:
+                                            description: 阴影距离，取值范围 [0, 100]
+                                            type: number
+                                    type: object
                                 keywords:
                                     description: 文本里面的重点词列表
                                     items:
