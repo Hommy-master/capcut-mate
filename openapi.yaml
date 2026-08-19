@@ -12183,7 +12183,7 @@ paths:
                             properties:
                                 alignment:
                                     default: 1
-                                    description: 文本对齐方式（0-5）
+                                    description: 文本对齐方式：0左/1中/2右（横排），3垂直居中/4垂直左对齐/5垂直右对齐（竖排）
                                     type: integer
                                 alpha:
                                     default: 1

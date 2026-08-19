@@ -104,6 +104,28 @@ def resolve_font_type(font_name: str) -> Optional[FontType]:
     return None
 
 
+# alignment → (草稿 alignment 0/1/2, 是否竖排)
+# 0/1/2 为横排左/中/右；3/4/5 为竖排居中/左/右（对齐值分别对应 1/0/2）
+CAPTION_ALIGNMENT_MAP: Dict[int, Tuple[Literal[0, 1, 2], bool]] = {
+    0: (0, False),
+    1: (1, False),
+    2: (2, False),
+    3: (1, True),
+    4: (0, True),
+    5: (2, True),
+}
+
+
+def resolve_caption_alignment(alignment: int) -> Tuple[Literal[0, 1, 2], bool]:
+    """将接口 alignment 映射为草稿字段 (align, vertical)。
+
+    0 左对齐、1 居中、2 右对齐（横排）；
+    3 垂直居中、4 垂直左对齐、5 垂直右对齐（竖排）。
+    未识别的值回退为横排左对齐，与历史实现一致。
+    """
+    return CAPTION_ALIGNMENT_MAP.get(alignment, (0, False))
+
+
 def add_captions(
     draft_url: str,
     captions: str,
@@ -156,7 +178,7 @@ def add_captions(
             ]
         text_color: 文本颜色（十六进制），默认"#ffffff"
         border_color: 边框颜色（十六进制），默认 None
-        alignment: 文本对齐方式（0-5），默认 1
+        alignment: 文本对齐方式，0左/1中/2右（横排），3垂直居中/4垂直左/5垂直右（竖排），默认 1
         alpha: 文本透明度（0.0-1.0），默认 1.0
         font: 字体名称，默认 None
         font_size: 字体大小，默认 15
@@ -315,7 +337,7 @@ async def add_captions_async(
         captions: JSON 字符串，包含字幕信息列表，详见 add_captions 函数
         text_color: 文本颜色（十六进制），默认"#ffffff"
         border_color: 边框颜色（十六进制），默认 None
-        alignment: 文本对齐方式（0-5），默认 1
+        alignment: 文本对齐方式，0左/1中/2右（横排），3垂直居中/4垂直左/5垂直右（竖排），默认 1
         alpha: 文本透明度（0.0-1.0），默认 1.0
         font: 字体名称，默认 None
         font_size: 字体大小，默认 15
@@ -447,7 +469,7 @@ def add_caption_to_draft(
             loop_animation_duration: 循环动画时长，可选
         text_color: 文本颜色（十六进制），默认"#ffffff"
         border_color: 边框颜色（十六进制），默认 None
-        alignment: 文本对齐方式（0-5），默认 1
+        alignment: 文本对齐方式，0左/1中/2右（横排），3垂直居中/4垂直左/5垂直右（竖排），默认 1
         alpha: 文本透明度（0.0-1.0），默认 1.0
         font: 字体名称，默认 None
         font_size: 字体大小，默认 15
@@ -504,11 +526,7 @@ def add_caption_to_draft(
         rgb_color = hex_to_rgb(text_color)
         
         # 3. 创建文本样式
-        align_value: Literal[0, 1, 2] = 0
-        if alignment == 1:
-            align_value = 1
-        elif alignment == 2:
-            align_value = 2
+        align_value, is_vertical = resolve_caption_alignment(alignment)
         
         # 根据需求修改：只有当caption中明确指定了font_size时才使用，否则不设置默认值
         font_size_value = font_size
@@ -521,6 +539,7 @@ def add_caption_to_draft(
             color=rgb_color,
             alpha=alpha,
             align=align_value,
+            vertical=is_vertical,
             letter_spacing=int(letter_spacing) if letter_spacing is not None else 0,
             line_spacing=int(line_spacing) if line_spacing is not None else 0,
             auto_wrapping=True,  # 字幕默认开启自动换行
@@ -528,7 +547,11 @@ def add_caption_to_draft(
             italic=italic,
             bold=bold
         )
-        logger.info(f"Created text style, text_style.size: {text_style.size}, font_size from caption: {font_size}")
+        logger.info(
+            f"Created text style, text_style.size: {text_style.size}, "
+            f"align: {text_style.align}, vertical: {text_style.vertical}, "
+            f"font_size from caption: {font_size}"
+        )
         
         # 4. 创建文本描边（如果提供了border_color）
         text_border = None

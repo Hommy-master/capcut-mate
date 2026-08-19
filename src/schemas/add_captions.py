@@ -17,7 +17,12 @@ class AddCaptionsRequest(BaseModel):
     captions: str = Field(default="", description="字幕信息列表, 用JSON字符串表示")
     text_color: str = Field(default="#ffffff", description="文本颜色（十六进制）")
     border_color: Optional[str] = Field(default=None, description="边框颜色（十六进制）")
-    alignment: int = Field(default=1, ge=0, le=5, description="文本对齐方式（0-5）")
+    alignment: int = Field(
+        default=1,
+        ge=0,
+        le=5,
+        description="文本对齐方式：0左/1中/2右（横排），3垂直居中/4垂直左对齐/5垂直右对齐（竖排）",
+    )
     alpha: float = Field(default=1.0, ge=0.0, le=1.0, description="文本透明度（0.0-1.0）")
     font: Optional[str] = Field(default=None, description="字体名称")
     font_size: int = Field(default=15, ge=1, description="字体大小")

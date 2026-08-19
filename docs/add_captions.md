@@ -27,7 +27,7 @@ Batch-add captions to an existing CapCut/Jianying draft. Supports text color, bo
 | captions | string | ✅ | - | Caption list as a **JSON string** (not a raw JSON array) |
 | text_color | string | ❌ | `"#ffffff"` | Normal text color (hex) |
 | border_color | string | ❌ | `null` | Normal text stroke color (hex); `null` means no stroke |
-| alignment | integer | ❌ | `1` | Alignment: `0` left, `1` center, `2` right (`3`-`5` reserved) |
+| alignment | integer | ❌ | `1` | Alignment: `0` left, `1` center, `2` right (horizontal); `3` vertical center, `4` vertical left, `5` vertical right (vertical typesetting) |
 | alpha | number | ❌ | `1.0` | Opacity in `[0.0, 1.0]` |
 | font | string | ❌ | `null` | Font name from Supported Fonts below (enum/display/alias also ok); `null` uses default |
 | font_size | integer | ❌ | `15` | Default font size when a caption item omits `font_size`; must be `>= 1` |
@@ -90,6 +90,19 @@ Default shadow when enabled without `*_shadow_info`:
   "shadow_angle": -45
 }
 ```
+
+### Notes on alignment
+
+| Value | Meaning |
+|---|---|
+| 0 | Left (horizontal) |
+| 1 | Center (horizontal) |
+| 2 | Right (horizontal) |
+| 3 | Vertical center (vertical typesetting + center) |
+| 4 | Vertical left (vertical typesetting + left) |
+| 5 | Vertical right (vertical typesetting + right) |
+
+`alignment` controls in-box typesetting and line alignment, not canvas position. Use `transform_x` / `transform_y` to move captions on screen. Values `3`/`4`/`5` set the draft material `typesetting` to vertical.
 
 ### Notes on text_effect vs shadow
 
@@ -1314,7 +1327,7 @@ VHS
 
   "text_color": "#ffffff",                     // [Optional] normal text color
   "border_color": "#333333",                   // [Optional] normal stroke color
-  "alignment": 1,                              // [Optional] 0 left / 1 center / 2 right
+  "alignment": 1,                              // [Optional] 0 left / 1 center / 2 right (horizontal); 3/4/5 vertical center/left/right
   "alpha": 1.0,                                // [Optional] opacity [0,1]
   "font": "得意黑",                           // [Optional] font name
   "font_size": 15,                             // [Optional] top-level default font size
