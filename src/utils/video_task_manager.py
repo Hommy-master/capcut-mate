@@ -84,7 +84,7 @@ class VideoGenTaskManager:
 
     每个任务在独立协程中执行：草稿下载由专用线程池执行，并发上限为
     DRAFT_DOWNLOAD_MAX_CONCURRENT，超出部分在线程池队列中排队；
-    剪映 RPA 导出由 export_video_lock 全局串行；COS/OSS 上传在独立线程池中执行，
+    剪映 RPA 导出由 export_video_lock 全局串行；COS/OSS/TOS 上传在独立线程池中执行，
     并发上限为 OBJECT_STORAGE_UPLOAD_MAX_CONCURRENT。
     """
     
@@ -741,7 +741,7 @@ class VideoGenTaskManager:
     
     def _upload_video_to_cos(self, outfile: str) -> Tuple[str, bool]:
         """
-        上传视频到对象存储（优先COS，兜底OSS）
+        上传视频到对象存储（优先 COS，其次 OSS，最后 TOS）
         
         Args:
             outfile: 输出文件路径
