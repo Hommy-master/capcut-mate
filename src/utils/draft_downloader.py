@@ -310,6 +310,113 @@ def _http_get(url: str, **kwargs) -> requests.Response:
     return requests.get(url, headers=headers, **kwargs)
 
 
+# 草稿文件列表里既有 json 元数据，也有音视频/图片。仅后者需要 HTTP Range 断点续传。
+_MEDIA_RESOURCE_EXTENSIONS = frozenset(
+    {
+        ".mp4",
+        ".mov",
+        ".avi",
+        ".mkv",
+        ".webm",
+        ".m4v",
+        ".flv",
+        ".wmv",
+        ".ts",
+        ".mpeg",
+        ".mpg",
+        ".3gp",
+        ".mp3",
+        ".wav",
+        ".aac",
+        ".m4a",
+        ".flac",
+        ".ogg",
+        ".wma",
+        ".aiff",
+        ".aif",
+        ".opus",
+        ".amr",
+        ".jpg",
+        ".jpeg",
+        ".png",
+        ".gif",
+        ".webp",
+        ".bmp",
+        ".tiff",
+        ".tif",
+        ".heic",
+        ".heif",
+        ".ico",
+        ".svg",
+    }
+)
+
+
+def _extract_extension(url_or_path: str) -> str:
+    """从 URL 或本地路径取出小写扩展名（忽略 query）。"""
+    if not url_or_path:
+        return ""
+    path = urlparse(url_or_path).path if "://" in url_or_path else url_or_path
+    return os.path.splitext(path)[1].lower()
+
+
+def _is_media_resource(url_or_path: str) -> bool:
+    """
+    判断是否为需要断点续传的资源文件（视频/图片/音频）。
+
+    json、bin、草稿元数据等返回 False，保持「失败即整文件重下」的原有行为。
+    """
+    return _extract_extension(url_or_path) in _MEDIA_RESOURCE_EXTENSIONS
+
+
+def _local_file_size(path: str) -> int:
+    """返回本地文件字节数；不存在或无法读取时视为 0。"""
+    try:
+        if os.path.isfile(path):
+            return os.path.getsize(path)
+    except OSError:
+        return 0
+    return 0
+
+
+def _resume_request_headers(local_path: str) -> Tuple[Optional[Dict[str, str]], int]:
+    """
+    按本地半成品大小构造 Range 请求头。
+
+    无半成品时返回 (None, 0)，调用方应发普通 GET，请求形态与改造前一致。
+    """
+    size = _local_file_size(local_path)
+    if size <= 0:
+        return None, 0
+    return {"Range": f"bytes={size}-"}, size
+
+
+def _is_download_success_status(status_code: int, resume_from: int) -> bool:
+    """200 始终成功；206 仅在确实携带断点（resume_from>0）时视为续传成功。"""
+    if status_code == 200:
+        return True
+    return status_code == 206 and resume_from > 0
+
+
+def _write_http_body_to_file(
+    response: requests.Response, file_path: str, *, append: bool
+) -> None:
+    """
+    将 HTTP 响应体写入本地文件。
+
+    append=True：断点续传，在已有内容后追加（配合 206）。
+    append=False：覆盖写入（JSON 等非资源，或服务端忽略 Range 返回 200 时的整文件重下）。
+    """
+    parent_dir = os.path.dirname(file_path)
+    if parent_dir:
+        os.makedirs(parent_dir, exist_ok=True)
+    mode = "ab" if append else "wb"
+    with open(file_path, mode) as out:
+        for chunk in response.iter_content(chunk_size=8192):
+            if chunk:
+                out.write(chunk)
+
+
 def _resolve_download_target_path(
     file_url: str, target_dir: str
 ) -> Tuple[str, Optional[str]]:
@@ -715,16 +822,33 @@ def _download_single_file(file_url: str, target_dir: str) -> None:
     retry_count = 0
 
     full_file_path, url_draft_id = _resolve_download_target_path(file_url, target_dir)
+    # 仅视频/图片/音频走 Range 续传；json 等仍每次整文件覆盖下载。
+    enable_resume = _is_media_resource(file_url) or _is_media_resource(full_file_path)
 
     while retry_count <= max_retries:
         try:
-            response = _http_get(
-                file_url,
-                timeout=(_REQUEST_CONNECT_TIMEOUT, _REQUEST_READ_TIMEOUT),
-                stream=True,
-            )
+            extra_headers = None
+            resume_from = 0
+            if enable_resume:
+                extra_headers, resume_from = _resume_request_headers(full_file_path)
+                if resume_from > 0:
+                    logger.info(
+                        "Resume media download from byte %s: %s",
+                        resume_from,
+                        file_url,
+                    )
+
+            get_kwargs = {
+                "timeout": (_REQUEST_CONNECT_TIMEOUT, _REQUEST_READ_TIMEOUT),
+                "stream": True,
+            }
+            # 无半成品时不传 headers，保持与改造前完全相同的 GET 调用形态。
+            if extra_headers:
+                get_kwargs["headers"] = extra_headers
+
+            response = _http_get(file_url, **get_kwargs)
             try:
-                if response.status_code != 200:
+                if not _is_download_success_status(response.status_code, resume_from):
                     if not _is_retryable_http_status(response.status_code):
                         status = response.status_code
                         logger.error(
@@ -763,14 +887,14 @@ def _download_single_file(file_url: str, target_dir: str) -> None:
                     _sleep_transient_http_backoff(retry_count, response)
                     continue
 
-                parent_dir = os.path.dirname(full_file_path)
-                if parent_dir:
-                    os.makedirs(parent_dir, exist_ok=True)
-
-                with open(full_file_path, "wb") as out:
-                    for chunk in response.iter_content(chunk_size=8192):
-                        if chunk:
-                            out.write(chunk)
+                # 206：从断点追加；200：整文件覆盖（含服务端忽略 Range 的情况）。
+                append = response.status_code == 206 and resume_from > 0
+                if resume_from > 0 and response.status_code == 200:
+                    logger.info(
+                        "Server ignored Range, re-downloading from start: %s",
+                        file_url,
+                    )
+                _write_http_body_to_file(response, full_file_path, append=append)
             finally:
                 response.close()
 
@@ -1040,15 +1164,31 @@ def _download_remote_material_raising(
     fallback_ext: str,
 ) -> str:
     """下载 URL 素材；失败抛出 DraftDownloadAbort。"""
+    # 本函数只拉取音视频/图片（含无扩展名的 CDN URL），始终允许断点续传。
+    local_path: Optional[str] = None
     for attempt in range(_MAX_RETRIES + 1):
         response = None
         try:
-            response = _http_get(
-                file_url,
-                timeout=(_REQUEST_CONNECT_TIMEOUT, _REQUEST_READ_TIMEOUT),
-                stream=True,
-            )
-            if response.status_code != 200:
+            extra_headers = None
+            resume_from = 0
+            if local_path:
+                extra_headers, resume_from = _resume_request_headers(local_path)
+                if resume_from > 0:
+                    logger.info(
+                        "Resume remote material from byte %s: %s",
+                        resume_from,
+                        file_url,
+                    )
+
+            get_kwargs = {
+                "timeout": (_REQUEST_CONNECT_TIMEOUT, _REQUEST_READ_TIMEOUT),
+                "stream": True,
+            }
+            if extra_headers:
+                get_kwargs["headers"] = extra_headers
+
+            response = _http_get(file_url, **get_kwargs)
+            if not _is_download_success_status(response.status_code, resume_from):
                 if not _is_retryable_http_status(response.status_code):
                     status = response.status_code
                     logger.error(
@@ -1082,19 +1222,20 @@ def _download_remote_material_raising(
                 response.close()
                 continue
 
-            ext = _infer_ext_from_content_type(
-                response.headers.get("Content-Type"), fallback_ext
-            )
-            filename = _build_material_filename(base_name, ext)
-            local_path = os.path.join(target_dir, "assets", sub_dir, filename)
+            if local_path is None:
+                ext = _infer_ext_from_content_type(
+                    response.headers.get("Content-Type"), fallback_ext
+                )
+                filename = _build_material_filename(base_name, ext)
+                local_path = os.path.join(target_dir, "assets", sub_dir, filename)
 
-            parent_dir = os.path.dirname(local_path)
-            if parent_dir:
-                os.makedirs(parent_dir, exist_ok=True)
-            with open(local_path, "wb") as f:
-                for chunk in response.iter_content(chunk_size=8192):
-                    if chunk:
-                        f.write(chunk)
+            append = response.status_code == 206 and resume_from > 0
+            if resume_from > 0 and response.status_code == 200:
+                logger.info(
+                    "Server ignored Range, re-downloading from start: %s",
+                    file_url,
+                )
+            _write_http_body_to_file(response, local_path, append=append)
             return local_path
         except DraftDownloadAbort:
             raise
@@ -1152,14 +1293,29 @@ def _download_remote_file(file_url: str, local_path: str) -> bool:
 
 def _download_remote_file_raising(file_url: str, local_path: str) -> None:
     """下载单个 URL 素材；失败抛出 DraftDownloadAbort。"""
+    enable_resume = _is_media_resource(file_url) or _is_media_resource(local_path)
     for attempt in range(_MAX_RETRIES + 1):
         try:
-            response = _http_get(
-                file_url,
-                timeout=(_REQUEST_CONNECT_TIMEOUT, _REQUEST_READ_TIMEOUT),
-                stream=True,
-            )
-            if response.status_code != 200:
+            extra_headers = None
+            resume_from = 0
+            if enable_resume:
+                extra_headers, resume_from = _resume_request_headers(local_path)
+                if resume_from > 0:
+                    logger.info(
+                        "Resume remote file from byte %s: %s",
+                        resume_from,
+                        file_url,
+                    )
+
+            get_kwargs = {
+                "timeout": (_REQUEST_CONNECT_TIMEOUT, _REQUEST_READ_TIMEOUT),
+                "stream": True,
+            }
+            if extra_headers:
+                get_kwargs["headers"] = extra_headers
+
+            response = _http_get(file_url, **get_kwargs)
+            if not _is_download_success_status(response.status_code, resume_from):
                 if not _is_retryable_http_status(response.status_code):
                     status = response.status_code
                     logger.error(
@@ -1193,13 +1349,13 @@ def _download_remote_file_raising(file_url: str, local_path: str) -> None:
                 response.close()
                 continue
 
-            parent_dir = os.path.dirname(local_path)
-            if parent_dir:
-                os.makedirs(parent_dir, exist_ok=True)
-            with open(local_path, "wb") as f:
-                for chunk in response.iter_content(chunk_size=8192):
-                    if chunk:
-                        f.write(chunk)
+            append = response.status_code == 206 and resume_from > 0
+            if resume_from > 0 and response.status_code == 200:
+                logger.info(
+                    "Server ignored Range, re-downloading from start: %s",
+                    file_url,
+                )
+            _write_http_body_to_file(response, local_path, append=append)
             return
         except DraftDownloadAbort:
             raise
