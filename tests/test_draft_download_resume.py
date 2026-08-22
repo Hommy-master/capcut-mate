@@ -290,3 +290,4 @@ class TestDownloadRemoteFileResume:
             assert "Range" not in (m_req.get.call_args_list[1].kwargs.get("headers") or {})
             with open(out, "rb") as f:
                 assert f.read() == b"ZZZ"
+

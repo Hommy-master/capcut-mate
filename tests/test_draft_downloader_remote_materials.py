@@ -485,7 +485,7 @@ class TestDownloadSingleFile:
             resp.close.assert_called_once()
 
     def test_gateway_503_retries_until_exhausted(self, no_sleep) -> None:
-        """503 退避重试，耗尽后与网络重试一致共 6 次请求。"""
+        """503 退避重试，耗尽后与网络重试一致共 _MAX_RETRIES+1 次请求。"""
         file_url = f"{self._BASE}/app/output/draft/20251204214904ccb1af38/x.bin"
         with tempfile.TemporaryDirectory() as td:
             resp = self._stream_response([], status=503)
@@ -493,8 +493,8 @@ class TestDownloadSingleFile:
                 m_req.get.return_value = resp
                 m_req.exceptions = requests.exceptions
                 assert dd.download_single_file(file_url, td) is False
-                assert m_req.get.call_count == 6
-            assert resp.close.call_count == 6
+                assert m_req.get.call_count == dd._MAX_RETRIES + 1
+            assert resp.close.call_count == dd._MAX_RETRIES + 1
 
     def test_retries_then_success_on_read_timeout(self, no_sleep) -> None:
         calls: list = []
@@ -540,8 +540,8 @@ class TestDownloadSingleFile:
                 m_req.get.side_effect = requests.exceptions.ConnectionError("down")
                 m_req.exceptions = requests.exceptions
                 assert dd.download_single_file(file_url, td) is False
-                # retry_count 0..5 共 6 次尝试后放弃（与原先 max_retries=5 语义一致）
-                assert m_req.get.call_count == 6
+                # retry_count 0.._MAX_RETRIES 共 _MAX_RETRIES+1 次尝试后放弃
+                assert m_req.get.call_count == dd._MAX_RETRIES + 1
 
     @patch.object(dd, "_update_json_file_paths")
     def test_plain_file_does_not_touch_json_paths(self, m_upd, no_sleep) -> None:

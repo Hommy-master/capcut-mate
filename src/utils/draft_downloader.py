@@ -207,7 +207,7 @@ def _localize_draft_meta_info(target_dir: str, draft_id: str) -> None:
 
 _REQUEST_CONNECT_TIMEOUT = 10
 _REQUEST_READ_TIMEOUT = 30
-_MAX_RETRIES = 5
+_MAX_RETRIES = 10
 _REQUEST_HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -818,14 +818,13 @@ def download_single_file(file_url: str, target_dir: str) -> bool:
 
 def _download_single_file(file_url: str, target_dir: str) -> None:
     """下载单个文件；失败时抛出 DraftDownloadAbort。"""
-    max_retries = 5
     retry_count = 0
 
     full_file_path, url_draft_id = _resolve_download_target_path(file_url, target_dir)
     # 仅视频/图片/音频走 Range 续传；json 等仍每次整文件覆盖下载。
     enable_resume = _is_media_resource(file_url) or _is_media_resource(full_file_path)
 
-    while retry_count <= max_retries:
+    while retry_count <= _MAX_RETRIES:
         try:
             extra_headers = None
             resume_from = 0
@@ -863,17 +862,17 @@ def _download_single_file(file_url: str, target_dir: str) -> None:
                             http_status=status,
                         )
                     retry_count += 1
-                    if retry_count > max_retries:
+                    if retry_count > _MAX_RETRIES:
                         status = response.status_code
                         logger.error(
                             "Transient HTTP %s, download failed after %s retries, URL: %s",
                             status,
-                            max_retries,
+                            _MAX_RETRIES,
                             file_url,
                         )
                         _abort(
                             DraftDownloadFailureKind.NETWORK_RETRY_EXHAUSTED,
-                            detail=f"HTTP {status} after {max_retries} retries",
+                            detail=f"HTTP {status} after {_MAX_RETRIES} retries",
                             url=file_url,
                             http_status=status,
                         )
@@ -881,7 +880,7 @@ def _download_single_file(file_url: str, target_dir: str) -> None:
                         "Transient HTTP %s, retry (%s/%s), URL: %s",
                         response.status_code,
                         retry_count,
-                        max_retries,
+                        _MAX_RETRIES,
                         file_url,
                     )
                     _sleep_transient_http_backoff(retry_count, response)
@@ -916,9 +915,9 @@ def _download_single_file(file_url: str, target_dir: str) -> None:
                     url=file_url,
                 )
             retry_count += 1
-            if retry_count > max_retries:
+            if retry_count > _MAX_RETRIES:
                 logger.error(
-                    f"Network error, download failed after {max_retries} retries: {e}, URL: {file_url}"
+                    f"Network error, download failed after {_MAX_RETRIES} retries: {e}, URL: {file_url}"
                 )
                 _abort(
                     DraftDownloadFailureKind.NETWORK_RETRY_EXHAUSTED,
@@ -926,7 +925,7 @@ def _download_single_file(file_url: str, target_dir: str) -> None:
                     url=file_url,
                 )
             logger.warning(
-                f"Network error, retry ({retry_count}/{max_retries}): {e}, URL: {file_url}"
+                f"Network error, retry ({retry_count}/{_MAX_RETRIES}): {e}, URL: {file_url}"
             )
             _sleep_network_retry_backoff()
         except OSError as e:

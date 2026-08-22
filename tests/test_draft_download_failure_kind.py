@@ -136,7 +136,7 @@ class TestDownloadSingleFileFailureKind:
                 dd._download_single_file(self._URL, "/tmp/unused")
             assert ei.value.kind == dd.DraftDownloadFailureKind.NETWORK_RETRY_EXHAUSTED
             assert ei.value.http_status == 503
-            assert m_req.get.call_count == 6
+            assert m_req.get.call_count == dd._MAX_RETRIES + 1
 
     def test_timeout_exhausted_is_network_retry_exhausted(self, no_sleep) -> None:
         with patch.object(dd, "requests") as m_req:
@@ -145,7 +145,7 @@ class TestDownloadSingleFileFailureKind:
             with pytest.raises(dd.DraftDownloadAbort) as ei:
                 dd._download_single_file(self._URL, "/tmp/unused")
             assert ei.value.kind == dd.DraftDownloadFailureKind.NETWORK_RETRY_EXHAUSTED
-            assert m_req.get.call_count == 6
+            assert m_req.get.call_count == dd._MAX_RETRIES + 1
 
     def test_connection_refused_is_resource_unavailable(self, no_sleep) -> None:
         with patch.object(dd, "requests") as m_req:
