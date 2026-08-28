@@ -1,3 +1,16 @@
+# Copyright 2026 Hommy <taohongmin@sina.cn>.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 import json
 from typing import List, Dict, Any, Tuple, Optional, Literal
 import asyncio
@@ -91,6 +104,28 @@ def resolve_font_type(font_name: str) -> Optional[FontType]:
     return None
 
 
+# alignment → (草稿 alignment 0/1/2, 是否竖排)
+# 0/1/2 为横排左/中/右；3/4/5 为竖排居中/左/右（对齐值分别对应 1/0/2）
+CAPTION_ALIGNMENT_MAP: Dict[int, Tuple[Literal[0, 1, 2], bool]] = {
+    0: (0, False),
+    1: (1, False),
+    2: (2, False),
+    3: (1, True),
+    4: (0, True),
+    5: (2, True),
+}
+
+
+def resolve_caption_alignment(alignment: int) -> Tuple[Literal[0, 1, 2], bool]:
+    """将接口 alignment 映射为草稿字段 (align, vertical)。
+
+    0 左对齐、1 居中、2 右对齐（横排）；
+    3 垂直居中、4 垂直左对齐、5 垂直右对齐（竖排）。
+    未识别的值回退为横排左对齐，与历史实现一致。
+    """
+    return CAPTION_ALIGNMENT_MAP.get(alignment, (0, False))
+
+
 def add_captions(
     draft_url: str,
     captions: str,
@@ -128,7 +163,10 @@ def add_captions(
                     "keyword": "好",  # 关键词（用 | 分隔多个关键词），可选参数
                     "keyword_color": "#457616",  # 关键词颜色，可选参数
                     "keyword_border_color": "#000000",  # 关键词边框颜色，可选参数
-                    "keyword_font_size": 15,  # 关键词字体大小，可选参数
+                    "keyword_font": None,  # 关键词字体，可选参数；未指定则与整段 font 一致
+                    "keyword_font_size": None,  # 关键词字体大小，可选参数；未指定则与正文 size 一致
+                    "keyword_has_shadow": False,  # 是否启用关键词阴影，可选参数
+                    "keyword_shadow_info": None,  # 关键词阴影参数，可选参数
                     "font_size": 15,  # 文本字体大小，可选参数
                     "in_animation": None,  # 入场动画，可选参数
                     "out_animation": None,  # 出场动画，可选参数
@@ -140,7 +178,7 @@ def add_captions(
             ]
         text_color: 文本颜色（十六进制），默认"#ffffff"
         border_color: 边框颜色（十六进制），默认 None
-        alignment: 文本对齐方式（0-5），默认 1
+        alignment: 文本对齐方式，0左/1中/2右（横排），3垂直居中/4垂直左/5垂直右（竖排），默认 1
         alpha: 文本透明度（0.0-1.0），默认 1.0
         font: 字体名称，默认 None
         font_size: 字体大小，默认 15
@@ -227,7 +265,7 @@ def add_captions(
                     bold=bold,
                     has_shadow=has_shadow,
                     shadow_info=shadow_info,
-                    text_effect=text_effect
+                    text_effect=text_effect,
                 )
                 segment_ids.append(segment_id)
                 text_ids.append(text_id)
@@ -299,7 +337,7 @@ async def add_captions_async(
         captions: JSON 字符串，包含字幕信息列表，详见 add_captions 函数
         text_color: 文本颜色（十六进制），默认"#ffffff"
         border_color: 边框颜色（十六进制），默认 None
-        alignment: 文本对齐方式（0-5），默认 1
+        alignment: 文本对齐方式，0左/1中/2右（横排），3垂直居中/4垂直左/5垂直右（竖排），默认 1
         alpha: 文本透明度（0.0-1.0），默认 1.0
         font: 字体名称，默认 None
         font_size: 字体大小，默认 15
@@ -403,7 +441,7 @@ def add_caption_to_draft(
     bold: bool = False,
     has_shadow: bool = False,
     shadow_info: Optional[ShadowInfo] = None,
-    text_effect: Optional[str] = None
+    text_effect: Optional[str] = None,
 ) -> Tuple[str, str, dict]:
     """
     向剪映草稿中添加单个字幕
@@ -418,7 +456,10 @@ def add_caption_to_draft(
             keyword: 关键词（用 | 分隔多个关键词），可选
             keyword_color: 关键词颜色，可选
             keyword_border_color: 关键词边框颜色，可选
-            keyword_font_size: 关键词字体大小，可选
+            keyword_font: 关键词字体名称，可选（未指定则与整段 font 一致）
+            keyword_font_size: 关键词字体大小，可选（未指定则与本条普通文本字号一致）
+            keyword_has_shadow: 是否启用关键词阴影，可选
+            keyword_shadow_info: 关键词阴影参数，可选
             font_size: 文本字体大小，可选
             in_animation: 入场动画，可选
             out_animation: 出场动画，可选
@@ -428,7 +469,7 @@ def add_caption_to_draft(
             loop_animation_duration: 循环动画时长，可选
         text_color: 文本颜色（十六进制），默认"#ffffff"
         border_color: 边框颜色（十六进制），默认 None
-        alignment: 文本对齐方式（0-5），默认 1
+        alignment: 文本对齐方式，0左/1中/2右（横排），3垂直居中/4垂直左/5垂直右（竖排），默认 1
         alpha: 文本透明度（0.0-1.0），默认 1.0
         font: 字体名称，默认 None
         font_size: 字体大小，默认 15
@@ -460,6 +501,7 @@ def add_caption_to_draft(
 
         # 0. 在函数开头统一处理参数约束：
         # 当花字有效时，直接将 text_color / border_color / has_shadow 重置为默认值
+        disable_keyword_shadow = False
         if text_effect:
             try:
                 if resolve_text_effect(text_effect):
@@ -470,6 +512,7 @@ def add_caption_to_draft(
                     text_color = "#ffffff"
                     border_color = None
                     has_shadow = False
+                    disable_keyword_shadow = True
                 else:
                     logger.warning(f"Text effect not found: {text_effect}")
             except Exception as e:
@@ -483,11 +526,7 @@ def add_caption_to_draft(
         rgb_color = hex_to_rgb(text_color)
         
         # 3. 创建文本样式
-        align_value: Literal[0, 1, 2] = 0
-        if alignment == 1:
-            align_value = 1
-        elif alignment == 2:
-            align_value = 2
+        align_value, is_vertical = resolve_caption_alignment(alignment)
         
         # 根据需求修改：只有当caption中明确指定了font_size时才使用，否则不设置默认值
         font_size_value = font_size
@@ -500,6 +539,7 @@ def add_caption_to_draft(
             color=rgb_color,
             alpha=alpha,
             align=align_value,
+            vertical=is_vertical,
             letter_spacing=int(letter_spacing) if letter_spacing is not None else 0,
             line_spacing=int(line_spacing) if line_spacing is not None else 0,
             auto_wrapping=True,  # 字幕默认开启自动换行
@@ -507,7 +547,11 @@ def add_caption_to_draft(
             italic=italic,
             bold=bold
         )
-        logger.info(f"Created text style, text_style.size: {text_style.size}, font_size from caption: {font_size}")
+        logger.info(
+            f"Created text style, text_style.size: {text_style.size}, "
+            f"align: {text_style.align}, vertical: {text_style.vertical}, "
+            f"font_size from caption: {font_size}"
+        )
         
         # 4. 创建文本描边（如果提供了border_color）
         text_border = None
@@ -579,7 +623,7 @@ def add_caption_to_draft(
             except Exception as e:
                 logger.error(f"Failed to add text effect '{text_effect}': {str(e)}")
         
-        # 11. 处理动画效果
+        # 11. 处理关键词高亮（颜色/描边/字号/阴影均在同一字幕的 styles 分区内完成，不另建片段）
         if caption.get('keyword'):
             keyword_color = caption.get('keyword_color', '#ff7100')  # 默认橙色
             keyword_rgb_color = hex_to_rgb(keyword_color)
@@ -592,11 +636,63 @@ def add_caption_to_draft(
                 keyword_border_rgb_color = hex_to_rgb(border_color)
             else:
                 keyword_border_rgb_color = None
-            # 应用关键词颜色和字体大小到文本样式中
-            apply_keyword_highlight(text_segment, caption['keyword'], keyword_rgb_color, keyword_font_size, keyword_border_rgb_color)
-            logger.info(f"Applied keyword highlighting: {caption['keyword']} with color {keyword_color}, font size {keyword_font_size}, border color {keyword_border_color or border_color}")
+
+            keyword_font_meta = None
+            keyword_font_name = caption.get('keyword_font')
+            if keyword_font_name:
+                keyword_font_type = resolve_font_type(keyword_font_name)
+                if keyword_font_type is None:
+                    logger.warning(
+                        f"Keyword font '{keyword_font_name}' not found, "
+                        f"falling back to caption font"
+                    )
+                else:
+                    keyword_font_meta = keyword_font_type.value
+
+            keyword_has_shadow = bool(caption.get('keyword_has_shadow', False))
+            if disable_keyword_shadow:
+                keyword_has_shadow = False
+            keyword_shadow_info = caption.get('keyword_shadow_info')
+
+            if keyword_has_shadow:
+                # 与 keyword_color / keyword_border_color 一样：在同一段字幕内用互不重叠的 styles 分区表达。
+                # 有关键词阴影时改用完整分区，避免「全量 base + 局部 shadows」被剪映当成整段阴影。
+                normal_shadows = None
+                if has_shadow and text_shadow is not None:
+                    normal_shadows = [text_shadow.export_json()]
+                    # 阴影已写入各 style 分区，清除素材级 shadow，避免再强制写到 styles[0]
+                    text_segment.shadow = None
+                apply_keyword_partitioned_styles(
+                    text_segment,
+                    caption['keyword'],
+                    keyword_rgb_color,
+                    keyword_font_size,
+                    keyword_border_rgb_color,
+                    keyword_shadows=_shadow_info_to_export_list(keyword_shadow_info),
+                    normal_shadows=normal_shadows,
+                    normal_border_rgb=(
+                        hex_to_rgb(border_color) if border_color else None
+                    ),
+                    keyword_font_meta=keyword_font_meta,
+                )
+            else:
+                apply_keyword_highlight(
+                    text_segment,
+                    caption['keyword'],
+                    keyword_rgb_color,
+                    keyword_font_size,
+                    keyword_border_rgb_color,
+                    keyword_font_meta=keyword_font_meta,
+                )
+
+            logger.info(
+                f"Applied keyword highlighting: {caption['keyword']} with color {keyword_color}, "
+                f"font {keyword_font_name}, font size {keyword_font_size}, "
+                f"border color {keyword_border_color or border_color}, "
+                f"has_shadow {keyword_has_shadow}"
+            )
         
-        # 10. 处理动画效果
+        # 12. 处理动画效果
         if caption.get('in_animation'):
             in_animation_name = caption['in_animation']
             in_animation_enum = map_animation_name_to_enum(in_animation_name, "in")
@@ -639,10 +735,10 @@ def add_caption_to_draft(
             else:
                 logger.warning(f"Loop animation not found: {loop_animation_name}")
 
-        # 12. 向指定轨道添加片段
+        # 13. 向指定轨道添加片段
         script.add_segment(text_segment, track_name)
 
-        # 13. 构造片段信息
+        # 14. 构造片段信息
         segment_info = {
             "id": text_segment.segment_id,
             "start": caption['start'],
@@ -660,40 +756,244 @@ def add_caption_to_draft(
         raise CustomException(CustomError.CAPTION_ADD_FAILED)
 
 
-def apply_keyword_highlight(text_segment: TextSegment, keywords: str, keyword_color: tuple, keyword_font_size: float = None, keyword_border_color: tuple = None):
-    """
-    应用关键词高亮到文本片段
-    
-    Args:
-        text_segment: 文本片段对象
-        keywords: 关键词字符串，用'|'分隔多个关键词
-        keyword_color: 关键词颜色的RGB元组 (0-1范围)
-        keyword_font_size: 关键词字体大小，默认为None，使用文本默认字体大小
-        keyword_border_color: 关键词边框颜色的RGB元组 (0-1范围)，默认为None
-    """
-    # 分割关键词
-    keyword_list = keywords.split('|')
-    text = text_segment.text
-    
-    # 使用关键词字体大小，如果没有指定则使用文本默认字体大小
-    font_size = keyword_font_size if keyword_font_size is not None else text_segment.style.size
-    
-    # 为每个关键词创建高亮样式
+def _shadow_info_to_export_list(shadow_info: Optional[dict] = None) -> List[dict]:
+    """将 keyword_shadow_info / 默认阴影转为 styles[].shadows 数组。"""
+    return [_build_text_shadow(shadow_info).export_json()]
+
+
+def _find_keyword_ranges(text: str, keywords: str) -> List[Tuple[int, int]]:
+    """按关键词长度优先匹配，返回不重叠的 [start, end) 字符下标区间。"""
+    keyword_list = sorted(
+        (kw.strip() for kw in keywords.split('|') if kw.strip()),
+        key=len,
+        reverse=True,
+    )
+    used = set()
+    ranges: List[Tuple[int, int]] = []
     for keyword in keyword_list:
-        keyword = keyword.strip()
-        if not keyword:
-            continue
-            
-        # 查找所有匹配的关键词位置
         start_pos = 0
         while start_pos < len(text):
             start_pos = text.find(keyword, start_pos)
             if start_pos == -1:
                 break
-                
             end_pos = start_pos + len(keyword)
-            
-            # 创建关键词高亮样式
+            if any(i in used for i in range(start_pos, end_pos)):
+                start_pos = end_pos
+                continue
+            ranges.append((start_pos, end_pos))
+            used.update(range(start_pos, end_pos))
+            start_pos = end_pos
+    ranges.sort(key=lambda item: item[0])
+    return ranges
+
+
+def _font_style_json(font_meta) -> Optional[dict]:
+    """将 EffectMeta 转为 styles[].font 结构。"""
+    if font_meta is None:
+        return None
+    return {
+        "id": font_meta.resource_id,
+        "path": "D:",
+    }
+
+
+def _build_style_partition(
+    start: int,
+    end: int,
+    *,
+    color: tuple,
+    font_size: float,
+    bold: bool,
+    italic: bool,
+    underline: bool,
+    border_rgb: Optional[tuple] = None,
+    shadows: Optional[List[dict]] = None,
+    include_shadow_field: bool = False,
+    font_meta=None,
+) -> dict:
+    """构造单个互不重叠的 style 分区（range 使用字符下标，与 keyword_color 历史行为一致）。"""
+    style = {
+        "fill": {
+            "alpha": 1.0,
+            "content": {
+                "render_type": "solid",
+                "solid": {
+                    "alpha": 1.0,
+                    "color": list(color),
+                },
+            },
+        },
+        "range": [start, end],
+        "size": font_size,
+        "bold": bold,
+        "italic": italic,
+        "underline": underline,
+        "strokes": [],
+    }
+    if border_rgb is not None:
+        style["strokes"] = [{
+            "content": {
+                "solid": {
+                    "alpha": 1.0,
+                    "color": list(border_rgb),
+                }
+            },
+            "width": 0.08,
+        }]
+    if include_shadow_field:
+        style["shadows"] = list(shadows) if shadows else []
+    font_json = _font_style_json(font_meta)
+    if font_json is not None:
+        style["font"] = font_json
+    return style
+
+
+def apply_keyword_partitioned_styles(
+    text_segment: TextSegment,
+    keywords: str,
+    keyword_color: tuple,
+    keyword_font_size: float = None,
+    keyword_border_color: tuple = None,
+    keyword_shadows: Optional[List[dict]] = None,
+    normal_shadows: Optional[List[dict]] = None,
+    normal_border_rgb: Optional[tuple] = None,
+    keyword_font_meta=None,
+):
+    """
+    用互不重叠的 styles 分区表达关键词样式（含可选局部阴影）。
+
+    与 add_text_style / keyword_color 相同：仍是同一条字幕，不新建片段。
+    当需要关键词阴影时，必须用完整分区，而不能「全量 base + 局部 shadows 叠加」，
+    否则剪映容易把阴影作用到整段文字。
+    """
+    text = text_segment.text
+    font_size = keyword_font_size if keyword_font_size is not None else text_segment.style.size
+    keyword_ranges = _find_keyword_ranges(text, keywords)
+    include_shadow_field = bool(keyword_shadows or normal_shadows)
+    # 关键词字体优先；未指定则与整段字幕字体一致
+    keyword_font = keyword_font_meta if keyword_font_meta is not None else text_segment.font
+    normal_font = text_segment.font
+
+    styles: List[dict] = []
+    cursor = 0
+    for start, end in keyword_ranges:
+        if cursor < start:
+            styles.append(_build_style_partition(
+                cursor,
+                start,
+                color=text_segment.style.color,
+                font_size=text_segment.style.size,
+                bold=text_segment.style.bold,
+                italic=text_segment.style.italic,
+                underline=text_segment.style.underline,
+                border_rgb=normal_border_rgb,
+                shadows=normal_shadows,
+                include_shadow_field=include_shadow_field,
+                font_meta=normal_font,
+            ))
+        styles.append(_build_style_partition(
+            start,
+            end,
+            color=keyword_color,
+            font_size=font_size,
+            bold=text_segment.style.bold,
+            italic=text_segment.style.italic,
+            underline=text_segment.style.underline,
+            border_rgb=keyword_border_color,
+            shadows=keyword_shadows,
+            include_shadow_field=include_shadow_field,
+            font_meta=keyword_font,
+        ))
+        cursor = end
+
+    if cursor < len(text):
+        styles.append(_build_style_partition(
+            cursor,
+            len(text),
+            color=text_segment.style.color,
+            font_size=text_segment.style.size,
+            bold=text_segment.style.bold,
+            italic=text_segment.style.italic,
+            underline=text_segment.style.underline,
+            border_rgb=normal_border_rgb,
+            shadows=normal_shadows,
+            include_shadow_field=include_shadow_field,
+            font_meta=normal_font,
+        ))
+
+    if not styles:
+        styles.append(_build_style_partition(
+            0,
+            len(text),
+            color=text_segment.style.color,
+            font_size=text_segment.style.size,
+            bold=text_segment.style.bold,
+            italic=text_segment.style.italic,
+            underline=text_segment.style.underline,
+            border_rgb=normal_border_rgb,
+            shadows=normal_shadows,
+            include_shadow_field=include_shadow_field,
+            font_meta=normal_font,
+        ))
+
+    text_segment.extra_styles = styles
+    text_segment.use_extra_styles_only = True
+
+
+def _build_text_shadow(shadow_info: Optional[dict] = None) -> TextShadow:
+    """根据 shadow_info（或默认值）构造 TextShadow。"""
+    if shadow_info is None:
+        return TextShadow(
+            alpha=0.9,
+            color=hex_to_rgb("#000000"),
+            diffuse=15.0,
+            distance=5.0,
+            angle=-45.0,
+        )
+    return TextShadow(
+        alpha=float(shadow_info.get("shadow_alpha", 1.0)),
+        color=hex_to_rgb(str(shadow_info.get("shadow_color", "#000000"))),
+        diffuse=float(shadow_info.get("shadow_diffuse", 15.0)),
+        distance=float(shadow_info.get("shadow_distance", 5.0)),
+        angle=float(shadow_info.get("shadow_angle", -45.0)),
+    )
+
+
+def apply_keyword_highlight(
+    text_segment: TextSegment,
+    keywords: str,
+    keyword_color: tuple,
+    keyword_font_size: float = None,
+    keyword_border_color: tuple = None,
+    keyword_has_shadow: bool = False,
+    keyword_shadow_info: Optional[dict] = None,
+    keyword_font_meta=None,
+):
+    """
+    应用关键词高亮到文本片段（颜色 / 字号 / 描边 / 字体）。
+
+    与历史行为一致：在同一字幕上追加 extra_styles，range 使用字符下标。
+    关键词阴影请走 apply_keyword_partitioned_styles。
+    """
+    del keyword_has_shadow, keyword_shadow_info
+
+    keyword_list = keywords.split('|')
+    text = text_segment.text
+    font_size = keyword_font_size if keyword_font_size is not None else text_segment.style.size
+    keyword_font_json = _font_style_json(keyword_font_meta)
+
+    for keyword in keyword_list:
+        keyword = keyword.strip()
+        if not keyword:
+            continue
+
+        start_pos = 0
+        while start_pos < len(text):
+            start_pos = text.find(keyword, start_pos)
+            if start_pos == -1:
+                break
+
+            end_pos = start_pos + len(keyword)
             highlight_style = {
                 "fill": {
                     "alpha": 1.0,
@@ -701,22 +1001,18 @@ def apply_keyword_highlight(text_segment: TextSegment, keywords: str, keyword_co
                         "render_type": "solid",
                         "solid": {
                             "alpha": 1.0,
-                            "color": list(keyword_color)  # 使用关键词颜色
+                            "color": list(keyword_color)
                         }
                     }
                 },
                 "range": [start_pos, end_pos],
-                "size": font_size,  # 使用关键词字体大小
+                "size": font_size,
                 "bold": text_segment.style.bold,
                 "italic": text_segment.style.italic,
                 "underline": text_segment.style.underline
             }
-            
-            # 处理关键词边框颜色：当keyword_border_color不为None时添加描边
-            # keyword_border_color的值由调用方决定：优先使用keyword_border_color参数，否则使用border_color
+
             if keyword_border_color is not None:
-                # 使用指定的关键词边框颜色创建描边
-                # 注意：剪映的stroke格式需要包含content.solid结构
                 highlight_style["strokes"] = [{
                     "content": {
                         "solid": {
@@ -724,11 +1020,17 @@ def apply_keyword_highlight(text_segment: TextSegment, keywords: str, keyword_co
                             "color": list(keyword_border_color)
                         }
                     },
-                    "width": 0.08  # 默认边框宽度（与剪映内部表示一致）
+                    "width": 0.08
                 }]
-            # 注意：当keyword_border_color为None时（即既没有指定keyword_border_color也没有指定border_color），不添加描边
-            
-            # 添加到文本片段的额外样式中
+
+            if keyword_font_json is not None:
+                highlight_style["font"] = dict(keyword_font_json)
+            else:
+                # 未指定 keyword_font 时显式沿用主体字幕字体，避免仅改字号时丢字体
+                body_font_json = _font_style_json(text_segment.font)
+                if body_font_json is not None:
+                    highlight_style["font"] = dict(body_font_json)
+
             text_segment.extra_styles.append(highlight_style)
             start_pos = end_pos
 
@@ -747,7 +1049,10 @@ def parse_captions_data(json_str: str) -> List[Dict[str, Any]]:
                 "keyword": "好",  # [可选] 关键词（用|分隔多个关键词）
                 "keyword_color": "#457616",  # [可选] 关键词颜色，默认"#ff7100"
                 "keyword_border_color": "#000000",  # [可选] 关键词边框颜色，默认None
-                "keyword_font_size": 15,  # [可选] 关键词字体大小，默认15
+                "keyword_font": None,  # [可选] 关键词字体，默认与整段 font 一致
+                "keyword_font_size": None,  # [可选] 关键词字体大小，默认与正文 size 一致
+                "keyword_has_shadow": False,  # [可选] 是否启用关键词阴影，默认False
+                "keyword_shadow_info": None,  # [可选] 关键词阴影参数，默认None
                 "font_size": 15,  # [可选] 文本字体大小，默认15
                 "in_animation": None,  # [可选] 入场动画，默认None
                 "out_animation": None,  # [可选] 出场动画，默认None
@@ -800,7 +1105,10 @@ def parse_captions_data(json_str: str) -> List[Dict[str, Any]]:
             "keyword": item.get("keyword", None),
             "keyword_color": item.get("keyword_color", "#ff7100"),
             "keyword_border_color": item.get("keyword_border_color", None),
-            "keyword_font_size": item.get("keyword_font_size", 15),
+            "keyword_font": item.get("keyword_font", None),
+            "keyword_font_size": item.get("keyword_font_size", None),
+            "keyword_has_shadow": bool(item.get("keyword_has_shadow", False)),
+            "keyword_shadow_info": _normalize_keyword_shadow_info(item.get("keyword_shadow_info")),
             "font_size": item.get("font_size", None),
             "in_animation": item.get("in_animation", None),
             "out_animation": item.get("out_animation", None),
@@ -818,22 +1126,68 @@ def parse_captions_data(json_str: str) -> List[Dict[str, Any]]:
         if not isinstance(processed_item["end"], (int, float)) or processed_item["end"] <= processed_item["start"]:
             logger.error(f"the {i}th item has invalid end time: {processed_item['end']}")
             raise CustomException(CustomError.INVALID_CAPTION_INFO, f"the {i}th item has invalid end time")
+
+        # 将时间转换为整数（微秒），兼容 start/end 为小数的情况
+        processed_item["start"] = int(processed_item["start"])
+        processed_item["end"] = int(processed_item["end"])
+        if processed_item["end"] <= processed_item["start"]:
+            logger.error(
+                f"the {i}th item has invalid end time after int conversion: "
+                f"start={processed_item['start']}, end={processed_item['end']}"
+            )
+            raise CustomException(CustomError.INVALID_CAPTION_INFO, f"the {i}th item has invalid end time")
         
         if not isinstance(processed_item["text"], str) or len(processed_item["text"].strip()) == 0:
             logger.error(f"the {i}th item has invalid text: {processed_item['text']}")
             raise CustomException(CustomError.INVALID_CAPTION_INFO, f"the {i}th item has invalid text")
         
-        # 验证keyword_font_size参数
+        # 验证keyword_font_size参数；未传或非法时置为 None，应用时回退正文 size
         if processed_item["keyword_font_size"] is not None and (
-                not isinstance(processed_item["keyword_font_size"], (int, float)) or 
+                not isinstance(processed_item["keyword_font_size"], (int, float)) or
                 processed_item["keyword_font_size"] <= 0):
-            logger.warning(f"the {i}th item has invalid keyword_font_size: {processed_item['keyword_font_size']}, using default value 15")
-            processed_item["keyword_font_size"] = 15
+            logger.warning(
+                f"the {i}th item has invalid keyword_font_size: {processed_item['keyword_font_size']}, "
+                f"falling back to caption font size"
+            )
+            processed_item["keyword_font_size"] = None
+
+        if processed_item["keyword_font"] is not None:
+            if not isinstance(processed_item["keyword_font"], str) or not processed_item["keyword_font"].strip():
+                processed_item["keyword_font"] = None
+            else:
+                processed_item["keyword_font"] = processed_item["keyword_font"].strip()
         
         result.append(processed_item)
     
     logger.info(f"Successfully parsed {len(result)} caption items")
     return result
+
+
+def _normalize_keyword_shadow_info(shadow_info: Any) -> Optional[Dict[str, Any]]:
+    """将关键词阴影参数规范化为与 ShadowInfo 一致的字典。"""
+    if shadow_info is None:
+        return None
+
+    if isinstance(shadow_info, ShadowInfo):
+        return {
+            "shadow_alpha": shadow_info.shadow_alpha,
+            "shadow_color": shadow_info.shadow_color,
+            "shadow_diffuse": shadow_info.shadow_diffuse,
+            "shadow_distance": shadow_info.shadow_distance,
+            "shadow_angle": shadow_info.shadow_angle,
+        }
+
+    if not isinstance(shadow_info, dict):
+        logger.warning(f"Invalid keyword_shadow_info type: {type(shadow_info)}, ignoring")
+        return None
+
+    return {
+        "shadow_alpha": float(shadow_info.get("shadow_alpha", 1.0)),
+        "shadow_color": str(shadow_info.get("shadow_color", "#000000")),
+        "shadow_diffuse": float(shadow_info.get("shadow_diffuse", 15.0)),
+        "shadow_distance": float(shadow_info.get("shadow_distance", 5.0)),
+        "shadow_angle": float(shadow_info.get("shadow_angle", -45.0)),
+    }
 
 
 def map_animation_name_to_enum(animation_name: str, animation_type: str):

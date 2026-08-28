@@ -29,7 +29,7 @@ Generate video information based on video URLs and timelines. This interface con
   "height": 1080,
   "width": 1920,
   "mask": "circle",
-  "transition": "cross_fade",
+  "transition": "叠化",
   "transition_duration": 300000,
   "volume": 1.0
 }
@@ -44,9 +44,13 @@ Generate video information based on video URLs and timelines. This interface con
 | height | number |❌ | 1080 | Video height |
 | width | number |❌ | 1920 | Video width |
 | mask | string |❌ | None | Mask type |
-| transition | string |❌ | None | Transition effect |
+| transition | string |❌ | None | Transition name; see [add_videos](./add_videos.md) |
 | transition_duration | number |❌ | 300000 | Transition duration (microseconds) |
 | volume | number |❌ | 1.0 | Volume level (0.0-2.0) |
+
+### Available Transition Names
+
+For the full list of valid `transition` values, see [add_videos](./add_videos.md) → Supported Transition Names. For intro/outro/loop clip animations, see [add_images](./add_images.md).
 
 ## Response Format
 
@@ -54,7 +58,7 @@ Generate video information based on video URLs and timelines. This interface con
 
 ```json
 {
-  "infos": "[{\"video_url\":\"https://assets.jcaigc.cn/video1.mp4\",\"start\":0,\"end\":3000000,\"duration\":5000000,\"height\":1080,\"width\":1920,\"mask\":\"circle\",\"transition\":\"cross_fade\",\"transition_duration\":300000,\"volume\":1.0},{\"video_url\":\"https://assets.jcaigc.cn/video2.mp4\",\"start\":3000000,\"end\":6000000,\"duration\":5000000,\"height\":1080,\"width\":1920,\"mask\":\"circle\",\"transition\":\"cross_fade\",\"transition_duration\":300000,\"volume\":1.0}]"
+  "infos": "[{\"video_url\":\"https://assets.jcaigc.cn/video1.mp4\",\"start\":0,\"end\":3000000,\"duration\":5000000,\"height\":1080,\"width\":1920,\"mask\":\"circle\",\"transition\":\"叠化\",\"transition_duration\":300000,\"volume\":1.0},{\"video_url\":\"https://assets.jcaigc.cn/video2.mp4\",\"start\":3000000,\"end\":6000000,\"duration\":5000000,\"height\":1080,\"width\":1920,\"mask\":\"circle\",\"transition\":\"叠化\",\"transition_duration\":300000,\"volume\":1.0}]"
 }
 ```
 
@@ -98,7 +102,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/video_infos \
     "video_urls": ["https://assets.jcaigc.cn/clip1.mp4", "https://assets.jcaigc.cn/clip2.mp4"],
     "timelines": [{"start": 0, "end": 3000000}, {"start": 3000000, "end": 6000000}],
     "mask": "circle",
-    "transition": "cross_fade",
+    "transition": "叠化",
     "volume": 0.8
   }'
 ```

@@ -100,7 +100,11 @@ function MainPage() {
     try {
       const jsonData = await electronService.getUrlJsonData(value);
       if (jsonData?.code !== 0 || !jsonData?.files) {
-        toast.error("获取文件列表失败，请确保您输入的地址可正常访问");
+        toast.error(
+          jsonData?.message
+            ? `获取文件列表失败：${jsonData.message}`
+            : "获取文件列表失败，请确保您输入的地址可正常访问"
+        );
         return;
       }
 

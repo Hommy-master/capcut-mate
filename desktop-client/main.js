@@ -4,6 +4,12 @@ const logger = require('./nodeapi/logger');
 
 // 引入IPC处理程序模块
 const { setupIpcHandlers } = require('./nodeapi/ipcHandlers');
+const { attachEditContextMenu } = require('./nodeapi/editContextMenu');
+
+// Windows 任务栏 / 快捷方式图标依赖 AppUserModelId，需与 electron-builder appId 一致
+if (process.platform === 'win32') {
+  app.setAppUserModelId('com.gogoshine.capcut-mate');
+}
 
 let mainWindow;
 let ipcHandlersInitialized = false;
@@ -101,6 +107,7 @@ function isExternalUrl(url) {
 
 // 全局拦截所有 webContents 的新窗口打开行为
 app.on('web-contents-created', (event, contents) => {
+  attachEditContextMenu(contents);
   contents.setWindowOpenHandler(({ url }) => {
     if (isExternalUrl(url)) {
       shell.openExternal(url);

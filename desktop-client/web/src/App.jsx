@@ -13,15 +13,17 @@ import "./styles/index.less";
 import { ToastContainer } from "react-toastify";
 
 import TopHeader from "./components/Header";
+import Footer from "./components/Footer";
 import HistoryPage from "./pages/History";
 import MainPage from "./pages/Download";
 import ConfigCenter from "./pages/ConfigCenter";
 import { useEffect, useState } from "react";
 import { fetchAppVersion } from "./utils/const";
+import { version as fallbackVersion } from "../package.json";
 
 function App() {
   const [selectedTab, setSelectedTab] = useState("download");
-  const [appVersion, setAppVersion] = useState("");
+  const [appVersion, setAppVersion] = useState(fallbackVersion);
 
   useEffect(() => {
     fetchAppVersion().then((version) => setAppVersion(version));
@@ -45,7 +47,7 @@ function App() {
             <Route path="/config" element={<ConfigCenter />} />
           </Routes> */}
       </div>
-      <div className="app-footer">当前版本号：v{appVersion}</div>
+      <Footer appVersion={appVersion} />
       <ToastContainer style={{ top: "55px" }} />
       {/* </Router> */}
     </div>

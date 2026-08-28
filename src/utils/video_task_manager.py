@@ -1,4 +1,4 @@
-""" 
+﻿""" 
 视频生成异步任务队列管理器
 支持任务排队、状态跟踪和结果查询
 """
@@ -8,10 +8,11 @@ import threading
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from enum import Enum
-from typing import Dict, Optional, Tuple, Any
-from dataclasses import dataclass
+from typing import Dict, List, Optional, Tuple, Any
+from dataclasses import dataclass, field
 from src.utils.logger import logger
 from src.utils import helper
+from src.utils.deferred_delete import enqueue_path, enqueue_paths
 from src.utils.video_task_store import (
     get_completed_by_draft_id,
     prune_if_needed,
@@ -20,7 +21,6 @@ from src.utils.video_task_store import (
 import src.pyJianYingDraft as draft
 import config
 import os
-import shutil
 import sys
 import subprocess
 import json
@@ -33,6 +33,14 @@ DRAFT_DOWNLOAD_MAX_CONCURRENT = 3
 
 # gen_video：上传到对象存储的最大并发，超出部分在 _upload_executor 队列中排队
 OBJECT_STORAGE_UPLOAD_MAX_CONCURRENT = 2
+
+# original_path 为 None 导致 shutil.move 失败时，仅重试导出阶段（复用已下载草稿）的额外次数
+EXPORT_RENAME_SRC_NONE_MAX_RETRIES = 2
+EXPORT_RENAME_SRC_NONE_ERROR_MARKER = (
+    "rename: src should be string, bytes or os.PathLike, not NoneType"
+)
+# UI Automation COM 瞬时错误（窗口切换/元素失效）时，额外重试导出阶段的次数
+EXPORT_COM_UIA_MAX_RETRIES = 2
 
 # 如果是Linux系统，则不导入uiautomation，并避免执行相关代码
 try:
@@ -68,6 +76,7 @@ class VideoGenTask:
     progress: int = 0  # 进度百分比 0-100
     api_key: Optional[str] = None  # 存储API密钥用于计费
     outfile: str = ""  # 导出目标路径，在下载阶段生成
+    export_outfile_history: List[str] = field(default_factory=list)  # 含重试产生的历史路径
 
 
 class VideoGenTaskManager:
@@ -75,7 +84,7 @@ class VideoGenTaskManager:
 
     每个任务在独立协程中执行：草稿下载由专用线程池执行，并发上限为
     DRAFT_DOWNLOAD_MAX_CONCURRENT，超出部分在线程池队列中排队；
-    剪映 RPA 导出由 export_video_lock 全局串行；COS/OSS 上传在独立线程池中执行，
+    剪映 RPA 导出由 export_video_lock 全局串行；COS/OSS/TOS 上传在独立线程池中执行，
     并发上限为 OBJECT_STORAGE_UPLOAD_MAX_CONCURRENT。
     """
     
@@ -300,7 +309,7 @@ class VideoGenTaskManager:
             task.error_message = str(e)
             task.progress = 0
             logger.exception(f"Upload/finalize exception: {task.draft_url}, error: {e}")
-            self._cleanup_files(getattr(task, "outfile", "") or "", task.draft_id)
+            self._cleanup_files(task)
         finally:
             self._persist_terminal_task(task)
 
@@ -328,7 +337,7 @@ class VideoGenTaskManager:
                 task.error_message = prep_error
                 task.progress = 0
                 logger.error(f"Task failed: {task.draft_url}, error: {prep_error}")
-                self._cleanup_files(task.outfile, task.draft_id)
+                self._cleanup_files(task)
                 self._persist_terminal_task(task)
                 return
 
@@ -341,8 +350,12 @@ class VideoGenTaskManager:
                 task.status = TaskStatus.FAILED
                 task.error_message = export_error
                 task.progress = 0
-                logger.error(f"Task failed: {task.draft_url}, error: {export_error}")
-                self._cleanup_files(task.outfile, task.draft_id)
+                logger.error(
+                    "Task failed: draft_id=%s, error=%s",
+                    task.draft_id,
+                    export_error,
+                )
+                self._cleanup_files(task)
                 self._persist_terminal_task(task)
                 return
 
@@ -354,7 +367,7 @@ class VideoGenTaskManager:
             task.error_message = str(e)
             task.progress = 0
             logger.exception(f"Task exception: {task.draft_url}, error: {e}")
-            self._cleanup_files(getattr(task, "outfile", "") or "", task.draft_id)
+            self._cleanup_files(task)
             self._persist_terminal_task(task)
     
     def _check_draft_duration(self, task: VideoGenTask) -> bool:
@@ -433,16 +446,31 @@ class VideoGenTaskManager:
         """
         try:
             task.progress = 20
-            task.outfile = os.path.join(config.DRAFT_DIR, f"{helper.gen_unique_id()}.mp4")
+            self._assign_export_outfile(task)
 
             if not sys.platform.startswith("win"):
                 return "视频生成功能仅在Windows系统上可用"
 
             task.progress = 30
 
-            if not self._download_draft(task):
-                logger.error("draft download failed: draft_url=%s", task.draft_url)
-                return f"草稿下载失败: {task.draft_url}"
+            download_error = self._download_draft(task)
+            if download_error:
+                logger.error(
+                    "draft download failed: draft_url=%s error=%s",
+                    task.draft_url,
+                    download_error,
+                )
+                # 下载失败必须在此返回，禁止进入剪映导出流程
+                return download_error
+
+            ready_error = self._ensure_local_draft_ready(task)
+            if ready_error:
+                logger.error(
+                    "local draft not ready after download: draft_id=%s error=%s",
+                    task.draft_id,
+                    ready_error,
+                )
+                return ready_error
 
             if not self._check_draft_duration(task):
                 logger.error(
@@ -455,13 +483,52 @@ class VideoGenTaskManager:
             return ""
         except Exception as exc:
             logger.exception(
-                f"Export draft failed: draft_id={task.draft_id}, error={exc}"
+                "Draft download/prepare failed: draft_id=%s, error=%s",
+                task.draft_id,
+                exc,
             )
-            return f"导出草稿失败: {exc}"
+            return f"草稿下载失败: {exc}"
+
+    @staticmethod
+    def _is_export_rename_src_none_error(error_message: str) -> bool:
+        """是否为 original_path 为 None 触发的 shutil.move/rename 失败。"""
+        return EXPORT_RENAME_SRC_NONE_ERROR_MARKER in error_message
+
+    @staticmethod
+    def _is_export_com_uia_error(error_message: str) -> bool:
+        """是否为 Windows UI Automation 的瞬时 COM 错误（可重试）。"""
+        from src.pyJianYingDraft.jianying_controller import is_com_uia_error
+
+        return is_com_uia_error(Exception(error_message))
+
+    @staticmethod
+    def _is_export_retryable_error(error_message: str) -> bool:
+        return (
+            VideoGenTaskManager._is_export_rename_src_none_error(error_message)
+            or VideoGenTaskManager._is_export_com_uia_error(error_message)
+        )
+
+    @staticmethod
+    def _assign_export_outfile(task: VideoGenTask) -> str:
+        """分配新的导出 mp4 路径并记入历史，便于上传后统一清理。"""
+        path = os.path.join(config.DRAFT_DIR, f"{helper.gen_unique_id()}.mp4")
+        task.outfile = path
+        if path not in task.export_outfile_history:
+            task.export_outfile_history.append(path)
+        return path
+
+    def _prepare_export_retry_outfile(self, task: VideoGenTask) -> None:
+        """导出重试前生成新的 outfile，并将旧 mp4 加入延迟删除队列。"""
+        old_outfile = task.outfile
+        self._assign_export_outfile(task)
+        if old_outfile:
+            enqueue_path(old_outfile, is_dir=False)
 
     def _phase_export_only(self, task: VideoGenTask) -> str:
         """
         仅执行剪映导出（在 export_video_lock 内，全局串行）。
+        若因 original_path 为 None 导致 rename 失败，最多额外重试
+        EXPORT_RENAME_SRC_NONE_MAX_RETRIES 次，复用已下载草稿、不重新下载。
 
         Returns:
             错误信息，成功时返回空字符串。
@@ -476,15 +543,50 @@ class VideoGenTaskManager:
             task.draft_id,
         )
         try:
-            try:
-                if not self._export_video(task, task.outfile):
-                    return "导出草稿失败"
-                return ""
-            except Exception as exc:
-                logger.exception(
-                    f"Export draft failed: draft_id={task.draft_id}, error={exc}"
-                )
-                return f"导出草稿失败: {exc}"
+            max_attempts = 1 + max(
+                EXPORT_RENAME_SRC_NONE_MAX_RETRIES,
+                EXPORT_COM_UIA_MAX_RETRIES,
+            )
+            last_error = ""
+
+            for attempt in range(1, max_attempts + 1):
+                try:
+                    if not self._export_video(task, task.outfile):
+                        return "导出草稿失败"
+                    return ""
+                except Exception as exc:
+                    last_error = f"导出草稿失败: {exc}"
+                    logger.exception(
+                        "Export draft failed: draft_id=%s attempt=%d/%d error=%s",
+                        task.draft_id,
+                        attempt,
+                        max_attempts,
+                        exc,
+                    )
+                    if not self._is_export_retryable_error(last_error):
+                        return last_error
+                    if attempt >= max_attempts:
+                        return last_error
+
+                    if self._is_export_com_uia_error(last_error):
+                        logger.warning(
+                            "Export COM/UIA transient error, retrying export without "
+                            "re-downloading draft: draft_id=%s retry=%d/%d",
+                            task.draft_id,
+                            attempt,
+                            EXPORT_COM_UIA_MAX_RETRIES,
+                        )
+                    else:
+                        logger.warning(
+                            "Export rename-src-none error, retrying export without "
+                            "re-downloading draft: draft_id=%s retry=%d/%d",
+                            task.draft_id,
+                            attempt,
+                            EXPORT_RENAME_SRC_NONE_MAX_RETRIES,
+                        )
+                    self._prepare_export_retry_outfile(task)
+
+            return last_error
         finally:
             with self._export_metrics_lock:
                 self._export_phase_active -= 1
@@ -511,28 +613,59 @@ class VideoGenTaskManager:
             )
             return "", f"导出草稿失败: {exc}"
         finally:
-            self._cleanup_files(task.outfile, task.draft_id)
+            self._cleanup_files(task)
     
-    def _download_draft(self, task: VideoGenTask) -> bool:
+    def _download_draft(self, task: VideoGenTask) -> str:
         """
         下载草稿
-        
+
         Args:
             task: 视频生成任务
-        
+
         Returns:
-            bool: 下载是否成功
+            错误信息，成功时返回空字符串。
+            失败时一律返回以「草稿下载失败」开头的文案。
         """
         logger.info(f"Start downloading draft before export: {task.draft_url}")
-        from src.utils.draft_downloader import download_draft
-        download_success = download_draft(task.draft_url)
-        
-        if download_success:
+        from src.utils.draft_downloader import (
+            download_draft_with_result,
+            format_draft_download_failure_message,
+        )
+
+        try:
+            result = download_draft_with_result(task.draft_url)
+        except Exception as exc:
+            logger.exception(
+                "Draft download raised unexpectedly: draft_url=%s error=%s",
+                task.draft_url,
+                exc,
+            )
+            return f"草稿下载失败: {exc}"
+
+        if result.ok:
             logger.info(f"Draft downloaded successfully: {task.draft_url}")
-        else:
-            logger.error(f"Failed to download draft: {task.draft_url}")
-        
-        return download_success
+            return ""
+
+        error_message = format_draft_download_failure_message(result, task.draft_url)
+        logger.error(
+            "Failed to download draft: draft_url=%s kind=%s detail=%s",
+            task.draft_url,
+            result.kind.value if result.kind else None,
+            result.detail,
+        )
+        return error_message
+
+    def _ensure_local_draft_ready(self, task: VideoGenTask) -> str:
+        """下载后校验本地草稿是否可导出；失败返回「草稿下载失败」文案。"""
+        from src.utils.draft_downloader import (
+            format_draft_download_failure_message,
+            verify_local_draft_ready,
+        )
+
+        result = verify_local_draft_ready(task.draft_id)
+        if result.ok:
+            return ""
+        return format_draft_download_failure_message(result, task.draft_url)
     
     def _export_video(self, task: VideoGenTask, outfile: str) -> bool:
         """
@@ -584,15 +717,20 @@ class VideoGenTaskManager:
                 draft_dir = os.path.join(config.DRAFT_SAVE_PATH, task.draft_id)
                 try:
                     ctrl.export_draft(task.draft_id, outfile, draft_dir=draft_dir)
-                except Exception:
+                except Exception as exc:
+                    logger.error(
+                        "Export draft failed: draft_id=%s, error=%r",
+                        task.draft_id,
+                        exc,
+                    )
                     recover_from_export_failure()
                     raise
 
             # 个别版本剪映不会抛异常，但文件未生成
             if not os.path.exists(outfile):
                 logger.error(
-                    "export finished but output file missing (check disk space / "
-                    "Jianying version): path=%s",
+                    "export finished but output file missing: draft_id=%s path=%s",
+                    task.draft_id,
                     outfile,
                 )
                 recover_from_export_failure()
@@ -603,7 +741,7 @@ class VideoGenTaskManager:
     
     def _upload_video_to_cos(self, outfile: str) -> Tuple[str, bool]:
         """
-        上传视频到对象存储（优先COS，兜底OSS）
+        上传视频到对象存储（优先 COS，其次 OSS，最后 TOS）
         
         Args:
             outfile: 输出文件路径
@@ -648,8 +786,8 @@ class VideoGenTaskManager:
                     # 将微秒转换为秒
                     video_duration = duration_us / 1_000_000  # 微秒转秒
                     
-                    # 计算费用：0.01积分/秒
-                    cost = video_duration * 0.01
+                    # 计算费用：0.005积分/秒
+                    cost = video_duration * 0.005
                     
                     # 导入扣费函数
                     from src.utils.points import deduct_user_points
@@ -670,27 +808,35 @@ class VideoGenTaskManager:
             except Exception as charge_error:
                 logger.error(f"Error calculating or charging for video duration: {charge_error}")
     
-    def _cleanup_files(self, outfile: str, draft_id: str) -> None:
+    @staticmethod
+    def _collect_export_outfile_paths(task: VideoGenTask) -> List[str]:
+        """汇总本任务关联的全部本地导出 mp4 路径（含重试历史）。"""
+        paths: List[str] = []
+        for path in [*task.export_outfile_history, task.outfile]:
+            if path and path not in paths:
+                paths.append(path)
+        return paths
+
+    def _cleanup_files(self, task: VideoGenTask) -> None:
         """
-        清理临时文件
-        
-        Args:
-            outfile: 输出文件路径
-            draft_id: 草稿ID
+        将任务产生的临时文件加入延迟删除队列，由后台定时任务无限重试删除。
         """
-        try:
-            # 清理本地视频文件
-            if os.path.exists(outfile):
-                os.remove(outfile)
-                logger.info(f"Cleaned up local video file: {outfile}")
-            
-            # 清理下载的草稿文件
-            draft_path = os.path.join(config.DRAFT_SAVE_PATH, draft_id)
-            if os.path.exists(draft_path):
-                shutil.rmtree(draft_path)
-                logger.info(f"Cleaned up draft directory: {draft_path}")
-        except Exception as cleanup_error:
-            logger.warning(f"Failed to clean up files: {cleanup_error}")
+        mp4_paths = self._collect_export_outfile_paths(task)
+        if mp4_paths:
+            enqueue_paths(mp4_paths, is_dir=False)
+            logger.info(
+                "Enqueued export mp4 for deferred delete: draft_id=%s count=%s",
+                task.draft_id,
+                len(mp4_paths),
+            )
+
+        draft_path = os.path.join(config.DRAFT_SAVE_PATH, task.draft_id)
+        enqueue_path(draft_path, is_dir=True)
+        logger.info(
+            "Enqueued draft directory for deferred delete: draft_id=%s path=%s",
+            task.draft_id,
+            draft_path,
+        )
     
     def _handle_result(self, upload_url: str, upload_failed: bool) -> Tuple[str, str]:
         """

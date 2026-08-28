@@ -7,6 +7,7 @@ from typing import Optional
 import config
 from exceptions import CustomError, CustomException
 from src.utils.logger import logger
+from src.utils.storage_key import build_storage_object_key
 from src.utils.storage_upload_retry import run_with_storage_retry
 
 # oss2.resumable_upload：大于 1MB 走 Multipart（与 COS upload_file 默认 PartSize=1 行为一致：≤1MB 仍为单次 PutObject）
@@ -40,11 +41,8 @@ def oss_upload_file(file_path: str, expire_days: Optional[int] = None) -> str:
         logger.error(f"OSS SDK import failed: {e}")
         raise CustomException(CustomError.INTERNAL_SERVER_ERROR, "OSS SDK not installed")
 
-    now = datetime.datetime.now()
-    current_date = now.strftime("%Y-%m-%d")
-    current_hour = now.strftime("%H")
     filename = os.path.basename(file_path)
-    key = f"{current_date}/{current_hour}/{filename}"
+    key = build_storage_object_key(filename)
 
     def do_upload() -> str:
         expire_time = datetime.datetime.now() + datetime.timedelta(days=expire_days)

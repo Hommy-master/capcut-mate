@@ -1,4 +1,4 @@
-# 对象存储统一上传入口（配置判断 + 路由分发；具体上传与重试在 cos.py / oss.py + storage_upload_retry）
+# 对象存储统一上传入口（配置判断 + 路由分发；具体上传与重试在 cos/oss/tos + storage_upload_retry）
 from typing import Optional
 
 import config
@@ -6,6 +6,7 @@ from exceptions import CustomError, CustomException
 from src.utils.logger import logger
 from src.utils.cos import cos_upload_file
 from src.utils.oss import oss_upload_file
+from src.utils.tos import tos_upload_file
 
 
 def _is_valid_storage_config(value: str) -> bool:
@@ -35,6 +36,19 @@ def _is_oss_configured() -> bool:
     )
 
 
+def _is_tos_configured() -> bool:
+    """判断 TOS 配置是否完整有效（ENDPOINT 可选，未设置时按地域自动生成）。"""
+    return all(
+        _is_valid_storage_config(item)
+        for item in (
+            config.TOS_ACCESS_KEY_ID,
+            config.TOS_ACCESS_KEY_SECRET,
+            config.TOS_BUCKET_NAME,
+            config.TOS_REGION,
+        )
+    )
+
+
 def upload_file(file_path: str, expire_days: Optional[int] = None) -> str:
     """
     上传文件到对象存储并返回带签名的临时URL。
@@ -42,7 +56,8 @@ def upload_file(file_path: str, expire_days: Optional[int] = None) -> str:
     选择策略：
     1. 若 COS 配置完整，优先使用 COS
     2. 否则若 OSS 配置完整，使用 OSS
-    3. 都未配置时抛出异常
+    3. 否则若 TOS 配置完整，使用 TOS
+    4. 都未配置时抛出异常
     """
     if expire_days is None:
         expire_days = config.VIDEO_GEN_RETENTION_DAYS
@@ -56,9 +71,13 @@ def upload_file(file_path: str, expire_days: Optional[int] = None) -> str:
             logger.info("COS config not found, fallback to OSS upload")
             return oss_upload_file(file_path=file_path, expire_days=expire_days)
 
+        if _is_tos_configured():
+            logger.info("COS/OSS config not found, fallback to TOS upload")
+            return tos_upload_file(file_path=file_path, expire_days=expire_days)
+
         raise CustomException(
             CustomError.INTERNAL_SERVER_ERROR,
-            "Neither COS nor OSS storage config is available"
+            "Neither COS, OSS nor TOS storage config is available"
         )
     except Exception as e:
         if isinstance(e, CustomException):

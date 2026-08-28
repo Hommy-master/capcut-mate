@@ -78,6 +78,17 @@ const mockElectronAPI = {
   getAppVersion: async () => {
     return null;
   },
+  clipboardReadText: async () => {
+    if (navigator.clipboard?.readText) {
+      return await navigator.clipboard.readText();
+    }
+    return '';
+  },
+  clipboardWriteText: async (text) => {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+    }
+  },
 };
 
 // 实际的Electron API（用于Electron环境）
@@ -117,6 +128,12 @@ const electronAPI = {
   },
   getAppVersion: async () => {
     return await window.electronAPI.getAppVersion();
+  },
+  clipboardReadText: async () => {
+    return await window.electronAPI.clipboardReadText();
+  },
+  clipboardWriteText: async (text) => {
+    return await window.electronAPI.clipboardWriteText(text);
   },
 };
 

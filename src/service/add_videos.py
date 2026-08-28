@@ -1,3 +1,16 @@
+# Copyright 2026 Hommy <taohongmin@sina.cn>.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 from src.pyJianYingDraft.video_segment import VideoSegment
 
 import asyncio
@@ -42,7 +55,7 @@ def add_videos(
                 "duration": 12000000.0, // [可选] 视频总时长 (微秒)，如果不传则默认为 end-start
                 "mask": "", // 遮罩类型 [可选]，默认值为 None
                 "transition": "", // 转场效果名称 [可选]，默认值为 None
-                "transition_duration": 500000.0, // 转场持续时间 (微秒)[可选]，默认值为 500000
+                "transition_duration": "", // [可选] 转场时长(微秒)，未指定则用转场类型默认时长
                 "volume": 1.0, // 音量大小 [0, 10][可选]，默认值为 1.0，10 为最大音量
             } 
         ] // [必选]
@@ -450,7 +463,11 @@ def add_video_to_draft(
         if transition_name:
             transition_type = find_transition_type_by_name(transition_name)
             if transition_type:
-                transition_duration = video.get('transition_duration', 500000)  # 默认500ms
+                transition_duration = video.get('transition_duration')
+                if transition_duration is not None and transition_duration != "":
+                    transition_duration = int(transition_duration)
+                else:
+                    transition_duration = None
                 try:
                     video_segment.add_transition(transition_type, duration=transition_duration)
                     logger.info(f"Added transition '{transition_name}' with duration {transition_duration}us")
@@ -513,7 +530,7 @@ def parse_video_data(json_str: str) -> List[Dict[str, Any]]:
                 "duration": 12000000.0, // [可选] 视频总时长(微秒)，如果不传则默认为end-start
                 "mask": "", // 遮罩类型[可选]，默认值为None
                 "transition": "", // 转场效果名称[可选]，默认值为None
-                "transition_duration": 500000.0, // 转场持续时间(微秒)[可选]，默认值为500000
+                "transition_duration": "", // [可选] 转场时长(微秒)，未指定则用转场类型默认时长
                 "volume": 1.0, // 音量大小[0, 10][可选]，默认值为1.0，10为最大音量
             } 
         ]
@@ -547,32 +564,45 @@ def parse_video_data(json_str: str) -> List[Dict[str, Any]]:
         
         if missing_fields:
             raise CustomException(CustomError.INVALID_VIDEO_INFO, f"the {i}th item is missing required fields: {', '.join(missing_fields)}")
-        
-        # 如果没有提供duration，则计算为end-start
-        duration = item.get("duration", item["end"] - item["start"])
+
+        if not isinstance(item["start"], (int, float)) or item["start"] < 0:
+            raise CustomException(CustomError.INVALID_VIDEO_INFO, f"the {i}th item has invalid start time")
+
+        if not isinstance(item["end"], (int, float)) or item["end"] <= item["start"]:
+            raise CustomException(CustomError.INVALID_VIDEO_INFO, f"the {i}th item has invalid end time")
+
+        # 将时间转换为整数（微秒），兼容 start/end 为小数的情况
+        start = int(item["start"])
+        end = int(item["end"])
+        if end <= start:
+            raise CustomException(CustomError.INVALID_VIDEO_INFO, f"the {i}th item has invalid end time")
+
+        if "duration" in item:
+            duration = item["duration"]
+            if not isinstance(duration, (int, float)) or duration <= 0:
+                raise CustomException(CustomError.INVALID_VIDEO_INFO, f"the {i}th item has invalid duration")
+            duration = int(duration)
+        else:
+            duration = end - start
         
         # 创建处理后的对象，设置默认值
         processed_item = {
             "video_url": item["video_url"],
             "width": item.get("width"),  # 可选参数
             "height": item.get("height"),  # 可选参数
-            "start": item["start"],
-            "end": item["end"],
+            "start": start,
+            "end": end,
             "duration": duration,
             "mask": item.get("mask", None),  # 默认值 None
             "transition": item.get("transition", None),  # 默认值 None
-            "transition_duration": item.get("transition_duration", 500000),  # 默认值 500000
-            "volume": item.get("volume", 1.0)  # 默认值 1.0
+            "transition_duration": item.get("transition_duration", None),  # 默认用转场类型自身时长
+            "volume": 1.0 if item.get("volume") is None else item.get("volume"),
         }
         
         # 验证数值范围：用户传入范围 [0, 10]，超范围时给默认值
         if processed_item["volume"] < 0 or processed_item["volume"] > 10:
             logger.warning(f"Volume {processed_item['volume']} out of range [0, 10], using default 1.0")
             processed_item["volume"] = 1.0
-        
-        if processed_item["transition_duration"] < 0:
-            # 转场持续时间必须为非负数，给默认值
-            processed_item["transition_duration"] = 500000
         
         result.append(processed_item)
     

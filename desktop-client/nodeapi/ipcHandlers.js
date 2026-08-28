@@ -1,4 +1,4 @@
-const { ipcMain, dialog, app } = require('electron');
+const { ipcMain, dialog, app, clipboard } = require('electron');
 
 // 引入logger模块
 const logger = require('./logger');
@@ -37,7 +37,7 @@ function setupIpcHandlers(mainWindow) {
       return await getDraftUrls(remoteUrl, mainWindow);
     } catch (error) {
       logger.error(`[error] get draft url:`, error);
-      return {};
+      return { code: -1, message: error.message || "获取草稿地址失败" };
     }
   });
 
@@ -89,6 +89,13 @@ function setupIpcHandlers(mainWindow) {
 
   ipcMain.handle('get-app-version', async () => {
     return app.getVersion();
+  });
+
+  ipcMain.handle('clipboard-read-text', () => clipboard.readText());
+
+  ipcMain.handle('clipboard-write-text', (event, text) => {
+    clipboard.writeText(String(text || ''));
+    return true;
   });
 }
 

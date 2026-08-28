@@ -17,7 +17,12 @@ class AddCaptionsRequest(BaseModel):
     captions: str = Field(default="", description="字幕信息列表, 用JSON字符串表示")
     text_color: str = Field(default="#ffffff", description="文本颜色（十六进制）")
     border_color: Optional[str] = Field(default=None, description="边框颜色（十六进制）")
-    alignment: int = Field(default=1, ge=0, le=5, description="文本对齐方式（0-5）")
+    alignment: int = Field(
+        default=1,
+        ge=0,
+        le=5,
+        description="文本对齐方式：0左/1中/2右（横排），3垂直居中/4垂直左对齐/5垂直右对齐（竖排）",
+    )
     alpha: float = Field(default=1.0, ge=0.0, le=1.0, description="文本透明度（0.0-1.0）")
     font: Optional[str] = Field(default=None, description="字体名称")
     font_size: int = Field(default=15, ge=1, description="字体大小")
@@ -44,7 +49,10 @@ class CaptionItem(BaseModel):
     keyword: Optional[str] = Field(default=None, description="关键词（用|分隔多个关键词）")
     keyword_color: str = Field(default="#ff7100", description="关键词颜色")
     keyword_border_color: Optional[str] = Field(default=None, description="关键词边框颜色")
-    keyword_font_size: int = Field(default=15, ge=1, description="关键词字体大小")
+    keyword_font: Optional[str] = Field(default=None, description="关键词字体名称（展示名/枚举名/别名）；未指定则与整段字幕 font 一致")
+    keyword_font_size: Optional[int] = Field(default=None, ge=1, description="关键词字体大小；未指定则与本条普通文本字号一致")
+    keyword_has_shadow: bool = Field(default=False, description="是否启用关键词阴影")
+    keyword_shadow_info: Optional[ShadowInfo] = Field(default=None, description="关键词阴影参数")
     font_size: int = Field(default=15, ge=1, description="文本字体大小")
     in_animation: Optional[str] = Field(default=None, description="入场动画")
     out_animation: Optional[str] = Field(default=None, description="出场动画")

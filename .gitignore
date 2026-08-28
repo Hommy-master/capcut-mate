@@ -6,3 +6,5 @@
 /temp
 /logs
 /db
+/.pytest_cache
+/__pycache__

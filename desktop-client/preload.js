@@ -47,4 +47,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getHistoryRecord: () => ipcRenderer.invoke('get-history-record'),
 
     getAppVersion: () => ipcRenderer.invoke('get-app-version'),
+
+    clipboardReadText: () => ipcRenderer.invoke('clipboard-read-text'),
+
+    clipboardWriteText: (text) => ipcRenderer.invoke('clipboard-write-text', text),
 });

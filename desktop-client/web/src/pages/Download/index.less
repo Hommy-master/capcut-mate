@@ -61,21 +61,122 @@
 
 .auto-resize-textarea {
     width: 100%;
-    min-height: 120px;
-    padding: 8px;
+    min-height: 140px;
+    max-height: 320px;
+    padding: 10px 12px;
     border: 1px solid #ddd;
     border-radius: 8px;
     resize: none;
-    font-size: 1rem;
-    line-height: 1.5;
-    transition: border-color 0.3s;
+    overflow-y: auto;
+    overflow-x: hidden;
+    font-size: 0.95rem;
+    line-height: 1.55;
+    letter-spacing: 0;
+    word-break: break-all;
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+    font-family: ui-monospace, "Cascadia Mono", "SF Mono", Menlo, Consolas, monospace;
+    color: #2c3e50;
+    background-color: #fff;
+    transition: border-color 0.3s, box-shadow 0.3s;
     display: block;
+    tab-size: 4;
+}
+
+.auto-resize-textarea:hover {
+    border-color: #c5cdd6;
 }
 
 .auto-resize-textarea:focus {
     outline: none;
     border-color: var(--secondary-color);
     box-shadow: 0 0 0 2px rgba(var(--secondary-color-rgb), 0.2);
+}
+
+.auto-resize-textarea::placeholder {
+    color: #95a5a6;
+    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    font-size: 0.92rem;
+    line-height: 1.5;
+}
+
+.textarea-hint {
+    margin: 8px 2px 0;
+    color: #7f8c8d;
+    font-size: 0.8125rem;
+    line-height: 1.4;
+}
+
+.text-edit-context-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+}
+
+.text-edit-context-menu {
+    position: fixed;
+    z-index: 1001;
+    min-width: 220px;
+    margin: 0;
+    padding: 6px 0;
+    list-style: none;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.16);
+    user-select: none;
+}
+
+.text-edit-context-separator {
+    height: 1px;
+    margin: 6px 8px;
+    background: #eef0f2;
+}
+
+.text-edit-context-item {
+    display: grid;
+    grid-template-columns: 18px minmax(0, 1fr) auto;
+    align-items: center;
+    column-gap: 10px;
+    width: 100%;
+    padding: 8px 14px;
+    border: 0;
+    background: transparent;
+    color: #2c3e50;
+    font-size: 0.875rem;
+    line-height: 1.2;
+    text-align: left;
+    cursor: pointer;
+}
+
+.text-edit-context-item:hover:not(:disabled) {
+    background: #f3f6f9;
+}
+
+.text-edit-context-item:disabled {
+    color: #b0b8c1;
+    cursor: default;
+}
+
+.text-edit-context-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    color: currentColor;
+}
+
+.text-edit-context-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.text-edit-context-shortcut {
+    color: #95a5a6;
+    font-size: 0.75rem;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 }
 
 /* Tab样式 */

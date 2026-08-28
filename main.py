@@ -10,15 +10,18 @@ from src.middlewares import PrepareMiddleware, ResponseMiddleware, TraceContextM
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    from src.utils.deferred_delete import deferred_delete_background_loop
     from src.utils.draft_cleanup import draft_cleanup_background_loop
 
     cleanup_task = asyncio.create_task(draft_cleanup_background_loop())
+    deferred_delete_task = asyncio.create_task(deferred_delete_background_loop())
     try:
         yield
     finally:
-        cleanup_task.cancel()
-        with suppress(asyncio.CancelledError):
-            await cleanup_task
+        for bg_task in (cleanup_task, deferred_delete_task):
+            bg_task.cancel()
+            with suppress(asyncio.CancelledError):
+                await bg_task
 
 
 # 1. 创建 FastAPI 应用

@@ -60,8 +60,8 @@ def test_keyword_font_size_application():
     assert len(text_segment.extra_styles) == 1
     highlight_style = text_segment.extra_styles[0]
     assert highlight_style["size"] == 20.0  # 验证关键词字体大小是否为20
-    assert highlight_style["range"] == [3, 5]  # 验证关键词位置是否正确
-    print("✓ keyword_font_size parameter application test passed")
+    assert highlight_style["range"] == [3, 5]  # 字符下标：「你好，」后是「剪映」
+    print("keyword_font_size parameter application test passed")
 
 
 def test_keyword_font_size_default():

@@ -1,4 +1,4 @@
-# 对象存储上传：可重试错误识别与退避重试（独立模块，供 cos/oss 使用，避免与 upload_file 相向依赖）
+# 对象存储上传：可重试错误识别与退避重试（独立模块，供 cos/oss/tos 使用，避免与 upload_file 相向依赖）
 import errno
 import random
 import time
@@ -15,6 +15,12 @@ try:
     import oss2.exceptions as oss_exc
 except ImportError:  # pragma: no cover
     oss_exc = None  # type: ignore[assignment]
+
+try:
+    from tos.exceptions import TosClientError, TosServerError
+except ImportError:  # pragma: no cover
+    TosClientError = None  # type: ignore[misc, assignment]
+    TosServerError = None  # type: ignore[misc, assignment]
 
 # 业务层整次重试（与 COS SDK 内重试等叠加）
 _STORAGE_UPLOAD_MAX_ATTEMPTS = 5
@@ -89,6 +95,15 @@ def is_retryable_storage_error(exc: BaseException) -> bool:
                     return True
                 if isinstance(st, int) and st == 408:
                     return True
+        if TosClientError is not None and isinstance(e, TosClientError):
+            return True
+        if TosServerError is not None and isinstance(e, TosServerError):
+            st = getattr(e, "status_code", None)
+            if isinstance(st, int) and st >= 500:
+                return True
+            if isinstance(st, int) and st == 408:
+                return True
+            return False
     return False
 
 

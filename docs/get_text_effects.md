@@ -1,258 +1,170 @@
-# 获取花字效果列表 API 文档
+# GET_TEXT_EFFECTS API Documentation
 
-## 📖 接口说明
+## 🌐 Language Switch
+[中文版](./get_text_effects.zh.md) | [English](./get_text_effects.md)
 
-获取所有支持的花字效果列表，支持按 VIP/免费进行筛选。
-
-本接口参考 `get_filters` 的实现模式，提供 RESTful 风格的 POST 请求方式。
-
-## 🔗 接口信息
-
-- **路径**: `/get_text_effects`
-- **方法**: POST
-- **版本**: v1
-
-## 📥 请求参数
-
-### 请求体 (JSON)
-
-| 参数名 | 类型 | 必填 | 默认值 | 说明 |
-|--------|------|------|--------|------|
-| mode | int | 否 | 0 | 花字效果模式：0=所有，1=VIP，2=免费 |
-
-### 请求示例
-
-#### 1. 获取所有花字效果
+## Interface Information
 
 ```bash
-curl -X POST "http://localhost:8000/get_text_effects" \
-  -H "Content-Type: application/json" \
-  -d '{"mode": 0}'
+POST /openapi/capcut-mate/v1/get_text_effects
 ```
 
-#### 2. 获取 VIP 花字效果
+## Function Description
 
-```bash
-curl -X POST "http://localhost:8000/get_text_effects" \
-  -H "Content-Type: application/json" \
-  -d '{"mode": 1}'
+Get the list of supported text flower effects (decorative text styles), with optional filtering by membership mode (all, VIP, free). This interface follows the same RESTful POST pattern as similar resource list APIs.
+
+## More Documentation
+
+📖 For more detailed documentation and tutorials, please visit: [https://docs.jcaigc.cn](https://docs.jcaigc.cn)
+
+## Request Parameters
+
+```json
+{
+  "mode": 0
+}
 ```
 
-#### 3. 获取免费花字效果
+### Parameter Description
 
-```bash
-curl -X POST "http://localhost:8000/get_text_effects" \
-  -H "Content-Type: application/json" \
-  -d '{"mode": 2}'
-```
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| mode | integer | ❌ | 0 | Text effect mode: 0=all, 1=VIP, 2=free |
 
-## 📤 响应参数
+### Parameter Details
 
-### 响应体 (JSON)
+#### Text Effect Mode
+
+| Mode Value | Mode Name | Description |
+|------------|-----------|-------------|
+| 0 | All | Return all text effects (including VIP and free) |
+| 1 | VIP | VIP text effects only |
+| 2 | Free | Free text effects only |
+
+## Response Format
+
+### Success Response (200)
 
 ```json
 {
   "text_effects": [
     {
-      "name": "红黄火焰综艺花字",
-      "is_vip": false,
-      "resource_id": "7539407429763796249",
-      "effect_id": "7539407429763796249"
+      "id": "7539407429763796249",
+      "title": "红黄火焰综艺花字",
+      "is_vip": false
     },
     {
-      "name": "综艺 - 黑暗斑驳红色",
-      "is_vip": false,
-      "resource_id": "7351316503771368713",
-      "effect_id": "7351316503771368713"
+      "id": "7351316503771368713",
+      "title": "综艺 - 黑暗斑驳红色",
+      "is_vip": false
     }
-    // ... 更多花字效果
   ]
 }
 ```
 
-### 字段说明
+### Response Field Description
 
-#### TextEffectItem 对象
+| Field | Type | Description |
+|-------|------|-------------|
+| text_effects | array | Text flower effect object array |
 
-| 字段名 | 类型 | 说明 |
-|--------|------|------|
-| name | string | 花字效果名称 |
-| is_vip | boolean | 是否为 VIP 效果 |
-| resource_id | string | 资源 ID |
-| effect_id | string | 效果 ID |
+#### TextEffectItem Object
 
-## 📊 统计数据
+| Field | Type | Description |
+|-------|------|-------------|
+| id | string | Text effect ID |
+| title | string | Text effect name |
+| is_vip | boolean | Whether this is a VIP effect |
 
-根据当前数据源 (`config\data.ts`) 的统计:
+### Error Response (4xx/5xx)
 
-- **总花字数**: 1,673 个
-- **VIP 效果**: 0 个
-- **免费效果**: 1,673 个
-- **提取率**: 100%
-
-## 💡 使用场景
-
-### 1. 在客户端展示花字效果选择器
-
-```javascript
-// 获取所有花字效果
-const response = await fetch('/get_text_effects', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ mode: 0 })
-});
-
-const data = await response.json();
-
-// 渲染花字效果列表
-data.text_effects.forEach(effect => {
-  console.log(`${effect.name} (ID: ${effect.effect_id})`);
-});
+```json
+{
+  "detail": "Error message description"
+}
 ```
 
-### 2. 仅展示免费花字效果
+## Usage Examples
 
-```javascript
-// 获取免费花字效果
-const response = await fetch('/get_text_effects', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ mode: 2 })
-});
+### cURL Examples
 
-const data = await response.json();
-// data.text_effects 只包含免费花字
+#### 1. Get All Text Effects
+
+```bash
+curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_text_effects \
+  -H "Content-Type: application/json" \
+  -d '{"mode": 0}'
 ```
 
-### 3. 配合 add_captions API 使用
+#### 2. Get VIP Text Effects
+
+```bash
+curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_text_effects \
+  -H "Content-Type: application/json" \
+  -d '{"mode": 1}'
+```
+
+#### 3. Get Free Text Effects
+
+```bash
+curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_text_effects \
+  -H "Content-Type: application/json" \
+  -d '{"mode": 2}'
+```
+
+### Use with add_captions
 
 ```javascript
-// 1. 先获取花字效果列表
-const effectsResponse = await fetch('/get_text_effects', {
+// 1. Fetch text effects list
+const effectsResponse = await fetch('/openapi/capcut-mate/v1/get_text_effects', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({ mode: 0 })
 });
 const effects = await effectsResponse.json();
 
-// 2. 用户选择一个花字效果
+// 2. User selects a text effect
 const selectedEffect = effects.text_effects[0];
 
-// 3. 在添加字幕时使用该花字
-await fetch('/add_captions', {
+// 3. Apply the effect when adding captions
+await fetch('/openapi/capcut-mate/v1/add_captions', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({
     draft_id: "your_draft_id",
     captions: [...],
-    text_effect: selectedEffect.name  // 或 selectedEffect.effect_id
+    text_effect: selectedEffect.title  // or selectedEffect.id
   })
 });
 ```
 
-## 🔍 错误处理
+## Error Code Description
 
-### 错误码
+| Error Code | Error Message | Description | Solution |
+|------------|---------------|-------------|----------|
+| 400 | Invalid mode parameter | mode parameter out of range | Use 0, 1, or 2 as mode value |
+| 500 | filter_get_failed | Failed to get text effects list | Contact technical support |
 
-| 错误码 | 说明 |
-|--------|------|
-| filter_get_failed | 获取花字效果列表失败 |
+## Notes
 
-### 错误响应示例
+1. **Parameter Requirements**: mode is optional and defaults to 0
+2. **Mode Values**: mode must be one of 0, 1, or 2
+3. **Performance**: The text effects list can be large; client-side caching is recommended
+4. **Compatibility**: If there are no VIP effects, the interface returns an empty array without error
+5. **Identifier Resolution**: Text effects can be referenced by name or ID when calling `add_captions`
 
-```json
-{
-  "code": "filter_get_failed",
-  "message": "获取花字效果列表失败",
-  "detail": null
-}
-```
+## Related Interfaces
 
-## ⚙️ 参数模式说明
-
-### mode = 0 (所有)
-
-返回所有花字效果，包括 VIP 和免费效果。
-
-**适用场景**: 
-- 完整的花字效果选择器
-- 管理后台查看所有效果
-
-### mode = 1 (VIP)
-
-仅返回 VIP 花字效果。
-
-**适用场景**:
-- VIP 专属效果展示
-- 付费效果推广
-
-### mode = 2 (免费)
-
-仅返回免费花字效果。
-
-**适用场景**:
-- 免费版客户端
-- 免费效果筛选
-
-## 📝 注意事项
-
-1. **性能考虑**: 首次加载可能需要较长时间（1,673 个效果），建议使用缓存机制
-2. **数据更新**: 花字效果数据来自 `config\data.ts`，如需更新请重新运行提取脚本
-3. **重名处理**: 部分花字效果因名称重复，在映射表中添加了 `_effect_id` 后缀
-4. **兼容性**: 即使没有 VIP 效果，接口也会正常返回空数组，不会报错
-
-## 🛠️ 相关接口
-
-- **添加字幕**: `/add_captions` - 可使用本接口返回的花字效果
-- **获取滤镜列表**: `/get_filters` - 类似的滤镜效果列表接口
-- **获取特效列表**: `/get_effects` - 视频特效列表接口
-
-## 📦 技术实现
-
-### Service 层
-
-文件：`src/service/get_text_effects.py`
-
-主要函数:
-- `get_text_effects(mode: int)` - 主接口函数
-- `resolve_text_effect(effect_identifier: str)` - 解析花字效果标识符
-- `_get_text_effects_by_mode(mode: int)` - 根据模式获取效果
-
-### Schema 层
-
-文件：`src/schemas/get_text_effects.py`
-
-Pydantic 模型:
-- `GetTextEffectsRequest` - 请求参数
-- `TextEffectItem` - 单个花字效果项
-- `GetTextEffectsResponse` - 响应参数
-
-### Router 层
-
-文件：`src/router/v1.py`
-
-路由定义:
-```python
-@router.post(path="/get_text_effects", response_model=GetTextEffectsResponse)
-def get_text_effects(gter: GetTextEffectsRequest) -> GetTextEffectsResponse:
-```
-
-## 🧪 测试
-
-运行测试脚本验证接口功能:
-
-```bash
-python tests\test_get_text_effects.py
-```
-
-测试覆盖:
-- ✅ 获取所有花字效果 (mode=0)
-- ✅ 获取 VIP 花字效果 (mode=1)
-- ✅ 获取免费花字效果 (mode=2)
-- ✅ 无效模式处理 (mode=3)
+- [Add Captions](./add_captions.md)
+- [Create Text Style](./add_text_style.md)
+- [Get Text Animations](./get_text_animations.md)
 
 ---
 
-**最后更新**: 2026-03-31  
-**API 版本**: v1  
-**数据来源**: config\data.ts (1,673 个花字效果)
+<div align="right">
+
+📚 **Project Resources**  
+**GitHub**: [https://github.com/Hommy-master/capcut-mate](https://github.com/Hommy-master/capcut-mate)  
+**Gitee**: [https://gitee.com/taohongmin-gitee/capcut-mate](https://gitee.com/taohongmin-gitee/capcut-mate)
+
+</div>

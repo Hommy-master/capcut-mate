@@ -113,6 +113,22 @@ class TestIsRetryableStorageError:
         e = ox.OssError(status, {}, "", {})
         assert sur.is_retryable_storage_error(e) is expected
 
+    def test_tos_client_error(self) -> None:
+        from tos.exceptions import TosClientError
+
+        assert sur.is_retryable_storage_error(TosClientError("timeout", None)) is True
+
+    @pytest.mark.parametrize("status, expected", [(503, True), (500, True), (408, True), (400, False), (404, False)])
+    def test_tos_server_error(self, status: int, expected: bool) -> None:
+        from tos.exceptions import TosServerError
+
+        resp = MagicMock()
+        resp.status = status
+        resp.headers = {}
+        resp.request_id = "r"
+        e = TosServerError(resp, "m", "K", "h", "res")
+        assert sur.is_retryable_storage_error(e) is expected
+
 
 class TestRunWithStorageRetry:
     def test_success_first_call(self, no_sleep_no_random_delay) -> None:
