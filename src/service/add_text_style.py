@@ -262,7 +262,7 @@ def create_text_style_segment(
         "size": font_size,
         "font": {
             "id": "",
-            "path": ""
+            "path": "D:"
         }
     }
     
@@ -298,7 +298,7 @@ def create_simple_text_style(text: str, font_size: int) -> str:
                 "size": font_size,
                 "font": {
                     "id": "",
-                    "path": ""
+                    "path": "D:"
                 }
             }
         ]

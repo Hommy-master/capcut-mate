@@ -1,6 +1,7 @@
 """定义文本片段及其相关类"""
 
 import json
+import math
 import uuid
 from copy import deepcopy
 
@@ -13,6 +14,49 @@ from .animation import SegmentAnimations, Text_animation
 
 from .metadata import FontType, EffectMeta
 from .metadata import TextIntro, TextOutro, TextLoopAnim
+
+
+def _rgb_to_hex(color: Tuple[float, float, float]) -> str:
+    r, g, b = [max(0, min(255, int(round(c * 255)))) for c in color]
+    return f"#{r:02X}{g:02X}{b:02X}"
+
+
+def _style_range_end(text: str) -> int:
+    """剪映 content.styles[].range 使用字符下标（非 UTF-16 字节长度）。"""
+    return len(text)
+
+
+def _font_content_json(font: Optional[EffectMeta]) -> Dict[str, str]:
+    """styles[].font：系统字体 id 为空；自定义字体用 resource_id。
+    path 必须为 \"D:\"，剪映打开后会自动搜索并改写为真实字体路径。
+    """
+    if font is None:
+        return {"id": "", "path": "D:"}
+    return {"id": font.resource_id, "path": "D:"}
+
+
+def _build_fonts_material_entry(font: EffectMeta) -> Dict[str, Any]:
+    """materials.texts[].fonts[] 单项，对齐剪映官方草稿结构。"""
+    return {
+        "category_id": "",
+        "category_name": "",
+        "effect_id": font.resource_id,
+        "file_uri": "",
+        "id": str(uuid.uuid4()).upper(),
+        "path": "D:",
+        "request_id": "",
+        "resource_id": font.resource_id,
+        "source_platform": 0,
+        "team_id": "",
+        "title": font.name,
+    }
+
+
+def _shadow_point(angle: float, distance: float) -> Dict[str, float]:
+    """按角度/距离估算 shadow_point；默认 -45°/5 与官方草稿一致。"""
+    rad = math.radians(angle)
+    factor = 0.9 * (distance / 5.0)
+    return {"x": math.cos(rad) * factor, "y": math.sin(rad) * factor}
 
 class TextStyle:
     """字体样式类"""
@@ -310,6 +354,10 @@ class TextSegment(VisualSegment):
         # 为 True 时 export 使用 extra_styles 作为完整 styles（互不重叠分区），不再叠加全量 base_style
         self.use_extra_styles_only = False
 
+        # 剪映文本片段的 extra_material_refs 指向 sticker_animation，而非 speed
+        self.animations_instance = SegmentAnimations()
+        self.extra_material_refs = [self.animations_instance.animation_id]
+
     @classmethod
     def create_from_template(cls, text: str, timerange: Timerange, template: "TextSegment") -> "TextSegment":
         """根据模板创建新的文本片段, 并指定其文本内容"""
@@ -322,7 +370,8 @@ class TextSegment(VisualSegment):
         if template.animations_instance:
             new_segment.animations_instance = deepcopy(template.animations_instance)
             new_segment.animations_instance.animation_id = uuid.uuid4().hex
-            new_segment.extra_material_refs.append(new_segment.animations_instance.animation_id)
+            # 替换默认空动画引用，避免重复挂载
+            new_segment.extra_material_refs = [new_segment.animations_instance.animation_id]
         if template.bubble:
             new_segment.add_bubble(template.bubble.effect_id, template.bubble.resource_id)
         if template.effect:
@@ -394,9 +443,32 @@ class TextSegment(VisualSegment):
         self.extra_material_refs.append(self.effect.global_id)
         return self
 
+    def export_json(self) -> Dict[str, Any]:
+        """导出轨道片段 JSON，对齐剪映官方文本片段字段。"""
+        json_dict = super().export_json()
+        json_dict.update({
+            "caption_info": None,
+            "cartoon": False,
+            "enable_adjust": False,
+            "enable_lut": False,
+            "group_id": "",
+            "hdr_settings": None,
+            "intensifies_audio": False,
+            "is_placeholder": False,
+            "responsive_layout": {
+                "enable": False,
+                "horizontal_pos_layout": 0,
+                "size_layout": 0,
+                "target_follow": "",
+                "vertical_pos_layout": 0,
+            },
+            "template_id": "",
+            "template_scene": "default",
+        })
+        return json_dict
+
     def export_material(self) -> Dict[str, Any]:
-        """与此文本片段联系的素材, 以此不再单独定义Text_material类"""
-        # 叠加各类效果的flag
+        """与此文本片段联系的素材，字段对齐剪映官方草稿以便二次编辑。"""
         check_flag: int = 7
         if self.border:
             check_flag |= 8
@@ -406,29 +478,28 @@ class TextSegment(VisualSegment):
         if self.use_extra_styles_only and self.extra_styles:
             styles = list(self.extra_styles)
         else:
-            # 创建基础样式
-            base_style = {
+            base_style: Dict[str, Any] = {
                 "fill": {
-                    "alpha": 1.0,
                     "content": {
-                        "render_type": "solid",
                         "solid": {
-                            "alpha": 1.0,
                             "color": list(self.style.color)
                         }
                     }
                 },
-                "range": [0, len(self.text.encode('utf-16-le'))],
+                "range": [0, _style_range_end(self.text)],
                 "size": self.style.size,
-                "bold": self.style.bold,
-                "italic": self.style.italic,
-                "underline": self.style.underline,
-                "strokes": [self.border.export_json()] if self.border else []
             }
-            # 合并基础样式和额外样式（额外样式按 range 覆盖 fill/size/strokes 等）
+            # 仅在启用时写出格式位，贴近官方草稿精简结构
+            if self.style.bold:
+                base_style["bold"] = True
+            if self.style.italic:
+                base_style["italic"] = True
+            if self.style.underline:
+                base_style["underline"] = True
+            if self.border:
+                base_style["strokes"] = [self.border.export_json()]
             styles = [base_style] + self.extra_styles
 
-        # 素材级 shadow，或 styles 分区内的非空 shadows，都需要打开阴影位
         has_style_shadows = any(
             isinstance(style, dict) and bool(style.get("shadows"))
             for style in styles
@@ -441,45 +512,164 @@ class TextSegment(VisualSegment):
             "text": self.text
         }
         if styles:
-            # 片段级字体填充到尚未单独指定 font 的分区（关键词等可在 style 内覆盖）
-            if self.font:
-                font_json = {
-                    "id": self.font.resource_id,
-                    "path": "D:"  # 并不会真正在此处放置字体文件
-                }
-                for style in content_json["styles"]:
-                    if isinstance(style, dict) and "font" not in style:
-                        style["font"] = dict(font_json)
+            font_json = _font_content_json(self.font)
+            for style in content_json["styles"]:
+                if isinstance(style, dict) and "font" not in style:
+                    style["font"] = dict(font_json)
             if self.effect:
                 content_json["styles"][0]["effectStyle"] = {
                     "id": self.effect.effect_id,
-                    "path": "C:"  # 并不会真正在此处放置素材文件
+                    "path": "C:"  # 花字占位路径，剪映会自行解析
                 }
-            # 仅素材级整段阴影写入 styles[0]；分区阴影已在各自 style 中
             if self.shadow:
                 content_json["styles"][0]["shadows"] = [self.shadow.export_json()]
 
-        ret = {
-            "id": self.material_id,
-            "content": json.dumps(content_json, ensure_ascii=False),
+        # 保证 styles 中 font 键顺序贴近官方：fill → font → size → range
+        normalized_styles: List[Dict[str, Any]] = []
+        for style in content_json["styles"]:
+            if not isinstance(style, dict):
+                continue
+            ordered: Dict[str, Any] = {}
+            for key in ("fill", "font", "size", "range"):
+                if key in style:
+                    ordered[key] = style[key]
+            for key, value in style.items():
+                if key not in ordered:
+                    ordered[key] = value
+            normalized_styles.append(ordered)
+        content_json["styles"] = normalized_styles
 
-            "typesetting": int(self.style.vertical),
+        shadow_alpha = 0.9
+        shadow_angle = -45.0
+        shadow_color = ""
+        shadow_distance = 5.0
+        shadow_smoothing = 0.45
+        if self.shadow:
+            shadow_alpha = self.shadow.alpha
+            shadow_angle = self.shadow.angle
+            shadow_color = _rgb_to_hex(self.shadow.color)
+            shadow_distance = self.shadow.distance
+            shadow_smoothing = self.shadow.diffuse / 100.0 * 3.0  # 15 → 0.45
+
+        border_color = ""
+        border_alpha = 1.0
+        border_width = 0.08
+        if self.border:
+            border_color = _rgb_to_hex(self.border.color)
+            border_alpha = self.border.alpha
+            border_width = self.border.width
+
+        fonts_list: List[Dict[str, Any]] = []
+        font_path = "D:"
+        font_resource_id = ""
+        if self.font:
+            font_resource_id = self.font.resource_id
+            fonts_list.append(_build_fonts_material_entry(self.font))
+
+        ret: Dict[str, Any] = {
+            "add_type": 0,
             "alignment": self.style.align,
+            "background_alpha": 1.0,
+            "background_color": "",
+            "background_height": 0.14,
+            "background_horizontal_offset": 0.0,
+            "background_round_radius": 0.0,
+            "background_style": 0,
+            "background_vertical_offset": 0.0,
+            "background_width": 0.14,
+            "base_content": "",
+            "bold_width": 0.0,
+            "border_alpha": border_alpha,
+            "border_color": border_color,
+            "border_width": border_width,
+            "caption_template_info": {
+                "category_id": "",
+                "category_name": "",
+                "effect_id": "",
+                "is_new": False,
+                "path": "",
+                "request_id": "",
+                "resource_id": "",
+                "resource_name": "",
+                "source_platform": 0,
+            },
+            "check_flag": check_flag,
+            "combo_info": {"text_templates": []},
+            "content": json.dumps(content_json, ensure_ascii=False),
+            "fixed_height": -1.0,
+            "fixed_width": -1.0,
+            "font_category_id": "",
+            "font_category_name": "",
+            "font_id": "",
+            "font_name": "",
+            "font_path": font_path,
+            "font_resource_id": font_resource_id,
+            "font_size": self.style.size,
+            "font_source_platform": 0,
+            "font_team_id": "",
+            "font_title": "none",
+            "font_url": "",
+            "fonts": fonts_list,
+            "force_apply_line_max_width": False,
+            "global_alpha": self.style.alpha,
+            "group_id": "",
+            "has_shadow": bool(self.shadow or has_style_shadows),
+            "id": self.material_id,
+            "initial_scale": 1.0,
+            "inner_padding": -1.0,
+            "is_rich_text": False,
+            "italic_degree": 0,
+            "ktv_color": "",
+            "language": "",
+            "layer_weight": 1,
             "letter_spacing": self.style.letter_spacing * 0.05,
-            "line_spacing": 0.02 + self.style.line_spacing * 0.05,
-
             "line_feed": 1,
             "line_max_width": self.style.max_line_width,
-            "force_apply_line_max_width": False,
-
-            "check_flag": check_flag,
-
-            "type": "subtitle" if self.style.auto_wrapping else "text",
-
-            # 混合 (+4)
-            "global_alpha": self.style.alpha,
-
-            # 发光 (+64)，属性由extra_material_refs记录
+            "line_spacing": 0.02 + self.style.line_spacing * 0.05,
+            "multi_language_current": "none",
+            "name": "",
+            "original_size": [],
+            "preset_category": "",
+            "preset_category_id": "",
+            "preset_has_set_alignment": False,
+            "preset_id": "",
+            "preset_index": 0,
+            "preset_name": "",
+            "recognize_task_id": "",
+            "recognize_type": 0,
+            "relevance_segment": [],
+            "shadow_alpha": shadow_alpha,
+            "shadow_angle": shadow_angle,
+            "shadow_color": shadow_color,
+            "shadow_distance": shadow_distance,
+            "shadow_point": _shadow_point(shadow_angle, shadow_distance),
+            "shadow_smoothing": shadow_smoothing,
+            "shape_clip_x": False,
+            "shape_clip_y": False,
+            "source_from": "",
+            "style_name": "",
+            "sub_type": 0,
+            "subtitle_keywords": None,
+            "subtitle_template_original_fontsize": 0,
+            "text_alpha": self.style.alpha,
+            "text_color": _rgb_to_hex(self.style.color),
+            "text_curve": None,
+            "text_preset_resource_id": "",
+            "text_size": 30,
+            "text_to_audio_ids": [],
+            "tts_auto_update": False,
+            # 官方手动添加字幕使用 type=text（非 subtitle），否则二次编辑兼容性差
+            "type": "text",
+            "typesetting": int(self.style.vertical),
+            "underline": bool(self.style.underline),
+            "underline_offset": 0.22,
+            "underline_width": 0.05,
+            "use_effect_default_color": True,
+            "words": {
+                "end_time": [],
+                "start_time": [],
+                "text": [],
+            },
         }
 
         if self.background:

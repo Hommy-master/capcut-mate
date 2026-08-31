@@ -788,7 +788,9 @@ def _find_keyword_ranges(text: str, keywords: str) -> List[Tuple[int, int]]:
 
 
 def _font_style_json(font_meta) -> Optional[dict]:
-    """将 EffectMeta 转为 styles[].font 结构。"""
+    """将 EffectMeta 转为 styles[].font 结构。
+    path 必须为 \"D:\"，剪映打开后会自动搜索并改写为真实字体路径。
+    """
     if font_meta is None:
         return None
     return {
@@ -814,22 +816,21 @@ def _build_style_partition(
     """构造单个互不重叠的 style 分区（range 使用字符下标，与 keyword_color 历史行为一致）。"""
     style = {
         "fill": {
-            "alpha": 1.0,
             "content": {
-                "render_type": "solid",
                 "solid": {
-                    "alpha": 1.0,
                     "color": list(color),
                 },
             },
         },
         "range": [start, end],
         "size": font_size,
-        "bold": bold,
-        "italic": italic,
-        "underline": underline,
-        "strokes": [],
     }
+    if bold:
+        style["bold"] = True
+    if italic:
+        style["italic"] = True
+    if underline:
+        style["underline"] = True
     if border_rgb is not None:
         style["strokes"] = [{
             "content": {
@@ -996,21 +997,21 @@ def apply_keyword_highlight(
             end_pos = start_pos + len(keyword)
             highlight_style = {
                 "fill": {
-                    "alpha": 1.0,
                     "content": {
-                        "render_type": "solid",
                         "solid": {
-                            "alpha": 1.0,
                             "color": list(keyword_color)
                         }
                     }
                 },
                 "range": [start_pos, end_pos],
                 "size": font_size,
-                "bold": text_segment.style.bold,
-                "italic": text_segment.style.italic,
-                "underline": text_segment.style.underline
             }
+            if text_segment.style.bold:
+                highlight_style["bold"] = True
+            if text_segment.style.italic:
+                highlight_style["italic"] = True
+            if text_segment.style.underline:
+                highlight_style["underline"] = True
 
             if keyword_border_color is not None:
                 highlight_style["strokes"] = [{
@@ -1030,6 +1031,8 @@ def apply_keyword_highlight(
                 body_font_json = _font_style_json(text_segment.font)
                 if body_font_json is not None:
                     highlight_style["font"] = dict(body_font_json)
+                elif text_segment.font is None:
+                    highlight_style["font"] = {"id": "", "path": "D:"}
 
             text_segment.extra_styles.append(highlight_style)
             start_pos = end_pos
