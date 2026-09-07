@@ -1,8 +1,12 @@
 FROM python:3.11-slim
 
 # 内置时区（Asia/Shanghai），无需挂载宿主机 /etc/localtime
-RUN apt-get update && apt-get install -y --no-install-recommends tzdata && rm -rf /var/lib/apt/lists/*
 ENV TZ=Asia/Shanghai
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends tzdata \
+    && ln -snf /usr/share/zoneinfo/$TZ /etc/localtime \
+    && echo "$TZ" > /etc/timezone \
+    && rm -rf /var/lib/apt/lists/*
 
 # 使用pip安装uv
 RUN pip install --no-cache-dir uv
