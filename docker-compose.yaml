@@ -8,8 +8,6 @@ services:
       - ./html/output:/app/output
       - ./logs:/app/logs
     environment:
-      # 容器时区（与镜像 ENV 双保险；旧镜像也能立即生效）
-      - TZ=Asia/Shanghai
       # 草稿下载URL
       - DRAFT_URL=http://127.0.0.1/openapi/capcut-mate/v1/get_draft
       # 用于将容器内部的文件路径转成URL，本质是将/app/替换成DOWNLOAD_URL得到下载路径
