@@ -33,6 +33,7 @@ Batch-add captions to an existing CapCut/Jianying draft. Supports text color, bo
 | font_size | integer | ❌ | `15` | Default font size when a caption item omits `font_size`; must be `>= 1` |
 | letter_spacing | number | ❌ | `null` | Letter spacing; `null` means `0` |
 | line_spacing | number | ❌ | `null` | Line spacing; `null` means `0` |
+| line_max_width | number | ❌ | `0.82` | Max line width as a fraction of screen width, range `[0.0, 1.0]`; used with auto-wrapping |
 | scale_x | number | ❌ | `1.0` | Horizontal scale (`1.0` = original) |
 | scale_y | number | ❌ | `1.0` | Vertical scale (`1.0` = original) |
 | transform_x | number | ❌ | `0.0` | Horizontal offset in pixels (positive = right) |
@@ -1333,6 +1334,7 @@ VHS
   "font_size": 15,                             // [Optional] top-level default font size
   "letter_spacing": 0,                         // [Optional] letter spacing
   "line_spacing": 0,                           // [Optional] line spacing
+  "line_max_width": 0.82,                      // [Optional] max line width as fraction of screen width [0,1]
   "scale_x": 1.0,                              // [Optional] horizontal scale
   "scale_y": 1.0,                              // [Optional] vertical scale
   "transform_x": 0.0,                          // [Optional] X offset (px)
@@ -1414,6 +1416,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_captions \
     "font_size": 15,
     "letter_spacing": 0,
     "line_spacing": 0,
+    "line_max_width": 0.82,
     "scale_x": 1.0,
     "scale_y": 1.0,
     "transform_x": 0.0,
@@ -1447,6 +1450,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_captions \
 | font | `得意黑` | [Optional] Font name |
 | font_size | `15` | [Optional] Top-level default size |
 | letter_spacing / line_spacing | `0` | [Optional] Spacing |
+| line_max_width | `0.82` | [Optional] Max line width as fraction of screen width |
 | scale_x / scale_y | `1.0` | [Optional] No scaling |
 | transform_x | `0.0` | [Optional] No horizontal offset |
 | transform_y | `-200.0` | [Optional] Move up 200 px |

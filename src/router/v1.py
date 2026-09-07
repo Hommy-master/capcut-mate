@@ -232,6 +232,7 @@ async def add_captions(acr: AddCaptionsRequest) -> AddCaptionsResponse:
         font_size=acr.font_size,
         letter_spacing=acr.letter_spacing,
         line_spacing=acr.line_spacing,
+        line_max_width=acr.line_max_width,
         scale_x=acr.scale_x,
         scale_y=acr.scale_y,
         transform_x=acr.transform_x,

@@ -33,6 +33,7 @@ POST /openapi/capcut-mate/v1/add_captions
 | font_size | integer | ❌ | `15` | 接口级默认字号；当 caption 项未指定 `font_size` 时生效，须 `>= 1` |
 | letter_spacing | number | ❌ | `null` | 字间距；`null` 表示使用默认值 `0` |
 | line_spacing | number | ❌ | `null` | 行间距；`null` 表示使用默认值 `0` |
+| line_max_width | number | ❌ | `0.82` | 每行最大行宽占屏幕宽度比例，取值范围 `[0.0, 1.0]`；开启自动换行时生效 |
 | scale_x | number | ❌ | `1.0` | 水平缩放，`1.0` 为原始大小 |
 | scale_y | number | ❌ | `1.0` | 垂直缩放，`1.0` 为原始大小 |
 | transform_x | number | ❌ | `0.0` | 水平位移（像素），正值向右，负值向左，以画布中心为原点 |
@@ -1335,6 +1336,7 @@ VHS
   "font_size": 15,                             // 【可选】接口级默认字号
   "letter_spacing": 0,                         // 【可选】字间距
   "line_spacing": 0,                           // 【可选】行间距
+  "line_max_width": 0.82,                      // 【可选】每行最大行宽占屏幕宽度比例 [0,1]
   "scale_x": 1.0,                              // 【可选】水平缩放
   "scale_y": 1.0,                              // 【可选】垂直缩放
   "transform_x": 0.0,                          // 【可选】水平位移（像素）
@@ -1421,6 +1423,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_captions \
     "font_size": 15,
     "letter_spacing": 0,
     "line_spacing": 0,
+    "line_max_width": 0.82,
     "scale_x": 1.0,
     "scale_y": 1.0,
     "transform_x": 0.0,
@@ -1455,6 +1458,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_captions \
 | font_size | `15` | 【可选】接口级默认字号 |
 | letter_spacing | `0` | 【可选】字间距 |
 | line_spacing | `0` | 【可选】行间距 |
+| line_max_width | `0.82` | 【可选】每行最大行宽占屏幕宽度比例 |
 | scale_x / scale_y | `1.0` | 【可选】不缩放 |
 | transform_x | `0.0` | 【可选】水平不偏移 |
 | transform_y | `-200.0` | 【可选】向上偏移 200 像素 |

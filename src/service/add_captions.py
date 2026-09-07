@@ -137,6 +137,7 @@ def add_captions(
     font_size: int = 15,
     letter_spacing: Optional[float] = None,
     line_spacing: Optional[float] = None,
+    line_max_width: float = 0.82,
     scale_x: float = 1.0,
     scale_y: float = 1.0,
     transform_x: float = 0.0,
@@ -184,6 +185,7 @@ def add_captions(
         font_size: 字体大小，默认 15
         letter_spacing: 字间距，默认 None
         line_spacing: 行间距，默认 None
+        line_max_width: 每行最大行宽占屏幕宽度比例，取值范围为[0, 1]，默认 0.82
         scale_x: 水平缩放，默认 1.0
         scale_y: 垂直缩放，默认 1.0
         transform_x: 水平位移，默认 0.0
@@ -210,6 +212,7 @@ def add_captions(
     logger.info(f"add_captions started, draft_url: {draft_url}")
     logger.debug(f"Function parameters - text_color: {text_color}, border_color: {border_color}, "
                  f"alignment: {alignment}, alpha: {alpha}, font: {font}, font_size: {font_size}, "
+                 f"line_max_width: {line_max_width}, "
                  f"scale_x: {scale_x}, scale_y: {scale_y}, transform_x: {transform_x}, transform_y: {transform_y}, "
                  f"style_text: {style_text}, underline: {underline}, italic: {italic}, bold: {bold}, has_shadow: {has_shadow}, shadow_info: {shadow_info}")
     
@@ -255,6 +258,7 @@ def add_captions(
                     font_size=font_size,
                     letter_spacing=letter_spacing,
                     line_spacing=line_spacing,
+                    line_max_width=line_max_width,
                     scale_x=scale_x,
                     scale_y=scale_y,
                     transform_x=transform_x,
@@ -311,6 +315,7 @@ async def add_captions_async(
     font_size: int = 15,
     letter_spacing: Optional[float] = None,
     line_spacing: Optional[float] = None,
+    line_max_width: float = 0.82,
     scale_x: float = 1.0,
     scale_y: float = 1.0,
     transform_x: float = 0.0,
@@ -343,6 +348,7 @@ async def add_captions_async(
         font_size: 字体大小，默认 15
         letter_spacing: 字间距，默认 None
         line_spacing: 行间距，默认 None
+        line_max_width: 每行最大行宽占屏幕宽度比例，取值范围为[0, 1]，默认 0.82
         scale_x: 水平缩放，默认 1.0
         scale_y: 垂直缩放，默认 1.0
         transform_x: 水平位移，默认 0.0
@@ -401,6 +407,7 @@ async def add_captions_async(
             font_size=font_size,
             letter_spacing=letter_spacing,
             line_spacing=line_spacing,
+            line_max_width=line_max_width,
             scale_x=scale_x,
             scale_y=scale_y,
             transform_x=transform_x,
@@ -431,6 +438,7 @@ def add_caption_to_draft(
     font_size: int = 15,
     letter_spacing: Optional[float] = None,
     line_spacing: Optional[float] = None,
+    line_max_width: float = 0.82,
     scale_x: float = 1.0,
     scale_y: float = 1.0,
     transform_x: float = 0.0,
@@ -475,6 +483,7 @@ def add_caption_to_draft(
         font_size: 字体大小，默认 15
         letter_spacing: 字间距，默认 None
         line_spacing: 行间距，默认 None
+        line_max_width: 每行最大行宽占屏幕宽度比例，取值范围为[0, 1]，默认 0.82
         scale_x: 水平缩放，默认 1.0
         scale_y: 垂直缩放，默认 1.0
         transform_x: 水平位移，默认 0.0
@@ -543,6 +552,7 @@ def add_caption_to_draft(
             letter_spacing=int(letter_spacing) if letter_spacing is not None else 0,
             line_spacing=int(line_spacing) if line_spacing is not None else 0,
             auto_wrapping=True,  # 字幕默认开启自动换行
+            max_line_width=line_max_width,
             underline=underline,
             italic=italic,
             bold=bold
@@ -550,6 +560,7 @@ def add_caption_to_draft(
         logger.info(
             f"Created text style, text_style.size: {text_style.size}, "
             f"align: {text_style.align}, vertical: {text_style.vertical}, "
+            f"max_line_width: {text_style.max_line_width}, "
             f"font_size from caption: {font_size}"
         )
         

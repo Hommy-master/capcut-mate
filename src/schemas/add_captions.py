@@ -28,6 +28,12 @@ class AddCaptionsRequest(BaseModel):
     font_size: int = Field(default=15, ge=1, description="字体大小")
     letter_spacing: Optional[float] = Field(default=None, description="字间距")
     line_spacing: Optional[float] = Field(default=None, description="行间距")
+    line_max_width: float = Field(
+        default=0.82,
+        ge=0.0,
+        le=1.0,
+        description="每行最大行宽占屏幕宽度比例，取值范围为[0, 1]，默认 0.82",
+    )
     scale_x: float = Field(default=1.0, description="水平缩放")
     scale_y: float = Field(default=1.0, description="垂直缩放")
     transform_x: float = Field(default=0.0, description="水平位移")
