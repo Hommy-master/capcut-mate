@@ -610,7 +610,7 @@ class TextSegment(VisualSegment):
             "font_title": "none",
             "font_url": "",
             "fonts": fonts_list,
-            "force_apply_line_max_width": False,
+            "force_apply_line_max_width": bool(self.style.auto_wrapping),
             "global_alpha": self.style.alpha,
             "group_id": "",
             "has_shadow": bool(self.shadow or has_style_shadows),
