@@ -1,9 +1,3 @@
-function macNotarize() {
-  const teamId = process.env.APPLE_TEAM_ID;
-  if (!teamId) return false;
-  return { teamId };
-}
-
 module.exports = {
   appId: "com.gogoshine.capcutmate",
   productName: "CapCut-Mate",
@@ -11,6 +5,7 @@ module.exports = {
     output: "dist"
   },
   afterPack: require("./afterPackWinIcon"),
+  afterSign: require("./notarize"),
   win: {
     icon: "assets/icons/logo.ico",
     artifactName: "capcut-mate-windows-x64-green.zip",
@@ -25,7 +20,7 @@ module.exports = {
     gatekeeperAssess: false,
     entitlements: "assets/entitlements.mac.plist",
     entitlementsInherit: "assets/entitlements.mac.plist",
-    notarize: macNotarize()
+    notarize: false
   },
   files: [
     "!node_modules/**/*",

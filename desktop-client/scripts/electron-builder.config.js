@@ -1,13 +1,6 @@
 /**
  * Electron Builder Configuration
  */
-function macNotarize() {
-  const teamId = process.env.APPLE_TEAM_ID;
-  // 本地无 Team ID 时跳过公证；CI 注入 APPLE_TEAM_ID + Apple ID 凭据后启用
-  if (!teamId) return false;
-  return { teamId };
-}
-
 module.exports = {
   appId: "com.gogoshine.capcutmate",
   productName: "剪映小助手",
@@ -15,6 +8,7 @@ module.exports = {
     output: "dist"
   },
   afterPack: require("./afterPackWinIcon"),
+  afterSign: require("./notarize"),
   files: [
     "**/*",
     // "!node_modules",
@@ -53,7 +47,8 @@ module.exports = {
     gatekeeperAssess: false,
     entitlements: "assets/entitlements.mac.plist",
     entitlementsInherit: "assets/entitlements.mac.plist",
-    notarize: macNotarize()
+    // 公证改由 afterSign（scripts/notarize.js）处理，便于重试
+    notarize: false
   },
   dmg: {
     background: null,
