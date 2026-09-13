@@ -109,18 +109,28 @@ jobs:
         run: npm run ${{ matrix.installer_command }}
         working-directory: ./desktop-client
         env:
-          # 添加环境变量以解决macOS构建问题
-          CSC_IDENTITY_AUTO_DISCOVERY: false
           DEBUG: electron-builder
+          # Windows：继续跳过签名（builder 配置已关闭）
+          # macOS：Developer ID 签名 + 公证（需 Secrets: CSC_LINK / CSC_KEY_PASSWORD + Apple ID 三项）
+          CSC_IDENTITY_AUTO_DISCOVERY: ${{ startsWith(matrix.os, 'macos') && 'true' || 'false' }}
+          CSC_LINK: ${{ startsWith(matrix.os, 'macos') && secrets.CSC_LINK || '' }}
+          CSC_KEY_PASSWORD: ${{ startsWith(matrix.os, 'macos') && secrets.CSC_KEY_PASSWORD || '' }}
+          APPLE_ID: ${{ startsWith(matrix.os, 'macos') && secrets.APPLE_ID || '' }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ startsWith(matrix.os, 'macos') && secrets.APPLE_APP_SPECIFIC_PASSWORD || '' }}
+          APPLE_TEAM_ID: ${{ startsWith(matrix.os, 'macos') && secrets.APPLE_TEAM_ID || '' }}
 
       - name: 构建绿色安装包
         if: matrix.green_command != 'null'
         run: npm run ${{ matrix.green_command }}
         working-directory: ./desktop-client
         env:
-          # 添加环境变量以解决macOS构建问题
-          CSC_IDENTITY_AUTO_DISCOVERY: false
           DEBUG: electron-builder
+          CSC_IDENTITY_AUTO_DISCOVERY: ${{ startsWith(matrix.os, 'macos') && 'true' || 'false' }}
+          CSC_LINK: ${{ startsWith(matrix.os, 'macos') && secrets.CSC_LINK || '' }}
+          CSC_KEY_PASSWORD: ${{ startsWith(matrix.os, 'macos') && secrets.CSC_KEY_PASSWORD || '' }}
+          APPLE_ID: ${{ startsWith(matrix.os, 'macos') && secrets.APPLE_ID || '' }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ startsWith(matrix.os, 'macos') && secrets.APPLE_APP_SPECIFIC_PASSWORD || '' }}
+          APPLE_TEAM_ID: ${{ startsWith(matrix.os, 'macos') && secrets.APPLE_TEAM_ID || '' }}
 
       - name: 列出dist目录内容
         run: |

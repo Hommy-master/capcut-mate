@@ -1,3 +1,9 @@
+function macNotarize() {
+  const teamId = process.env.APPLE_TEAM_ID;
+  if (!teamId) return false;
+  return { teamId };
+}
+
 module.exports = {
   appId: "com.gogoshine.capcutmate",
   productName: "CapCut-Mate",
@@ -18,7 +24,8 @@ module.exports = {
     hardenedRuntime: true,
     gatekeeperAssess: false,
     entitlements: "assets/entitlements.mac.plist",
-    entitlementsInherit: "assets/entitlements.mac.plist"
+    entitlementsInherit: "assets/entitlements.mac.plist",
+    notarize: macNotarize()
   },
   files: [
     "!node_modules/**/*",
