@@ -14,7 +14,7 @@ function loadNotarize() {
   }
 }
 
-exports.default = async function notarizeAfterSign(context) {
+module.exports = async function notarizeAfterSign(context) {
   const { electronPlatformName, appOutDir } = context;
   if (electronPlatformName !== "darwin") return;
 
