@@ -140,7 +140,7 @@ jobs:
           rm -f "$CERTIFICATE_PATH"
 
       - name: 根据平台创建安装包
-        timeout-minutes: 45
+        timeout-minutes: 60
         working-directory: ./desktop-client
         env:
           # 不传 CSC_LINK：使用上一步导入的钥匙串，避免再建缺 codesign: 的临时钥匙串
@@ -158,7 +158,7 @@ jobs:
 
       - name: 构建绿色安装包
         if: matrix.green_command != 'null'
-        timeout-minutes: 45
+        timeout-minutes: 60
         working-directory: ./desktop-client
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: ${{ startsWith(matrix.os, 'macos') && 'true' || 'false' }}

@@ -45,16 +45,8 @@ module.exports = {
   },
   mac: {
     icon: "assets/icons/logo.icns",
-    target: [
-      {
-        target: "dmg",
-        arch: "arm64"
-      },
-      {
-        target: "dmg",
-        arch: "x64"
-      }
-    ],
+    // 架构由 CLI --arm64 / --x64 决定，避免单个 job 打双架构导致超时
+    target: ["dmg"],
     artifactName: "capcut-mate-macos-${arch}-installer.dmg",
     category: "public.app-category.productivity",
     hardenedRuntime: true,
