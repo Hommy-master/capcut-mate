@@ -2,7 +2,7 @@ const { app, BrowserWindow, dialog, shell } = require('electron');
 const path = require('path');
 const logger = require('./nodeapi/logger');
 
-// 引入IPC处理程序模块
+// 引入IPC处理程序模块，OK
 const { setupIpcHandlers } = require('./nodeapi/ipcHandlers');
 const { attachEditContextMenu } = require('./nodeapi/editContextMenu');
 
