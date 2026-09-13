@@ -6,12 +6,7 @@ const path = require("path");
 const { execFileSync } = require("child_process");
 
 function loadNotarize() {
-  try {
-    return require("@electron/notarize");
-  } catch (_) {
-    // electron-builder 自带的嵌套依赖
-    return require("app-builder-lib/node_modules/@electron/notarize");
-  }
+  return require("@electron/notarize");
 }
 
 module.exports = async function notarizeAfterSign(context) {
@@ -37,7 +32,6 @@ module.exports = async function notarizeAfterSign(context) {
     try {
       console.log(`notarizing ${appPath} (attempt ${attempt}/${maxAttempts})`);
       await notarize({
-        tool: "notarytool",
         appPath,
         appleId,
         appleIdPassword,

@@ -20,9 +20,10 @@
     "build-mac-x64-green": "electron-builder --mac zip --x64 --config ./scripts/electron-builder-green.config.js --publish never"
   },
   "devDependencies": {
-    "@electron/packager": "^18.3.5",
-    "electron": "31.7.6",
-    "electron-builder": "^24.13.3"
+    "@electron/notarize": "^3.1.1",
+    "@electron/packager": "^20.3.0",
+    "electron": "^44.3.0",
+    "electron-builder": "26.15.3"
   },
   "optionalDependencies": {
     "dmg-license": "^1.0.11"
@@ -32,6 +33,6 @@
   "dependencies": {
     "axios": "^1.11.0",
     "log4js": "^6.9.1",
-    "uuid": "^8.3.2"
+    "uuid": "^14.0.2"
   }
 }

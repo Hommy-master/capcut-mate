@@ -25,10 +25,9 @@ module.exports = {
     icon: "assets/icons/logo.ico",
     target: "nsis",
     artifactName: "capcut-mate-windows-x64-installer.exe",
-    // 跳过 winCodeSign（本机解压会因符号链接权限失败）；exe 图标由 afterPack 写入
-    signingHashAlgorithms: [],
-    signAndEditExecutable: false,
-    signDlls: false
+    // electron-builder 26：仅跳过代码签名，仍写入 exe 图标/元数据
+    // （signAndEditExecutable:false 会连图标一起跳过）
+    signExecutable: false
   },
   nsis: {
     oneClick: false,
