@@ -5,10 +5,6 @@
 const path = require("path");
 const { execFileSync } = require("child_process");
 
-function loadNotarize() {
-  return require("@electron/notarize");
-}
-
 module.exports = async function notarizeAfterSign(context) {
   const { electronPlatformName, appOutDir } = context;
   if (electronPlatformName !== "darwin") return;
@@ -21,7 +17,20 @@ module.exports = async function notarizeAfterSign(context) {
     return;
   }
 
-  const { notarize } = loadNotarize();
+  // 长时间打包后钥匙串可能再次上锁，公证前先解锁
+  const keychainPath = process.env.KEYCHAIN_PATH;
+  const keychainPassword = process.env.KEYCHAIN_PASSWORD;
+  if (keychainPath && keychainPassword) {
+    try {
+      execFileSync("security", ["unlock-keychain", "-p", keychainPassword, keychainPath], {
+        stdio: "inherit"
+      });
+    } catch (err) {
+      console.warn("unlock-keychain failed:", err && err.message ? err.message : err);
+    }
+  }
+
+  const { notarize } = require("@electron/notarize");
   const appName = context.packager.appInfo.productFilename;
   const appPath = path.join(appOutDir, `${appName}.app`);
 
@@ -29,24 +38,24 @@ module.exports = async function notarizeAfterSign(context) {
   let lastError;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const started = Date.now();
     try {
       console.log(`notarizing ${appPath} (attempt ${attempt}/${maxAttempts})`);
+      // @electron/notarize v3：提交公证并自动 staple
       await notarize({
         appPath,
         appleId,
         appleIdPassword,
         teamId
       });
-      console.log("notarization successful, stapling...");
-      execFileSync("xcrun", ["stapler", "staple", "-v", appPath], { stdio: "inherit" });
-      console.log("staple successful");
+      console.log(`notarization successful in ${Math.round((Date.now() - started) / 1000)}s`);
       return;
     } catch (err) {
       lastError = err;
       const message = err && err.message ? err.message : String(err);
-      console.warn(`notarize attempt ${attempt} failed: ${message}`);
+      console.warn(`notarize attempt ${attempt} failed after ${Math.round((Date.now() - started) / 1000)}s: ${message}`);
       if (attempt < maxAttempts) {
-        const waitSec = attempt * 45;
+        const waitSec = attempt * 60;
         console.log(`waiting ${waitSec}s before retry...`);
         await new Promise((resolve) => setTimeout(resolve, waitSec * 1000));
       }

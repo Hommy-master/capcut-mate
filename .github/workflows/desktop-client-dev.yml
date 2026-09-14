@@ -51,21 +51,15 @@ jobs:
           - os: windows-2022
             platform: win
             artifact_name: windows-build
-            build_command: build-win
             installer_command: build-win-installer
-            green_command: build-win-green
           - os: macos-14
             platform: mac
             artifact_name: macos-build
-            build_command: build-mac
             installer_command: build-mac-installer
-            green_command: build-mac-green
           - os: macos-15-intel
             platform: mac-x64
             artifact_name: macos-build-x64
-            build_command: build-mac-x64
             installer_command: build-mac-x64-installer
-            green_command: build-mac-x64-green
 
     steps:
       - name: 准备代码
@@ -141,7 +135,7 @@ jobs:
           rm -f "$CERTIFICATE_PATH"
 
       - name: 根据平台创建安装包
-        timeout-minutes: 60
+        timeout-minutes: 75
         working-directory: ./desktop-client
         env:
           # 不传 CSC_LINK：使用上一步导入的钥匙串，避免再建缺 codesign: 的临时钥匙串
@@ -155,23 +149,6 @@ jobs:
             security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
           fi
           npm run ${{ matrix.installer_command }}
-        shell: bash
-
-      - name: 构建绿色安装包
-        if: matrix.green_command != 'null'
-        timeout-minutes: 60
-        working-directory: ./desktop-client
-        env:
-          CSC_IDENTITY_AUTO_DISCOVERY: ${{ startsWith(matrix.os, 'macos') && 'true' || 'false' }}
-          APPLE_ID: ${{ startsWith(matrix.os, 'macos') && secrets.APPLE_ID || '' }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ startsWith(matrix.os, 'macos') && secrets.APPLE_APP_SPECIFIC_PASSWORD || '' }}
-          APPLE_TEAM_ID: ${{ startsWith(matrix.os, 'macos') && secrets.APPLE_TEAM_ID || '' }}
-        run: |
-          if [ -n "${KEYCHAIN_PATH:-}" ]; then
-            security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-            security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-          fi
-          npm run ${{ matrix.green_command }}
         shell: bash
 
       - name: 清理 macOS 签名钥匙串
@@ -194,14 +171,6 @@ jobs:
           path: desktop-client/dist/
           if-no-files-found: ignore
 
-      - name: 上传绿色安装包构件
-        if: matrix.green_command != 'null'
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.artifact_name }}-green
-          path: desktop-client/dist/*.zip
-          if-no-files-found: ignore
-
       - name: 发布版本
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v1
@@ -212,7 +181,6 @@ jobs:
             desktop-client/dist/capcut-mate-windows-x64-installer.exe
             desktop-client/dist/capcut-mate-macos-arm64-installer.dmg
             desktop-client/dist/capcut-mate-macos-x64-installer.dmg
-            desktop-client/dist/*.zip
           overwrite: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
