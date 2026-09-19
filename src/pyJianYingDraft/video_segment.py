@@ -215,7 +215,7 @@ class FigureEffect:
     algorithm_artifact_path: str
 
     def __init__(self, meta: BeautyMeta, intensity: float, *, algorithm_artifact_path: str = ""):
-        """intensity 为 0~1。不需要算法路径的滑杆（美白）忽略 algorithm_artifact_path。"""
+        """intensity 为 0~1。不需要算法路径的滑杆（美白、肤色）忽略 algorithm_artifact_path。"""
         if not 0.0 <= intensity <= 1.0:
             raise ValueError(f"美颜强度超出范围: {intensity}")
         self.global_id = uuid.uuid4().hex
@@ -230,6 +230,7 @@ class FigureEffect:
         self.intensity = intensity
 
     def export_json(self) -> Dict[str, Any]:
+        face_adjust_params: List[Dict[str, Any]] = []
         if self.meta.intensity_mode == "adjust_param":
             adjust_params = [{
                 "default_value": 0.0,
@@ -237,6 +238,26 @@ class FigureEffect:
                 "value": self.intensity,
             }]
             value = 0.0
+        elif self.meta.intensity_mode == "face_adjust":
+            adjust_params = []
+            value = 0.0
+            face_adjust_params = [{
+                "adjust_params": [
+                    {
+                        "default_value": 0.0,
+                        "name": "face_adjust_skin_ColdWarm",
+                        "value": self.meta.face_adjust_cold_warm,
+                    },
+                    {
+                        "default_value": 0.0,
+                        "name": "face_adjust_skin_Intensity",
+                        "value": self.intensity,
+                    },
+                ],
+                "disable_part": [],
+                "enable": True,
+                "face_id": "-1",
+            }]
         else:
             adjust_params = []
             value = self.intensity
@@ -255,11 +276,11 @@ class FigureEffect:
             },
             "effect_id": "",
             "enable_skin_tone_correction": False,
-            "exclusion_group": [],
-            "face_adjust_params": [],
+            "exclusion_group": list(self.meta.exclusion_group),
+            "face_adjust_params": face_adjust_params,
             "formula_id": "",
             "id": self.global_id,
-            "intensity_key": "",
+            "intensity_key": self.meta.intensity_key,
             "multi_language_current": "",
             "name": self.meta.name,
             "panel_id": "",
@@ -572,7 +593,7 @@ class VideoSegment(VisualSegment):
         """为视频片段添加或更新一个美颜滑杆。
 
         Args:
-            beauty_type (`BeautyType`): 美颜类型，目前支持美白、磨皮、白牙。
+            beauty_type (`BeautyType`): 美颜类型，支持匀肤、丰盈、磨皮、祛法令纹、亮眼、祛黑眼圈、美白、白牙、肤色。
             intensity (`float`): 强度，取值范围 0~100，与剪映滑杆一致。
             algorithm_artifact_path (`str`, optional): 需要算法产物的滑杆使用的路径。美白忽略此参数。
 

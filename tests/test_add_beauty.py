@@ -19,6 +19,7 @@ from src.pyJianYingDraft.metadata.beauty_meta import (
 )
 from src.pyJianYingDraft.time_util import Timerange
 from src.pyJianYingDraft.video_segment import FigureEffect, VideoSegment
+from src.schemas.add_beauty import AddBeautyRequest, BeautyItem
 from src.service.add_beauty import add_beauty
 from src.utils.draft_cache import DRAFT_CACHE
 from exceptions import CustomException, CustomError
@@ -89,6 +90,33 @@ def _video_segment() -> VideoSegment:
         material_type="video",
     )
     return VideoSegment(material, Timerange(0, 5_000_000))
+
+
+def test_even_skin_uses_adjust_param_zero_and_intensity_key():
+    data = _effect(BeautyType.匀肤, 1.0, ALGO)
+    assert data["name"] == "匀肤"
+    assert data["sub_type"] == "auto_beauty"
+    assert data["resource_id"] == "7106322605304451614"
+    assert data["value"] == 0.0
+    assert data["intensity_key"] == "face_adjust_yunfu"
+    assert data["adjust_params"] == [{"default_value": 0.0, "name": "0", "value": pytest.approx(1.0)}]
+    assert data["algorithm_artifact_path"] == ALGO
+
+
+def test_skin_tone_uses_face_adjust_params():
+    data = _effect(BeautyType.肤色, 0.6)
+    assert data["name"] == "暖白"
+    assert data["sub_type"] == "exclusion"
+    assert data["resource_id"] == "7148720647714116132"
+    assert data["value"] == 0.0
+    assert data["algorithm_artifact_path"] == ""
+    assert data["exclusion_group"] == ["face_adjust_skin"]
+    params = data["face_adjust_params"][0]
+    assert params["enable"] is True
+    assert params["face_id"] == "-1"
+    by_name = {item["name"]: item["value"] for item in params["adjust_params"]}
+    assert by_name["face_adjust_skin_ColdWarm"] == pytest.approx(0.0)
+    assert by_name["face_adjust_skin_Intensity"] == pytest.approx(0.6)
 
 
 def test_add_beauty_updates_intensity_without_duplicating_refs():
@@ -187,5 +215,55 @@ def test_unknown_beauty_name_raises():
                 beauty_infos=[{"name": "瘦脸", "intensity": 20}],
             )
         assert exc.value.err == CustomError.BEAUTY_NOT_FOUND
+    finally:
+        DRAFT_CACHE.pop(draft_id, None)
+
+
+def test_schema_beauty_parameters_have_defaults():
+    item = BeautyItem(name="美白")
+    assert item.intensity == 0
+    req = AddBeautyRequest()
+    assert req.匀肤 == 0
+    assert req.丰盈 == 0
+    assert req.磨皮 == 0
+    assert req.祛法令纹 == 0
+    assert req.亮眼 == 0
+    assert req.祛黑眼圈 == 0
+    assert req.美白 == 0
+    assert req.白牙 == 0
+    assert req.肤色 == ""
+    assert req.肤色强度 == 60
+
+
+def test_named_params_write_vip_slider_and_skin_tone():
+    draft_id = "beauty-named"
+    script = ScriptFile(1080, 1920, 30, True)
+    script.save = lambda: None  # type: ignore[method-assign]
+    script.add_track(TrackType.video)
+    seg = _video_segment()
+    script.add_material(seg.material_instance)
+    script.add_segment(seg)
+    DRAFT_CACHE[draft_id] = script
+    try:
+        add_beauty(
+            draft_url=f"http://localhost/get_draft?draft_id={draft_id}",
+            segment_ids=[seg.segment_id],
+            匀肤=100,
+            美白=60,
+            肤色="暖白",
+        )
+        content = json.loads(script.dumps())
+        effects = content["materials"]["effects"]
+        by_name = {item["name"]: item for item in effects}
+        assert set(by_name) == {"匀肤", "美白", "暖白", "makeup-root"}
+        assert by_name["匀肤"]["adjust_params"][0]["value"] == pytest.approx(1.0)
+        assert by_name["匀肤"]["intensity_key"] == "face_adjust_yunfu"
+        assert by_name["美白"]["value"] == pytest.approx(0.6)
+        skin_params = {
+            item["name"]: item["value"]
+            for item in by_name["暖白"]["face_adjust_params"][0]["adjust_params"]
+        }
+        assert skin_params["face_adjust_skin_Intensity"] == pytest.approx(0.6)
+        assert by_name["暖白"]["sub_type"] == "exclusion"
     finally:
         DRAFT_CACHE.pop(draft_id, None)

@@ -1,4 +1,4 @@
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Tuple, Optional
 import asyncio
 
 from src.utils.logger import logger
@@ -11,23 +11,52 @@ from src.utils import helper
 from src.utils.draft_lock_manager import DraftLockManager
 from src.service.add_masks import find_segment_by_id
 
+BEAUTY_SLIDER_NAMES = ("匀肤", "丰盈", "磨皮", "祛法令纹", "亮眼", "祛黑眼圈", "美白", "白牙")
+
 
 def add_beauty(
     draft_url: str,
     segment_ids: List[str],
-    beauty_infos: List[Dict[str, Any]],
+    beauty_infos: Optional[List[Dict[str, Any]]] = None,
+    *,
+    匀肤: float = 0,
+    丰盈: float = 0,
+    磨皮: float = 0,
+    祛法令纹: float = 0,
+    亮眼: float = 0,
+    祛黑眼圈: float = 0,
+    美白: float = 0,
+    白牙: float = 0,
+    肤色: str = "",
+    肤色强度: float = 60,
 ) -> Tuple[str, List[str], List[str]]:
     """向指定视频片段添加美颜。
 
     美颜写入 materials.effects（type=figure），并挂到片段 extra_material_refs。
     同一片段已有同名滑杆时只更新强度。任意滑杆都会补一条 makeup-root。
+    具名参数默认不生效（滑杆为 0、肤色为空）；非默认值会与 beauty_infos 合并写入。
 
     Returns:
         draft_url, affected_segments, figure_ids
     """
+    beauty_infos = _merge_beauty_infos(
+        beauty_infos,
+        {
+            "匀肤": 匀肤,
+            "丰盈": 丰盈,
+            "磨皮": 磨皮,
+            "祛法令纹": 祛法令纹,
+            "亮眼": 亮眼,
+            "祛黑眼圈": 祛黑眼圈,
+            "美白": 美白,
+            "白牙": 白牙,
+            "肤色": 肤色,
+            "肤色强度": 肤色强度,
+        },
+    )
     logger.info(
         f"add_beauty started, draft_url: {draft_url}, "
-        f"segment_ids: {segment_ids}, beauty count: {len(beauty_infos) if beauty_infos else 0}"
+        f"segment_ids: {segment_ids}, beauty count: {len(beauty_infos)}"
     )
 
     draft_id = helper.get_url_param(draft_url, "draft_id")
@@ -72,8 +101,9 @@ def add_beauty(
 async def add_beauty_async(
     draft_url: str,
     segment_ids: List[str],
-    beauty_infos: List[Dict[str, Any]],
+    beauty_infos: Optional[List[Dict[str, Any]]] = None,
     lock_timeout: float = 30.0,
+    **named_beauty: Any,
 ) -> Tuple[str, List[str], List[str]]:
     """add_beauty 的异步版本，带草稿写锁。"""
     draft_id = helper.get_url_param(draft_url, "draft_id")
@@ -96,10 +126,27 @@ async def add_beauty_async(
             draft_url=draft_url,
             segment_ids=segment_ids,
             beauty_infos=beauty_infos,
+            **named_beauty,
         )
     finally:
         await lock_manager.release_lock(draft_id)
         logger.info(f"Lock released for draft_id: {draft_id}")
+
+
+def _merge_beauty_infos(
+    beauty_infos: Optional[List[Dict[str, Any]]],
+    named: Dict[str, Any],
+) -> List[Dict[str, Any]]:
+    """把具名美颜参数合并进 beauty_infos。滑杆为 0、肤色为空时跳过。"""
+    items: List[Dict[str, Any]] = list(beauty_infos or [])
+    for name in BEAUTY_SLIDER_NAMES:
+        value = named.get(name, 0)
+        if value:
+            items.append({"name": name, "intensity": value})
+    skin = str(named.get("肤色") or "").strip()
+    if skin:
+        items.append({"name": skin, "intensity": named.get("肤色强度", 60)})
+    return items
 
 
 def add_beauty_to_segment(
@@ -135,7 +182,7 @@ def add_beauty_to_segment(
             raise CustomException(CustomError.BEAUTY_NOT_FOUND)
 
         try:
-            intensity = float(info.get("intensity"))
+            intensity = float(info.get("intensity", 0))
         except (TypeError, ValueError):
             raise CustomException(CustomError.INVALID_BEAUTY_INFO)
         if not 0.0 <= intensity <= 100.0:
