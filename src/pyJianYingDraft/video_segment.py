@@ -662,27 +662,40 @@ class VideoSegment(VisualSegment):
         *,
         center_x: Optional[float] = None,
         center_y: Optional[float] = None,
+        width: Optional[float] = None,
+        height: Optional[float] = None,
         feather: Optional[float] = None,
         rotation: Optional[float] = None,
     ) -> int:
         """为当前蒙版添加关键帧, 写入片段 `common_keyframes`, 不修改蒙版静态 config。
 
-        参数单位与 `add_mask` 一致: `center_x`/`center_y` 为相对素材中心的像素（右/下为正）,
-        `feather` 为 0-100, `rotation` 为角度. 只提供的字段才会写入对应属性。
-        同一属性在同一时间点已有关键帧时覆盖, 不重复追加。
+        参数单位与 `add_mask` / `add_masks` 一致: `center_x`/`center_y` 为相对素材中心的像素（右/下为正）,
+        `width`/`height` 为像素（草稿值为像素 / 素材宽高）, `feather` 为 0-100, `rotation` 为角度.
+        只提供的字段才会写入对应属性。同一属性在同一时间点已有关键帧时覆盖, 不重复追加。
 
         Returns:
-            实际写入的草稿属性条数（X 与 Y 分别计 1）
+            实际写入的草稿属性条数（X 与 Y、width 与 height 分别计 1）
 
         Raises:
-            `ValueError`: 片段没有蒙版、未提供任何属性、或羽化超出范围
+            `ValueError`: 片段没有蒙版、未提供任何属性、羽化超出范围、或宽高为负
         """
         if self.mask is None:
             raise ValueError("当前片段没有蒙版, 请先添加蒙版")
-        if center_x is None and center_y is None and feather is None and rotation is None:
-            raise ValueError("至少需要提供 center_x、center_y、feather、rotation 中的一个")
+        if (
+            center_x is None
+            and center_y is None
+            and width is None
+            and height is None
+            and feather is None
+            and rotation is None
+        ):
+            raise ValueError("至少需要提供 center_x、center_y、width、height、feather、rotation 中的一个")
         if feather is not None and not (0.0 <= feather <= 100.0):
             raise ValueError("羽化程度必须在 0-100 范围内")
+        if width is not None and width < 0:
+            raise ValueError("蒙版宽度不能为负数")
+        if height is not None and height < 0:
+            raise ValueError("蒙版高度不能为负数")
 
         if isinstance(time_offset, str):
             time_offset = tim(time_offset)
@@ -706,6 +719,24 @@ class VideoSegment(VisualSegment):
                 KeyframeProperty.mask_position_y,
                 time_offset,
                 center_y / (material_height / 2),
+            )
+            added += 1
+        if width is not None:
+            if material_width <= 0:
+                raise ValueError("素材宽度无效, 无法换算蒙版大小关键帧")
+            self._set_keyframe(
+                KeyframeProperty.mask_size_x,
+                time_offset,
+                width / material_width,
+            )
+            added += 1
+        if height is not None:
+            if material_height <= 0:
+                raise ValueError("素材高度无效, 无法换算蒙版大小关键帧")
+            self._set_keyframe(
+                KeyframeProperty.mask_size_y,
+                time_offset,
+                height / material_height,
             )
             added += 1
         if feather is not None:

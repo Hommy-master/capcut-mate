@@ -59,6 +59,26 @@ def test_position_conversion_matches_half_material_size():
     assert y_list.keyframes[0].values[0] == pytest.approx(-200 / 1280)
 
 
+def test_size_conversion_matches_material_size():
+    # 对齐剪映草稿：KFTypeMaskSizeX = width / material_width，SizeY = height / material_height
+    seg = _segment_with_mask(width=1080, height=1920)
+    added = seg.add_mask_keyframe(0, width=540, height=540)
+    added += seg.add_mask_keyframe(5_000_000, width=1075.813953488372, height=1071.032558139535)
+    assert added == 4
+
+    size_x = _kf_list(seg, KeyframeProperty.mask_size_x)
+    size_y = _kf_list(seg, KeyframeProperty.mask_size_y)
+    assert size_x is not None and size_y is not None
+    assert [kf.values[0] for kf in size_x.keyframes] == [
+        pytest.approx(0.5),
+        pytest.approx(0.9961240310077519),
+    ]
+    assert [kf.values[0] for kf in size_y.keyframes] == [
+        pytest.approx(0.28125),
+        pytest.approx(0.5578294573643412),
+    ]
+
+
 def test_feather_divided_by_100_rotation_in_degrees():
     seg = _segment_with_mask()
     added = seg.add_mask_keyframe(0, feather=0, rotation=0)
@@ -74,10 +94,12 @@ def test_feather_divided_by_100_rotation_in_degrees():
 
 def test_export_uses_capcut_postion_spelling():
     seg = _segment_with_mask()
-    seg.add_mask_keyframe(0, center_x=0, center_y=0, feather=0, rotation=0)
+    seg.add_mask_keyframe(0, center_x=0, center_y=0, width=512, height=512, feather=0, rotation=0)
     exported = {item["property_type"]: item for item in seg.export_json()["common_keyframes"]}
     assert "KFTypeMaskPostionX" in exported
     assert "KFTypeMaskPostionY" in exported
+    assert "KFTypeMaskSizeX" in exported
+    assert "KFTypeMaskSizeY" in exported
     assert "KFTypeMaskFeather" in exported
     assert "KFTypeMaskRotation" in exported
     assert "KFTypeMaskPositionX" not in exported
@@ -101,14 +123,47 @@ def test_same_offset_overwrites():
 
 def test_does_not_change_mask_config():
     seg = _segment_with_mask()
-    original = (seg.mask.center_x, seg.mask.center_y, seg.mask.feather, seg.mask.rotation)
-    seg.add_mask_keyframe(5_000_000, center_x=-360, center_y=-200, feather=100, rotation=180)
-    assert (seg.mask.center_x, seg.mask.center_y, seg.mask.feather, seg.mask.rotation) == original
+    original = (
+        seg.mask.center_x,
+        seg.mask.center_y,
+        seg.mask.width,
+        seg.mask.height,
+        seg.mask.feather,
+        seg.mask.rotation,
+    )
+    seg.add_mask_keyframe(
+        5_000_000,
+        center_x=-360,
+        center_y=-200,
+        width=1080,
+        height=1920,
+        feather=100,
+        rotation=180,
+    )
+    assert (
+        seg.mask.center_x,
+        seg.mask.center_y,
+        seg.mask.width,
+        seg.mask.height,
+        seg.mask.feather,
+        seg.mask.rotation,
+    ) == original
 
 
 def test_schema_requires_at_least_one_property():
     with pytest.raises(ValidationError):
         MaskKeyframeItem(segment_id="seg", offset=0)
+
+
+def test_schema_accepts_width_height_only():
+    item = MaskKeyframeItem(segment_id="seg", offset=0, width=540, height=540)
+    assert item.width == 540
+    assert item.height == 540
+
+
+def test_schema_rejects_negative_size():
+    with pytest.raises(ValidationError):
+        MaskKeyframeItem(segment_id="seg", offset=0, width=-1)
 
 
 def test_service_writes_keyframes_and_counts_xy_separately():
@@ -124,29 +179,44 @@ def test_service_writes_keyframes_and_counts_xy_separately():
         _, added, affected = add_mask_keyframes(
             draft_url=f"http://localhost/get_draft?draft_id={draft_id}",
             keyframes=[
-                {"segment_id": seg.segment_id, "offset": 0, "X": 0, "Y": 0, "feather": 0, "rotation": 0},
+                {
+                    "segment_id": seg.segment_id,
+                    "offset": 0,
+                    "X": 0,
+                    "Y": 0,
+                    "width": 720,
+                    "height": 1280,
+                    "feather": 0,
+                    "rotation": 0,
+                },
                 {
                     "segment_id": seg.segment_id,
                     "offset": 5_000_000,
                     "X": -360,
                     "Y": -200,
+                    "width": 1440,
+                    "height": 2560,
                     "feather": 100,
                     "rotation": 180,
                 },
             ],
         )
-        assert added == 8
+        assert added == 12
         assert affected == [seg.segment_id]
 
         content = json.loads(script.dumps())
         kfs = content["tracks"][0]["segments"][0]["common_keyframes"]
         by_type = {item["property_type"]: item for item in kfs}
         assert by_type["KFTypeMaskPostionX"]["keyframe_list"][1]["values"][0] == pytest.approx(-0.5)
+        assert by_type["KFTypeMaskSizeX"]["keyframe_list"][0]["values"][0] == pytest.approx(0.5)
+        assert by_type["KFTypeMaskSizeY"]["keyframe_list"][1]["values"][0] == pytest.approx(1.0)
         assert by_type["KFTypeMaskFeather"]["keyframe_list"][1]["values"][0] == pytest.approx(1.0)
         assert by_type["KFTypeMaskRotation"]["keyframe_list"][1]["values"][0] == pytest.approx(180.0)
         mask_config = content["materials"]["masks"][0]["config"]
         assert mask_config["centerX"] == 0.0
         assert mask_config["feather"] == 0.0
+        assert mask_config["width"] == pytest.approx(seg.mask.width)
+        assert mask_config["height"] == pytest.approx(seg.mask.height)
     finally:
         DRAFT_CACHE.pop(draft_id, None)
 

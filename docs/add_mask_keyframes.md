@@ -11,7 +11,7 @@ POST /openapi/capcut-mate/v1/add_mask_keyframes
 
 ## Function Description
 
-Add mask keyframes to video segments that already have a mask. Keyframes are written on the segment `common_keyframes` list and can animate position (X/Y), feather, and rotation. Units match `add_masks`: pixels for position, 0–100 for feather, degrees for rotation.
+Add mask keyframes to video segments that already have a mask. Keyframes are written on the segment `common_keyframes` list and can animate position (X/Y), size (width/height), feather, and rotation. Units match `add_masks`: pixels for position and size, 0–100 for feather, degrees for rotation.
 
 The segment must already have a mask from `add_masks`. This API does not create a mask and does not change the mask material's static `config`.
 
@@ -25,8 +25,8 @@ The segment must already have a mask from `add_masks`. This API does not create 
 {
   "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
   "keyframes": [
-    {"segment_id": "d62994b4-25fe-422a-a123-87ef05038558", "offset": 0, "X": 0, "Y": 0, "feather": 0, "rotation": 0},
-    {"segment_id": "d62994b4-25fe-422a-a123-87ef05038558", "offset": 5000000, "X": -360, "Y": -200, "feather": 100, "rotation": 180}
+    {"segment_id": "d62994b4-25fe-422a-a123-87ef05038558", "offset": 0, "X": 0, "Y": 0, "width": 540, "height": 540, "feather": 0, "rotation": 0},
+    {"segment_id": "d62994b4-25fe-422a-a123-87ef05038558", "offset": 5000000, "X": -360, "Y": -200, "width": 1076, "height": 1071, "feather": 100, "rotation": 180}
   ]
 }
 ```
@@ -46,10 +46,12 @@ The segment must already have a mask from `add_masks`. This API does not create 
 | offset | integer | ✅ | Time offset from the segment start, in microseconds |
 | X | number | ❌ | Mask center X in pixels, relative to material center, right is positive |
 | Y | number | ❌ | Mask center Y in pixels, relative to material center, down is positive |
+| width | number | ❌ | Mask width in pixels |
+| height | number | ❌ | Mask height in pixels |
 | feather | number | ❌ | Feather amount, 0–100 |
 | rotation | number | ❌ | Rotation in degrees |
 
-`X`, `Y`, `feather`, and `rotation` are optional, but each item must include at least one of them. `0` is a valid value. For position animation, send both `X` and `Y` at the same `offset`. Sending only `X` writes the X-axis keyframe only.
+`X`, `Y`, `width`, `height`, `feather`, and `rotation` are optional, but each item must include at least one of them. `0` is a valid value. For position or size animation, send both axes at the same `offset`. Sending only `X` writes the X-axis keyframe only; sending only `width` writes `KFTypeMaskSizeX` only.
 
 Writing the same property at the same timestamp on the same segment overwrites the previous value.
 
@@ -58,7 +60,7 @@ Writing the same property at the same timestamp on the same segment overwrites t
 ```json
 {
   "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
-  "keyframes_added": 8,
+  "keyframes_added": 12,
   "affected_segments": ["d62994b4-25fe-422a-a123-87ef05038558"]
 }
 ```
@@ -66,7 +68,7 @@ Writing the same property at the same timestamp on the same segment overwrites t
 | Field | Type | Description |
 |-------|------|-------------|
 | draft_url | string | Draft URL |
-| keyframes_added | integer | Number of draft properties written (X and Y each count as 1) |
+| keyframes_added | integer | Number of draft properties written (X/Y and width/height each count as 1) |
 | affected_segments | array | Segment IDs that received keyframes |
 
 ## Examples
@@ -81,6 +83,20 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_mask_keyfr
     "keyframes": [
       {"segment_id": "segment-id", "offset": 0, "X": 0, "Y": 0},
       {"segment_id": "segment-id", "offset": 5000000, "X": -360, "Y": -200}
+    ]
+  }'
+```
+
+### Size keyframes
+
+```bash
+curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_mask_keyframes \
+  -H "Content-Type: application/json" \
+  -d '{
+    "draft_url": "YOUR_DRAFT_URL",
+    "keyframes": [
+      {"segment_id": "segment-id", "offset": 0, "width": 540, "height": 540},
+      {"segment_id": "segment-id", "offset": 5000000, "width": 1076, "height": 1071}
     ]
   }'
 ```
@@ -114,8 +130,9 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_mask_keyfr
 
 - Call [Add Masks](./add_masks.md) before adding mask keyframes.
 - Position conversion uses the material size (pixels / half material dimension), not the canvas size.
+- Size conversion uses the material size (`width / material_width`, `height / material_height`), matching the static mask config.
 - An `offset` beyond the segment duration is clamped to the end of the segment.
-- Width, height, and round-corner keyframes are not supported.
+- Round-corner keyframes are not supported.
 
 ## Related Interfaces
 

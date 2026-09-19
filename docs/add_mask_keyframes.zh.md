@@ -11,7 +11,7 @@ POST /openapi/capcut-mate/v1/add_mask_keyframes
 
 ## 功能描述
 
-给已有蒙版的视频片段添加蒙版关键帧。关键帧写在片段的 `common_keyframes` 上，支持位置（X/Y）、羽化、旋转角度。单位与 `add_masks` 一致：位置用像素，羽化用 0–100，旋转用角度。
+给已有蒙版的视频片段添加蒙版关键帧。关键帧写在片段的 `common_keyframes` 上，支持位置（X/Y）、大小（width/height）、羽化、旋转角度。单位与 `add_masks` 一致：位置和大小用像素，羽化用 0–100，旋转用角度。
 
 片段必须已经通过 `add_masks` 添加过蒙版，本接口不会自动创建蒙版，也不会改写蒙版素材的静态 `config`。
 
@@ -25,8 +25,8 @@ POST /openapi/capcut-mate/v1/add_mask_keyframes
 {
   "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
   "keyframes": [
-    {"segment_id": "d62994b4-25fe-422a-a123-87ef05038558", "offset": 0, "X": 0, "Y": 0, "feather": 0, "rotation": 0},
-    {"segment_id": "d62994b4-25fe-422a-a123-87ef05038558", "offset": 5000000, "X": -360, "Y": -200, "feather": 100, "rotation": 180}
+    {"segment_id": "d62994b4-25fe-422a-a123-87ef05038558", "offset": 0, "X": 0, "Y": 0, "width": 540, "height": 540, "feather": 0, "rotation": 0},
+    {"segment_id": "d62994b4-25fe-422a-a123-87ef05038558", "offset": 5000000, "X": -360, "Y": -200, "width": 1076, "height": 1071, "feather": 100, "rotation": 180}
   ]
 }
 ```
@@ -46,10 +46,12 @@ POST /openapi/capcut-mate/v1/add_mask_keyframes
 | offset | integer | ✅ | 相对片段起点的时间偏移，单位微秒 |
 | X | number | ❌ | 蒙版中心 X，像素，相对素材中心，右为正 |
 | Y | number | ❌ | 蒙版中心 Y，像素，相对素材中心，下为正 |
+| width | number | ❌ | 蒙版宽度，像素 |
+| height | number | ❌ | 蒙版高度，像素 |
 | feather | number | ❌ | 羽化程度，0–100 |
 | rotation | number | ❌ | 旋转角度，单位度 |
 
-`X` / `Y` / `feather` / `rotation` 均为可选，但每一项至少提供其中一个。`0` 是有效值。位置动画建议同一 `offset` 同时传 `X` 和 `Y`。只传 `X` 则只写入 X 轴位置关键帧。
+`X` / `Y` / `width` / `height` / `feather` / `rotation` 均为可选，但每一项至少提供其中一个。`0` 是有效值。位置或大小动画建议同一 `offset` 同时传两个轴。只传 `X` 则只写入 X 轴位置关键帧；只传 `width` 则只写入 `KFTypeMaskSizeX`。
 
 同一片段、同一属性、同一时间点再次写入会覆盖旧值，不会重复追加。
 
@@ -58,7 +60,7 @@ POST /openapi/capcut-mate/v1/add_mask_keyframes
 ```json
 {
   "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
-  "keyframes_added": 8,
+  "keyframes_added": 12,
   "affected_segments": ["d62994b4-25fe-422a-a123-87ef05038558"]
 }
 ```
@@ -66,7 +68,7 @@ POST /openapi/capcut-mate/v1/add_mask_keyframes
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | draft_url | string | 草稿 URL |
-| keyframes_added | integer | 实际写入的草稿属性条数（X 与 Y 分别计 1） |
+| keyframes_added | integer | 实际写入的草稿属性条数（X/Y、width/height 分别计 1） |
 | affected_segments | array | 成功写入关键帧的片段 ID |
 
 ## 使用示例
@@ -87,7 +89,21 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_mask_keyfr
   }'
 ```
 
-#### 2. 羽化 + 旋转
+#### 2. 大小关键帧
+
+```bash
+curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_mask_keyframes \
+  -H "Content-Type: application/json" \
+  -d '{
+    "draft_url": "YOUR_DRAFT_URL",
+    "keyframes": [
+      {"segment_id": "segment-id", "offset": 0, "width": 540, "height": 540},
+      {"segment_id": "segment-id", "offset": 5000000, "width": 1076, "height": 1071}
+    ]
+  }'
+```
+
+#### 3. 羽化 + 旋转
 
 ```bash
 curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_mask_keyframes \
@@ -116,8 +132,9 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_mask_keyfr
 
 - 必须先调用 [添加遮罩](./add_masks.zh.md)，再添加蒙版关键帧。
 - 位置换算使用素材宽高（像素 / 半素材尺寸），不是画布尺寸。
+- 大小换算使用素材宽高（`width / 素材宽度`、`height / 素材高度`），与蒙版静态 config 一致。
 - 超出片段时长的 `offset` 会被截断到片段末尾。
-- 不支持宽高、圆角关键帧。
+- 不支持圆角关键帧。
 
 ## 相关接口
 

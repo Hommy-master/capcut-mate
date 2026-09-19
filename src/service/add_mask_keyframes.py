@@ -18,7 +18,7 @@ def add_mask_keyframes(
     """向已有蒙版的视频片段添加蒙版关键帧。
 
     关键帧写入片段 common_keyframes，不修改 materials.masks 的静态 config。
-    单位与 add_masks 一致：X/Y 为像素，feather 为 0-100，rotation 为度。
+    单位与 add_masks 一致：X/Y/width/height 为像素，feather 为 0-100，rotation 为度。
 
     Returns:
         draft_url, keyframes_added, affected_segments
@@ -114,11 +114,24 @@ def _add_mask_keyframe_item(script: ScriptFile, item: Dict[str, Any]) -> int:
 
     x = _optional_float(item.get("X"))
     y = _optional_float(item.get("Y"))
+    width = _optional_float(item.get("width"))
+    height = _optional_float(item.get("height"))
     feather = _optional_float(item.get("feather"))
     rotation = _optional_float(item.get("rotation"))
-    if x is None and y is None and feather is None and rotation is None:
+    if (
+        x is None
+        and y is None
+        and width is None
+        and height is None
+        and feather is None
+        and rotation is None
+    ):
         raise CustomException(CustomError.INVALID_MASK_KEYFRAME_INFO)
     if feather is not None and not (0.0 <= feather <= 100.0):
+        raise CustomException(CustomError.INVALID_MASK_KEYFRAME_INFO)
+    if width is not None and width < 0:
+        raise CustomException(CustomError.INVALID_MASK_KEYFRAME_INFO)
+    if height is not None and height < 0:
         raise CustomException(CustomError.INVALID_MASK_KEYFRAME_INFO)
 
     segment = find_segment_by_id(script, segment_id)
@@ -139,6 +152,8 @@ def _add_mask_keyframe_item(script: ScriptFile, item: Dict[str, Any]) -> int:
         time_offset,
         center_x=x,
         center_y=y,
+        width=width,
+        height=height,
         feather=feather,
         rotation=rotation,
     )

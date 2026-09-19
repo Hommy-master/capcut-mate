@@ -334,7 +334,7 @@ async def add_masks(amr: AddMasksRequest) -> AddMasksResponse:
 @router.post(path="/add_mask_keyframes", response_model=AddMaskKeyframesResponse)
 async def add_mask_keyframes(amkr: AddMaskKeyframesRequest) -> AddMaskKeyframesResponse:
     """
-    向已有蒙版的视频片段添加蒙版关键帧（位置 / 羽化 / 旋转）
+    向已有蒙版的视频片段添加蒙版关键帧（位置 / 大小 / 羽化 / 旋转）
     """
     draft_url, keyframes_added, affected_segments = await service.add_mask_keyframes_async(
         draft_url=amkr.draft_url,
