@@ -9,6 +9,7 @@ from src.schemas.add_captions import AddCaptionsResponse
 from src.schemas.add_effects import AddEffectsResponse
 from src.schemas.add_filters import AddFiltersResponse
 from src.schemas.add_masks import AddMasksResponse
+from src.schemas.add_mask_keyframes import AddMaskKeyframesResponse
 from src.schemas.add_beauty import AddBeautyResponse
 from src.schemas.add_text_style import AddTextStyleResponse
 from src.schemas.get_text_animations import GetTextAnimationsResponse
@@ -28,6 +29,7 @@ from src.schemas.add_captions import AddCaptionsRequest, AddCaptionsResponse
 from src.schemas.add_effects import AddEffectsRequest, AddEffectsResponse
 from src.schemas.add_filters import AddFiltersRequest, AddFiltersResponse
 from src.schemas.add_masks import AddMasksRequest, AddMasksResponse
+from src.schemas.add_mask_keyframes import AddMaskKeyframesRequest, AddMaskKeyframesResponse
 from src.schemas.add_beauty import AddBeautyRequest, AddBeautyResponse
 from src.schemas.add_text_style import AddTextStyleRequest, AddTextStyleResponse
 from src.schemas.get_text_animations import GetTextAnimationsRequest, GetTextAnimationsResponse
@@ -327,6 +329,23 @@ async def add_masks(amr: AddMasksRequest) -> AddMasksResponse:
         masks_added=masks_added,
         affected_segments=affected_segments,
         mask_ids=mask_ids
+    )
+
+@router.post(path="/add_mask_keyframes", response_model=AddMaskKeyframesResponse)
+async def add_mask_keyframes(amkr: AddMaskKeyframesRequest) -> AddMaskKeyframesResponse:
+    """
+    向已有蒙版的视频片段添加蒙版关键帧（位置 / 羽化 / 旋转）
+    """
+    draft_url, keyframes_added, affected_segments = await service.add_mask_keyframes_async(
+        draft_url=amkr.draft_url,
+        keyframes=[item.model_dump() for item in amkr.keyframes],
+        lock_timeout=30.0,
+    )
+
+    return AddMaskKeyframesResponse(
+        draft_url=draft_url,
+        keyframes_added=keyframes_added,
+        affected_segments=affected_segments,
     )
 
 @router.post(path="/add_beauty", response_model=AddBeautyResponse)

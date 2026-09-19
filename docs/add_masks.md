@@ -172,6 +172,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_masks \
 - [Create Draft](./create_draft.md)
 - [Add Videos](./add_videos.md)
 - [Add Images](./add_images.md)
+- [Add Mask Keyframes](./add_mask_keyframes.md)
 - [Save Draft](./save_draft.md)
 
 ---

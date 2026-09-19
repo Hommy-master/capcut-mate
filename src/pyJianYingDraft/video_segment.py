@@ -12,6 +12,7 @@ from typing import Dict, List, Tuple, Any
 from .time_util import tim, Timerange
 from .segment import VisualSegment, ClipSettings, AudioFade
 from .local_materials import VideoMaterial
+from .keyframe import KeyframeList, KeyframeProperty
 from .animation import SegmentAnimations, VideoAnimation
 
 from .metadata import EffectMeta, EffectParamInstance
@@ -654,6 +655,76 @@ class VideoSegment(VisualSegment):
                          rot=rotation, inv=invert, feather=feather/100, round_corner=round_corner/100)
         self.extra_material_refs.append(self.mask.global_id)
         return self
+
+    def add_mask_keyframe(
+        self,
+        time_offset: Union[int, str],
+        *,
+        center_x: Optional[float] = None,
+        center_y: Optional[float] = None,
+        feather: Optional[float] = None,
+        rotation: Optional[float] = None,
+    ) -> int:
+        """为当前蒙版添加关键帧, 写入片段 `common_keyframes`, 不修改蒙版静态 config。
+
+        参数单位与 `add_mask` 一致: `center_x`/`center_y` 为相对素材中心的像素（右/下为正）,
+        `feather` 为 0-100, `rotation` 为角度. 只提供的字段才会写入对应属性。
+        同一属性在同一时间点已有关键帧时覆盖, 不重复追加。
+
+        Returns:
+            实际写入的草稿属性条数（X 与 Y 分别计 1）
+
+        Raises:
+            `ValueError`: 片段没有蒙版、未提供任何属性、或羽化超出范围
+        """
+        if self.mask is None:
+            raise ValueError("当前片段没有蒙版, 请先添加蒙版")
+        if center_x is None and center_y is None and feather is None and rotation is None:
+            raise ValueError("至少需要提供 center_x、center_y、feather、rotation 中的一个")
+        if feather is not None and not (0.0 <= feather <= 100.0):
+            raise ValueError("羽化程度必须在 0-100 范围内")
+
+        if isinstance(time_offset, str):
+            time_offset = tim(time_offset)
+
+        added = 0
+        material_width, material_height = self.material_size
+
+        if center_x is not None:
+            if material_width <= 0:
+                raise ValueError("素材宽度无效, 无法换算蒙版位置关键帧")
+            self._set_keyframe(
+                KeyframeProperty.mask_position_x,
+                time_offset,
+                center_x / (material_width / 2),
+            )
+            added += 1
+        if center_y is not None:
+            if material_height <= 0:
+                raise ValueError("素材高度无效, 无法换算蒙版位置关键帧")
+            self._set_keyframe(
+                KeyframeProperty.mask_position_y,
+                time_offset,
+                center_y / (material_height / 2),
+            )
+            added += 1
+        if feather is not None:
+            self._set_keyframe(KeyframeProperty.mask_feather, time_offset, feather / 100.0)
+            added += 1
+        if rotation is not None:
+            self._set_keyframe(KeyframeProperty.mask_rotation, time_offset, float(rotation))
+            added += 1
+        return added
+
+    def _set_keyframe(self, prop: KeyframeProperty, time_offset: int, value: float) -> None:
+        """写入或覆盖指定属性在 time_offset 处的关键帧。"""
+        for kf_list in self.common_keyframes:
+            if kf_list.keyframe_property == prop:
+                kf_list.add_keyframe(time_offset, value, replace=True)
+                return
+        kf_list = KeyframeList(prop)
+        kf_list.add_keyframe(time_offset, value)
+        self.common_keyframes.append(kf_list)
 
     def add_transition(self, transition_type: TransitionType, *, duration: Optional[Union[int, str]] = None) -> "VideoSegment":
         """为视频片段添加转场, 注意转场应当添加在**前面的**片段上

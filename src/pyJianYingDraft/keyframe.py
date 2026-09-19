@@ -62,6 +62,16 @@ class KeyframeProperty(Enum):
     volume = "KFTypeVolume"
     """音量, 1.0为原始音量, 仅对`AudioSegment`和`VideoSegment`有效"""
 
+    mask_position_x = "KFTypeMaskPostionX"
+    """蒙版中心X, 右移为正. 单位与`Mask.center_x`相同: 像素 / (素材宽度 / 2).
+    草稿字段名是剪映的拼写 `Postion`（缺 i），导出时必须原样写出。"""
+    mask_position_y = "KFTypeMaskPostionY"
+    """蒙版中心Y, 下移为正. 单位与`Mask.center_y`相同: 像素 / (素材高度 / 2)"""
+    mask_rotation = "KFTypeMaskRotation"
+    """蒙版顺时针旋转的**角度**"""
+    mask_feather = "KFTypeMaskFeather"
+    """蒙版羽化程度, 0.0-1.0"""
+
 class KeyframeList:
     """关键帧列表, 记录与某个特定属性相关的一系列关键帧"""
 
@@ -79,8 +89,17 @@ class KeyframeList:
         self.keyframe_property = keyframe_property
         self.keyframes = []
 
-    def add_keyframe(self, time_offset: int, value: float):
-        """给定时间偏移量及关键值, 向此关键帧列表中添加一个关键帧"""
+    def add_keyframe(self, time_offset: int, value: float, *, replace: bool = False):
+        """给定时间偏移量及关键值, 向此关键帧列表中添加一个关键帧
+
+        Args:
+            replace: 为 True 时, 若已存在相同 `time_offset` 的关键帧则覆盖其值, 不新增。
+        """
+        if replace:
+            for kf in self.keyframes:
+                if kf.time_offset == time_offset:
+                    kf.values = [value]
+                    return
         keyframe = Keyframe(time_offset, value)
         self.keyframes.append(keyframe)
         self.keyframes.sort(key=lambda x: x.time_offset)

@@ -160,6 +160,7 @@ The following are the core interfaces provided by CapCut Mate API, supporting a 
 | **add_effects** | Add Effects | Add visual effects, such as filters, borders, dynamic effects | [📖 View Documentation](./docs/add_effects.md) |
 | **add_keyframes** | Keyframe Animation | Create property animations for position, scale, rotation, etc. | [📖 View Documentation](./docs/add_keyframes.md) |
 | **add_masks** | Mask Effects | Add various shape masks, control visible areas of the screen | [📖 View Documentation](./docs/add_masks.md) |
+| **add_mask_keyframes** | Mask Keyframes | Animate mask position, feather, and rotation | [📖 View Documentation](./docs/add_mask_keyframes.md) |
 
 ### 🎨 Animation Resources
 | Interface | Function | Description | Documentation Link |

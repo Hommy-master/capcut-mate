@@ -245,6 +245,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_masks \
 - [添加视频](./add_videos.md)
 - [添加音频](./add_audios.md)
 - [添加图片](./add_images.md)
+- [添加蒙版关键帧](./add_mask_keyframes.zh.md)
 - [保存草稿](./save_draft.md)
 - [生成视频](./gen_video.md)
 
