@@ -1,6 +1,7 @@
 import os
 import json
 import math
+import uuid
 from copy import deepcopy
 
 from typing import Optional, Literal, Union, overload
@@ -14,7 +15,7 @@ from .time_util import Timerange, tim, srt_tstamp
 from .local_materials import VideoMaterial, AudioMaterial
 from .segment import BaseSegment, Speed, ClipSettings
 from .audio_segment import AudioSegment, AudioFade, AudioEffect
-from .video_segment import VideoSegment, StickerSegment, SegmentAnimations, VideoEffect, Transition, Filter, BackgroundFilling, MixMode
+from .video_segment import VideoSegment, StickerSegment, SegmentAnimations, VideoEffect, Transition, Filter, BackgroundFilling, MixMode, FigureEffect
 from .effect_segment import EffectSegment, FilterSegment
 from .text_segment import TextSegment, TextStyle, TextBubble
 from .track import TrackType, BaseTrack, Track
@@ -54,6 +55,10 @@ class ScriptMaterial:
     """混合模式列表, 导出到`effects`中"""
     canvases: List[BackgroundFilling]
     """背景填充列表"""
+    figures: List[FigureEffect]
+    """美颜列表, 导出到`effects`中"""
+    figure_placeholder_id: Optional[str]
+    """本草稿美颜算法路径共用的 placeholder uuid"""
 
     def __init__(self):
         self.audios = []
@@ -72,6 +77,14 @@ class ScriptMaterial:
         self.filters = []
         self.mix_modes = []
         self.canvases = []
+        self.figures = []
+        self.figure_placeholder_id = None
+
+    def ensure_figure_placeholder(self) -> str:
+        """返回本草稿美颜算法路径的 placeholder，不存在时生成一次。"""
+        if not self.figure_placeholder_id:
+            self.figure_placeholder_id = str(uuid.uuid4()).upper()
+        return self.figure_placeholder_id
 
     @overload
     def __contains__(self, item: Union[VideoMaterial, AudioMaterial]) -> bool: ...
@@ -99,6 +112,8 @@ class ScriptMaterial:
             return item.global_id in [filter_.global_id for filter_ in self.filters]
         elif isinstance(item, MixMode):
             return item.global_id in [mix_mode.global_id for mix_mode in self.mix_modes]
+        elif isinstance(item, FigureEffect):
+            return item.global_id in [figure.global_id for figure in self.figures]
         else:
             raise TypeError("Invalid argument type '%s'" % type(item))
 
@@ -116,7 +131,11 @@ class ScriptMaterial:
             "color_curves": [],
             "digital_humans": [],
             "drafts": [],
-            "effects": [_filter.export_json() for _filter in self.filters] + [mix_mode.export_json() for mix_mode in self.mix_modes],
+            "effects": (
+                [_filter.export_json() for _filter in self.filters]
+                + [mix_mode.export_json() for mix_mode in self.mix_modes]
+                + [figure.export_json() for figure in self.figures]
+            ),
             "flowers": [],
             "green_screens": [],
             "handwrites": [],
@@ -341,6 +360,10 @@ class ScriptFile:
             for filter_ in segment.filters:
                 if filter_ not in self.materials:
                     self.materials.filters.append(filter_)
+            # 美颜（figure / makeup-root），写入 materials.effects
+            for figure in segment.figures:
+                if figure not in self.materials:
+                    self.materials.figures.append(figure)
             # 混合模式
             for mix_mode in segment.mix_modes:
                 if mix_mode not in self.materials:

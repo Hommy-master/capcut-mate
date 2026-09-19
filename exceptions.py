@@ -54,6 +54,9 @@ class CustomError(Enum):
     FILTER_GET_FAILED = (2040, "获取滤镜列表失败", "Get filter list failed")
     EFFECT_GET_FAILED = (2041, "获取特效列表失败", "Get effect list failed")
     DRAFT_LOCK_TIMEOUT = (2042, "草稿锁获取超时，同一时间只允许一个操作", "Draft lock acquisition timeout, only one operation allowed at a time")
+    INVALID_BEAUTY_INFO = (2043, "无效的美颜信息，请检查美颜参数是否正确", "Invalid beauty information, please check if beauty parameters are correct.")
+    BEAUTY_NOT_FOUND = (2044, "美颜类型未找到，请检查美颜名称是否正确", "Beauty type not found, please check if the beauty name is correct.")
+    BEAUTY_ADD_FAILED = (2045, "美颜添加失败", "Beauty addition failed")
 
     # ===== 系统错误码 (9000-9999) =====
     INTERNAL_SERVER_ERROR = (9998, "系统内部错误", "Internal server error")

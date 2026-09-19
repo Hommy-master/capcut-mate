@@ -30,6 +30,7 @@ from .mask_meta import MaskType, MaskMeta
 from .filter_meta import FilterType
 from .transition_meta import TransitionType
 from .mix_mode_meta import MixModeType
+from .beauty_meta import BeautyType, BeautyMeta, MAKEUP_ROOT
 
 __all__ = [
     "AnimationMeta",
@@ -51,5 +52,8 @@ __all__ = [
     "ToneEffectType",
     "SpeechToSongType",
     "VideoSceneEffectType",
-    "VideoCharacterEffectType"
+    "VideoCharacterEffectType",
+    "BeautyType",
+    "BeautyMeta",
+    "MAKEUP_ROOT",
 ]

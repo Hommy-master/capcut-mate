@@ -19,6 +19,7 @@ from .metadata import MaskMeta, MaskType, FilterType, TransitionType
 from .metadata import IntroType, OutroType, GroupAnimationType
 from .metadata import VideoSceneEffectType, VideoCharacterEffectType
 from .metadata.mix_mode_meta import MixModeType
+from .metadata.beauty_meta import BeautyMeta, BeautyType, MAKEUP_ROOT
 
 class Mask:
     """蒙版对象"""
@@ -202,6 +203,78 @@ class Filter:
             # 不导出path和request_id
         }
 
+class FigureEffect:
+    """美颜素材，导出到 materials.effects，type 为 figure 或 makeup_root。"""
+
+    global_id: str
+    meta: BeautyMeta
+    """美颜元数据"""
+    intensity: float
+    """强度，0~1。makeup-root 固定为 0。"""
+    algorithm_artifact_path: str
+
+    def __init__(self, meta: BeautyMeta, intensity: float, *, algorithm_artifact_path: str = ""):
+        """intensity 为 0~1。不需要算法路径的滑杆（美白）忽略 algorithm_artifact_path。"""
+        if not 0.0 <= intensity <= 1.0:
+            raise ValueError(f"美颜强度超出范围: {intensity}")
+        self.global_id = uuid.uuid4().hex
+        self.meta = meta
+        self.intensity = intensity
+        self.algorithm_artifact_path = algorithm_artifact_path if meta.needs_algorithm_path else ""
+
+    def set_intensity(self, intensity: float) -> None:
+        """更新强度，不更换素材 id。"""
+        if not 0.0 <= intensity <= 1.0:
+            raise ValueError(f"美颜强度超出范围: {intensity}")
+        self.intensity = intensity
+
+    def export_json(self) -> Dict[str, Any]:
+        if self.meta.intensity_mode == "adjust_param":
+            adjust_params = [{
+                "default_value": 0.0,
+                "name": self.meta.adjust_param_name,
+                "value": self.intensity,
+            }]
+            value = 0.0
+        else:
+            adjust_params = []
+            value = self.intensity
+
+        return {
+            "adjust_params": adjust_params,
+            "algorithm_artifact_path": self.algorithm_artifact_path,
+            "apply_target_type": 0,
+            "bloom_params": None,
+            "category_id": self.meta.category_id,
+            "category_name": "",
+            "color_match_info": {
+                "source_feature_path": "",
+                "target_feature_path": "",
+                "target_image_path": "",
+            },
+            "effect_id": "",
+            "enable_skin_tone_correction": False,
+            "exclusion_group": [],
+            "face_adjust_params": [],
+            "formula_id": "",
+            "id": self.global_id,
+            "intensity_key": "",
+            "multi_language_current": "",
+            "name": self.meta.name,
+            "panel_id": "",
+            "platform": "all",
+            "request_id": "",
+            "resource_id": self.meta.resource_id,
+            "source_platform": 0,
+            "sub_type": self.meta.sub_type,
+            "time_range": None,
+            "type": self.meta.material_type,
+            "value": value,
+            "version": "",
+            # 不导出 path：剪映按 resource_id 下载，本地缓存路径不可移植
+        }
+
+
 class Transition:
     """转场对象"""
 
@@ -356,6 +429,11 @@ class VideoSegment(VisualSegment):
 
     在放入轨道时自动添加到素材列表中
     """
+    figures: List[FigureEffect]
+    """美颜列表
+
+    在放入轨道时自动添加到素材列表中
+    """
 
     def __init__(self, material: Union[VideoMaterial, str], target_timerange: Timerange, *,
                  source_timerange: Optional[Timerange] = None, speed: Optional[float] = None, volume: float = 1.0,
@@ -400,6 +478,7 @@ class VideoSegment(VisualSegment):
         self.mask = None
         self.background_filling = None
         self.fade = None
+        self.figures = []
 
     def add_animation(self, animation_type: Union[IntroType, OutroType, GroupAnimationType],
                       duration: Optional[Union[int, str]] = None) -> "VideoSegment":
@@ -486,6 +565,47 @@ class VideoSegment(VisualSegment):
         self.extra_material_refs.append(filter_inst.global_id)
 
         return self
+
+    def add_beauty(self, beauty_type: BeautyType, intensity: float, *,
+                   algorithm_artifact_path: str = "") -> FigureEffect:
+        """为视频片段添加或更新一个美颜滑杆。
+
+        Args:
+            beauty_type (`BeautyType`): 美颜类型，目前支持美白、磨皮、白牙。
+            intensity (`float`): 强度，取值范围 0~100，与剪映滑杆一致。
+            algorithm_artifact_path (`str`, optional): 需要算法产物的滑杆使用的路径。美白忽略此参数。
+
+        Raises:
+            `ValueError`: 强度超出 0~100。
+        """
+        if not 0.0 <= intensity <= 100.0:
+            raise ValueError(f"美颜强度超出范围: {intensity}")
+        normalized = intensity / 100.0
+
+        for existing in self.figures:
+            if existing.meta.resource_id == beauty_type.value.resource_id and existing.meta.material_type == "figure":
+                existing.set_intensity(normalized)
+                return existing
+
+        figure = FigureEffect(
+            beauty_type.value,
+            normalized,
+            algorithm_artifact_path=algorithm_artifact_path,
+        )
+        self.figures.append(figure)
+        self.extra_material_refs.append(figure.global_id)
+        return figure
+
+    def ensure_makeup_root(self, algorithm_artifact_path: str) -> FigureEffect:
+        """保证片段上有且仅有一条 makeup-root。已存在时不重复追加引用。"""
+        for existing in self.figures:
+            if existing.meta.material_type == "makeup_root":
+                return existing
+
+        root = FigureEffect(MAKEUP_ROOT, 0.0, algorithm_artifact_path=algorithm_artifact_path)
+        self.figures.append(root)
+        self.extra_material_refs.append(root.global_id)
+        return root
 
     def set_mix_mode(self, mode: MixModeType) -> "VideoSegment":
         """为视频片段设置混合模式
