@@ -351,7 +351,7 @@ async def add_mask_keyframes(amkr: AddMaskKeyframesRequest) -> AddMaskKeyframesR
 @router.post(path="/add_beauty", response_model=AddBeautyResponse)
 async def add_beauty(abr: AddBeautyRequest) -> AddBeautyResponse:
     """
-    """向剪映草稿的视频片段添加美颜（匀肤 / 丰盈 / 磨皮 / 祛法令纹 / 亮眼 / 祛黑眼圈 / 美白 / 白牙 / 肤色）
+    向剪映草稿的视频片段添加美颜 (匀肤 / 丰盈 / 磨皮 / 祛法令纹 / 亮眼 / 祛黑眼圈 / 美白 / 白牙 / 肤色)
     """
     draft_url, affected_segments, figure_ids = await service.add_beauty_async(
         draft_url=abr.draft_url,
