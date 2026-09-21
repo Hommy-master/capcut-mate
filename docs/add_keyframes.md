@@ -11,7 +11,9 @@ POST /openapi/capcut-mate/v1/add_keyframes
 
 ## Function Description
 
-Add keyframe animations to existing drafts. This interface is used to create property animations for position, scale, rotation, and other properties in Jianying drafts. Keyframes allow precise control over how properties change over time.
+Add keyframe animations to existing visual segments in a draft. Keyframes control how properties such as position, scale, rotation, opacity, color adjustments, and volume change over time on a target segment.
+
+Mask keyframes are not handled by this API; use [Add Mask Keyframes](./add_mask_keyframes.md) instead.
 
 ## More Documentation
 
@@ -22,7 +24,7 @@ Add keyframe animations to existing drafts. This interface is used to create pro
 ```json
 {
   "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
-  "keyframes": "[{\"property\":\"position.x\",\"time\":0,\"value\":0},{\"property\":\"position.x\",\"time\":1000000,\"value\":100}]"
+  "keyframes": "[{\"segment_id\":\"d62994b4-25fe-422a-a123-87ef05038558\",\"property\":\"KFTypePositionX\",\"offset\":5000000,\"value\":-0.1}]"
 }
 ```
 
@@ -30,32 +32,43 @@ Add keyframe animations to existing drafts. This interface is used to create pro
 
 | Parameter | Type | Required | Default | Description |
 |-----------|------|----------|---------|-------------|
-| draft_url | string |✅ | - | Complete URL of the target draft |
-| keyframes | string |✅ | - | JSON string of keyframe information |
+| draft_url | string | ✅ | "" | Complete URL of the target draft |
+| keyframes | string | ✅ | "" | JSON string of a keyframe object array |
 
-### Parameter Details
+### keyframes Array Structure
 
-#### keyframes Array Structure
+`keyframes` is a JSON string containing an array of keyframe objects. Each object has these fields:
 
-`keyframes` is a JSON string containing an array of keyframe objects, each with the following fields:
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| segment_id | string | ✅ | Target segment ID |
+| property | string | ✅ | Animation property type (see table below) |
+| offset | number | ✅ | Time offset from the segment start, in microseconds (non-negative) |
+| value | number | ✅ | Property value at that time |
 
-```json
-[
-  {
-    "property": "position.x",  // Property name, required
-    "time": 0,                 // Keyframe time (microseconds), required
-    "value": 0                 // Property value, required
-  }
-]
-```
+#### offset
 
-**Supported Properties**:
-- `position.x` - Horizontal position
-- `position.y` - Vertical position
-- `scale.x` - Horizontal scale
-- `scale.y` - Vertical scale
-- `rotation.z` - Rotation angle
-- `opacity` - Transparency
+- Absolute time in microseconds from the segment start (for example, `5000000` = 5 seconds).
+- Converted internally to a relative position within the segment, then written as a microsecond offset.
+- Values beyond the segment duration are clamped to the segment end (`0`–`1` relative range).
+
+#### Supported Properties
+
+| Property | Description | Value notes |
+|----------|-------------|-------------|
+| KFTypePositionX | Horizontal position | Prefer normalized units (half canvas width). If `\|value\| > 1`, treated as pixels and divided by draft width |
+| KFTypePositionY | Vertical position | Prefer normalized units (half canvas height). If `\|value\| > 1`, treated as pixels and divided by draft height |
+| KFTypeScaleX | Horizontal scale | `1.0` = original; mutually exclusive with `UNIFORM_SCALE` |
+| KFTypeScaleY | Vertical scale | `1.0` = original; mutually exclusive with `UNIFORM_SCALE` |
+| KFTypeRotation | Rotation angle | Degrees, clockwise |
+| KFTypeAlpha | Opacity | `0.0`–`1.0` (`1.0` = fully opaque); visual segments |
+| UNIFORM_SCALE | Uniform scale | Scales X and Y together (`1.0` = original); mutually exclusive with `KFTypeScaleX` / `KFTypeScaleY` |
+| KFTypeSaturation | Saturation | `-1.0`–`1.0` (`0.0` = original); video segments |
+| KFTypeContrast | Contrast | `-1.0`–`1.0` (`0.0` = original); video segments |
+| KFTypeBrightness | Brightness | `-1.0`–`1.0` (`0.0` = original); video segments |
+| KFTypeVolume | Volume | `1.0` = original; video segments supported by this API |
+
+Position coordinates: right is positive for X; up is positive for Y (Jianying display convention / draft width or height).
 
 ## Response Format
 
@@ -64,8 +77,8 @@ Add keyframe animations to existing drafts. This interface is used to create pro
 ```json
 {
   "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
-  "keyframes_added": 5,
-  "affected_segments": ["segment1-uuid", "segment2-uuid"]
+  "keyframes_added": 3,
+  "affected_segments": ["d62994b4-25fe-422a-a123-87ef05038558"]
 }
 ```
 
@@ -73,11 +86,13 @@ Add keyframe animations to existing drafts. This interface is used to create pro
 
 | Field | Type | Description |
 |-------|------|-------------|
-| draft_url | string | Updated draft URL |
-| keyframes_added | integer | Number of keyframes added |
-| affected_segments | array | List of affected segment IDs |
+| draft_url | string | Draft URL |
+| keyframes_added | integer | Number of keyframes successfully written |
+| affected_segments | array | Segment IDs that received at least one keyframe |
 
-### Error Response (4xx/5xx)
+Items that fail at apply time (unknown `segment_id`, non-visual segment, property mismatch, and so on) are skipped. The request can still return success with a partial `keyframes_added` count.
+
+### Error Response
 
 ```json
 {
@@ -89,74 +104,74 @@ Add keyframe animations to existing drafts. This interface is used to create pro
 
 ### cURL Examples
 
-#### 1. Basic Position Animation
+#### 1. Uniform scale animation (microsecond offsets)
 
 ```bash
 curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_keyframes \
   -H "Content-Type: application/json" \
   -d '{
     "draft_url": "YOUR_DRAFT_URL",
-    "keyframes": "[{\"property\":\"position.x\",\"time\":0,\"value\":0},{\"property\":\"position.x\",\"time\":1000000,\"value\":100}]"
+    "keyframes": "[{\"segment_id\":\"segment-id\",\"property\":\"UNIFORM_SCALE\",\"offset\":0,\"value\":1},{\"segment_id\":\"segment-id\",\"property\":\"UNIFORM_SCALE\",\"offset\":5000000,\"value\":1.3}]"
   }'
 ```
 
-#### 2. Scale Animation
+#### 2. Multi-property keyframes
 
 ```bash
 curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_keyframes \
   -H "Content-Type: application/json" \
   -d '{
     "draft_url": "YOUR_DRAFT_URL",
-    "keyframes": "[{\"property\":\"scale.x\",\"time\":0,\"value\":1.0},{\"property\":\"scale.x\",\"time\":2000000,\"value\":1.5}]"
+    "keyframes": "[{\"segment_id\":\"segment-uuid\",\"property\":\"KFTypePositionX\",\"offset\":0,\"value\":0},{\"segment_id\":\"segment-uuid\",\"property\":\"KFTypePositionY\",\"offset\":0,\"value\":0},{\"segment_id\":\"segment-uuid\",\"property\":\"KFTypeRotation\",\"offset\":2500000,\"value\":90},{\"segment_id\":\"segment-uuid\",\"property\":\"KFTypeAlpha\",\"offset\":5000000,\"value\":0}]"
   }'
 ```
 
-#### 3. Rotation Animation
+#### 3. Position with pixel values (auto-normalized when `|value| > 1`)
 
 ```bash
 curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_keyframes \
   -H "Content-Type: application/json" \
   -d '{
     "draft_url": "YOUR_DRAFT_URL",
-    "keyframes": "[{\"property\":\"rotation.z\",\"time\":0,\"value\":0},{\"property\":\"rotation.z\",\"time\":3000000,\"value\":360}]"
+    "keyframes": "[{\"segment_id\":\"segment-uuid\",\"property\":\"KFTypePositionX\",\"offset\":0,\"value\":0},{\"segment_id\":\"segment-uuid\",\"property\":\"KFTypePositionX\",\"offset\":1000000,\"value\":100}]"
   }'
 ```
 
-## Error Code Description
+## Error Codes
 
-| Error Code | Error Message | Description | Solution |
-|------------|---------------|-------------|----------|
-| 400 | draft_url is required | Missing draft URL parameter | Provide a valid draft URL |
-| 400 | keyframes is required | Missing keyframe information | Provide valid keyframe JSON |
-| 400 | keyframes format error | JSON format is incorrect | Check JSON string format |
-| 400 | Invalid property name | Unsupported property | Use supported property names |
-| 400 | Time value invalid | Time must be non-negative | Use valid time values |
-| 404 | Draft does not exist | Specified draft URL invalid | Check if draft URL is correct |
-| 500 | Keyframe processing failed | Internal processing error | Contact technical support |
+| Code | Message | Description | Solution |
+|------|---------|-------------|----------|
+| 2001 | Invalid draft URL | Draft missing or not in cache | Check `draft_url` |
+| 2013 | Invalid keyframe information | JSON invalid, not a list, missing fields, unsupported `property`, or bad `offset`/`value` | Fix the `keyframes` JSON |
+| 2014 | Keyframe addition failed | Draft save failed | Retry or contact support |
+| 2042 | Draft lock acquisition timeout | Another write is holding the draft lock | Retry later |
 
 ## Notes
 
-1. **JSON Format**: keyframes must be a valid JSON string
-2. **Time Unit**: Time values use microseconds (1 second = 1,000,000 microseconds)
-3. **Property Names**: Must use exact property names as specified
-4. **Value Ranges**: Different properties have different valid value ranges
-5. **Interpolation**: Keyframes are automatically interpolated between key times
+1. **JSON format**: `keyframes` must be a valid JSON string of an object array; an empty array is rejected (`2013`).
+2. **Segment requirement**: Each item needs a valid `segment_id`. Only visual segments (video, image, sticker, text) are accepted; others are skipped.
+3. **Time unit**: `offset` uses microseconds (`1` second = `1,000,000` microseconds).
+4. **Position units**: Values with `|value| ≤ 1` are treated as already normalized; larger magnitudes are treated as pixels relative to the draft canvas size.
+5. **Scale exclusivity**: Setting `KFTypeScaleX` or `KFTypeScaleY` unlocks uniform scale. Setting `UNIFORM_SCALE` after independent X/Y scale fails for that item and is skipped.
+6. **Duplicate times**: Adding the same property at the same timestamp appends another keyframe (does not replace).
+7. **Mask properties**: Use [Add Mask Keyframes](./add_mask_keyframes.md) for mask position/size/feather/rotation.
+8. **Helper API**: [Keyframes Infos](./keyframes_infos.md) can generate a compatible `keyframes` JSON string.
 
 ## Workflow
 
-1. Validate required parameters (draft_url, keyframes)
-2. Parse keyframes JSON string
-3. Validate property names and values
-4. Obtain and decrypt draft content
-5. Apply keyframe animations to segments
-6. Save and encrypt draft
-7. Return processing result
+1. Validate `draft_url` and load the draft from cache
+2. Parse and validate the `keyframes` JSON string
+3. For each item: find the segment, validate type and property, normalize the value, write the keyframe
+4. Save the draft
+5. Return `draft_url`, `keyframes_added`, and `affected_segments`
 
 ## Related Interfaces
 
 - [Create Draft](./create_draft.md)
 - [Add Videos](./add_videos.md)
 - [Add Images](./add_images.md)
+- [Keyframes Infos](./keyframes_infos.md)
+- [Add Mask Keyframes](./add_mask_keyframes.md)
 - [Save Draft](./save_draft.md)
 
 ---
