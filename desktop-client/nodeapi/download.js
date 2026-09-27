@@ -6,6 +6,7 @@ const logger = require("./logger");
 const { detectJianyingDraftRoot } = require("./draftPathDetect");
 const { v4: uuidv4 } = require('uuid');
 const { downloadBinaryToFile } = require("./resumableDownload");
+const draftPaths = require("./draftPaths");
 
 const RECORD_MAX = 500;
 
@@ -177,7 +178,7 @@ async function markFileDownloadFailed(parentWindow, tracker, sourceUrl) {
 }
 
 async function downloadRemoteMaterial(fileUrl, draftRootDir, subDir, baseName, fallbackExt) {
-  const destDir = path.join(draftRootDir, "assets", subDir);
+  const destDir = draftPaths.materialLocalDir(draftRootDir, subDir);
   const fallbackPath = path.join(destDir, buildMaterialFilename(baseName, fallbackExt));
 
   return downloadBinaryToFile(fileUrl, {
@@ -1035,6 +1036,14 @@ async function downloadJsonFile(
         materialDownloadCache,
         tracker
       );
+      // 落盘前统一归一化为剪映的占位符相对路径, 并按实际形态重算
+      // material_save_mode（远程素材刚被下载进草稿目录，此时才可判定）。
+      const mode = draftPaths.normalizeDraftContent(jsonData, targetDir);
+      logger.info(`[log] normalized draft paths, material_save_mode=${mode}`);
+    } else if (path.basename(filePath) === "draft_meta_info.json") {
+      // 服务端写的是它自己的草稿目录绝对路径，需改写为本地路径
+      logger.info(`[log] localize draft_meta_info: ${filePath}`);
+      draftPaths.localizeDraftMeta(jsonData, targetDir, targetId);
     }
 
     // 4. 将修改后的 JSON 对象转换为格式化的字符串并写入本地文件
