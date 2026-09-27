@@ -288,8 +288,7 @@ npm start
 
 | 类型 | 方式 | 说明 |
 |------|------|------|
-| 📱 微信群 | <div align="center"><img src="./assets/wechat-q.jpg" width="200" alt="剪映小助手"></div> | 开源社区问题交流群 |
-| 💬 微信 | <div align="center"><img src="./assets/wechat.jpg" width="120" alt="技术支持微信"></div> | 商业合作 |
+| 💬 微信 | <div align="center"><img src="./assets/wechat.jpg" width="120" alt="微信二维码"></div> | 添加微信进入开源社区交流群（也欢迎商业合作） |
 | 📧 邮箱 | taohongmin51@gmail.com | 技术支持 |
 
 ---
