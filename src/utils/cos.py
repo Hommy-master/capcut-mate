@@ -12,13 +12,18 @@ from src.utils.storage_upload_retry import run_with_storage_retry
 from exceptions import CustomException, CustomError
 
 
-def cos_upload_file(file_path: str, expire_days: Optional[int] = None) -> str:
+def cos_upload_file(
+    file_path: str,
+    expire_days: Optional[int] = None,
+    object_key: Optional[str] = None,
+) -> str:
     """
     上传文件到COS，返回带签名的临时URL，链接在指定天数后失效（见 config.VIDEO_GEN_RETENTION_DAYS）。
 
     Args:
         file_path: 文件路径
         expire_days: URL 有效期天数；为 None 时使用 config.VIDEO_GEN_RETENTION_DAYS（视频生成任务默认）
+        object_key: 对象存储 key；为 None 时按本地文件名自动生成
 
     Returns:
         str: 带签名的临时下载URL（有效期为 expire_days 天）
@@ -30,7 +35,7 @@ def cos_upload_file(file_path: str, expire_days: Optional[int] = None) -> str:
         expire_days = config.VIDEO_GEN_RETENTION_DAYS
 
     filename = os.path.basename(file_path)
-    key = build_storage_object_key(filename)
+    key = object_key or build_storage_object_key(filename)
 
     cfg = CosConfig(
         Region=config.COS_REGION,

@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from src.router import v1_router
 from src.utils.draft_downloader import download_draft
 from src.utils.logger import logger
-from src.middlewares import PrepareMiddleware, ResponseMiddleware, TraceContextMiddleware
+from src.middlewares import PrepareMiddleware, ResponseMiddleware, TraceContextMiddleware, UploadSizeGuardMiddleware
 
 
 @asynccontextmanager
@@ -32,6 +32,8 @@ app.include_router(router=v1_router, prefix="/openapi/capcut-mate", tags=["capcu
 
 # 3. 添加中间件（最后注册的 TraceContextMiddleware 最先处理请求，用于 W3C trace_id）
 app.add_middleware(middleware_class=PrepareMiddleware)
+# 必须注册在 ResponseMiddleware 之前（后注册者在外层），超限异常才能被转换成统一响应信封
+app.add_middleware(middleware_class=UploadSizeGuardMiddleware)
 app.add_middleware(middleware_class=ResponseMiddleware)
 app.add_middleware(middleware_class=TraceContextMiddleware)
 

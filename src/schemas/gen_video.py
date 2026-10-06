@@ -1,7 +1,8 @@
-import uuid
 from pydantic import BaseModel, Field
 from pydantic.functional_validators import field_validator
 from typing import Optional
+
+from src.schemas.validators import validate_api_key_uuid
 
 
 class GenVideoRequest(BaseModel):
@@ -15,15 +16,7 @@ class GenVideoRequest(BaseModel):
     @field_validator('apiKey')
     @classmethod
     def validate_api_key(cls, v):
-        if v is None or v == "":
-            return None
-        try:
-            uuid.UUID(v)
-        except ValueError:
-            raise ValueError(
-                "API密钥格式不正确，必须是合法的UUID；请登录官网 https://jcaigc.cn 获取 apiKey"
-            )
-        return v
+        return validate_api_key_uuid(v)
 
 
 class GenVideoResponse(BaseModel):

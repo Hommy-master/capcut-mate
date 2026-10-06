@@ -60,6 +60,8 @@ class CustomError(Enum):
     INVALID_MASK_KEYFRAME_INFO = (2046, "无效的蒙版关键帧信息，请检查 keyframes 参数是否正确", "Invalid mask keyframe information, please check if the keyframes parameters are correct.")
     SEGMENT_MASK_NOT_FOUND = (2047, "片段上未找到遮罩，请先调用 add_masks", "No mask found on the segment, please call add_masks first.")
     MASK_KEYFRAME_ADD_FAILED = (2048, "蒙版关键帧添加失败", "Mask keyframe addition failed")
+    INVALID_FILE_NAME = (2049, "无效的文件名，请提供不含路径的合法文件名", "Invalid file name, please provide a valid file name without a path.")
+    FILE_TYPE_NOT_ALLOWED = (2050, "不支持的文件类型，请上传受支持格式的文件", "Unsupported file type, please upload a file in a supported format.")
 
     # ===== 系统错误码 (9000-9999) =====
     INTERNAL_SERVER_ERROR = (9998, "系统内部错误", "Internal server error")

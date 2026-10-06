@@ -16,7 +16,11 @@ _OSS_MULTIPART_THRESHOLD_BYTES = 1024 * 1024 + 1
 _OSS_MULTIPART_NUM_THREADS = 2
 
 
-def oss_upload_file(file_path: str, expire_days: Optional[int] = None) -> str:
+def oss_upload_file(
+    file_path: str,
+    expire_days: Optional[int] = None,
+    object_key: Optional[str] = None,
+) -> str:
     """
     上传文件到 OSS，返回带签名的临时URL，链接在指定天数后失效（见 config.VIDEO_GEN_RETENTION_DAYS）。
     使用 oss2.resumable_upload：大于 1MB 时用分片（Multipart）上传并支持断点续传；≤1MB 仍为单次 PutObject。
@@ -24,6 +28,7 @@ def oss_upload_file(file_path: str, expire_days: Optional[int] = None) -> str:
     Args:
         file_path: 文件路径
         expire_days: URL 有效期天数；为 None 时使用 config.VIDEO_GEN_RETENTION_DAYS（视频生成任务默认）
+        object_key: 对象存储 key；为 None 时按本地文件名自动生成
 
     Returns:
         str: 带签名的临时下载URL（有效期为 expire_days 天）
@@ -42,7 +47,7 @@ def oss_upload_file(file_path: str, expire_days: Optional[int] = None) -> str:
         raise CustomException(CustomError.INTERNAL_SERVER_ERROR, "OSS SDK not installed")
 
     filename = os.path.basename(file_path)
-    key = build_storage_object_key(filename)
+    key = object_key or build_storage_object_key(filename)
 
     def do_upload() -> str:
         expire_time = datetime.datetime.now() + datetime.timedelta(days=expire_days)

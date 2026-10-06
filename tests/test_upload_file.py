@@ -3,6 +3,7 @@ from unittest.mock import patch
 
 import pytest
 
+import config
 from exceptions import CustomError, CustomException
 
 
@@ -83,4 +84,37 @@ def test_upload_file_passes_expire_days(upload_mocks) -> None:
     from src.utils.upload_file import upload_file
 
     upload_file("/x", expire_days=14)
-    m_cos.assert_called_once_with(file_path="/x", expire_days=14)
+    m_cos.assert_called_once_with(file_path="/x", expire_days=14, object_key=None)
+
+
+def test_upload_file_forwards_object_key(upload_mocks) -> None:
+    m_cos, m_oss, m_tos, m_ic, m_io, m_it = upload_mocks
+    m_ic.return_value = True
+    m_cos.return_value = "u"
+    from src.utils.upload_file import upload_file
+
+    upload_file("/x", object_key="jianchuang/2026-10-06/abc_demo.mp4")
+    m_cos.assert_called_once_with(
+        file_path="/x", expire_days=config.VIDEO_GEN_RETENTION_DAYS,
+        object_key="jianchuang/2026-10-06/abc_demo.mp4",
+    )
+
+
+def test_upload_file_forwards_object_key_to_oss_and_tos(upload_mocks) -> None:
+    m_cos, m_oss, m_tos, m_ic, m_io, m_it = upload_mocks
+    m_ic.return_value = False
+    m_io.return_value = True
+    m_tos.return_value = "u"
+    from src.utils.upload_file import upload_file
+
+    upload_file("/x", object_key="k/a.mp4")
+    m_oss.assert_called_once_with(
+        file_path="/x", expire_days=config.VIDEO_GEN_RETENTION_DAYS, object_key="k/a.mp4"
+    )
+
+    m_io.return_value = False
+    m_it.return_value = True
+    upload_file("/y", object_key="k/b.mp4")
+    m_tos.assert_called_once_with(
+        file_path="/y", expire_days=config.VIDEO_GEN_RETENTION_DAYS, object_key="k/b.mp4"
+    )

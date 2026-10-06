@@ -17,7 +17,7 @@ from src.schemas.get_image_animations import GetImageAnimationsResponse
 from src.schemas.easy_create_material import EasyCreateMaterialResponse
 from src.schemas.save_draft import SaveDraftResponse
 from src.schemas.create_draft import CreateDraftResponse
-from fastapi import APIRouter, Request, Depends
+from fastapi import APIRouter, File, Form, Request, UploadFile, Depends
 import asyncio
 from src.schemas.create_draft import CreateDraftRequest, CreateDraftResponse
 from src.schemas.add_videos import AddVideosRequest, AddVideosResponse
@@ -55,12 +55,13 @@ from src.schemas.keyframes_infos import KeyframesInfosRequest, KeyframesInfosRes
 from src.schemas.video_infos import VideoInfosRequest, VideoInfosResponse
 from src.schemas.search_sticker import SearchStickerRequest, SearchStickerResponse
 from src.schemas.get_url import GetUrlRequest, GetUrlResponse
+from src.schemas.upload_file import UploadFileResponse
 from src.schemas.str_list_to_objs import StrListToObjsRequest, StrListToObjsResponse
 from src.schemas.str_to_list import StrToListRequest, StrToListResponse
 from src.schemas.objs_to_str_list import ObjsToStrListRequest, ObjsToStrListResponse
 from src import service
 from src.service.get_text_effects import get_text_effects as get_text_effects_service
-from typing import Annotated
+from typing import Annotated, Optional
 from src.utils.logger import logger
 import config
 
@@ -770,6 +771,26 @@ def get_url(gur: GetUrlRequest) -> GetUrlResponse:
     )
     
     return GetUrlResponse(output=output)
+
+
+@router.post(path="/upload_file", response_model=UploadFileResponse)
+def upload_file(
+    file: UploadFile = File(..., description="待上传文件（multipart/form-data 的 file 字段），单文件最大 500MB"),
+    apiKey: Optional[str] = Form(default=None, description="apiKey 必须是合法的 UUID 格式；可登录官网 https://jcaigc.cn 获取"),
+) -> UploadFileResponse:
+    """
+    上传文件到对象存储（服务端中转，v1版本）
+
+    客户端以 multipart/form-data 提交文件，服务端中转上传到对象存储，上传成功后按文件体积
+    （0.0005 元/MB）计费，并返回带签名的下载 URL，可直接传给 add_videos / add_images /
+    add_audios 等接口使用。对象存储密钥全程留在服务端，不会下发给客户端。
+    """
+    result = service.upload_file(
+        file=file,
+        api_key=apiKey
+    )
+
+    return UploadFileResponse(**result)
 
 
 @router.post(path="/str_list_to_objs", response_model=StrListToObjsResponse)

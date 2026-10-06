@@ -180,6 +180,11 @@ The following are the core interfaces provided by CapCut Mate API, supporting a 
 |-----------|----------|-------------|-------------------|
 | **easy_create_material** | Quick Creation | Add multiple types of materials at once, simplify creation process | [📖 View Documentation](./docs/easy_create_material.md) |
 
+### 📤 Material Upload
+| Interface | Function | Description | Documentation Link |
+|-----------|----------|-------------|-------------------|
+| **upload_file** | Upload File | Server-relayed upload to object storage (max 500MB, 0.0005 CNY/MB), returns a usable signed URL | [📖 View Documentation](./docs/upload_file.md) |
+
 ### 🛠️ Utility Tools
 | Interface | Function | Description | Documentation Link |
 |-----------|----------|-------------|-------------------|

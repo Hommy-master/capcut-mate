@@ -49,7 +49,11 @@ def _is_tos_configured() -> bool:
     )
 
 
-def upload_file(file_path: str, expire_days: Optional[int] = None) -> str:
+def upload_file(
+    file_path: str,
+    expire_days: Optional[int] = None,
+    object_key: Optional[str] = None,
+) -> str:
     """
     上传文件到对象存储并返回带签名的临时URL。
 
@@ -58,6 +62,12 @@ def upload_file(file_path: str, expire_days: Optional[int] = None) -> str:
     2. 否则若 OSS 配置完整，使用 OSS
     3. 否则若 TOS 配置完整，使用 TOS
     4. 都未配置时抛出异常
+
+    Args:
+        file_path: 本地文件路径
+        expire_days: URL 有效期天数；为 None 时取 config.VIDEO_GEN_RETENTION_DAYS
+        object_key: 对象存储 key；为 None 时按本地文件名自动生成（服务端中转上传需显式传入，
+            以保证 key 使用客户端的原始文件名而非临时文件名）
     """
     if expire_days is None:
         expire_days = config.VIDEO_GEN_RETENTION_DAYS
@@ -65,15 +75,15 @@ def upload_file(file_path: str, expire_days: Optional[int] = None) -> str:
     try:
         if _is_cos_configured():
             logger.info("Detected COS config, using COS upload")
-            return cos_upload_file(file_path=file_path, expire_days=expire_days)
+            return cos_upload_file(file_path=file_path, expire_days=expire_days, object_key=object_key)
 
         if _is_oss_configured():
             logger.info("COS config not found, fallback to OSS upload")
-            return oss_upload_file(file_path=file_path, expire_days=expire_days)
+            return oss_upload_file(file_path=file_path, expire_days=expire_days, object_key=object_key)
 
         if _is_tos_configured():
             logger.info("COS/OSS config not found, fallback to TOS upload")
-            return tos_upload_file(file_path=file_path, expire_days=expire_days)
+            return tos_upload_file(file_path=file_path, expire_days=expire_days, object_key=object_key)
 
         raise CustomException(
             CustomError.INTERNAL_SERVER_ERROR,

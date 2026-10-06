@@ -17,6 +17,7 @@ dependencies = [
     "oss2",
     "tos",
     "imageio>=2.37.3",
+    "python-multipart>=0.0.18",
 ]
 
 [project.optional-dependencies]
