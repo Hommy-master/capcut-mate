@@ -20,7 +20,7 @@ from .metadata import MaskMeta, MaskType, FilterType, TransitionType
 from .metadata import IntroType, OutroType, GroupAnimationType
 from .metadata import VideoSceneEffectType, VideoCharacterEffectType
 from .metadata.mix_mode_meta import MixModeType
-from .metadata.beauty_meta import BeautyMeta, BeautyType, MAKEUP_ROOT
+from .metadata.beauty_meta import BeautyMeta, MAKEUP_ROOT
 
 class Mask:
     """蒙版对象"""
@@ -205,29 +205,49 @@ class Filter:
         }
 
 class FigureEffect:
-    """美颜素材，导出到 materials.effects，type 为 figure 或 makeup_root。"""
+    """人像美化素材，导出到 materials.effects，type 为 figure 或 makeup_root。"""
 
     global_id: str
     meta: BeautyMeta
     """美颜元数据"""
     intensity: float
     """强度，0~1。makeup-root 固定为 0。"""
+    cold_warm: float
+    """肤色冷暖，0~1（仅肤色使用，其它素材为 0）。"""
     algorithm_artifact_path: str
 
-    def __init__(self, meta: BeautyMeta, intensity: float, *, algorithm_artifact_path: str = ""):
-        """intensity 为 0~1。不需要算法路径的滑杆（美白、肤色）忽略 algorithm_artifact_path。"""
-        if not 0.0 <= intensity <= 1.0:
-            raise ValueError(f"美颜强度超出范围: {intensity}")
+    def __init__(self, meta: BeautyMeta, intensity: float, *,
+                 cold_warm: float = 0.0, algorithm_artifact_path: str = ""):
+        """intensity 为剪映滑杆原值 0~100；cold_warm 为肤色冷暖原值 0~99，其它素材忽略。
+
+        内部按 ÷100 / ÷meta.cold_warm_divisor 归一后写入草稿。
+        不需要算法路径的素材（美白、全部美体、肤色）忽略 algorithm_artifact_path。
+        """
+        if not meta.supported or not meta.resource_id:
+            raise ValueError(f"beauty effect unavailable: {meta.name}")
+        if not 0.0 <= intensity <= 100.0:
+            raise ValueError(f"beauty intensity out of range: {intensity}")
+        if meta.cold_warm_key and not 0.0 <= cold_warm <= meta.cold_warm_divisor:
+            raise ValueError(f"skin tone temperature out of range: {cold_warm}")
         self.global_id = uuid.uuid4().hex
         self.meta = meta
-        self.intensity = intensity
+        self.intensity = intensity / 100.0
+        self.cold_warm = cold_warm / meta.cold_warm_divisor if meta.cold_warm_key else 0.0
         self.algorithm_artifact_path = algorithm_artifact_path if meta.needs_algorithm_path else ""
 
     def set_intensity(self, intensity: float) -> None:
-        """更新强度，不更换素材 id。"""
-        if not 0.0 <= intensity <= 1.0:
-            raise ValueError(f"美颜强度超出范围: {intensity}")
-        self.intensity = intensity
+        """更新强度（剪映滑杆原值 0~100），不更换素材 id。"""
+        if not 0.0 <= intensity <= 100.0:
+            raise ValueError(f"beauty intensity out of range: {intensity}")
+        self.intensity = intensity / 100.0
+
+    def set_cold_warm(self, cold_warm: float) -> None:
+        """更新肤色冷暖（剪映滑杆原值 0~99）；非肤色素材忽略。"""
+        if not self.meta.cold_warm_key:
+            return
+        if not 0.0 <= cold_warm <= self.meta.cold_warm_divisor:
+            raise ValueError(f"skin tone temperature out of range: {cold_warm}")
+        self.cold_warm = cold_warm / self.meta.cold_warm_divisor
 
     def export_json(self) -> Dict[str, Any]:
         face_adjust_params: List[Dict[str, Any]] = []
@@ -241,22 +261,24 @@ class FigureEffect:
         elif self.meta.intensity_mode == "face_adjust":
             adjust_params = []
             value = 0.0
+            face_params: List[Dict[str, Any]] = []
+            if self.meta.cold_warm_key:
+                face_params.append({
+                    "default_value": 0.0,
+                    "name": self.meta.cold_warm_key,
+                    "value": self.cold_warm,
+                })
+            if self.meta.face_adjust_param_name:
+                face_params.append({
+                    "default_value": 0.0,
+                    "name": self.meta.face_adjust_param_name,
+                    "value": self.intensity,
+                })
             face_adjust_params = [{
-                "adjust_params": [
-                    {
-                        "default_value": 0.0,
-                        "name": "face_adjust_skin_ColdWarm",
-                        "value": self.meta.face_adjust_cold_warm,
-                    },
-                    {
-                        "default_value": 0.0,
-                        "name": "face_adjust_skin_Intensity",
-                        "value": self.intensity,
-                    },
-                ],
+                "adjust_params": face_params,
                 "disable_part": [],
                 "enable": True,
-                "face_id": "-1",
+                "face_id": self.meta.face_id,
             }]
         else:
             adjust_params = []
@@ -282,7 +304,7 @@ class FigureEffect:
             "id": self.global_id,
             "intensity_key": self.meta.intensity_key,
             "multi_language_current": "",
-            "name": self.meta.name,
+            "name": self.meta.draft_name,
             "panel_id": "",
             "platform": "all",
             "request_id": "",
@@ -588,30 +610,29 @@ class VideoSegment(VisualSegment):
 
         return self
 
-    def add_beauty(self, beauty_type: BeautyType, intensity: float, *,
-                   algorithm_artifact_path: str = "") -> FigureEffect:
-        """为视频片段添加或更新一个美颜滑杆。
+    def add_beauty(self, beauty_type: BeautyMeta, intensity: float, *,
+                   cold_warm: float = 0.0, algorithm_artifact_path: str = "") -> FigureEffect:
+        """为视频片段添加或更新一条人像美化素材。
 
         Args:
-            beauty_type (`BeautyType`): 美颜类型，支持匀肤、丰盈、磨皮、祛法令纹、亮眼、祛黑眼圈、美白、白牙、肤色。
-            intensity (`float`): 强度，取值范围 0~100，与剪映滑杆一致。
-            algorithm_artifact_path (`str`, optional): 需要算法产物的滑杆使用的路径。美白忽略此参数。
+            beauty_type (`BeautyMeta`): 素材元数据（来自 BEAUTY_CATALOG / SKIN_TONE_PRESETS / MAKEUP_ROOT）。
+            intensity (`float`): 强度，剪映滑杆原值 0~100。
+            cold_warm (`float`): 肤色冷暖，剪映滑杆原值 0~99，仅肤色使用。
+            algorithm_artifact_path (`str`, optional): 需要算法产物的素材使用的路径。
 
         Raises:
-            `ValueError`: 强度超出 0~100。
+            `ValueError`: 强度或冷暖超出范围。
         """
-        if not 0.0 <= intensity <= 100.0:
-            raise ValueError(f"美颜强度超出范围: {intensity}")
-        normalized = intensity / 100.0
-
         for existing in self.figures:
-            if existing.meta.resource_id == beauty_type.value.resource_id and existing.meta.material_type == "figure":
-                existing.set_intensity(normalized)
+            if existing.meta.resource_id == beauty_type.resource_id and existing.meta.material_type == "figure":
+                existing.set_intensity(intensity)
+                existing.set_cold_warm(cold_warm)
                 return existing
 
         figure = FigureEffect(
-            beauty_type.value,
-            normalized,
+            beauty_type,
+            intensity,
+            cold_warm=cold_warm,
             algorithm_artifact_path=algorithm_artifact_path,
         )
         self.figures.append(figure)

@@ -161,6 +161,7 @@ The following are the core interfaces provided by CapCut Mate API, supporting a 
 | **add_keyframes** | Keyframe Animation | Create property animations for position, scale, rotation, etc. | [📖 View Documentation](./docs/add_keyframes.md) |
 | **add_masks** | Mask Effects | Add various shape masks, control visible areas of the screen | [📖 View Documentation](./docs/add_masks.md) |
 | **add_mask_keyframes** | Mask Keyframes | Animate mask position, size, feather, and rotation | [📖 View Documentation](./docs/add_mask_keyframes.md) |
+| **add_beauty** | Portrait Beautification | Beauty, face shape, makeup and body sliders (smoothing, whitening, slim face, small head, ...) | [📖 View Documentation](./docs/add_beauty.md) |
 
 ### 🎨 Animation Resources
 | Interface | Function | Description | Documentation Link |

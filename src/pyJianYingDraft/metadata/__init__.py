@@ -30,7 +30,18 @@ from .mask_meta import MaskType, MaskMeta
 from .filter_meta import FilterType
 from .transition_meta import TransitionType
 from .mix_mode_meta import MixModeType
-from .beauty_meta import BeautyType, BeautyMeta, MAKEUP_ROOT
+from .beauty_meta import (
+    BEAUTY_CATALOG,
+    BEAUTY_GROUPS,
+    MAKEUP_EXCLUSION_GROUP,
+    MAKEUP_ROOT,
+    SKIN_TONE_PRESETS,
+    BeautyMeta,
+    build_figure_algorithm_path,
+    find_beauty_type,
+    find_skin_tone,
+    supported_sliders,
+)
 
 __all__ = [
     "AnimationMeta",
@@ -53,7 +64,14 @@ __all__ = [
     "SpeechToSongType",
     "VideoSceneEffectType",
     "VideoCharacterEffectType",
-    "BeautyType",
     "BeautyMeta",
+    "BEAUTY_CATALOG",
+    "BEAUTY_GROUPS",
+    "SKIN_TONE_PRESETS",
+    "MAKEUP_EXCLUSION_GROUP",
     "MAKEUP_ROOT",
+    "build_figure_algorithm_path",
+    "find_beauty_type",
+    "find_skin_tone",
+    "supported_sliders",
 ]

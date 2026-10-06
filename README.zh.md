@@ -161,6 +161,7 @@ docker-compose pull && docker-compose up -d
 | **add_keyframes** | 关键帧动画 | 创建位置、缩放、旋转等属性动画 | [📖 查看文档](./docs/add_keyframes.zh.md) |
 | **add_masks** |遮罩效果 | 添加各种形状遮罩，控制画面可见区域 | [📖 查看文档](./docs/add_masks.zh.md) |
 | **add_mask_keyframes** | 蒙版关键帧 | 为蒙版添加位置、大小、羽化、旋转关键帧 | [📖 查看文档](./docs/add_mask_keyframes.zh.md) |
+| **add_beauty** | 人像美化 | 添加美颜、美型、美妆、美体（磨皮/美白/瘦脸/小头等全套滑杆） | [📖 查看文档](./docs/add_beauty.zh.md) |
 
 ### 🎨 动画资源
 | 接口 | 功能 | 描述 | 文档链接 |

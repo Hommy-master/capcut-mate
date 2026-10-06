@@ -1,9 +1,21 @@
+from dataclasses import dataclass
 from typing import List, Dict, Any, Tuple, Optional
 import asyncio
 
 from src.utils.logger import logger
 from src.pyJianYingDraft import ScriptFile
-from src.pyJianYingDraft.metadata.beauty_meta import find_beauty_type, build_figure_algorithm_path
+from src.pyJianYingDraft.metadata.beauty_meta import (
+    BEAUTY_CATALOG,
+    BEAUTY_GROUPS,
+    GROUP_BODY,
+    GROUP_MAKEUP,
+    GROUP_SHAPE,
+    GROUP_SKIN,
+    BeautyMeta,
+    build_figure_algorithm_path,
+    find_beauty_type,
+    find_skin_tone,
+)
 from src.pyJianYingDraft.video_segment import VideoSegment, FigureEffect
 from src.utils.draft_cache import DRAFT_CACHE
 from exceptions import CustomException, CustomError
@@ -11,52 +23,47 @@ from src.utils import helper
 from src.utils.draft_lock_manager import DraftLockManager
 from src.service.add_masks import find_segment_by_id
 
-BEAUTY_SLIDER_NAMES = ("匀肤", "丰盈", "磨皮", "祛法令纹", "亮眼", "祛黑眼圈", "美白", "白牙")
+# 非滑杆字段（预设选择 / 预设参数），由 _extra_ops 单独处理
+_EXTRA_FIELDS: Dict[str, Tuple[str, ...]] = {
+    GROUP_SKIN: ("skin_tone", "temperature", "intensity"),
+    GROUP_MAKEUP: ("look", "intensity"),
+}
+
+
+@dataclass(frozen=True)
+class _BeautyOp:
+    """一条已解析完成、可直接写入草稿的美化操作。"""
+
+    meta: BeautyMeta
+    intensity: float = 0.0
+    """剪映滑杆原值 0~100。"""
+    cold_warm: float = 0.0
+    """肤色冷暖原值 0~99，仅肤色使用。"""
 
 
 def add_beauty(
     draft_url: str,
     segment_ids: List[str],
-    beauty_infos: Optional[List[Dict[str, Any]]] = None,
     *,
-    匀肤: float = 0,
-    丰盈: float = 0,
-    磨皮: float = 0,
-    祛法令纹: float = 0,
-    亮眼: float = 0,
-    祛黑眼圈: float = 0,
-    美白: float = 0,
-    白牙: float = 0,
-    肤色: str = "",
-    肤色强度: float = 60,
+    skin: Optional[Dict[str, Any]] = None,
+    shape: Optional[Dict[str, Any]] = None,
+    makeup: Optional[Dict[str, Any]] = None,
+    body: Optional[Dict[str, Any]] = None,
 ) -> Tuple[str, List[str], List[str]]:
-    """向指定视频片段添加美颜。
+    """向指定视频片段添加美颜 / 美型 / 美妆 / 美体。
 
-    美颜写入 materials.effects（type=figure），并挂到片段 extra_material_refs。
-    同一片段已有同名滑杆时只更新强度。任意滑杆都会补一条 makeup-root。
-    具名参数默认不生效（滑杆为 0、肤色为空）；非默认值会与 beauty_infos 合并写入。
+    每个非 0 滑杆写入 materials.effects（type=figure），并挂到片段 extra_material_refs；
+    同一片段已有同素材时只原地更新强度（保留素材 id）；任意滑杆都会补一条 makeup-root。
+    滑杆为 0 表示不写入（与剪映「关闭」= 素材缺失一致）。
 
     Returns:
         draft_url, affected_segments, figure_ids
     """
-    beauty_infos = _merge_beauty_infos(
-        beauty_infos,
-        {
-            "匀肤": 匀肤,
-            "丰盈": 丰盈,
-            "磨皮": 磨皮,
-            "祛法令纹": 祛法令纹,
-            "亮眼": 亮眼,
-            "祛黑眼圈": 祛黑眼圈,
-            "美白": 美白,
-            "白牙": 白牙,
-            "肤色": 肤色,
-            "肤色强度": 肤色强度,
-        },
-    )
+    # 先收集并校验全部参数，再改动草稿，避免多片段时前面片段被写坏
+    ops = _collect_ops(skin=skin, shape=shape, makeup=makeup, body=body)
     logger.info(
         f"add_beauty started, draft_url: {draft_url}, "
-        f"segment_ids: {segment_ids}, beauty count: {len(beauty_infos)}"
+        f"segment_ids: {segment_ids}, beauty op count: {len(ops)}"
     )
 
     draft_id = helper.get_url_param(draft_url, "draft_id")
@@ -68,9 +75,9 @@ def add_beauty(
         logger.error("No segment_ids provided")
         raise CustomException(CustomError.INVALID_BEAUTY_INFO)
 
-    if not beauty_infos:
-        logger.error("No beauty_infos provided")
-        raise CustomException(CustomError.INVALID_BEAUTY_INFO)
+    if not ops:
+        logger.error("No effective beauty params provided")
+        raise CustomException(CustomError.INVALID_BEAUTY_INFO, "no effective beauty parameters provided")
 
     script: ScriptFile = DRAFT_CACHE[draft_id]
     affected_segments: List[str] = []
@@ -79,7 +86,7 @@ def add_beauty(
     for i, segment_id in enumerate(segment_ids):
         try:
             logger.info(f"Processing segment {i + 1}/{len(segment_ids)}, segment_id: {segment_id}")
-            ids = add_beauty_to_segment(script, segment_id, beauty_infos)
+            ids = add_beauty_to_segment(script, segment_id, ops)
             affected_segments.append(segment_id)
             figure_ids.extend(ids)
         except CustomException:
@@ -101,9 +108,12 @@ def add_beauty(
 async def add_beauty_async(
     draft_url: str,
     segment_ids: List[str],
-    beauty_infos: Optional[List[Dict[str, Any]]] = None,
+    *,
+    skin: Optional[Dict[str, Any]] = None,
+    shape: Optional[Dict[str, Any]] = None,
+    makeup: Optional[Dict[str, Any]] = None,
+    body: Optional[Dict[str, Any]] = None,
     lock_timeout: float = 30.0,
-    **named_beauty: Any,
 ) -> Tuple[str, List[str], List[str]]:
     """add_beauty 的异步版本，带草稿写锁。"""
     draft_id = helper.get_url_param(draft_url, "draft_id")
@@ -125,36 +135,113 @@ async def add_beauty_async(
         return add_beauty(
             draft_url=draft_url,
             segment_ids=segment_ids,
-            beauty_infos=beauty_infos,
-            **named_beauty,
+            skin=skin,
+            shape=shape,
+            makeup=makeup,
+            body=body,
         )
     finally:
         await lock_manager.release_lock(draft_id)
         logger.info(f"Lock released for draft_id: {draft_id}")
 
 
-def _merge_beauty_infos(
-    beauty_infos: Optional[List[Dict[str, Any]]],
-    named: Dict[str, Any],
-) -> List[Dict[str, Any]]:
-    """把具名美颜参数合并进 beauty_infos。滑杆为 0、肤色为空时跳过。"""
-    items: List[Dict[str, Any]] = list(beauty_infos or [])
-    for name in BEAUTY_SLIDER_NAMES:
-        value = named.get(name, 0)
-        if value:
-            items.append({"name": name, "intensity": value})
-    skin = str(named.get("肤色") or "").strip()
-    if skin:
-        items.append({"name": skin, "intensity": named.get("肤色强度", 60)})
-    return items
+def _read_value(data: Dict[str, Any], name: str, *, default: float = 0.0, maximum: float = 100.0) -> float:
+    """读取一个滑杆数值并校验范围；缺省时返回 default。"""
+    value = data.get(name, default)
+    if value is None:
+        return default
+    try:
+        value = float(value)
+    except (TypeError, ValueError):
+        raise CustomException(CustomError.INVALID_BEAUTY_INFO, f"{name}: {data.get(name)!r}")
+    if not 0.0 <= value <= maximum:
+        raise CustomException(CustomError.INVALID_BEAUTY_INFO, f"{name}: {value}")
+    return value
+
+
+def _reject_unknown_keys(group: str, data: Dict[str, Any]) -> None:
+    """拒绝目录之外的键（HTTP 层已由 schema 的 extra=forbid 拦截，这里兜底直接调用）。"""
+    known = set(BEAUTY_CATALOG[group]) | set(_EXTRA_FIELDS.get(group, ()))
+    unknown = [key for key in data if key not in known]
+    if unknown:
+        raise CustomException(CustomError.BEAUTY_NOT_FOUND, f"unknown beauty parameters: {', '.join(unknown)}")
+
+
+def _collect_ops(
+    *,
+    skin: Optional[Dict[str, Any]] = None,
+    shape: Optional[Dict[str, Any]] = None,
+    makeup: Optional[Dict[str, Any]] = None,
+    body: Optional[Dict[str, Any]] = None,
+) -> List[_BeautyOp]:
+    """按分组顺序把请求转换为待写入操作。滑杆为 0 跳过；预留字段非 0 报 2044。"""
+    groups = {
+        GROUP_SKIN: dict(skin or {}),
+        GROUP_SHAPE: dict(shape or {}),
+        GROUP_MAKEUP: dict(makeup or {}),
+        GROUP_BODY: dict(body or {}),
+    }
+    ops: List[_BeautyOp] = []
+    for group in BEAUTY_GROUPS:
+        data = groups[group]
+        if not data:
+            continue
+        _reject_unknown_keys(group, data)
+
+        for meta in BEAUTY_CATALOG[group].values():
+            value = _read_value(data, meta.name)
+            if not value:
+                continue
+            if not meta.supported:
+                raise CustomException(
+                    CustomError.BEAUTY_NOT_FOUND,
+                    f"{meta.name} is not supported yet (no matching material in the draft), pass 0",
+                )
+            ops.append(_BeautyOp(meta, intensity=value))
+
+        ops.extend(_extra_ops(group, data))
+    return ops
+
+
+def _extra_ops(group: str, data: Dict[str, Any]) -> List[_BeautyOp]:
+    """处理肤色 / 美妆套装这类预设选择字段。预设值沿用剪映预设名，为中文。"""
+    if group == GROUP_SKIN:
+        preset = str(data.get("skin_tone") or "").strip()
+        if not preset:
+            return []
+        meta = find_skin_tone(preset)
+        if meta is None:
+            raise CustomException(
+                CustomError.BEAUTY_NOT_FOUND,
+                f"unsupported skin_tone preset: {preset}, expected 冷白 / 暖白",
+            )
+        return [_BeautyOp(
+            meta,
+            intensity=_read_value(data, "intensity", default=60.0),
+            cold_warm=_read_value(data, "temperature", default=0.0, maximum=meta.cold_warm_divisor),
+        )]
+
+    if group == GROUP_MAKEUP:
+        preset = str(data.get("look") or "").strip()
+        if not preset:
+            return []
+        meta = find_beauty_type(GROUP_MAKEUP, preset)
+        if meta is None:
+            raise CustomException(
+                CustomError.BEAUTY_NOT_FOUND,
+                f"unknown makeup look: {preset}, expected 淡人妆 / 氧气感",
+            )
+        return [_BeautyOp(meta, intensity=_read_value(data, "intensity", default=80.0))]
+
+    return []
 
 
 def add_beauty_to_segment(
     script: ScriptFile,
     segment_id: str,
-    beauty_infos: List[Dict[str, Any]],
+    ops: List[_BeautyOp],
 ) -> List[str]:
-    """向一个视频片段写入美颜，并登记到 materials.effects。"""
+    """向一个视频片段写入美化素材，并登记到 materials.effects。"""
     segment = find_segment_by_id(script, segment_id)
     if segment is None:
         logger.error(f"Segment not found: {segment_id}")
@@ -171,28 +258,19 @@ def add_beauty_to_segment(
     )
 
     figure_ids: List[str] = []
-    for info in beauty_infos:
-        name = info.get("name")
-        if not isinstance(name, str) or not name:
-            raise CustomException(CustomError.INVALID_BEAUTY_INFO)
-
-        beauty_type = find_beauty_type(name)
-        if beauty_type is None:
-            logger.error(f"Beauty type not found: {name}")
-            raise CustomException(CustomError.BEAUTY_NOT_FOUND)
-
-        try:
-            intensity = float(info.get("intensity", 0))
-        except (TypeError, ValueError):
-            raise CustomException(CustomError.INVALID_BEAUTY_INFO)
-        if not 0.0 <= intensity <= 100.0:
-            raise CustomException(CustomError.INVALID_BEAUTY_INFO)
-
-        path = algorithm_path if beauty_type.value.needs_algorithm_path else ""
-        figure = segment.add_beauty(beauty_type, intensity, algorithm_artifact_path=path)
+    for op in ops:
+        figure = segment.add_beauty(
+            op.meta,
+            op.intensity,
+            cold_warm=op.cold_warm,
+            algorithm_artifact_path=algorithm_path,
+        )
         _register_figure(script, figure)
         figure_ids.append(figure.global_id)
-        logger.info(f"Applied beauty {name}={intensity} to segment {segment_id}, figure_id: {figure.global_id}")
+        logger.info(
+            f"Applied beauty {op.meta.name}={op.intensity} to segment {segment_id}, "
+            f"figure_id: {figure.global_id}"
+        )
 
     root = segment.ensure_makeup_root(algorithm_path)
     _register_figure(script, root)
