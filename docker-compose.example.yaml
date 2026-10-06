@@ -7,6 +7,12 @@ services:
     volumes:
       - ./logs:/app/logs
       - /opt/1panel/apps/openresty/openresty/www/sites/capcut-mate.jcaigc.cn/index/output:/app/output  # 挂载配置文件目录
+    # 默认引用 .env 配置（对象存储密钥等），首次使用先执行：cp .env.example .env
+    # required: false 表示 .env 不存在时仍可启动（需要 Docker Compose v2.24+）
+    # 注意：下方 environment 为固定值，优先级高于 .env，同名变量不会被 .env 覆盖
+    env_file:
+      - path: .env
+        required: false
     environment:
       # 草稿下载URL
       - DRAFT_URL=https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft
