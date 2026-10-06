@@ -1,10 +1,11 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import List, Dict, Any, Tuple, Optional
 import asyncio
 
 from src.utils.logger import logger
 from src.pyJianYingDraft import ScriptFile
 from src.pyJianYingDraft.metadata.beauty_meta import (
+    ALL_FACES,
     BEAUTY_CATALOG,
     BEAUTY_GROUPS,
     GROUP_BODY,
@@ -26,7 +27,7 @@ from src.service.add_masks import find_segment_by_id
 # 非滑杆字段（预设选择 / 预设参数），由 _extra_ops 单独处理
 _EXTRA_FIELDS: Dict[str, Tuple[str, ...]] = {
     GROUP_SKIN: ("skin_tone", "temperature", "intensity"),
-    GROUP_MAKEUP: ("look", "intensity"),
+    GROUP_MAKEUP: ("look", "intensity", "face_id"),
 }
 
 
@@ -159,6 +160,17 @@ def _read_value(data: Dict[str, Any], name: str, *, default: float = 0.0, maximu
     return value
 
 
+def _read_face_id(data: Dict[str, Any]) -> str:
+    """读取妆容作用的人脸：默认全部人脸（-1），也接受 0、1、2… 这样的人脸序号。"""
+    value = str(data.get("face_id", ALL_FACES) or ALL_FACES).strip()
+    if value != ALL_FACES and not value.isdigit():
+        raise CustomException(
+            CustomError.INVALID_BEAUTY_INFO,
+            f"face_id: {data.get('face_id')!r}, expected {ALL_FACES} (all faces) or a non-negative face index",
+        )
+    return value
+
+
 def _reject_unknown_keys(group: str, data: Dict[str, Any]) -> None:
     """拒绝目录之外的键（HTTP 层已由 schema 的 extra=forbid 拦截，这里兜底直接调用）。"""
     known = set(BEAUTY_CATALOG[group]) | set(_EXTRA_FIELDS.get(group, ()))
@@ -231,7 +243,10 @@ def _extra_ops(group: str, data: Dict[str, Any]) -> List[_BeautyOp]:
                 CustomError.BEAUTY_NOT_FOUND,
                 f"unknown makeup look: {preset}, expected 淡人妆 / 氧气感",
             )
-        return [_BeautyOp(meta, intensity=_read_value(data, "intensity", default=80.0))]
+        return [_BeautyOp(
+            replace(meta, face_id=_read_face_id(data)),
+            intensity=_read_value(data, "intensity", default=80.0),
+        )]
 
     return []
 

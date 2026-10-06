@@ -94,6 +94,7 @@ Re-applying the same slider updates its intensity in place (the material id is p
 |-------|----------------|------|---------|-------------|
 | look | 套装 | string | "" | Makeup preset: `淡人妆` / `氧气感`; empty means not applied |
 | intensity | 程度 | number | 80 | Preset intensity 0-100, only used when `look` is set |
+| face_id | 人脸 | string | "-1" | Which face the look applies to: `-1` means all faces (same as JianYing's "apply globally"); or a detected face index `0` / `1` / `2`… |
 
 ### body (美体)
 
@@ -124,6 +125,7 @@ Re-applying the same slider updates its intensity in place (the material id is p
 
 - skin, shape and makeup sliders carry an `algorithm_artifact_path`; `whitening`, all body sliders and skin tone do not.
 - Makeup writes a fixed 11-item `exclusion_group` so it never stacks with other makeup parts.
+- `face_id` is the **index of a detected face** (JianYing numbers faces in detection order, starting at 0), not a slot belonging to the look; `-1` (the default) means all faces. Hard-coding one index makes the look land on a non-existent face — and render nothing — as soon as the clip has fewer faces or a different detection order.
 - Materials are written by `resource_id`; no local effect-cache path is written — JianYing downloads resources on open.
 - The `name` field written into the draft keeps the JianYing Chinese label (e.g. `"name": "磨皮"`), not the English API field name.
 
@@ -133,8 +135,8 @@ Re-applying the same slider updates its intensity in place (the material id is p
 |--------|-------------|-------|
 | `skin_tone: 冷白` | 7148720872105185800 | temperature ÷99, intensity ÷100 |
 | `skin_tone: 暖白` | 7148720647714116132 | temperature defaults to 0 |
-| `look: 淡人妆` | 7376172391774294554 | slot face_id "1" |
-| `look: 氧气感` | 7154258998315717150 | slot face_id "0" |
+| `look: 淡人妆` | 7376172391774294554 | all faces by default (face_id "-1") |
+| `look: 氧气感` | 7154258998315717150 | all faces by default (face_id "-1") |
 
 ## Response Format
 

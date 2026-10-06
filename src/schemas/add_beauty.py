@@ -1,6 +1,8 @@
 from typing import List, Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+from src.pyJianYingDraft.metadata.beauty_meta import ALL_FACES
 
 
 class BeautySkinGroup(BaseModel):
@@ -48,6 +50,19 @@ class BeautyMakeupGroup(BaseModel):
 
     look: str = Field(default="", description="妆容套装预设：空字符串表示不应用；支持 淡人妆 / 氧气感")
     intensity: float = Field(default=80, ge=0, le=100, description="套装程度（0-100），仅设置 look 时生效")
+    face_id: str = Field(
+        default=ALL_FACES,
+        description='妆容作用的人脸：默认 "-1" 全部人脸（等价剪映「全局应用」）；也可指定检出的人脸序号 "0" / "1" / "2"…',
+    )
+
+    @field_validator("face_id")
+    @classmethod
+    def _validate_face_id(cls, value: str) -> str:
+        """只接受 "-1"（全部人脸）或非负整数的人脸序号。"""
+        normalized = str(value).strip()
+        if normalized != ALL_FACES and not normalized.isdigit():
+            raise ValueError(f"face_id must be {ALL_FACES} (all faces) or a non-negative face index, got {value!r}")
+        return normalized
 
 
 class BeautyBodyGroup(BaseModel):

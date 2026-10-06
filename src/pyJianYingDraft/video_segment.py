@@ -625,6 +625,7 @@ class VideoSegment(VisualSegment):
         """
         for existing in self.figures:
             if existing.meta.resource_id == beauty_type.resource_id and existing.meta.material_type == "figure":
+                existing.meta = beauty_type  # 同一素材换人脸（face_id）时一并刷新元数据
                 existing.set_intensity(intensity)
                 existing.set_cold_warm(cold_warm)
                 return existing

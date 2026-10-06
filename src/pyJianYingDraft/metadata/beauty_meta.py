@@ -32,6 +32,9 @@ SKIN_COLD_WARM_DIVISOR = 99.0
 # 美妆 face_adjust_params 的强度参数名
 MAKEUP_WHOLE_KEY = "face_adjust_whole"
 
+# face_adjust 的 face_id 取该值表示作用于全部人脸（与剪映「全局应用」一致）
+ALL_FACES = "-1"
+
 # 美妆固定的排除组（剪映写入 11 项，避免与其它妆容部件叠加）
 MAKEUP_EXCLUSION_GROUP: Tuple[str, ...] = (
     "face_adjust_brow",
@@ -79,7 +82,7 @@ class BeautyMeta:
     cold_warm_divisor: float = 100.0
     """仅肤色：temperature 归一除数（99）。"""
     face_id: str = "-1"
-    """face_adjust 模式下 face_adjust_params[0].face_id：肤色 "-1"，美妆为槽位 "0"/"1"。"""
+    """face_adjust 模式下 face_adjust_params[0].face_id：检出的第几张人脸（0 起），"-1" 表示全部人脸。"""
     exclusion_group: Tuple[str, ...] = ()
     material_type: str = "figure"
 
@@ -112,8 +115,12 @@ def _body(name: str, draft_name: str, resource_id: str, intensity_key: str = "",
     )
 
 
-def _makeup(name: str, draft_name: str, resource_id: str, face_id: str) -> BeautyMeta:
-    """美妆套装（category_id makeup，face_adjust + face_adjust_whole）。"""
+def _makeup(name: str, draft_name: str, resource_id: str, face_id: str = ALL_FACES) -> BeautyMeta:
+    """美妆套装（category_id makeup，face_adjust + face_adjust_whole）。
+
+    face_id 默认 ALL_FACES：妆容落到哪张人脸由视频里检出的顺序决定（与剪映「全局应用」一致），
+    不能固定成某张脸 —— 参考草稿里的 "1" 是该视频第 2 张人脸的序号，换一段素材就会指空。
+    """
     return BeautyMeta(
         name, draft_name, GROUP_MAKEUP, resource_id, "face_adjust", "exclusion_face", "makeup",
         True, face_adjust_param_name=MAKEUP_WHOLE_KEY, face_id=face_id,
@@ -160,9 +167,9 @@ BEAUTY_CATALOG: Dict[str, Dict[str, BeautyMeta]] = {
     },
     GROUP_MAKEUP: {
         # 预设值本身即剪映妆容名，接口值与草稿显示名相同；
-        # face_id 为妆容槽位（非人脸序号），剪映实测：淡人妆 "1"、氧气感 "0"
-        "淡人妆": _makeup("淡人妆", "淡人妆", "7376172391774294554", face_id="1"),
-        "氧气感": _makeup("氧气感", "氧气感", "7154258998315717150", face_id="0"),
+        # face_id 默认全部人脸，调用方可在请求里指定具体人脸序号
+        "淡人妆": _makeup("淡人妆", "淡人妆", "7376172391774294554"),
+        "氧气感": _makeup("氧气感", "氧气感", "7154258998315717150"),
     },
     GROUP_BODY: {
         "small_head": _body("small_head", "小头", "6976812039847023111", "body_adjust_SmallHead"),

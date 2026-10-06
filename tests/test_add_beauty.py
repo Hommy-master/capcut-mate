@@ -21,6 +21,7 @@ from pydantic import ValidationError
 from src.pyJianYingDraft import ScriptFile, TrackType
 from src.pyJianYingDraft.local_materials import VideoMaterial
 from src.pyJianYingDraft.metadata.beauty_meta import (
+    ALL_FACES,
     BEAUTY_CATALOG,
     GROUP_BODY,
     GROUP_MAKEUP,
@@ -161,8 +162,8 @@ def test_schema_fields_match_catalog():
     for group in (GROUP_SKIN, GROUP_SHAPE, GROUP_BODY):
         assert schema_fields[group] - extras[group] == set(BEAUTY_CATALOG[group]), group
 
-    # 美妆组：目录里是套装预设，schema 用 look 字段选择
-    assert set(BeautyMakeupGroup.model_fields) == {"look", "intensity"}
+    # 美妆组：目录里是套装预设，schema 用 look 字段选择，face_id 指定作用人脸
+    assert set(BeautyMakeupGroup.model_fields) == {"look", "intensity", "face_id"}
     assert set(BEAUTY_CATALOG[GROUP_MAKEUP]) == {"淡人妆", "氧气感"}
 
 
@@ -257,8 +258,11 @@ def test_skin_tone_warm_defaults_cold_warm_to_zero():
     assert by_name["face_adjust_skin_Intensity"] == pytest.approx(0.6)
 
 
-@pytest.mark.parametrize("name,face_id", [("淡人妆", "1"), ("氧气感", "0")])
-def test_makeup_material_shape(name, face_id):
+@pytest.mark.parametrize("name", ["淡人妆", "氧气感"])
+def test_makeup_material_shape(name):
+    # face_id 默认 -1（全部人脸）：参考草稿里的 "0"/"1" 是该视频检出的第 1/2 张人脸，
+    # 固定写死会在别的素材上指向不存在的人脸，妆容不渲染。
+    face_id = ALL_FACES
     data = _effect(find_beauty_type(GROUP_MAKEUP, name), 80, algorithm_path=ALGO)
     assert data["category_id"] == "makeup"
     assert data["sub_type"] == "exclusion_face"
@@ -272,6 +276,41 @@ def test_makeup_material_shape(name, face_id):
         "enable": True,
         "face_id": face_id,
     }]
+
+
+def test_makeup_face_id_override():
+    """显式指定人脸序号：草稿里的 face_id 跟着变，且同一素材只原地更新不追加。"""
+    script, seg = _make_draft("beauty-face")
+    try:
+        url = "http://localhost/get_draft?draft_id=beauty-face"
+        add_beauty(draft_url=url, segment_ids=[seg.segment_id], makeup={"look": "淡人妆", "face_id": "2"})
+        makeup = json.loads(script.dumps())["materials"]["effects"][0]
+        assert makeup["face_adjust_params"][0]["face_id"] == "2"
+        figure_id = makeup["id"]
+
+        add_beauty(draft_url=url, segment_ids=[seg.segment_id], makeup={"look": "淡人妆"})
+        effects = json.loads(script.dumps())["materials"]["effects"]
+        assert len(effects) == 2  # 妆容 + makeup-root，未追加素材
+        assert effects[0]["id"] == figure_id
+        assert effects[0]["face_adjust_params"][0]["face_id"] == ALL_FACES
+    finally:
+        DRAFT_CACHE.pop("beauty-face", None)
+
+
+def test_makeup_face_id_invalid_rejected():
+    """直接调用服务层时非法 face_id 要被拦住，且不写脏草稿。"""
+    script, seg = _make_draft("beauty-face-bad")
+    try:
+        with pytest.raises(CustomException) as ei:
+            add_beauty(
+                draft_url="http://localhost/get_draft?draft_id=beauty-face-bad",
+                segment_ids=[seg.segment_id],
+                makeup={"look": "淡人妆", "face_id": "第一张脸"},
+            )
+        assert ei.value.err == CustomError.INVALID_BEAUTY_INFO
+        assert json.loads(script.dumps())["materials"]["effects"] == []
+    finally:
+        DRAFT_CACHE.pop("beauty-face-bad", None)
 
 
 def test_makeup_root_shape():
@@ -473,6 +512,10 @@ def test_schema_ranges_and_unknown_keys():
     assert BeautySkinGroup().intensity == 60
     assert BeautyMakeupGroup().intensity == 80
     assert BeautyMakeupGroup().look == ""
+    assert BeautyMakeupGroup().face_id == ALL_FACES
+    assert BeautyMakeupGroup(face_id="2").face_id == "2"
+    with pytest.raises(ValidationError):
+        BeautyMakeupGroup(face_id="人脸2")
 
 
 def test_request_groups_are_optional():
@@ -563,7 +606,8 @@ def test_reference_draft_fidelity():
         assert makeup["face_adjust_params"][0]["adjust_params"][0] == {
             "default_value": 0.0, "name": "face_adjust_whole", "value": pytest.approx(0.8),
         }
-        assert makeup["face_adjust_params"][0]["face_id"] == "1"
+        # 参考草稿里是 "1"（该视频检出的第 2 张人脸），接口默认写全部人脸，不跟随单个素材的取值
+        assert makeup["face_adjust_params"][0]["face_id"] == ALL_FACES
 
         names = [item["name"] for item in effects]
         assert names.count("makeup-root") == 1 and effects[-1]["type"] == "makeup_root"
