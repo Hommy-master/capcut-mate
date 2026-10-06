@@ -241,7 +241,7 @@ def _extra_ops(group: str, data: Dict[str, Any]) -> List[_BeautyOp]:
         if meta is None:
             raise CustomException(
                 CustomError.BEAUTY_NOT_FOUND,
-                f"unknown makeup look: {preset}, expected 淡人妆 / 氧气感",
+                f"unknown makeup look: {preset}, see docs/add_beauty.zh.md for supported looks",
             )
         return [_BeautyOp(
             replace(meta, face_id=_read_face_id(data)),

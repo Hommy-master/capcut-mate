@@ -34,6 +34,7 @@ from src.pyJianYingDraft.metadata.beauty_meta import (
     find_beauty_type,
     find_skin_tone,
 )
+from src.pyJianYingDraft.metadata.makeup_looks_generated import MAKEUP_LOOK_MAP
 from src.pyJianYingDraft.time_util import Timerange
 from src.pyJianYingDraft.video_segment import FigureEffect, VideoSegment
 from src.schemas.add_beauty import (
@@ -164,7 +165,21 @@ def test_schema_fields_match_catalog():
 
     # 美妆组：目录里是套装预设，schema 用 look 字段选择，face_id 指定作用人脸
     assert set(BeautyMakeupGroup.model_fields) == {"look", "intensity", "face_id"}
-    assert set(BEAUTY_CATALOG[GROUP_MAKEUP]) == {"淡人妆", "氧气感"}
+    assert set(BEAUTY_CATALOG[GROUP_MAKEUP]) == set(MAKEUP_LOOK_MAP)
+
+
+def test_all_makeup_looks_are_in_catalog():
+    """生成文件里的每个套装都要有对应素材，resource_id 与剪映面板一致。"""
+    for name, entry in MAKEUP_LOOK_MAP.items():
+        meta = find_beauty_type(GROUP_MAKEUP, name)
+        assert meta is not None, f"套装 {name} 未进目录"
+        assert meta.resource_id == entry["resource_id"], name
+        assert meta.draft_name == name and meta.category_id == "makeup"
+        assert meta.sub_type == "exclusion_face" and meta.face_id == ALL_FACES
+
+    # 参考草稿里用过的两个套装，resource_id 必须保持不变
+    assert find_beauty_type(GROUP_MAKEUP, "淡人妆").resource_id == "7376172391774294554"
+    assert find_beauty_type(GROUP_MAKEUP, "氧气感").resource_id == "7154258998315717150"
 
 
 def test_reserved_sliders_have_no_resource_id():
@@ -452,7 +467,7 @@ def test_no_effective_params_raises():
 def test_unknown_preset_raises():
     _make_draft("beauty-preset")
     try:
-        for kwargs in ({"skin": {"skin_tone": "小麦"}}, {"makeup": {"look": "裸妆"}}):
+        for kwargs in ({"skin": {"skin_tone": "小麦"}}, {"makeup": {"look": "不存在的妆"}}):
             with pytest.raises(CustomException) as ei:
                 add_beauty(
                     draft_url="http://localhost/get_draft?draft_id=beauty-preset",

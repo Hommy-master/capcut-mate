@@ -17,6 +17,8 @@
 from dataclasses import dataclass
 from typing import Dict, Literal, Optional, Tuple
 
+from .makeup_looks_generated import MAKEUP_LOOK_MAP
+
 # 分组名，与接口请求体中的四个键一致
 GROUP_SKIN = "skin"
 GROUP_SHAPE = "shape"
@@ -166,10 +168,10 @@ BEAUTY_CATALOG: Dict[str, Dict[str, BeautyMeta]] = {
         "chin_length": _shape("chin_length", "下巴长短", "", "", supported=False),
     },
     GROUP_MAKEUP: {
-        # 预设值本身即剪映妆容名，接口值与草稿显示名相同；
+        # 预设值本身即剪映妆容名，接口值与草稿显示名相同，清单见 makeup_looks_generated.py；
         # face_id 默认全部人脸，调用方可在请求里指定具体人脸序号
-        "淡人妆": _makeup("淡人妆", "淡人妆", "7376172391774294554"),
-        "氧气感": _makeup("氧气感", "氧气感", "7154258998315717150"),
+        name: _makeup(name, name, entry["resource_id"])
+        for name, entry in MAKEUP_LOOK_MAP.items()
     },
     GROUP_BODY: {
         "small_head": _body("small_head", "小头", "6976812039847023111", "body_adjust_SmallHead"),

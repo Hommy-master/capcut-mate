@@ -92,7 +92,7 @@ Re-applying the same slider updates its intensity in place (the material id is p
 
 | Field | JianYing label | Type | Default | Description |
 |-------|----------------|------|---------|-------------|
-| look | 套装 | string | "" | Makeup preset: `淡人妆` / `氧气感`; empty means not applied |
+| look | 套装 | string | "" | Makeup preset, the Chinese name shown in JianYing's 美妆 - 套装 panel (54 in total, see below); empty means not applied |
 | intensity | 程度 | number | 80 | Preset intensity 0-100, only used when `look` is set |
 | face_id | 人脸 | string | "-1" | Which face the look applies to: `-1` means all faces (same as JianYing's "apply globally"); or a detected face index `0` / `1` / `2`… |
 
@@ -135,8 +135,13 @@ Re-applying the same slider updates its intensity in place (the material id is p
 |--------|-------------|-------|
 | `skin_tone: 冷白` | 7148720872105185800 | temperature ÷99, intensity ÷100 |
 | `skin_tone: 暖白` | 7148720647714116132 | temperature defaults to 0 |
-| `look: 淡人妆` | 7376172391774294554 | all faces by default (face_id "-1") |
-| `look: 氧气感` | 7154258998315717150 | all faces by default (face_id "-1") |
+| `look: <name>` | see below | all faces by default (face_id "-1") |
+
+All 54 looks accepted by `look` (the value is the name itself, same as the JianYing panel):
+
+> 90年代、doll感、上镜韩妹、中国妆、人形电脑、元气、兔兔妆、冬日白开水、冷感、减龄妆、初恋、原生、古早韩妆、夏日桃桃、夏日清透感、夏日白开水、奶杏、学姐妆、小烟熏、小魔女、微醺、心动、拜年妆、新年开运妆、无花果、春日樱花妆、柿柿如意、橘子汽水、氧气感、派对微醺、淡人妆、淡妆公式、淡盐系、清透感、热红酒、猫系女友、甜心芭比、甜系白开水、男友、男生、白开水、白鹿好运妆、盐系、纯欲蝴蝶兰、腮红大法、芋泥啵啵、芭蕾少女、英气、落日、裸妆、郁金香、雀斑自由、韩国学妹、韩系蜜桃
+
+The name → `resource_id` table is exported from the JianYing panel cache by `tools/extract_makeup_looks.py` into `src/pyJianYingDraft/metadata/makeup_looks_generated.py`; re-run the script after JianYing ships new looks.
 
 ## Response Format
 

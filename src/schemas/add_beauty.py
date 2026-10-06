@@ -48,7 +48,7 @@ class BeautyMakeupGroup(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    look: str = Field(default="", description="妆容套装预设：空字符串表示不应用；支持 淡人妆 / 氧气感")
+    look: str = Field(default="", description="妆容套装预设（剪映中文名，如 淡人妆 / 裸妆 / 原生 / 初恋）：空字符串表示不应用，全部取值见 docs/add_beauty.zh.md")
     intensity: float = Field(default=80, ge=0, le=100, description="套装程度（0-100），仅设置 look 时生效")
     face_id: str = Field(
         default=ALL_FACES,
