@@ -78,7 +78,8 @@ uv run main.py
 ```
 
 4. 访问API文档
-启动后访问 http://localhost:30000/docs 查看自动生成的交互式API文档
+- 本地文档：启动后访问 http://localhost:30000/docs 查看自动生成的交互式API文档
+- 在线文档：https://docs.jcaigc.cn
 
 ### Docker 部署
 

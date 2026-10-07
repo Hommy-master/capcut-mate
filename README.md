@@ -78,7 +78,8 @@ uv run main.py
 ```
 
 4. Access API documentation
-After starting, visit http://localhost:30000/docs to view the automatically generated interactive API documentation
+- Local: after starting, visit http://localhost:30000/docs for the automatically generated interactive API documentation
+- Online: https://docs.jcaigc.cn
 
 ### Docker Deployment
 
