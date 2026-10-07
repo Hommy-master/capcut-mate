@@ -13,10 +13,6 @@ POST /openapi/capcut-mate/v1/timelines
 
 根据指定的时长和数量创建时间线。该接口用于生成视频编辑所需的时间线配置，支持多种时间线类型和起始时间设置，为后续的素材添加和编辑提供时间参考。
 
-## 更多文档
-
-📖 更多详细文档和教程请访问：[https://docs.jcaigc.cn](https://docs.jcaigc.cn)
-
 ## 请求参数
 
 ```json

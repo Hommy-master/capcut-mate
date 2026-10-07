@@ -13,10 +13,6 @@ POST /openapi/capcut-mate/v1/add_audios
 
 Batch add audio materials to existing drafts. This interface supports adding multiple audio files to Jianying drafts, creating background music, sound effects, narration and other audio content for videos. Audio will be added to separate audio tracks without affecting video content.
 
-## More Documentation
-
-📖 For more detailed documentation and tutorials, please visit: [https://docs.jcaigc.cn](https://docs.jcaigc.cn)
-
 ## Request Parameters
 
 ```json

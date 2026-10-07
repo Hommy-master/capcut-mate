@@ -13,10 +13,6 @@ POST /openapi/capcut-mate/v1/imgs_infos
 
 根据图片URL和时间线生成图片信息。该接口将图片文件URL和时间线配置转换为剪映草稿所需的图片信息格式，支持动画效果和转场设置。
 
-## 更多文档
-
-📖 更多详细文档和教程请访问：[https://docs.jcaigc.cn](https://docs.jcaigc.cn)
-
 ## 请求参数
 
 ```json

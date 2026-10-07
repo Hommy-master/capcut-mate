@@ -13,10 +13,6 @@ POST /openapi/capcut-mate/v1/easy_create_material
 
 在现有草稿中添加多种类型的素材内容，包括音频、视频、图片和文字。该接口可以一次性向草稿添加多种媒体素材，自动处理素材的时长、尺寸等属性，并智能管理不同类型的媒体轨道。是视频创作的核心接口之一。
 
-## 更多文档
-
-📖 更多详细文档和教程请访问：[https://docs.jcaigc.cn](https://docs.jcaigc.cn)
-
 ## 请求参数
 
 ```json

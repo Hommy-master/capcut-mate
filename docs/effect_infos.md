@@ -13,10 +13,6 @@ POST /openapi/capcut-mate/v1/effect_infos
 
 Generate effect information based on effect names and timelines. This interface converts effect names and timeline configurations into the effect information format required by Jianying drafts.
 
-## More Documentation
-
-📖 For more detailed documentation and tutorials, please visit: [https://docs.jcaigc.cn](https://docs.jcaigc.cn)
-
 ## Request Parameters
 
 ```json

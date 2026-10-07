@@ -16,10 +16,6 @@ Content-Type: multipart/form-data
 上传成功后按文件实际体积计费（0.0005 元/MB），并返回带签名的下载 URL。
 对象存储密钥全程留在服务端，不会下发给客户端。
 
-## 更多文档
-
-📖 更多详细文档和教程请访问：[https://docs.jcaigc.cn](https://docs.jcaigc.cn)
-
 ## 请求参数
 
 以 `multipart/form-data` 提交：文件放在 `file` 字段，密钥放在 `apiKey` 字段。

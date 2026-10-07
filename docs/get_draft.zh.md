@@ -13,10 +13,6 @@ GET /openapi/capcut-mate/v1/get_draft
 
 获取草稿文件列表。该接口用于获取指定草稿ID对应的所有文件列表，可以查看草稿中包含的素材文件、配置文件等信息。通常用于草稿内容的预览、文件管理或状态检查。
 
-## 更多文档
-
-📖 更多详细文档和教程请访问：[https://docs.jcaigc.cn](https://docs.jcaigc.cn)
-
 ## 请求参数
 
 ### Query参数

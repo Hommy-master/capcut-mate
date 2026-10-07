@@ -13,10 +13,6 @@ POST /openapi/capcut-mate/v1/gen_video
 
 Submit video generation task. This interface uses asynchronous processing mode, immediately returning task submission status, with video generation performed in the background. Supports task queuing to ensure system stability.
 
-## More Documentation
-
-📖 For more detailed documentation and tutorials, please visit: [https://docs.jcaigc.cn](https://docs.jcaigc.cn)
-
 ## Request Parameters
 
 ```json

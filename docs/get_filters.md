@@ -13,10 +13,6 @@ POST /openapi/capcut-mate/v1/get_filters
 
 Return the built-in JianYing filter list, optionally narrowed to VIP or free filters. Use it to look up a valid `filter_title` before calling `add_filters`.
 
-## More Documentation
-
-📖 For more detailed documentation and tutorials, please visit: [https://docs.jcaigc.cn](https://docs.jcaigc.cn)
-
 ## Request Parameters
 
 ```json

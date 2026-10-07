@@ -13,10 +13,6 @@ POST /openapi/capcut-mate/v1/get_url
 
 提取链接。该接口用于提取输入内容中的链接信息，用于多值返回变成单值返回。
 
-## 更多文档
-
-📖 更多详细文档和教程请访问：[https://docs.jcaigc.cn](https://docs.jcaigc.cn)
-
 ## 请求参数
 
 ```json

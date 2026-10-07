@@ -13,10 +13,6 @@ POST /openapi/capcut-mate/v1/objs_to_str_list
 
 对象列表转化成字符串列表。该接口用于将输入的对象列表转换为字符串列表格式。
 
-## 更多文档
-
-📖 更多详细文档和教程请访问：[https://docs.jcaigc.cn](https://docs.jcaigc.cn)
-
 ## 请求参数
 
 ```json

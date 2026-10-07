@@ -15,10 +15,6 @@ Add keyframe animations to existing visual segments in a draft. Keyframes contro
 
 Mask keyframes are not handled by this API; use [Add Mask Keyframes](./add_mask_keyframes.md) instead.
 
-## More Documentation
-
-📖 For more detailed documentation and tutorials, please visit: [https://docs.jcaigc.cn](https://docs.jcaigc.cn)
-
 ## Request Parameters
 
 ```json

@@ -13,10 +13,6 @@ POST /openapi/capcut-mate/v1/add_effects
 
 向现有草稿中添加视频特效。该接口用于在指定的时间段内添加特效素材到剪映草稿中，支持多种特效类型如边框特效、滤镜特效、动态特效等。特效可以用于增强视频的视觉效果。
 
-## 更多文档
-
-📖 更多详细文档和教程请访问：[https://docs.jcaigc.cn](https://docs.jcaigc.cn)
-
 ## 请求参数
 
 ```json

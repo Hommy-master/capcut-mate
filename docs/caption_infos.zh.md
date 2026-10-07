@@ -13,10 +13,6 @@ POST /openapi/capcut-mate/v1/caption_infos
 
 根据文本列表与时间线生成字幕信息 JSON 字符串，可直接作为 `add_captions` 的 `captions` 参数使用。支持字体大小、关键词高亮（颜色/描边/字号/阴影）、入场/循环/出场动画及转场配置。
 
-## 更多文档
-
-📖 更多详细文档和教程请访问：[https://docs.jcaigc.cn](https://docs.jcaigc.cn)
-
 ## 请求参数
 
 | 参数名 | 类型 | 必填 | 默认值 | 说明 |

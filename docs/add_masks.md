@@ -13,10 +13,6 @@ POST /openapi/capcut-mate/v1/add_masks
 
 Add mask effects to existing drafts. This interface is used to add various shape masks to control visible areas of the screen in Jianying drafts. Masks can be used to create interesting visual effects and focus attention on specific areas.
 
-## More Documentation
-
-📖 For more detailed documentation and tutorials, please visit: [https://docs.jcaigc.cn](https://docs.jcaigc.cn)
-
 ## Request Parameters
 
 ```json

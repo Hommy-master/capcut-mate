@@ -13,10 +13,6 @@ POST /openapi/capcut-mate/v1/keyframes_infos
 
 Generate keyframe information based on keyframe type, position ratios, and values. This interface converts keyframe configurations into the keyframe information format required by Jianying drafts.
 
-## More Documentation
-
-📖 For more detailed documentation and tutorials, please visit: [https://docs.jcaigc.cn](https://docs.jcaigc.cn)
-
 ## Request Parameters
 
 ```json

@@ -13,10 +13,6 @@ POST /openapi/capcut-mate/v1/add_videos
 
 Batch add video materials to existing drafts. This interface is a powerful video addition tool that supports batch processing of multiple videos, including time range control, transparency adjustment, transition animations, volume control, scaling transformations, and other advanced features. Particularly suitable for creating complex multi-video combination scenes, such as picture-in-picture effects, video splicing, transition animations, etc.
 
-## More Documentation
-
-📖 For more detailed documentation and tutorials, please visit: [https://docs.jcaigc.cn](https://docs.jcaigc.cn)
-
 ## Request Parameters
 
 ```json

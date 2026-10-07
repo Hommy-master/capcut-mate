@@ -13,10 +13,6 @@ POST /openapi/capcut-mate/v1/search_sticker
 
 Search stickers by keywords. This interface is used to search for related sticker materials based on keywords provided by users, returning a list of matching stickers, including detailed information such as image URLs, dimensions, types, etc.
 
-## More Documentation
-
-📖 For more detailed documentation and tutorials, please visit: [https://docs.jcaigc.cn](https://docs.jcaigc.cn)
-
 ## Request Parameters
 
 ```json

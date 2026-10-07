@@ -13,10 +13,6 @@ GET /openapi/capcut-mate/v1/gen_video_active_count
 
 查询当前排队中与渲染中的导出任务数量，即状态为 `pending` 或 `processing` 的任务数；已完成与失败的任务不计入。可在调用 `gen_video` 前用于判断当前导出压力。
 
-## 更多文档
-
-📖 更多详细文档和教程请访问：[https://docs.jcaigc.cn](https://docs.jcaigc.cn)
-
 ## 请求参数
 
 本接口无需任何参数。

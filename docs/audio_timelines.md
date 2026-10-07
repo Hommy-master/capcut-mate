@@ -13,10 +13,6 @@ POST /openapi/capcut-mate/v1/audio_timelines
 
 Calculate timelines based on audio file durations. This interface analyzes the duration information of input audio files and automatically calculates and generates appropriate timeline configurations for precise time arrangement of audio materials in video editing.
 
-## More Documentation
-
-📖 For more detailed documentation and tutorials, please visit: [https://docs.jcaigc.cn](https://docs.jcaigc.cn)
-
 ## Request Parameters
 
 ```json

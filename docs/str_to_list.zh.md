@@ -13,10 +13,6 @@ POST /openapi/capcut-mate/v1/str_to_list
 
 字符转列表。该接口用于将输入的字符串转换为列表格式。
 
-## 更多文档
-
-📖 更多详细文档和教程请访问：[https://docs.jcaigc.cn](https://docs.jcaigc.cn)
-
 ## 请求参数
 
 ```json

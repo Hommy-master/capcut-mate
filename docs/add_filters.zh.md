@@ -13,10 +13,6 @@ POST /openapi/capcut-mate/v1/add_filters
 
 向现有草稿中添加视频滤镜。该接口用于在指定的时间段内添加滤镜素材到剪映草稿中，支持多种滤镜类型如复古、黑白、电影感等。滤镜可以用于调整视频的色调和视觉风格。
 
-## 更多文档
-
-📖 更多详细文档和教程请访问：[https://docs.jcaigc.cn](https://docs.jcaigc.cn)
-
 ## 请求参数
 
 ```json

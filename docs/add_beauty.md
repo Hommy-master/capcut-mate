@@ -23,10 +23,6 @@ A slider set to 0 (or an empty preset) is **not written** — matching JianYing'
 Whenever any slider is applied, one `makeup-root` material is added to the segment.
 Re-applying the same slider updates its intensity in place (the material id is preserved).
 
-## More Documentation
-
-📖 For more documentation and tutorials, please visit: [https://docs.jcaigc.cn](https://docs.jcaigc.cn)
-
 ## Request Parameters
 
 ```json

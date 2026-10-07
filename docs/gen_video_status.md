@@ -13,10 +13,6 @@ POST /openapi/capcut-mate/v1/gen_video_status
 
 Query the status and progress of video generation tasks. Used together with the [gen_video](./gen_video.md) interface to track the execution of video generation tasks in real-time, including task status, progress percentage, completion results, and other information.
 
-## More Documentation
-
-📖 For more detailed documentation and tutorials, please visit: [https://docs.jcaigc.cn](https://docs.jcaigc.cn)
-
 ## Request Parameters
 
 ```json

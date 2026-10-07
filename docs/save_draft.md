@@ -13,10 +13,6 @@ POST /openapi/capcut-mate/v1/save_draft
 
 Save Jianying draft. This interface is used to save the current draft state, ensuring that edited content is persistently stored. Usually called after completing a series of editing operations to prevent loss of edited content.
 
-## More Documentation
-
-📖 For more detailed documentation and tutorials, please visit: [https://docs.jcaigc.cn](https://docs.jcaigc.cn)
-
 ## Request Parameters
 
 ```json

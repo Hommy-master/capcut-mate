@@ -13,10 +13,6 @@ POST /openapi/capcut-mate/v1/create_draft
 
 Create a Jianying draft. This interface is used to create a new Jianying draft project, allowing customization of video width and height. After successful creation, it returns the draft URL and help document URL, providing the foundation for subsequent video editing operations.
 
-## More Documentation
-
-📖 For more detailed documentation and tutorials, please visit: [https://docs.jcaigc.cn](https://docs.jcaigc.cn)
-
 ## Request Parameters
 
 ```json

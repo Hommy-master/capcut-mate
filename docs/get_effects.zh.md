@@ -13,10 +13,6 @@ POST /openapi/capcut-mate/v1/get_effects
 
 获取剪映内置画面特效列表，可按 VIP / 免费筛选。调用 `add_effects` 前可用本接口查询合法的 `effect_title`。
 
-## 更多文档
-
-📖 更多详细文档和教程请访问：[https://docs.jcaigc.cn](https://docs.jcaigc.cn)
-
 ## 请求参数
 
 ```json

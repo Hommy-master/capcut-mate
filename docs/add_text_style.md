@@ -13,10 +13,6 @@ POST /openapi/capcut-mate/v1/add_text_style
 
 Create rich text styles for text, supporting keyword highlighting, color settings, font size adjustments, and other functions. This interface can convert plain text into rich text format containing style information, achieving keyword highlighting and diverse text display effects.
 
-## More Documentation
-
-📖 For more detailed documentation and tutorials, please visit: [https://docs.jcaigc.cn](https://docs.jcaigc.cn)
-
 ## Request Parameters
 
 ```json

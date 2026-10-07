@@ -13,10 +13,6 @@ POST /openapi/capcut-mate/v1/get_text_effects
 
 获取所有支持的花字效果列表，支持按 VIP/免费进行筛选。本接口参考滤镜列表接口的实现模式，提供 RESTful 风格的 POST 请求方式。
 
-## 更多文档
-
-📖 更多详细文档和教程请访问：[https://docs.jcaigc.cn](https://docs.jcaigc.cn)
-
 ## 请求参数
 
 ```json

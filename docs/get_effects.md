@@ -13,10 +13,6 @@ POST /openapi/capcut-mate/v1/get_effects
 
 Return the built-in JianYing scene effect list, optionally narrowed to VIP or free effects. Use it to look up a valid `effect_title` before calling `add_effects`.
 
-## More Documentation
-
-📖 For more detailed documentation and tutorials, please visit: [https://docs.jcaigc.cn](https://docs.jcaigc.cn)
-
 ## Request Parameters
 
 ```json

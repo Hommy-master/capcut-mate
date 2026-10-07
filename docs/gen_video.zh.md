@@ -13,10 +13,6 @@ POST /openapi/capcut-mate/v1/gen_video
 
 提交视频生成任务。该接口采用异步处理模式，立即返回任务提交状态，视频生成在后台进行。支持任务排队，确保系统稳定性。
 
-## 更多文档
-
-📖 更多详细文档和教程请访问：[https://docs.jcaigc.cn](https://docs.jcaigc.cn)
-
 ## 请求参数
 
 ```json

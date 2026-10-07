@@ -9,17 +9,9 @@
 POST /openapi/capcut-mate/v1/get_audio_duration
 ```
 
-## 更多文档
-
-📖 更多详细文档和教程请访问：[https://docs.jcaigc.cn](https://docs.jcaigc.cn)
-
 ## 功能描述
 
 获取音频文件的时长，支持各种常见的音频格式。使用FFprobe工具进行精确的音频分析，返回音频文件的准确时长，单位为微秒。
-
-## 更多文档
-
-📖 更多详细文档和教程请访问：[https://docs.jcaigc.cn](https://docs.jcaigc.cn)
 
 ## 请求参数
 

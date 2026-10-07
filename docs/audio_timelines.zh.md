@@ -13,10 +13,6 @@ POST /openapi/capcut-mate/v1/audio_timelines
 
 根据音频文件时长计算时间线。该接口通过分析输入音频文件的时长信息，自动计算并生成合适的时间线配置，用于视频编辑中音频素材的精确时间安排。
 
-## 更多文档
-
-📖 更多详细文档和教程请访问：[https://docs.jcaigc.cn](https://docs.jcaigc.cn)
-
 ## 请求参数
 
 ```json

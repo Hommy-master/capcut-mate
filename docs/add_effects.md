@@ -13,10 +13,6 @@ POST /openapi/capcut-mate/v1/add_effects
 
 Add video effects to existing drafts. This interface is used to add effect materials to Jianying drafts within specified time periods, supporting multiple effect types such as border effects, filter effects, and dynamic effects. Effects can be used to enhance the visual impact of videos.
 
-## More Documentation
-
-📖 For more detailed documentation and tutorials, please visit: [https://docs.jcaigc.cn](https://docs.jcaigc.cn)
-
 ## Request Parameters
 
 ```json

@@ -15,10 +15,6 @@ Add mask keyframes to video segments that already have a mask. Keyframes are wri
 
 The segment must already have a mask from `add_masks`. This API does not create a mask and does not change the mask material's static `config`.
 
-## More Documentation
-
-📖 For more detailed documentation and tutorials, please visit: [https://docs.jcaigc.cn](https://docs.jcaigc.cn)
-
 ## Request Parameters
 
 ```json

@@ -13,10 +13,6 @@ POST /openapi/capcut-mate/v1/get_text_effects
 
 Get the list of supported text flower effects (decorative text styles), with optional filtering by membership mode (all, VIP, free). This interface follows the same RESTful POST pattern as similar resource list APIs.
 
-## More Documentation
-
-📖 For more detailed documentation and tutorials, please visit: [https://docs.jcaigc.cn](https://docs.jcaigc.cn)
-
 ## Request Parameters
 
 ```json

@@ -13,10 +13,6 @@ GET /openapi/capcut-mate/v1/gen_video_active_count
 
 Return how many draft exports are currently queued or rendering, i.e. tasks in `pending` or `processing`. Completed and failed tasks are not counted. Useful for checking export load before calling `gen_video`.
 
-## More Documentation
-
-📖 For more detailed documentation and tutorials, please visit: [https://docs.jcaigc.cn](https://docs.jcaigc.cn)
-
 ## Request Parameters
 
 This interface takes no parameters.

@@ -13,10 +13,6 @@ POST /openapi/capcut-mate/v1/add_images
 
 向现有草稿中添加图片。该接口用于在指定的时间段内添加图片素材到剪映草稿中，支持图片的透明度、缩放和位置调整。图片可以用于增强视频的视觉效果，如背景图、水印、装饰图等。
 
-## 更多文档
-
-📖 更多详细文档和教程请访问：[https://docs.jcaigc.cn](https://docs.jcaigc.cn)
-
 ## 请求参数
 
 ```json

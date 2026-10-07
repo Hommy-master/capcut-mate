@@ -13,10 +13,6 @@ POST /openapi/capcut-mate/v1/caption_infos
 
 Build a caption-info JSON string from text list + timelines. The result can be passed directly to `add_captions` as `captions`. Supports font size, keyword highlight (color/border/size/shadow), intro/loop/outro animations, and transition fields.
 
-## More Documentation
-
-📖 For more detailed documentation and tutorials, please visit: [https://docs.jcaigc.cn](https://docs.jcaigc.cn)
-
 ## Request Parameters
 
 | Parameter | Type | Required | Default | Description |

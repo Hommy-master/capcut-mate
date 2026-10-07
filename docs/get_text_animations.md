@@ -13,10 +13,6 @@ POST /openapi/capcut-mate/v1/get_text_animations
 
 Get text entrance/exit animation list, returning all supported and qualified text entrance/exit animations. Support filtering based on animation type (entrance, exit, loop) and membership mode (all, VIP, free).
 
-## More Documentation
-
-📖 For more detailed documentation and tutorials, please visit: [https://docs.jcaigc.cn](https://docs.jcaigc.cn)
-
 ## Request Parameters
 
 ```json

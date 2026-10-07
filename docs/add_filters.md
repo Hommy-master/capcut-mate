@@ -13,10 +13,6 @@ POST /openapi/capcut-mate/v1/add_filters
 
 Add video filters to existing drafts. This interface is used to add filter materials to Jianying drafts within specified time periods, supporting various filter types such as vintage, black and white, cinematic, etc. Filters can be used to adjust the color tone and visual style of videos.
 
-## More Documentation
-
-📖 For more detailed documentation and tutorials, please visit: [https://docs.jcaigc.cn](https://docs.jcaigc.cn)
-
 ## Request Parameters
 
 ```json

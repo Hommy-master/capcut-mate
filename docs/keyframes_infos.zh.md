@@ -13,10 +13,6 @@ POST /openapi/capcut-mate/v1/keyframes_infos
 
 根据关键帧类型、位置比例和值生成关键帧信息。该接口将关键帧配置转换为剪映草稿所需的关键帧信息格式。
 
-## 更多文档
-
-📖 更多详细文档和教程请访问：[https://docs.jcaigc.cn](https://docs.jcaigc.cn)
-
 ## 请求参数
 
 ```json

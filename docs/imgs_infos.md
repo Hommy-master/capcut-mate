@@ -13,10 +13,6 @@ POST /openapi/capcut-mate/v1/imgs_infos
 
 Generate image information based on image URLs and timelines. This interface converts image file URLs and timeline configurations into the image information format required by Jianying drafts, supporting animation effects and transition settings.
 
-## More Documentation
-
-📖 For more detailed documentation and tutorials, please visit: [https://docs.jcaigc.cn](https://docs.jcaigc.cn)
-
 ## Request Parameters
 
 ```json

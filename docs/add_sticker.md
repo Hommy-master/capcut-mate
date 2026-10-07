@@ -13,10 +13,6 @@ POST /openapi/capcut-mate/v1/add_sticker
 
 Add stickers to existing drafts. This interface is used to add sticker materials to Jianying drafts within specified time periods, supporting sticker scaling and position adjustments. Stickers can be used to enhance the visual effects of videos, such as expressions, decorations, text, etc.
 
-## More Documentation
-
-📖 For more detailed documentation and tutorials, please visit: [https://docs.jcaigc.cn](https://docs.jcaigc.cn)
-
 ## Request Parameters
 
 ```json

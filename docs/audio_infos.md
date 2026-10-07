@@ -13,10 +13,6 @@ POST /openapi/capcut-mate/v1/audio_infos
 
 Generate audio information based on audio URLs and timelines. This interface converts audio file URLs and timeline configurations into the audio information format required by Jianying drafts, supporting volume control and audio effect settings.
 
-## More Documentation
-
-📖 For more detailed documentation and tutorials, please visit: [https://docs.jcaigc.cn](https://docs.jcaigc.cn)
-
 ## Request Parameters
 
 ```json

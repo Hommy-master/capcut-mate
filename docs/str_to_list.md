@@ -13,10 +13,6 @@ POST /openapi/capcut-mate/v1/str_to_list
 
 Convert string to list. This interface is used to convert input string to list format.
 
-## More Documentation
-
-📖 For more detailed documentation and tutorials, please visit: [https://docs.jcaigc.cn](https://docs.jcaigc.cn)
-
 ## Request Parameters
 
 ```json

@@ -9,17 +9,9 @@
 POST /openapi/capcut-mate/v1/get_audio_duration
 ```
 
-## More Documentation
-
-📖 For more detailed documentation and tutorials, please visit: [https://docs.jcaigc.cn](https://docs.jcaigc.cn)
-
 ## Function Description
 
 Get the duration of audio files, supporting various common audio formats. Use FFprobe tool for precise audio analysis, returning the accurate duration of audio files in microseconds.
-
-## More Documentation
-
-📖 For more detailed documentation and tutorials, please visit: [https://docs.jcaigc.cn](https://docs.jcaigc.cn)
 
 ## Request Parameters
 

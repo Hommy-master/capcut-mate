@@ -13,10 +13,6 @@ POST /openapi/capcut-mate/v1/filter_infos
 
 Generate filter information based on filter names, timelines, and intensities. This interface converts filter names and timeline configurations into the filter information format required by Jianying drafts.
 
-## More Documentation
-
-📖 For more detailed documentation and tutorials, please visit: [https://docs.jcaigc.cn](https://docs.jcaigc.cn)
-
 ## Request Parameters
 
 ```json

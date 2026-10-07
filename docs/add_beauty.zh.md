@@ -20,10 +20,6 @@ POST /openapi/capcut-mate/v1/add_beauty
 任一滑杆生效时会自动为该片段补一条 `makeup-root`。
 同一片段再次设置同一滑杆时只原地更新强度（保留素材 id），不会重复追加素材。
 
-## 更多文档
-
-📖 更多详细文档和教程请访问：[https://docs.jcaigc.cn](https://docs.jcaigc.cn)
-
 ## 请求参数
 
 ```json

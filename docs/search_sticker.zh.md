@@ -13,10 +13,6 @@ POST /openapi/capcut-mate/v1/search_sticker
 
 根据关键词搜索贴纸。该接口用于根据用户提供的关键词搜索相关的贴纸素材，返回匹配的贴纸列表，包括贴纸的详细信息如图片URL、尺寸、类型等。
 
-## 更多文档
-
-📖 更多详细文档和教程请访问：[https://docs.jcaigc.cn](https://docs.jcaigc.cn)
-
 ## 请求参数
 
 ```json

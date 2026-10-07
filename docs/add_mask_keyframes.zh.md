@@ -15,10 +15,6 @@ POST /openapi/capcut-mate/v1/add_mask_keyframes
 
 片段必须已经通过 `add_masks` 添加过蒙版，本接口不会自动创建蒙版，也不会改写蒙版素材的静态 `config`。
 
-## 更多文档
-
-📖 更多详细文档和教程请访问：[https://docs.jcaigc.cn](https://docs.jcaigc.cn)
-
 ## 请求参数
 
 ```json

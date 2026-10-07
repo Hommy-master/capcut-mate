@@ -13,10 +13,6 @@ POST /openapi/capcut-mate/v1/get_url
 
 Extract links. This interface is used to extract link information from input content, converting multiple values into single value return.
 
-## More Documentation
-
-📖 For more detailed documentation and tutorials, please visit: [https://docs.jcaigc.cn](https://docs.jcaigc.cn)
-
 ## Request Parameters
 
 ```json

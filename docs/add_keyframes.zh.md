@@ -13,10 +13,6 @@ POST /openapi/capcut-mate/v1/add_keyframes
 
 向现有草稿中添加关键帧。该接口用于在指定的片段上添加关键帧动画，支持多种属性类型的关键帧设置，如位置、缩放、旋转、透明度等。关键帧可以用于创建复杂的动画效果，增强视频的视觉表现力。
 
-## 更多文档
-
-📖 更多详细文档和教程请访问：[https://docs.jcaigc.cn](https://docs.jcaigc.cn)
-
 ## 请求参数
 
 ```json

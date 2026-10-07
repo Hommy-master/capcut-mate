@@ -13,10 +13,6 @@ POST /openapi/capcut-mate/v1/effect_infos
 
 根据特效名称和时间线生成特效信息。该接口将特效名称和时间线配置转换为剪映草稿所需的特效信息格式。
 
-## 更多文档
-
-📖 更多详细文档和教程请访问：[https://docs.jcaigc.cn](https://docs.jcaigc.cn)
-
 ## 请求参数
 
 ```json

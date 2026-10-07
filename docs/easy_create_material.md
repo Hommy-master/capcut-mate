@@ -13,10 +13,6 @@ POST /openapi/capcut-mate/v1/easy_create_material
 
 Add multiple types of material content to existing drafts, including audio, video, images, and text. This interface can add multiple media materials to drafts at once, automatically handling material duration, dimensions, and other properties, and intelligently managing different types of media tracks. It is one of the core interfaces for video creation.
 
-## More Documentation
-
-📖 For more detailed documentation and tutorials, please visit: [https://docs.jcaigc.cn](https://docs.jcaigc.cn)
-
 ## Request Parameters
 
 ```json

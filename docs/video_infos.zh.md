@@ -13,10 +13,6 @@ POST /openapi/capcut-mate/v1/video_infos
 
 根据视频URL和时间线生成视频信息。该接口将视频文件URL和时间线配置转换为剪映草稿所需的视频信息格式，支持转场设置。
 
-## 更多文档
-
-📖 更多详细文档和教程请访问：[https://docs.jcaigc.cn](https://docs.jcaigc.cn)
-
 ## 请求参数
 
 ```json

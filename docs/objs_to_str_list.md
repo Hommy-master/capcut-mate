@@ -13,10 +13,6 @@ POST /openapi/capcut-mate/v1/objs_to_str_list
 
 Convert object list to string list. This interface is used to convert input object list to string list format.
 
-## More Documentation
-
-📖 For more detailed documentation and tutorials, please visit: [https://docs.jcaigc.cn](https://docs.jcaigc.cn)
-
 ## Request Parameters
 
 ```json

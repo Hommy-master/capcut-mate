@@ -13,10 +13,6 @@ POST /openapi/capcut-mate/v1/video_infos
 
 Generate video information based on video URLs and timelines. This interface converts video file URLs and timeline configurations into the video information format required by Jianying drafts, supporting transition settings.
 
-## More Documentation
-
-📖 For more detailed documentation and tutorials, please visit: [https://docs.jcaigc.cn](https://docs.jcaigc.cn)
-
 ## Request Parameters
 
 ```json

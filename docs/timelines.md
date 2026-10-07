@@ -13,10 +13,6 @@ POST /openapi/capcut-mate/v1/timelines
 
 Create timelines based on specified duration and quantity. This interface is used to generate timeline configurations needed for video editing, supporting multiple timeline types and start time settings, providing time reference for subsequent material addition and editing.
 
-## More Documentation
-
-📖 For more detailed documentation and tutorials, please visit: [https://docs.jcaigc.cn](https://docs.jcaigc.cn)
-
 ## Request Parameters
 
 ```json

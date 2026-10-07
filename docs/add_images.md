@@ -13,10 +13,6 @@ POST /openapi/capcut-mate/v1/add_images
 
 Add images to existing drafts. This interface is used to add image materials to Jianying drafts within specified time periods, supporting transparency, scaling and position adjustments for images. Images can be used to enhance video visual effects, such as background images, watermarks, decorative images, etc.
 
-## More Documentation
-
-📖 For more detailed documentation and tutorials, please visit: [https://docs.jcaigc.cn](https://docs.jcaigc.cn)
-
 ## Request Parameters
 
 ```json

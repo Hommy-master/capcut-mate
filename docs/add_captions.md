@@ -13,10 +13,6 @@ POST /openapi/capcut-mate/v1/add_captions
 
 Batch-add captions to an existing CapCut/Jianying draft. Supports text color, border, alignment, opacity, font, size, letter/line spacing, scale, position, underline/italic/bold, full-text shadow, keyword highlight and keyword shadow, text animations, and text effects (花字).
 
-## More Documentation
-
-📖 For more detailed documentation and tutorials, please visit: [https://docs.jcaigc.cn](https://docs.jcaigc.cn)
-
 ## Request Parameters
 
 ### Top-level Parameters

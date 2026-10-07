@@ -13,10 +13,6 @@ POST /openapi/capcut-mate/v1/add_text_style
 
 为文本创建富文本样式，支持关键词高亮、颜色设置、字体大小调整等功能。该接口可以将普通文本转换为包含样式信息的富文本格式，实现关键词突出显示、多样化的文本展示效果。
 
-## 更多文档
-
-📖 更多详细文档和教程请访问：[https://docs.jcaigc.cn](https://docs.jcaigc.cn)
-
 ## 请求参数
 
 ```json

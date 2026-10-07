@@ -13,10 +13,6 @@ POST /openapi/capcut-mate/v1/gen_video_status
 
 查询视频生成任务的状态和进度。配合 [gen_video](./gen_video.md) 接口使用，用于实时跟踪视频生成任务的执行情况，包括任务状态、进度百分比、完成结果等信息。
 
-## 更多文档
-
-📖 更多详细文档和教程请访问：[https://docs.jcaigc.cn](https://docs.jcaigc.cn)
-
 ## 请求参数
 
 ```json

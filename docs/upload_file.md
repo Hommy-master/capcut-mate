@@ -17,10 +17,6 @@ which relays them to object storage, charges by the actual file size (0.0005 CNY
 successful upload, and returns a signed download URL.
 Object storage credentials stay on the server and are never exposed to the client.
 
-## More Documentation
-
-📖 For more documentation and tutorials, please visit: [https://docs.jcaigc.cn](https://docs.jcaigc.cn)
-
 ## Request Parameters
 
 Sent as `multipart/form-data`: the file goes in the `file` field, the key in the `apiKey` field.

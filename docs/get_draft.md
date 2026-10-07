@@ -13,10 +13,6 @@ GET /openapi/capcut-mate/v1/get_draft
 
 Get draft file list. This interface is used to get all file lists corresponding to the specified draft ID, allowing you to view material files, configuration files, etc. in the draft. Usually used for draft content preview, file management or status checking.
 
-## More Documentation
-
-📖 For more detailed documentation and tutorials, please visit: [https://docs.jcaigc.cn](https://docs.jcaigc.cn)
-
 ## Request Parameters
 
 ### Query Parameters
