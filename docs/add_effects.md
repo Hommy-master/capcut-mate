@@ -1405,6 +1405,8 @@ X瞬移
 
 ```json
 {
+  "code": 0,
+  "message": "success",
   "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
   "track_id": "effect-track-uuid",
   "effect_ids": ["effect1-uuid", "effect2-uuid"],
@@ -1421,11 +1423,12 @@ X瞬移
 | effect_ids | array | List of added effect IDs |
 | segment_ids | array | List of segment IDs |
 
-### Error Response (4xx/5xx)
+### Error Response
 
 ```json
 {
-  "detail": "Error message description"
+  "code": 2020,
+  "message": "Invalid effect information, please check if the value of the effect_infos field is correct."
 }
 ```
 
@@ -1470,17 +1473,12 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_effects \
 
 | Error Code | Error Message | Description | Solution |
 |------------|---------------|-------------|----------|
-| 400 | draft_url is required | Missing draft URL parameter | Provide a valid draft URL |
-| 400 | effect_infos is required | Missing effect information parameter | Provide valid effect information JSON |
-| 400 | effect_infos format error | JSON format is incorrect | Check JSON string format |
-| 400 | Effect configuration validation failed | Effect parameters do not meet requirements | Check parameters for each effect |
-| 400 | effect_title is required | Effect title missing | Provide title for each effect |
-| 400 | start is required | Effect start time missing | Provide start time for each effect |
-| 400 | end is required | Effect end time missing | Provide end time for each effect |
-| 400 | Time range invalid | end must be greater than start | Ensure end time is greater than start time |
-| 400 | Effect title not found | Specified effect does not exist | Check if effect title is valid |
-| 404 | Draft does not exist | Specified draft URL invalid | Check if draft URL is correct |
-| 500 | Effect processing failed | Internal processing error | Contact technical support |
+| 1001 | Parameter validation failed | Request body failed schema validation | Check parameter types and required fields |
+| 2001 | Invalid draft URL | `draft_url` is missing, malformed, or the draft is not in the cache | Pass the `draft_url` returned by `create_draft` |
+| 2020 | Invalid effect information | `effect_infos` is not valid JSON, an item is missing `effect_title`/`start`/`end`, `end` is not greater than `start`, or the title is empty | Fix the JSON string and the required fields |
+| 2021 | Effect addition failed | Failed while writing effects into the draft | Check the draft state and retry |
+| 2022 | Effect not found | `effect_title` does not match any supported effect name | Use a name from the Supported Effect Names list above |
+| 2042 | Draft lock acquisition timeout | Only one operation is allowed on a draft at a time | Retry later |
 
 ## Notes
 
@@ -1490,7 +1488,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_effects \
 4. **Time Overlap**: Multiple effects can be applied to the same time period
 5. **Effect Priority**: Effects are applied in the order they appear in the array
 6. **Performance**: Complex effects may affect video processing performance
-7. **Supported Effects**: System currently supports transition effects like "Fade In", "Fade Out", color filters, etc.
+7. **Supported Effects**: Scene effects and character effects listed under Supported Effect Names above; unmatched titles fail
 8. **Preview Limitation**: Effects may not be visible in preview but will be applied during final video generation
 
 ## Workflow

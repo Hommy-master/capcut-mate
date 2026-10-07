@@ -31,7 +31,7 @@ Get image entrance/exit animation list, returning all supported and qualified im
 | Parameter | Type | Required | Default | Description |
 |-----------|------|----------|---------|-------------|
 | mode | integer |❌ | 0 | Animation mode: 0=all, 1=VIP, 2=free |
-| type | string |✅ | - | Animation type: in=entrance, out=exit, loop=loop |
+| type | string |❌ | null | Animation type: in=entrance, out=exit, loop=loop; omit to return all |
 
 ### Parameter Details
 
@@ -45,7 +45,7 @@ Get image entrance/exit animation list, returning all supported and qualified im
 
 #### Animation Type Parameter
 
-- **type**: Animation type (required)
+- **type**: Animation type (optional; omit to return all types)
   - "in" = Entrance animation (effect when image appears)
   - "out" = Exit animation (effect when image disappears)
   - "loop" = Loop animation (continuous effect while image plays)
@@ -72,6 +72,8 @@ Get image entrance/exit animation list, returning all supported and qualified im
 
 ```json
 {
+  "code": 0,
+  "message": "success",
   "effects": [
     {
       "resource_id": "7314291622525538844",
@@ -118,11 +120,12 @@ Get image entrance/exit animation list, returning all supported and qualified im
 | path | string | Path information |
 | platform | string | Supported platform (usually "all") |
 
-### Error Response (4xx/5xx)
+### Error Response
 
 ```json
 {
-  "detail": "Error message description"
+  "code": 2033,
+  "message": "Get image animation failed"
 }
 ```
 
@@ -167,13 +170,12 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_image_anim
 
 | Error Code | Error Message | Description | Solution |
 |------------|---------------|-------------|----------|
-| 400 | type parameter must be in, out, or loop | Invalid animation type parameter | Use correct type values: "in", "out", or "loop" |
-| 400 | mode parameter must be 0, 1, or 2 | Invalid animation mode parameter | Use correct mode values: 0, 1, or 2 |
-| 500 | Failed to get image animations | Internal processing error | Contact technical support |
+| 1001 | Parameter validation failed | type is not one of in, out, or loop (request body failed schema validation) | Use correct type values: "in", "out", or "loop" |
+| 2033 | Get image animation failed | mode is not 0, 1, or 2, or an internal error occurred | Use correct mode values: 0, 1, or 2, or contact technical support |
 
 ## Notes
 
-1. **type parameter**: Required parameter, can only choose one from "in", "out", "loop"
+1. **type parameter**: Optional parameter; omit it to return all types; when provided it can only be one of "in", "out", "loop"
 2. **mode parameter**: Optional parameter, default is 0 (all animations)
 3. **Response data**: Different from text animations, image animations have specialized categories and effects
 4. **Animation duration**: Unit is microseconds (1 second = 1,000,000 microseconds)
@@ -181,7 +183,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_image_anim
 
 ## Workflow
 
-1. Validate required parameter (type)
+1. Validate optional parameter (type)
 2. Validate optional parameter (mode) validity
 3. Filter image animation data based on type and mode
 4. Return animation object array meeting conditions

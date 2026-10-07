@@ -38,7 +38,7 @@ Generate audio information based on audio URLs and timelines. This interface con
 | mp3_urls | array[string] |✅ | - | Audio file URL array |
 | timelines | array[object] |✅ | - | Timeline configuration array |
 | audio_effect | string |❌ | None | Audio effect name |
-| volume | number |❌ | 1.0 | Volume level (0.0-2.0) |
+| volume | number |❌ | None | Volume level (0.0-2.0) |
 
 ### Parameter Details
 
@@ -61,7 +61,7 @@ Generate audio information based on audio URLs and timelines. This interface con
 #### volume
 - **Type**: number
 - **Description**: Audio volume level
-- **Default**: 1.0
+- **Default**: None
 - **Range**: 0.0 - 2.0
 - **Example**: 0.8 (80% volume)
 
@@ -71,7 +71,9 @@ Generate audio information based on audio URLs and timelines. This interface con
 
 ```json
 {
-  "infos": "[{\"audio_url\":\"https://assets.jcaigc.cn/audio1.mp3\",\"start\":0,\"end\":3000000,\"duration\":5000000,\"volume\":0.8,\"audio_effect\":\"reverb\"},{\"audio_url\":\"https://assets.jcaigc.cn/audio2.mp3\",\"start\":3000000,\"end\":8000000,\"duration\":8000000,\"volume\":1.0,\"audio_effect\":null}]"
+  "code": 0,
+  "message": "success",
+  "infos": "[{\"audio_url\":\"https://assets.jcaigc.cn/audio1.mp3\",\"start\":0,\"end\":3000000,\"audio_effect\":\"reverb\",\"volume\":0.8},{\"audio_url\":\"https://assets.jcaigc.cn/audio2.mp3\",\"start\":3000000,\"end\":8000000,\"audio_effect\":\"reverb\",\"volume\":0.8}]"
 }
 ```
 
@@ -81,11 +83,12 @@ Generate audio information based on audio URLs and timelines. This interface con
 |-------|------|-------------|
 | infos | string | Audio information JSON string |
 
-### Error Response (4xx/5xx)
+### Error Response
 
 ```json
 {
-  "detail": "Error message description"
+  "code": 1001,
+  "message": "Parameter validation failed"
 }
 ```
 
@@ -122,16 +125,11 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/audio_infos \
 
 | Error Code | Error Message | Description | Solution |
 |------------|---------------|-------------|----------|
-| 400 | mp3_urls is required | Missing audio URL parameter | Provide valid audio URL array |
-| 400 | timelines is required | Missing timeline parameter | Provide valid timeline array |
-| 400 | Array length mismatch | mp3_urls and timelines array lengths don't match | Ensure both arrays have the same length |
-| 400 | Invalid volume value | Volume not in range 0.0-2.0 | Use volume value between 0.0-2.0 |
-| 404 | Audio resource not found | Audio URL inaccessible | Check if audio URL is accessible |
-| 500 | Audio information generation failed | Internal processing error | Contact technical support |
+| 1001 | Parameter validation failed | Request body failed schema validation (`mp3_urls`/`timelines` missing, timeline item lacking `start`/`end`, or wrong types) | Check parameter types and required fields |
 
 ## Notes
 
-1. **Array Matching**: mp3_urls and timelines array lengths must be the same
+1. **Array Matching**: if `mp3_urls` and `timelines` lengths differ, the shorter length is used (no hard error)
 2. **Time Unit**: All time parameters use microseconds (1 second = 1,000,000 microseconds)
 3. **Volume Range**: volume value must be between 0.0-2.0
 4. **Effect Support**: audio_effect needs to be a supported audio effect name
@@ -141,9 +139,9 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/audio_infos \
 ## Workflow
 
 1. Validate required parameters (mp3_urls, timelines)
-2. Check array length matching
+2. Align the two arrays by the shorter length
 3. Validate timeline parameter validity
-4. Validate volume parameter range
+4. Read the optional volume and audio_effect parameters
 5. Generate corresponding audio information for each audio URL
 6. Apply volume and audio effect settings
 7. Convert information to JSON string format

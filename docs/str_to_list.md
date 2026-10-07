@@ -45,6 +45,8 @@ Convert string to list. This interface is used to convert input string to list f
 
 ```json
 {
+  "code": 0,
+  "message": "success",
   "infos": [
     "{   \"infos\": [     \"https://assets.jcaigc.cn/min.mp4\",     \"https://assets.jcaigc.cn/max.mp4\"   ] }"
   ]
@@ -57,11 +59,12 @@ Convert string to list. This interface is used to convert input string to list f
 |-------|------|-------------|
 | infos | array[string] | String list |
 
-### Error Response (4xx/5xx)
+### Error Response
 
 ```json
 {
-  "detail": "Error message description"
+  "code": 1001,
+  "message": "Parameter validation failed"
 }
 ```
 
@@ -83,8 +86,8 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/str_to_list \
 
 | Error Code | Error Message | Description | Solution |
 |------------|---------------|-------------|----------|
-| 400 | obj is required | Missing obj parameter | Provide a valid obj parameter |
-| 500 | String to list conversion failed | Internal processing error | Contact technical support |
+| 1001 | Parameter validation failed | obj is missing (request body failed schema validation) | Provide a valid obj parameter |
+| 9999 | Unknown error | Unexpected internal processing error | Contact technical support |
 
 ## Notes
 

@@ -1,7 +1,7 @@
 # STR_TO_LIST API 接口文档
 
 ## 🌐 语言切换
-[中文版](./add_audios.zh.md) | [English](./add_audios.md)
+[中文版](./str_to_list.zh.md) | [English](./str_to_list.md)
 
 ## 接口信息
 
@@ -45,6 +45,8 @@ POST /openapi/capcut-mate/v1/str_to_list
 
 ```json
 {
+  "code": 0,
+  "message": "success",
   "infos": [
     "{   \"infos\": [     \"https://assets.jcaigc.cn/min.mp4\",     \"https://assets.jcaigc.cn/max.mp4\"   ] }"
   ]
@@ -57,11 +59,12 @@ POST /openapi/capcut-mate/v1/str_to_list
 |--------|------|------|
 | infos | array[string] | 字符串列表 |
 
-### 错误响应 (4xx/5xx)
+### 错误响应
 
 ```json
 {
-  "detail": "错误信息描述"
+  "code": 1001,
+  "message": "参数校验失败"
 }
 ```
 
@@ -83,8 +86,8 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/str_to_list \
 
 | 错误码 | 错误信息 | 说明 | 解决方案 |
 |--------|----------|------|----------|
-| 400 | obj是必填项 | 缺少obj参数 | 提供有效的obj参数 |
-| 500 | 字符转列表失败 | 内部处理错误 | 联系技术支持 |
+| 1001 | 参数校验失败 | 缺少 obj 参数（请求体未通过参数校验） | 提供有效的obj参数 |
+| 9999 | 未知异常 | 内部处理异常 | 联系技术支持 |
 
 ## 注意事项
 

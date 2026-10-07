@@ -46,6 +46,8 @@ POST /openapi/capcut-mate/v1/save_draft
 
 ```json
 {
+  "code": 0,
+  "message": "success",
   "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258"
 }
 ```
@@ -56,11 +58,12 @@ POST /openapi/capcut-mate/v1/save_draft
 |--------|------|------|
 | draft_url | string | 保存后的草稿URL，通常与请求中的URL相同 |
 
-### 错误响应 (4xx/5xx)
+### 错误响应
 
 ```json
 {
-  "detail": "错误信息描述"
+  "code": 2001,
+  "message": "无效的草稿URL"
 }
 ```
 
@@ -82,18 +85,16 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/save_draft \
 
 | 错误码 | 错误信息 | 说明 | 解决方案 |
 |--------|----------|------|----------|
-| 400 | draft_url是必填项 | 缺少草稿URL参数 | 提供有效的draft_url |
-| 400 | draft_url格式无效 | URL格式不正确 | 检查URL格式是否正确 |
-| 404 | 草稿不存在 | 指定的草稿无法找到 | 确认草稿URL是否正确且存在 |
-| 500 | 保存失败 | 内部服务错误 | 联系技术支持或稍后重试 |
-| 503 | 服务不可用 | 系统维护中 | 稍后重试 |
+| 1001 | 参数校验失败 | `draft_url` 不是字符串 | 检查参数类型 |
+| 2001 | 无效的草稿URL | `draft_url` 中没有 `draft_id`，或草稿不在缓存中 | 传入 `create_draft` 返回的 `draft_url` |
+| 2042 | 草稿锁获取超时 | 草稿正被其它操作占用，等待 30 秒仍未获得锁 | 稍后重试 |
 
 ## 注意事项
 
 1. **URL有效性**: 确保传入的draft_url是有效且存在的
 2. **网络稳定性**: 保存操作需要稳定的网络连接
 3. **频率控制**: 避免过于频繁的保存操作
-4. **并发安全**: 同一草稿的并发保存可能导致冲突
+4. **并发安全**: 同一草稿的并发操作由草稿锁串行化；30 秒内未获得锁的请求返回错误码 `2042`
 
 ## 工作流程
 

@@ -49,6 +49,8 @@ Get the duration of audio files, supporting various common audio formats. Use FF
 
 ```json
 {
+  "code": 0,
+  "message": "success",
   "duration": 2325333
 }
 ```
@@ -57,13 +59,14 @@ Get the duration of audio files, supporting various common audio formats. Use FF
 
 | Field | Type | Description |
 |-------|------|-------------|
-| duration | number | Audio duration, unit: microseconds |
+| duration | integer | Audio duration, unit: microseconds |
 
-### Error Response (4xx/5xx)
+### Error Response
 
 ```json
 {
-  "detail": "Error message description"
+  "code": 2034,
+  "message": "Get audio duration failed"
 }
 ```
 
@@ -85,9 +88,10 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_audio_dura
 
 | Error Code | Error Message | Description | Solution |
 |------------|---------------|-------------|----------|
-| 400 | mp3_url is required | Missing audio URL parameter | Provide a valid mp3_url |
-| 404 | Audio file cannot be accessed | Specified audio URL invalid | Check if audio URL is correct |
-| 500 | Audio duration retrieval failed | Internal processing error | Contact technical support |
+| 1001 | Parameter validation failed | `mp3_url` is missing or not a valid URL | Provide a valid `mp3_url` |
+| 2004 | File size exceeds the limit | The audio file exceeds the server download size limit | Use a smaller audio file |
+| 2005 | Download file failed | The audio file could not be downloaded | Check that the audio URL is publicly accessible |
+| 2034 | Get audio duration failed | Failed to read the audio duration | Check the audio file format |
 
 ## Notes
 

@@ -45,16 +45,16 @@ Generate image information based on image URLs and timelines. This interface con
 |-----------|------|----------|---------|-------------|
 | imgs | array[string] |✅ | - | Image file URL array |
 | timelines | array[object] |✅ | - | Timeline configuration array |
-| height | number |❌ | 1080 | Image height |
-| width | number |❌ | 1920 | Image width |
+| height | integer |❌ | None | Image height |
+| width | integer |❌ | None | Image width |
 | in_animation | string |❌ | None | Intro animation name; see [add_images](./add_images.md) |
-| in_animation_duration | number |❌ | 500000 | Entrance animation duration (microseconds) |
+| in_animation_duration | integer |❌ | None | Entrance animation duration (microseconds) |
 | loop_animation | string |❌ | None | Loop animation name; see [add_images](./add_images.md) |
-| loop_animation_duration | number |❌ | 1000000 | Loop animation duration (microseconds) |
+| loop_animation_duration | integer |❌ | None | Loop animation duration (microseconds) |
 | out_animation | string |❌ | None | Outro animation name; see [add_images](./add_images.md) |
-| out_animation_duration | number |❌ | 500000 | Exit animation duration (microseconds) |
+| out_animation_duration | integer |❌ | None | Exit animation duration (microseconds) |
 | transition | string |❌ | None | Transition name; see [add_images](./add_images.md) / [add_videos](./add_videos.md) |
-| transition_duration | number |❌ | 300000 | Transition duration (microseconds) |
+| transition_duration | integer |❌ | None | Transition duration (microseconds) |
 
 ### Available Transitions and Animations
 
@@ -66,7 +66,9 @@ For the full lists of valid `transition` / `in_animation` / `out_animation` / `l
 
 ```json
 {
-  "infos": "[{\"img_url\":\"https://assets.jcaigc.cn/img1.jpg\",\"start\":0,\"end\":3000000,\"duration\":5000000,\"height\":1080,\"width\":1920,\"in_animation\":\"渐显\",\"in_animation_duration\":500000,\"loop_animation\":\"动感摇晃I\",\"loop_animation_duration\":1000000,\"out_animation\":\"渐隐\",\"out_animation_duration\":500000,\"transition\":\"叠化\",\"transition_duration\":300000},{\"img_url\":\"https://assets.jcaigc.cn/img2.png\",\"start\":3000000,\"end\":6000000,\"duration\":5000000,\"height\":1080,\"width\":1920,\"in_animation\":\"渐显\",\"in_animation_duration\":500000,\"loop_animation\":\"动感摇晃I\",\"loop_animation_duration\":1000000,\"out_animation\":\"渐隐\",\"out_animation_duration\":500000,\"transition\":\"叠化\",\"transition_duration\":300000}]"
+  "code": 0,
+  "message": "success",
+  "infos": "[{\"image_url\":\"https://assets.jcaigc.cn/img1.jpg\",\"start\":0,\"end\":3000000,\"height\":1080,\"width\":1920,\"in_animation\":\"渐显\",\"in_animation_duration\":500000,\"out_animation\":\"渐隐\",\"out_animation_duration\":500000,\"loop_animation\":\"动感摇晃I\",\"loop_animation_duration\":1000000,\"transition\":\"叠化\",\"transition_duration\":300000},{\"image_url\":\"https://assets.jcaigc.cn/img2.png\",\"start\":3000000,\"end\":6000000,\"height\":1080,\"width\":1920,\"in_animation\":\"渐显\",\"in_animation_duration\":500000,\"out_animation\":\"渐隐\",\"out_animation_duration\":500000,\"loop_animation\":\"动感摇晃I\",\"loop_animation_duration\":1000000,\"transition\":\"叠化\",\"transition_duration\":300000}]"
 }
 ```
 
@@ -76,11 +78,12 @@ For the full lists of valid `transition` / `in_animation` / `out_animation` / `l
 |-------|------|-------------|
 | infos | string | Image information JSON string |
 
-### Error Response (4xx/5xx)
+### Error Response
 
 ```json
 {
-  "detail": "Error message description"
+  "code": 1001,
+  "message": "Parameter validation failed"
 }
 ```
 
@@ -120,15 +123,11 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/imgs_infos \
 
 | Error Code | Error Message | Description | Solution |
 |------------|---------------|-------------|----------|
-| 400 | imgs is required | Missing image URL parameter | Provide valid image URL array |
-| 400 | timelines is required | Missing timeline parameter | Provide valid timeline array |
-| 400 | Array length mismatch | imgs and timelines array lengths don't match | Ensure both arrays have the same length |
-| 404 | Image resource not found | Image URL inaccessible | Check if image URL is accessible |
-| 500 | Image information generation failed | Internal processing error | Contact technical support |
+| 1001 | Parameter validation failed | Request body failed schema validation (`imgs`/`timelines` missing, timeline item lacking `start`/`end`, or wrong types) | Check parameter types and required fields |
 
 ## Notes
 
-1. **Array Matching**: imgs and timelines array lengths must be the same
+1. **Array Matching**: if `imgs` and `timelines` lengths differ, the shorter length is used (no hard error)
 2. **Time Unit**: All time parameters use microseconds (1 second = 1,000,000 microseconds)
 3. **Resolution Settings**: height and width parameters are used to set image display resolution
 4. **Animation Effects**: Support entrance animation, loop animation, exit animation, and transition effects
@@ -138,7 +137,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/imgs_infos \
 ## Workflow
 
 1. Validate required parameters (imgs, timelines)
-2. Check array length matching
+2. Align the two arrays by the shorter length
 3. Validate timeline parameter validity
 4. Set image resolution parameters
 5. Apply animation effect parameters

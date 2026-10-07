@@ -45,6 +45,8 @@ Extract links. This interface is used to extract link information from input con
 
 ```json
 {
+  "code": 0,
+  "message": "success",
   "output": "[魂牵梦萦https://sf.com；中国人https://jcaigc.cn],\"[]\""
 }
 ```
@@ -55,11 +57,12 @@ Extract links. This interface is used to extract link information from input con
 |-------|------|-------------|
 | output | string | Extraction result |
 
-### Error Response (4xx/5xx)
+### Error Response
 
 ```json
 {
-  "detail": "Error message description"
+  "code": 1001,
+  "message": "Parameter validation failed"
 }
 ```
 
@@ -81,8 +84,8 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_url \
 
 | Error Code | Error Message | Description | Solution |
 |------------|---------------|-------------|----------|
-| 400 | output is required | Missing output parameter | Provide a valid output parameter |
-| 500 | Link extraction failed | Internal processing error | Contact technical support |
+| 1001 | Parameter validation failed | output is missing (request body failed schema validation) | Provide a valid output parameter |
+| 9999 | Unknown error | Unexpected internal processing error | Contact technical support |
 
 ## Notes
 

@@ -22,14 +22,8 @@ Calculate timelines based on audio file durations. This interface analyzes the d
 ```json
 {
   "links": [
-    {
-      "url": "https://assets.jcaigc.cn/audio1.mp3",
-      "duration": 5000000
-    },
-    {
-      "url": "https://assets.jcaigc.cn/audio2.mp3",
-      "duration": 3000000
-    }
+    "https://assets.jcaigc.cn/audio1.mp3",
+    "https://assets.jcaigc.cn/audio2.mp3"
   ]
 }
 ```
@@ -38,28 +32,22 @@ Calculate timelines based on audio file durations. This interface analyzes the d
 
 | Parameter | Type | Required | Default | Description |
 |-----------|------|----------|---------|-------------|
-| links | array[object] |✅ | - | Audio link information array |
+| links | array[string] |✅ | - | Audio file URL array |
 
 ### links Array Structure
 
-Each links array element contains the following fields:
+Each links array element is a single audio file URL string:
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
-| url | string |✅ | - | Audio file URL address |
-| duration | number |✅ | - | Audio duration (microseconds) |
+| links[] | string |✅ | - | Audio file URL address |
 
 ### Parameter Details
 
-#### url
+#### links[]
 - **Type**: string
-- **Description**: Complete URL address of the audio file
+- **Description**: Complete URL address of the audio file; the duration is measured from the downloaded file and is not passed in the request
 - **Example**: "https://assets.jcaigc.cn/background.mp3"
-
-#### duration
-- **Type**: number
-- **Description**: Duration of the audio file in microseconds (1 second = 1,000,000 microseconds)
-- **Example**: 5000000 (5 seconds)
 
 ## Response Format
 
@@ -67,6 +55,8 @@ Each links array element contains the following fields:
 
 ```json
 {
+  "code": 0,
+  "message": "success",
   "timelines": [
     {
       "start": 0,
@@ -95,11 +85,12 @@ Each links array element contains the following fields:
 | start | number | Start time of time segment (microseconds) |
 | end | number | End time of time segment (microseconds) |
 
-### Error Response (4xx/5xx)
+### Error Response
 
 ```json
 {
-  "detail": "Error message description"
+  "code": 2034,
+  "message": "Get audio duration failed"
 }
 ```
 
@@ -114,14 +105,8 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/audio_timeline
   -H "Content-Type: application/json" \
   -d '{
     "links": [
-      {
-        "url": "https://assets.jcaigc.cn/intro.mp3",
-        "duration": 3000000
-      },
-      {
-        "url": "https://assets.jcaigc.cn/bgm.mp3",
-        "duration": 15000000
-      }
+      "https://assets.jcaigc.cn/intro.mp3",
+      "https://assets.jcaigc.cn/bgm.mp3"
     ]
   }'
 ```
@@ -133,18 +118,9 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/audio_timeline
   -H "Content-Type: application/json" \
   -d '{
     "links": [
-      {
-        "url": "https://assets.jcaigc.cn/opening.mp3",
-        "duration": 2000000
-      },
-      {
-        "url": "https://assets.jcaigc.cn/content.mp3",
-        "duration": 10000000
-      },
-      {
-        "url": "https://assets.jcaigc.cn/ending.mp3",
-        "duration": 3000000
-      }
+      "https://assets.jcaigc.cn/opening.mp3",
+      "https://assets.jcaigc.cn/content.mp3",
+      "https://assets.jcaigc.cn/ending.mp3"
     ]
   }'
 ```
@@ -153,28 +129,25 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/audio_timeline
 
 | Error Code | Error Message | Description | Solution |
 |------------|---------------|-------------|----------|
-| 400 | links is required | Missing audio link parameter | Provide valid links array |
-| 400 | links format error | Invalid JSON format | Check JSON array format |
-| 400 | url is required | Missing audio URL | Provide URL for each audio |
-| 400 | duration is required | Missing audio duration | Provide duration for each audio |
-| 400 | duration must be greater than 0 | Invalid duration parameter | Use duration value greater than 0 |
-| 404 | Audio resource not found | Audio URL inaccessible | Check if audio URL is accessible |
-| 500 | Audio timeline calculation failed | Internal processing error | Contact technical support |
+| 1001 | Parameter validation failed | `links` is missing or is not an array of strings | Provide a valid array of audio file URLs |
+| 2004 | File size exceeds the limit | The downloaded audio exceeds the download size limit | Use a smaller audio file |
+| 2005 | Download file failed | The audio file could not be downloaded | Check that the audio URL is publicly accessible |
+| 2034 | Get audio duration failed | The duration of a downloaded audio file could not be read | Use a valid, playable audio file |
 
 ## Notes
 
 1. **Time Unit**: All time parameters use microseconds (1 second = 1,000,000 microseconds)
-2. **Parameter Requirements**: links array is required, and each element needs url and duration
-3. **Duration Accuracy**: Ensure the provided duration parameter accurately reflects the actual audio duration
-4. **Network Access**: Audio URLs must be accessible (for verification)
+2. **Parameter Requirements**: links array is required, and each element is an audio file URL string
+3. **Duration Source**: each audio duration is measured from the downloaded file (microseconds), it is not passed in the request
+4. **Network Access**: Audio URLs must be accessible, because the files are downloaded to measure their durations
 5. **Continuity**: Timelines are arranged continuously in audio order without gaps
 6. **Total Duration**: The end value of complete timeline equals the sum of all audio durations
 
 ## Workflow
 
 1. Validate required parameter (links)
-2. Parse audio information from each element in links array
-3. Validate url and duration parameters for each audio
+2. Download each audio file and obtain its duration
+3. Fail with code 2034 when a duration cannot be obtained
 4. Calculate time segments for each audio in order
 5. Generate segmented audio timeline array
 6. Generate complete audio timeline array

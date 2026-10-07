@@ -1139,6 +1139,8 @@ Y3K
 
 ```json
 {
+  "code": 0,
+  "message": "success",
   "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
   "track_id": "filter-track-uuid",
   "filter_ids": ["filter1-uuid", "filter2-uuid"],
@@ -1155,11 +1157,12 @@ Y3K
 | filter_ids | array | List of added filter IDs |
 | segment_ids | array | List of segment IDs |
 
-### Error Response (4xx/5xx)
+### Error Response
 
 ```json
 {
-  "detail": "Error message description"
+  "code": 2037,
+  "message": "Invalid filter information, please check if the value of the filter_infos field is correct."
 }
 ```
 
@@ -1204,18 +1207,12 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_filters \
 
 | Error Code | Error Message | Description | Solution |
 |------------|---------------|-------------|----------|
-| 400 | draft_url is required | Missing draft URL parameter | Provide a valid draft URL |
-| 400 | filter_infos is required | Missing filter information parameter | Provide valid filter information JSON |
-| 400 | filter_infos format error | JSON format is incorrect | Check JSON string format |
-| 400 | Filter configuration validation failed | Filter parameters do not meet requirements | Check parameters for each filter |
-| 400 | filter_title is required | Filter title missing | Provide title for each filter |
-| 400 | start is required | Filter start time missing | Provide start time for each filter |
-| 400 | end is required | Filter end time missing | Provide end time for each filter |
-| 400 | Time range invalid | end must be greater than start | Ensure end time is greater than start time |
-| 400 | Intensity out of range | Intensity must be between 0-100 | Provide valid intensity value |
-| 404 | Draft does not exist | Specified draft URL invalid | Check if draft URL is correct |
-| 404 | Filter not found | Specified filter does not exist | Check if filter title is valid |
-| 500 | Filter addition failed | Internal processing error | Contact technical support |
+| 1001 | Parameter validation failed | Request body failed schema validation | Check parameter types and required fields |
+| 2001 | Invalid draft URL | `draft_url` is missing, malformed, or the draft is not in the cache | Pass the `draft_url` returned by `create_draft` |
+| 2037 | Invalid filter information | `filter_infos` is not valid JSON, an item is missing `filter_title`/`start`/`end`, `end` is not greater than `start`, the title is empty, or `intensity` is out of the 0-100 range | Fix the JSON string and the field values |
+| 2038 | Filter addition failed | Failed while writing filters into the draft | Check the draft state and retry |
+| 2039 | Filter not found | `filter_title` does not match any supported filter name | Use a name from the Supported Filter Names list above |
+| 2042 | Draft lock acquisition timeout | Only one operation is allowed on a draft at a time | Retry later |
 
 ## Notes
 

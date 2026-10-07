@@ -48,6 +48,8 @@ Query the status and progress of video generation tasks. Used together with the 
 
 ```json
 {
+  "code": 0,
+  "message": "success",
   "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
   "status": "pending",
   "progress": 0,
@@ -63,9 +65,11 @@ Query the status and progress of video generation tasks. Used together with the 
 
 ```json
 {
+  "code": 0,
+  "message": "success",
   "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258", 
   "status": "processing",
-  "progress": 65,
+  "progress": 70,
   "video_url": "",
   "error_message": "",
   "created_at": "2024-09-24T10:30:00.000Z",
@@ -78,6 +82,8 @@ Query the status and progress of video generation tasks. Used together with the 
 
 ```json
 {
+  "code": 0,
+  "message": "success",
   "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
   "status": "completed",
   "progress": 100,
@@ -93,11 +99,13 @@ Query the status and progress of video generation tasks. Used together with the 
 
 ```json
 {
+  "code": 0,
+  "message": "success",
   "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
   "status": "failed",
   "progress": 0,
   "video_url": "",
-  "error_message": "Export draft failed: Jianying export ended but target file was not generated, please check disk space or Jianying version",
+  "error_message": "Export draft failed",
   "created_at": "2024-09-24T10:30:00.000Z",
   "started_at": "2024-09-24T10:30:05.000Z",
   "completed_at": "2024-09-24T10:32:15.000Z"
@@ -117,21 +125,23 @@ Query the status and progress of video generation tasks. Used together with the 
 | started_at | string|null | Task start time (ISO format) |
 | completed_at | string|null | Task completion time (ISO format) |
 
-### Error Response (4xx/5xx)
+### Error Response
 
-#### 404 Not Found - Task Does Not Exist
+#### 2031 Video Generation Task Not Found
 
 ```json
 {
-  "detail": "Video generation task not found"
+  "code": 2031,
+  "message": "Video generation task not found"
 }
 ```
 
-#### 500 Internal Server Error - Query Failed
+#### 2032 Video Task Status Query Failed
 
 ```json
 {
-  "detail": "Video task status query failed"
+  "code": 2032,
+  "message": "Video task status query failed"
 }
 ```
 
@@ -145,7 +155,7 @@ Query the status and progress of video generation tasks. Used together with the 
 curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/gen_video_status \
   -H "Content-Type: application/json" \
   -d '{
-    "draft_url": "YOUR_DRAFT_URL"
+    "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258"
   }'
 ```
 
@@ -153,10 +163,9 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/gen_video_stat
 
 | Error Code | Error Message | Description | Solution |
 |------------|---------------|-------------|----------|
-| 400 | draft_url is required | Missing draft URL parameter | Provide a valid draft_url |
-| 400 | Invalid draft URL | draft_url format is incorrect | Check if draft URL format is correct |
-| 404 | Video generation task not found | Specified draft URL has no corresponding video generation task | Confirm if task has been submitted via gen_video interface |
-| 500 | Video task status query failed | Internal processing error | Retry later or contact technical support |
+| 1001 | Parameter validation failed | `draft_url` is missing or not a string | Provide a valid `draft_url` |
+| 2031 | Video generation task not found | The draft URL has no corresponding video generation task | Confirm if task has been submitted via gen_video interface |
+| 2032 | Video task status query failed | Internal processing error | Retry later or contact technical support |
 
 ## Notes
 

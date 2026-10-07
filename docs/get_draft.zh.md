@@ -33,7 +33,7 @@ GET /openapi/capcut-mate/v1/get_draft
 - **必填**: 是
 - **长度**: 20-32位字符
 - **格式**: 通常为UUID格式或类似的唯一标识符
-- **示例**: `2f52a63b-8c6a-4417-8b01-1b2a569ccb6c`
+- **示例**: `2025092811473036584258`
 - **获取方式**: 通常从draft_url中提取或由create_draft接口返回
 
 ## 响应格式
@@ -42,12 +42,12 @@ GET /openapi/capcut-mate/v1/get_draft
 
 ```json
 {
+  "code": 0,
+  "message": "success",
   "files": [
-    "2f52a63b-8c6a-4417-8b01-1b2a569ccb6c.json",
-    "video_123456789.mp4",
-    "audio_987654321.mp3",
-    "image_555666777.jpg",
-    "thumbnail_888999000.png"
+    "https://capcut-mate.jcaigc.cn/output/draft/2025092811473036584258/draft_info.json",
+    "https://capcut-mate.jcaigc.cn/output/draft/2025092811473036584258/draft_content.json",
+    "https://capcut-mate.jcaigc.cn/output/draft/2025092811473036584258/draft_meta_info.json"
   ]
 }
 ```
@@ -56,13 +56,14 @@ GET /openapi/capcut-mate/v1/get_draft
 
 | 字段名 | 类型 | 说明 |
 |--------|------|------|
-| files | array | 草稿相关的文件列表 |
+| files | array | 草稿内文件的下载URL列表 |
 
-### 错误响应 (4xx/5xx)
+### 错误响应
 
 ```json
 {
-  "detail": "错误信息描述"
+  "code": 2001,
+  "message": "无效的草稿URL"
 }
 ```
 
@@ -73,14 +74,14 @@ GET /openapi/capcut-mate/v1/get_draft
 #### 1. 基本获取草稿文件列表
 
 ```bash
-curl -X GET "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2f52a63b-8c6a-4417-8b01-1b2a569ccb6c" \
+curl -X GET "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258" \
   -H "Content-Type: application/json"
 ```
 
 #### 2. 使用完整的draft_id
 
 ```bash
-curl -X GET "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=7e8f9a0b-1c2d-3e4f-5g6h-7i8j9k0l1m2n" \
+curl -X GET "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025100512300012345678" \
   -H "Content-Type: application/json"
 ```
 
@@ -88,12 +89,8 @@ curl -X GET "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draf
 
 | 错误码 | 错误信息 | 说明 | 解决方案 |
 |--------|----------|------|----------|
-| 400 | draft_id是必填项 | 缺少draft_id参数 | 提供有效的draft_id |
-| 400 | draft_id长度无效 | draft_id长度不在20-32位范围内 | 检查draft_id格式是否正确 |
-| 400 | draft_id格式无效 | draft_id格式不正确 | 确保使用正确的草稿ID格式 |
-| 404 | 草稿不存在 | 指定的草稿ID无法找到 | 确认草稿ID是否正确且存在 |
-| 500 | 获取文件列表失败 | 内部服务错误 | 联系技术支持或稍后重试 |
-| 503 | 服务不可用 | 系统维护中 | 稍后重试 |
+| 1001 | 参数校验失败 | `draft_id` 缺失或长度不在 20-32 位之间 | 传入 20-32 位的 `draft_id` |
+| 2001 | 无效的草稿URL | 草稿目录不存在 | 确认 `draft_id` 是否正确且草稿存在 |
 
 ## 注意事项
 

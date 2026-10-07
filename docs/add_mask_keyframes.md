@@ -59,6 +59,8 @@ Writing the same property at the same timestamp on the same segment overwrites t
 
 ```json
 {
+  "code": 0,
+  "message": "success",
   "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
   "keyframes_added": 12,
   "affected_segments": ["d62994b4-25fe-422a-a123-87ef05038558"]

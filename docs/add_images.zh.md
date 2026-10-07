@@ -40,8 +40,8 @@ POST /openapi/capcut-mate/v1/add_images
 | alpha | number | ❌ | 1.0 | 图片透明度，建议范围[0.0, 1.0] |
 | scale_x | number | ❌ | 1.0 | 图片X轴缩放比例 |
 | scale_y | number | ❌ | 1.0 | 图片Y轴缩放比例 |
-| transform_x | number | ❌ | 0 | X轴位置偏移（像素） |
-| transform_y | number | ❌ | 0 | Y轴位置偏移（像素） |
+| transform_x | integer | ❌ | 0 | X轴位置偏移（像素） |
+| transform_y | integer | ❌ | 0 | Y轴位置偏移（像素） |
 
 ### image_infos 数组结构
 
@@ -59,7 +59,7 @@ POST /openapi/capcut-mate/v1/add_images
 | out_animation_duration | number | ❌ | - | 出场动画时长(微秒，可选) |
 | loop_animation_duration | number | ❌ | - | 循环动画单次时长(微秒，可选) |
 | transition | string | ❌ | - | 转场名称，须为下方「转场」列表中的值 |
-| transition_duration | number | ❌ | 500000 | 转场时长(微秒，可选)，范围 100000～2500000 |
+| transition_duration | number | ❌ | - | 转场时长(微秒，可选)；未指定则使用转场类型默认时长 |
 
 ### 参数详解
 
@@ -997,6 +997,8 @@ PASSION
 
 ```json
 {
+  "code": 0,
+  "message": "success",
   "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
   "track_id": "video-track-uuid",
   "image_ids": ["image1-uuid", "image2-uuid"],
@@ -1021,11 +1023,12 @@ PASSION
 | segment_ids | array | 片段ID列表 |
 | segment_infos | array | 片段信息列表，包含每个片段的ID、开始时间和结束时间 |
 
-### 错误响应 (4xx/5xx)
+### 错误响应
 
 ```json
 {
-  "detail": "错误信息描述"
+  "code": 2009,
+  "message": "无效的图片信息，请检查image_infos字段值是否正确"
 }
 ```
 
@@ -1075,15 +1078,12 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_images \
 
 | 错误码 | 错误信息 | 说明 | 解决方案 |
 |--------|----------|------|----------|
-| 400 | draft_url是必填项 | 缺少草稿URL参数 | 提供有效的draft_url |
-| 400 | image_infos是必填项 | 缺少图片信息参数 | 提供有效的image_infos |
-| 400 | image_url是必填项 | 图片URL缺失 | 为每个图片提供URL |
-| 400 | 图片尺寸无效 | 显式传入的 width 或 height ≤ 0 | 不传宽高即可；若传入须为正整数 |
-| 400 | 时间范围无效 | end必须大于start | 确保结束时间大于开始时间 |
-| 400 | 透明度无效 | alpha超出建议范围 | 使用0.0-1.0范围内的透明度值 |
-| 404 | 草稿不存在 | 指定的草稿URL无效 | 检查草稿URL是否正确 |
-| 404 | 图片不存在 | 指定的图片URL无效 | 确认图片URL是否正确 |
-| 500 | 图片添加失败 | 内部处理错误 | 联系技术支持 |
+| 1001 | 参数校验失败 | 请求体未通过字段校验：`image_infos` 不是合法 JSON、不是数组，或某项 `image_url` 未以 `http://` / `https://` 开头 | 检查参数类型与必填字段 |
+| 2001 | 无效的草稿URL | `draft_url` 缺失、格式错误，或草稿不在缓存中 | 传入 `create_draft` 返回的 `draft_url` |
+| 2005 | 下载文件失败 | 图片文件下载失败 | 检查每个 `image_url` 是否可访问 |
+| 2009 | 无效的图片信息 | `image_infos` 不是合法 JSON、不是数组、某项缺少 `image_url`/`start`/`end`、显式传入的 `width`/`height` ≤ 0，或 `end` 不大于 `start` | 修正 JSON 字符串与每项的字段 |
+| 2010 | 图片添加失败 | 写入草稿过程出错 | 检查草稿状态后重试 |
+| 2042 | 草稿锁获取超时 | 同一时间只允许一个操作，草稿正被占用 | 稍后重试 |
 
 ## 注意事项
 

@@ -35,9 +35,9 @@ Create rich text styles for text, supporting keyword highlighting, color setting
 |-----------|------|----------|---------|-------------|
 | text | string |✅ | - | Text content to process |
 | keyword | string |✅ | - | Keywords, multiple separated by \| |
-| font_size | number |❌ | 12 | Font size of plain text |
+| font_size | integer |❌ | 12 | Font size of plain text |
 | keyword_color | string |❌ | "#ff7100" | Keyword text color (hexadecimal) |
-| keyword_font_size | number |❌ | 15 | Keyword font size |
+| keyword_font_size | integer |❌ | 15 | Keyword font size |
 
 ### Parameter Details
 
@@ -75,7 +75,9 @@ Create rich text styles for text, supporting keyword highlighting, color setting
 
 ```json
 {
-  "text_style": "{\"styles\":[{\"fill\":{\"content\":{\"solid\":{\"color\":[1,1,1]}}},\"range\":[0,2],\"size\":12,\"font\":{\"id\":\"\",\"path\":\"\"}},{\"fill\":{\"content\":{\"solid\":{\"color\":[1,0.44313725490196076,0]}}},\"range\":[2,4],\"size\":15,\"font\":{\"id\":\"\",\"path\":\"\"},\"useLetterColor\":true},{\"fill\":{\"content\":{\"solid\":{\"color\":[1,1,1]}}},\"range\":[4,7],\"size\":12,\"font\":{\"id\":\"\",\"path\":\"\"}},{\"fill\":{\"content\":{\"solid\":{\"color\":[1,0.44313725490196076,0]}}},\"range\":[7,11],\"size\":15,\"font\":{\"id\":\"\",\"path\":\"\"},\"useLetterColor\":true}],\"text\":\"五个快乐到死的顶级思维\"}"
+  "code": 0,
+  "message": "success",
+  "text_style": "{\"styles\":[{\"fill\":{\"content\":{\"solid\":{\"color\":[1,1,1]}}},\"range\":[0,2],\"size\":12,\"font\":{\"id\":\"\",\"path\":\"D:\"}},{\"fill\":{\"content\":{\"solid\":{\"color\":[1,0.44313725490196076,0]}}},\"range\":[2,4],\"size\":15,\"font\":{\"id\":\"\",\"path\":\"D:\"},\"useLetterColor\":true},{\"fill\":{\"content\":{\"solid\":{\"color\":[1,1,1]}}},\"range\":[4,7],\"size\":12,\"font\":{\"id\":\"\",\"path\":\"D:\"}},{\"fill\":{\"content\":{\"solid\":{\"color\":[1,0.44313725490196076,0]}}},\"range\":[7,11],\"size\":15,\"font\":{\"id\":\"\",\"path\":\"D:\"},\"useLetterColor\":true}],\"text\":\"五个快乐到死的顶级思维\"}"
 }
 ```
 
@@ -85,7 +87,7 @@ Create rich text styles for text, supporting keyword highlighting, color setting
 |-------|------|-------------|
 | text_style | string | Text style JSON string, containing styles array and text field |
 
-### Error Response (4xx/5xx)
+### Error Response
 
 ```json
 {
@@ -138,7 +140,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_text_style
 
 | Error Code | Error Message | Description | Solution |
 |------------|---------------|-------------|----------|
-| 2026 | Invalid text style information, please check text or keyword parameters | Text or keyword parameter format error or invalid value | Check if text and keyword parameters meet requirements |
+| 2026 | Invalid text style information | Text or keyword parameter format error or invalid value | Check if text and keyword parameters meet requirements |
 | 2027 | Text style creation failed | Error occurred during text style creation | Contact technical support |
 
 ## Notes

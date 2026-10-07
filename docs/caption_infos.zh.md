@@ -116,6 +116,8 @@ POST /openapi/capcut-mate/v1/caption_infos
 
 ```json
 {
+  "code": 0,
+  "message": "success",
   "infos": "[{\"start\":0,\"end\":3000000,\"text\":\"欢迎观看剪映教程\",\"keyword\":\"剪映\",\"keyword_color\":\"#FF5500\",\"keyword_border_color\":\"#000000\",\"keyword_font\":\"思源中宋\",\"keyword_font_size\":28,\"keyword_has_shadow\":true,\"keyword_shadow_info\":{\"shadow_alpha\":0.85,\"shadow_color\":\"#000000\",\"shadow_diffuse\":18.0,\"shadow_distance\":6.0,\"shadow_angle\":-45.0},\"font_size\":24,\"in_animation\":\"向上滑动\",\"in_animation_duration\":500000,\"loop_animation\":\"弹幕滚动\",\"loop_animation_duration\":1000000,\"out_animation\":\"向下滑动\",\"out_animation_duration\":500000,\"transition\":\"淡入淡出\",\"transition_duration\":300000},{\"start\":3000000,\"end\":6000000,\"text\":\"这是一个字幕示例\",\"keyword\":\"字幕\",\"keyword_color\":\"#FF5500\",\"keyword_border_color\":\"#000000\",\"keyword_font\":\"思源中宋\",\"keyword_font_size\":28,\"keyword_has_shadow\":true,\"keyword_shadow_info\":{\"shadow_alpha\":0.85,\"shadow_color\":\"#000000\",\"shadow_diffuse\":18.0,\"shadow_distance\":6.0,\"shadow_angle\":-45.0},\"font_size\":24,\"in_animation\":\"向上滑动\",\"in_animation_duration\":500000,\"loop_animation\":\"弹幕滚动\",\"loop_animation_duration\":1000000,\"out_animation\":\"向下滑动\",\"out_animation_duration\":500000,\"transition\":\"淡入淡出\",\"transition_duration\":300000}]"
 }
 ```
@@ -126,11 +128,12 @@ POST /openapi/capcut-mate/v1/caption_infos
 |--------|------|------|
 | infos | string | 字幕信息 JSON 字符串，可直接作为 `add_captions.captions` 使用 |
 
-### 错误响应 (4xx/5xx)
+### 错误响应
 
 ```json
 {
-  "detail": "错误信息描述"
+  "code": 1001,
+  "message": "参数校验失败"
 }
 ```
 
@@ -261,9 +264,9 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_captions \
 
 | 错误码 | 错误信息 | 说明 | 解决方案 |
 |--------|----------|------|----------|
-| 400 | texts是必填项 | 缺少文本内容 | 提供非空 `texts` |
-| 400 | timelines是必填项 | 缺少时间线 | 提供有效 `timelines` |
-| 500 | 字幕信息生成失败 | 内部处理错误 | 联系技术支持 |
+| 1001 | 参数校验失败 | 缺少文本内容 | 提供非空 `texts` |
+| 1001 | 参数校验失败 | 缺少时间线 | 提供有效 `timelines` |
+| 9998 | 系统内部错误 | 内部处理错误 | 联系技术支持 |
 
 ## 注意事项
 

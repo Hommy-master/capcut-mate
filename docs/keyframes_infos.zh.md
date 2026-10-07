@@ -21,9 +21,9 @@ POST /openapi/capcut-mate/v1/keyframes_infos
 
 ```json
 {
-  "ctype": "position",
-  "offsets": [0.0, 0.5, 1.0],
-  "values": [0.0, 0.5, 1.0],
+  "ctype": "KFTypePositionX",
+  "offsets": "0|50|100",
+  "values": "0|960|1920",
   "segment_infos": [
     {"id": "segment1", "start": 0, "end": 5000000}
   ],
@@ -36,12 +36,12 @@ POST /openapi/capcut-mate/v1/keyframes_infos
 
 | 参数名 | 类型 |必填 | 默认值 | 说明 |
 |--------|------|------|--------|------|
-| ctype | string |✅ | - |关键帧类型 |
-| offsets | array[number] |✅ | - | 位置比例数组 |
-| values | array[number] |✅ | - |值数组 |
-| segment_infos | array[object] |✅ | - |片信息数组 |
-| height | number |❌ | 1080 |高度 |
-| width | number |❌ | 1920 |宽 |
+| ctype | string |✅ | - |关键帧类型：`KFTypePositionX`（X轴移动，需要 `width`）、`KFTypePositionY`（Y轴移动，需要 `height`）、`KFTypeRotation`（0-360）、`UNIFORM_SCALE`（0.01-5）、`KFTypeAlpha`（0-1） |
+| offsets | string |✅ | - | 位置比例，用 `\|` 分隔，如 `"0\|100"`（开头和结尾）、`"0\|50\|100"`（开头、中间、结尾） |
+| values | string |✅ | - | 对应 offsets 的值，用 `\|` 分隔，元素个数须与 offsets 一致，如 `"1\|2"`、`"1\|2\|1"` |
+| segment_infos | array[object] |✅ | - |轨道数据（片段对象数组），每项含 `id`、`start`、`end`（微秒） |
+| height | integer |❌ | None |高度，用于 `KFTypePositionY` 值的归一化 |
+| width | integer |❌ | None |宽，用于 `KFTypePositionX` 值的归一化 |
 
 
 
@@ -51,7 +51,9 @@ POST /openapi/capcut-mate/v1/keyframes_infos
 
 ```json
 {
-  "keyframes_infos": "[{\"ctype\":\"position\",\"offset\":0.0,\"value\":0.0,\"segment_id\":\"segment1\",\"height\":1080,\"width\":1920},{\"ctype\":\"position\",\"offset\":0.5,\"value\":0.5,\"segment_id\":\"segment1\",\"height\":1080,\"width\":1920},{\"ctype\":\"position\",\"offset\":1.0,\"value\":1.0,\"segment_id\":\"segment1\",\"height\":1080,\"width\":1920}]"
+  "code": 0,
+  "message": "success",
+  "keyframes_infos": "[{\"offset\":0,\"property\":\"KFTypePositionX\",\"segment_id\":\"segment1\",\"value\":0.0},{\"offset\":2500000,\"property\":\"KFTypePositionX\",\"segment_id\":\"segment1\",\"value\":0.5},{\"offset\":5000000,\"property\":\"KFTypePositionX\",\"segment_id\":\"segment1\",\"value\":1.0}]"
 }
 ```
 
@@ -61,11 +63,12 @@ POST /openapi/capcut-mate/v1/keyframes_infos
 |--------|------|------|
 | keyframes_infos | string |关键帧信息JSON字符串 |
 
-###错误响应 (4xx/5xx)
+### 错误响应
 
 ```json
 {
-  "detail": "错误信息描述"
+  "code": 1001,
+  "message": "参数校验失败"
 }
 ```
 
@@ -79,9 +82,9 @@ POST /openapi/capcut-mate/v1/keyframes_infos
 curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/keyframes_infos \
   -H "Content-Type: application/json" \
   -d '{
-    "ctype": "scale",
-    "offsets": [0.0, 1.0],
-    "values": [0.5, 1.5],
+    "ctype": "UNIFORM_SCALE",
+    "offsets": "0|100",
+    "values": "0.5|1.5",
     "segment_infos": [{"id": "segment1", "start": 0, "end": 5000000}]
   }'
 ```
@@ -92,9 +95,9 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/keyframes_info
 curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/keyframes_infos \
   -H "Content-Type: application/json" \
   -d '{
-    "ctype": "position",
-    "offsets": [0.0, 0.3, 0.7, 1.0],
-    "values": [0.0, 0.2, 0.8, 1.0],
+    "ctype": "KFTypePositionX",
+    "offsets": "0|30|70|100",
+    "values": "0|384|1536|1920",
     "segment_infos": [{"id": "segment1", "start": 0, "end": 10000000}],
     "height": 1080,
     "width": 1920
@@ -105,25 +108,21 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/keyframes_info
 
 |错误码 | 错误信息 | 说明 | 解决方案 |
 |--------|----------|------|----------|
-| 400 | ctype是必填项 |缺少关键帧类型参数 | 提供有效的关键帧类型 |
-| 400 | offsets是必填项 |缺少位置比例参数 | 提供有效的位置比例数组 |
-| 400 | values是必填项 |缺少值参数 | 提供有效的值数组 |
-| 400 | segment_infos是必填项 |缺少片段信息参数 | 提供有效的片段信息数组 |
-| 400 | 数组长度不匹配 | offsets和values长度不一致 |确保两个数组长度相同 |
-| 500 |关键帧信息生成失败 |内部处理错误 |联技术支持 |
+| 1001 | 参数校验失败 | 请求体未通过字段校验（缺少 `ctype`/`offsets`/`values`/`segment_infos`，或 `offsets`/`values` 不是字符串） | 检查参数类型与必填字段 |
+| 9998 | 系统内部错误 | `offsets` 与 `values` 用 `\|` 分隔的元素个数不一致 | 保证 `offsets` 与 `values` 的元素个数一致 |
 
 ## 注意事项
 
-1. **数组匹配**: offsets和values数组长度必须相同
+1. **元素数量匹配**: offsets和values用 `|` 分隔的元素个数必须相同
 2. **时间单位**:所有时间参数使用微秒（1秒 = 1,000,000微秒）
-3. **关键帧类型**:支持position、scale、rotation等类型
-4. **位置比例**: offsets值应在0.0-1.0范围内
-5. **分辨率设置**: height和width参数用于设置坐标系
+3. **关键帧类型**:支持 KFTypePositionX、KFTypePositionY、KFTypeRotation、UNIFORM_SCALE、KFTypeAlpha
+4. **位置比例**: offsets值为 0-100 的百分比，关键帧的 offset 相对片段起点计算
+5. **分辨率设置**: KFTypePositionX/KFTypePositionY 的值会除以 width/height 进行归一化
 
 ##工作流程
 
 1.验证必填参数（ctype, offsets, values, segment_infos）
-2. 检查数组长度匹配
+2. 检查 offsets 与 values 的元素个数是否一致
 3.验证参数有效性
 4. 为每个offset生成对应的关键帧信息
 5.应用分辨率参数

@@ -48,6 +48,8 @@ POST /openapi/capcut-mate/v1/gen_video_status
 
 ```json
 {
+  "code": 0,
+  "message": "success",
   "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
   "status": "pending",
   "progress": 0,
@@ -63,9 +65,11 @@ POST /openapi/capcut-mate/v1/gen_video_status
 
 ```json
 {
+  "code": 0,
+  "message": "success",
   "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258", 
   "status": "processing",
-  "progress": 65,
+  "progress": 70,
   "video_url": "",
   "error_message": "",
   "created_at": "2024-09-24T10:30:00.000Z",
@@ -78,6 +82,8 @@ POST /openapi/capcut-mate/v1/gen_video_status
 
 ```json
 {
+  "code": 0,
+  "message": "success",
   "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
   "status": "completed",
   "progress": 100,
@@ -93,11 +99,13 @@ POST /openapi/capcut-mate/v1/gen_video_status
 
 ```json
 {
+  "code": 0,
+  "message": "success",
   "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
   "status": "failed",
   "progress": 0,
   "video_url": "",
-  "error_message": "导出草稿失败: 剪映导出结束但目标文件未生成，请检查磁盘空间或剪映版本",
+  "error_message": "导出草稿失败",
   "created_at": "2024-09-24T10:30:00.000Z",
   "started_at": "2024-09-24T10:30:05.000Z",
   "completed_at": "2024-09-24T10:32:15.000Z"
@@ -117,21 +125,23 @@ POST /openapi/capcut-mate/v1/gen_video_status
 | started_at | string|null | 任务开始时间（ISO格式） |
 | completed_at | string|null | 任务完成时间（ISO格式） |
 
-### 错误响应 (4xx/5xx)
+### 错误响应
 
-#### 404 Not Found - 任务不存在
+#### 2031 视频生成任务未找到
 
 ```json
 {
-  "detail": "视频生成任务未找到"
+  "code": 2031,
+  "message": "视频生成任务未找到"
 }
 ```
 
-#### 500 Internal Server Error - 查询失败
+#### 2032 视频任务状态查询失败
 
 ```json
 {
-  "detail": "视频任务状态查询失败"
+  "code": 2032,
+  "message": "视频任务状态查询失败"
 }
 ```
 
@@ -145,7 +155,7 @@ POST /openapi/capcut-mate/v1/gen_video_status
 curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/gen_video_status \
   -H "Content-Type: application/json" \
   -d '{
-    "draft_url": "YOUR_DRAFT_URL"
+    "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258"
   }'
 ```
 
@@ -153,10 +163,9 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/gen_video_stat
 
 | 错误码 | 错误信息 | 说明 | 解决方案 |
 |--------|----------|------|----------|
-| 400 | draft_url是必填项 | 缺少草稿URL参数 | 提供有效的draft_url |
-| 400 | 无效的草稿URL | draft_url格式不正确 | 检查草稿URL格式是否正确 |
-| 404 | 视频生成任务未找到 | 指定的草稿URL没有对应的视频生成任务 | 确认是否已通过gen_video接口提交任务 |
-| 500 | 视频任务状态查询失败 | 内部处理错误 | 稍后重试或联系技术支持 |
+| 1001 | 参数校验失败 | `draft_url` 缺失或不是字符串 | 提供有效的 `draft_url` |
+| 2031 | 视频生成任务未找到 | 指定的草稿URL没有对应的视频生成任务 | 确认是否已通过gen_video接口提交任务 |
+| 2032 | 视频任务状态查询失败 | 内部处理错误 | 稍后重试或联系技术支持 |
 
 ## 注意事项
 

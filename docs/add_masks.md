@@ -23,15 +23,15 @@ Add mask effects to existing drafts. This interface is used to add various shape
 {
   "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
   "segment_ids": ["segment1-uuid", "segment2-uuid"],
-  "name": "Circle Mask",
-  "X": 0.5,
-  "Y": 0.5,
-  "width": 0.3,
-  "height": 0.3,
-  "feather": 0.1,
+  "name": "圆形",
+  "X": 100,
+  "Y": 200,
+  "width": 300,
+  "height": 300,
+  "feather": 20,
   "rotation": 0,
   "invert": false,
-  "roundCorner": 0.2
+  "roundCorner": 0
 }
 ```
 
@@ -41,15 +41,15 @@ Add mask effects to existing drafts. This interface is used to add various shape
 |-----------|------|----------|---------|-------------|
 | draft_url | string |✅ | - | Complete URL of the target draft |
 | segment_ids | array |✅ | - | List of segment IDs to apply masks |
-| name | string |✅ | - | Mask name/type |
-| X | number |✅ | - | Horizontal position (0.0-1.0) |
-| Y | number |✅ | - | Vertical position (0.0-1.0) |
-| width | number |✅ | - | Mask width (0.0-1.0) |
-| height | number |✅ | - | Mask height (0.0-1.0) |
-| feather | number |❌ | 0.0 | Feather edge softness |
-| rotation | number | ❌ | 0 | Rotation angle (degrees) |
+| name | string |❌ | "线性" | Mask type name: `线性` / `镜面` / `圆形` / `矩形` / `爱心` / `星形` |
+| X | integer |❌ | 0 | Mask center X in pixels, relative to the material center (positive = right) |
+| Y | integer |❌ | 0 | Mask center Y in pixels, relative to the material center (positive = down) |
+| width | integer |❌ | 512 | Mask width in pixels |
+| height | integer |❌ | 512 | Mask height in pixels |
+| feather | integer |❌ | 0 | Feather edge softness (0-100) |
+| rotation | integer | ❌ | 0 | Rotation angle (degrees) |
 | invert | boolean | ❌ | false | Invert mask effect |
-| roundCorner | number | ❌ | 0.0 | Rounded corner radius |
+| roundCorner | integer | ❌ | 0 | Rounded corner radius (0-100), rectangle mask only |
 
 ## Response Format
 
@@ -57,6 +57,8 @@ Add mask effects to existing drafts. This interface is used to add various shape
 
 ```json
 {
+  "code": 0,
+  "message": "success",
   "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
   "masks_added": 2,
   "affected_segments": ["segment1-uuid", "segment2-uuid"],
@@ -73,11 +75,12 @@ Add mask effects to existing drafts. This interface is used to add various shape
 | affected_segments | array | List of affected segment IDs |
 | mask_ids | array | List of added mask IDs |
 
-### Error Response (4xx/5xx)
+### Error Response
 
 ```json
 {
-  "detail": "Error message description"
+  "code": 2023,
+  "message": "Invalid mask information, please check if mask parameters are correct."
 }
 ```
 
@@ -93,11 +96,11 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_masks \
   -d '{
     "draft_url": "YOUR_DRAFT_URL",
     "segment_ids": ["segment1-uuid"],
-    "name": "Circle Mask",
-    "X": 0.5,
-    "Y": 0.5,
-    "width": 0.4,
-    "height": 0.4
+    "name": "圆形",
+    "X": 0,
+    "Y": 0,
+    "width": 400,
+    "height": 400
   }'
 ```
 
@@ -109,13 +112,13 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_masks \
   -d '{
     "draft_url": "YOUR_DRAFT_URL",
     "segment_ids": ["segment1-uuid", "segment2-uuid"],
-    "name": "Rectangle Mask",
-    "X": 0.3,
-    "Y": 0.4,
-    "width": 0.5,
-    "height": 0.3,
-    "feather": 0.1,
-    "roundCorner": 0.1
+    "name": "矩形",
+    "X": 100,
+    "Y": 50,
+    "width": 400,
+    "height": 300,
+    "feather": 10,
+    "roundCorner": 10
   }'
 ```
 
@@ -127,11 +130,11 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_masks \
   -d '{
     "draft_url": "YOUR_DRAFT_URL",
     "segment_ids": ["segment1-uuid"],
-    "name": "Heart Mask",
-    "X": 0.5,
-    "Y": 0.5,
-    "width": 0.3,
-    "height": 0.3,
+    "name": "爱心",
+    "X": 0,
+    "Y": 0,
+    "width": 300,
+    "height": 300,
     "invert": true
   }'
 ```
@@ -140,20 +143,20 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_masks \
 
 | Error Code | Error Message | Description | Solution |
 |------------|---------------|-------------|----------|
-| 400 | draft_url is required | Missing draft URL parameter | Provide a valid draft URL |
-| 400 | segment_ids is required | Missing segment IDs | Provide valid segment ID list |
-| 400 | name is required | Missing mask name | Provide mask name |
-| 400 | Position values invalid | X/Y must be between 0.0-1.0 | Use valid position values |
-| 400 | Size values invalid | width/height must be between 0.0-1.0 | Use valid size values |
-| 404 | Draft does not exist | Specified draft URL invalid | Check if draft URL is correct |
-| 404 | Segment not found | Specified segment ID does not exist | Check segment IDs |
-| 500 | Mask processing failed | Internal processing error | Contact technical support |
+| 1001 | Parameter validation failed | Request body failed schema validation (e.g. a non-integer `X` / `width`) | Check parameter types and required fields |
+| 2001 | Invalid draft URL | `draft_url` is missing, malformed, or the draft is not in the cache | Pass the `draft_url` returned by `create_draft` |
+| 2015 | Segment not found | A `segment_id` does not exist in the draft | Check the segment IDs |
+| 2016 | Invalid segment type | The segment is not a video segment, which cannot take a mask | Apply masks only to video segments |
+| 2023 | Invalid mask information | `segment_ids` is empty | Provide at least one segment ID |
+| 2024 | Mask addition failed | Failed while writing the mask into the draft | Check the draft state and retry |
+| 2025 | Mask type not found | `name` is not one of the supported mask names | Use `线性` / `镜面` / `圆形` / `矩形` / `爱心` / `星形` |
+| 2042 | Draft lock acquisition timeout | Only one operation is allowed on a draft at a time | Retry later |
 
 ## Notes
 
-1. **Coordinate System**: Position values use normalized coordinates (0.0-1.0)
-2. **Size Values**: Width and height are relative to screen size
-3. **Mask Types**: Support various mask shapes (circle, rectangle, heart, etc.)
+1. **Coordinate System**: `X` / `Y` are pixels, with the origin at the material center (positive X = right, positive Y = down)
+2. **Size Values**: `width` / `height` are pixels (default 512), not normalized ratios
+3. **Mask Types**: `name` must be the Chinese mask name — `线性` / `镜面` / `圆形` / `矩形` / `爱心` / `星形`; an unknown name returns error 2025
 4. **Feather Effect**: Softens mask edges for natural transitions
 5. **Rotation**: Rotation angle in degrees
 6. **Invert**: When true, shows area outside the mask
@@ -164,7 +167,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_masks \
 2. Check segment existence
 3. Create mask with specified parameters
 4. Apply mask to segments
-5. Save and encrypt draft
+5. Save the draft
 6. Return processing result
 
 ## Related Interfaces

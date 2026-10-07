@@ -40,8 +40,8 @@ Add images to existing drafts. This interface is used to add image materials to 
 | alpha | number | ❌ | 1.0 | Image transparency, recommended range [0.0, 1.0] |
 | scale_x | number | ❌ | 1.0 | Image X-axis scaling ratio |
 | scale_y | number | ❌ | 1.0 | Image Y-axis scaling ratio |
-| transform_x | number | ❌ | 0 | X-axis position offset (pixels) |
-| transform_y | number | ❌ | 0 | Y-axis position offset (pixels) |
+| transform_x | integer | ❌ | 0 | X-axis position offset (pixels) |
+| transform_y | integer | ❌ | 0 | Y-axis position offset (pixels) |
 
 ### image_infos Array Structure
 
@@ -59,7 +59,7 @@ Add images to existing drafts. This interface is used to add image materials to 
 | out_animation_duration | number | ❌ | - | Outro animation duration in μs (optional) |
 | loop_animation_duration | number | ❌ | - | Single loop duration in μs (optional) |
 | transition | string | ❌ | - | Transition name from Transitions below |
-| transition_duration | number | ❌ | 500000 | Transition duration in μs (optional), range 100000–2500000 |
+| transition_duration | number | ❌ | - | Transition duration in μs (optional); omit to use the transition type's default duration |
 
 ### Parameter Details
 
@@ -997,6 +997,8 @@ PASSION
 
 ```json
 {
+  "code": 0,
+  "message": "success",
   "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
   "track_id": "video-track-uuid",
   "image_ids": ["image1-uuid", "image2-uuid"],
@@ -1021,11 +1023,12 @@ PASSION
 | segment_ids | array | List of segment IDs |
 | segment_infos | array | List of segment information, containing ID, start time and end time for each segment |
 
-### Error Response (4xx/5xx)
+### Error Response
 
 ```json
 {
-  "detail": "Error message description"
+  "code": 2009,
+  "message": "Invalid image information, please check if the value of the image_infos field is correct."
 }
 ```
 
@@ -1075,15 +1078,12 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_images \
 
 | Error Code | Error Message | Description | Solution |
 |------------|---------------|-------------|----------|
-| 400 | draft_url is required | Missing draft URL parameter | Provide a valid draft_url |
-| 400 | image_infos is required | Missing image information parameter | Provide valid image_infos |
-| 400 | image_url is required | Image URL missing | Provide URL for each image |
-| 400 | Image dimensions invalid | Explicit width or height ≤ 0 | Omit width/height, or pass positive integers |
-| 400 | Time range invalid | end must be greater than start | Ensure end time is greater than start time |
-| 400 | Transparency invalid | alpha exceeds recommended range | Use transparency value within 0.0-1.0 range |
-| 404 | Draft does not exist | Specified draft URL invalid | Check if draft URL is correct |
-| 404 | Image does not exist | Specified image URL invalid | Confirm if image URL is correct |
-| 500 | Image addition failed | Internal processing error | Contact technical support |
+| 1001 | Parameter validation failed | Request body failed schema validation: `image_infos` is not valid JSON, is not an array, or an item's `image_url` does not start with `http://` / `https://` | Check parameter types and required fields |
+| 2001 | Invalid draft URL | `draft_url` is missing, malformed, or the draft is not in the cache | Pass the `draft_url` returned by `create_draft` |
+| 2005 | Download file failed | Failed to download an image file | Check that each `image_url` is reachable |
+| 2009 | Invalid image information | `image_infos` is not valid JSON, is not an array, an item is missing `image_url`/`start`/`end`, an explicit `width`/`height` is ≤ 0, or `end` is not greater than `start` | Fix the JSON string and each item's fields |
+| 2010 | Image addition failed | Failed while writing the images into the draft | Check the draft state and retry |
+| 2042 | Draft lock acquisition timeout | Only one operation is allowed on a draft at a time | Retry later |
 
 ## Notes
 

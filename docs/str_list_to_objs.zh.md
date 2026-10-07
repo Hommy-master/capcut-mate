@@ -1,7 +1,7 @@
 # STR_LIST_TO_OBJS API 接口文档
 
 ## 🌐 语言切换
-[中文版](./add_audios.zh.md) | [English](./add_audios.md)
+[中文版](./str_list_to_objs.zh.md) | [English](./str_list_to_objs.md)
 
 ## 接口信息
 
@@ -48,6 +48,8 @@ POST /openapi/capcut-mate/v1/str_list_to_objs
 
 ```json
 {
+  "code": 0,
+  "message": "success",
   "infos": [
     {
       "output": "https://assets.jcaigc.cn/min.mp4"
@@ -66,11 +68,12 @@ POST /openapi/capcut-mate/v1/str_list_to_objs
 | infos | array[object] | 对象列表 |
 | output | string | URL地址 |
 
-### 错误响应 (4xx/5xx)
+### 错误响应
 
 ```json
 {
-  "detail": "错误信息描述"
+  "code": 1001,
+  "message": "参数校验失败"
 }
 ```
 
@@ -95,8 +98,8 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/str_list_to_ob
 
 | 错误码 | 错误信息 | 说明 | 解决方案 |
 |--------|----------|------|----------|
-| 400 | infos是必填项 | 缺少infos参数 | 提供有效的infos参数 |
-| 500 | 字符串列表转换失败 | 内部处理错误 | 联系技术支持 |
+| 1001 | 参数校验失败 | 缺少 infos 参数（请求体未通过参数校验） | 提供有效的infos参数 |
+| 9999 | 未知异常 | 内部处理异常 | 联系技术支持 |
 
 ## 注意事项
 

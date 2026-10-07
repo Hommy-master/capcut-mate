@@ -46,6 +46,8 @@ Save Jianying draft. This interface is used to save the current draft state, ens
 
 ```json
 {
+  "code": 0,
+  "message": "success",
   "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258"
 }
 ```
@@ -56,11 +58,12 @@ Save Jianying draft. This interface is used to save the current draft state, ens
 |-------|------|-------------|
 | draft_url | string | Saved draft URL, usually the same as the URL in the request |
 
-### Error Response (4xx/5xx)
+### Error Response
 
 ```json
 {
-  "detail": "Error message description"
+  "code": 2001,
+  "message": "Invalid draft URL"
 }
 ```
 
@@ -82,18 +85,16 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/save_draft \
 
 | Error Code | Error Message | Description | Solution |
 |------------|---------------|-------------|----------|
-| 400 | draft_url is required | Missing draft URL parameter | Provide a valid draft_url |
-| 400 | Invalid draft_url format | URL format is incorrect | Check if URL format is correct |
-| 404 | Draft does not exist | Specified draft cannot be found | Confirm that draft URL is correct and exists |
-| 500 | Save failed | Internal service error | Contact technical support or retry later |
-| 503 | Service unavailable | System maintenance | Retry later |
+| 1001 | Parameter validation failed | `draft_url` is not a string | Check parameter types |
+| 2001 | Invalid draft URL | `draft_url` has no `draft_id`, or the draft is not in the cache | Pass the `draft_url` returned by `create_draft` |
+| 2042 | Draft lock acquisition timeout | The draft is locked by another operation and the 30-second wait timed out | Retry later |
 
 ## Notes
 
 1. **URL Validity**: Ensure the passed draft_url is valid and exists
 2. **Network Stability**: Save operation requires stable network connection
 3. **Frequency Control**: Avoid overly frequent save operations
-4. **Concurrency Safety**: Concurrent saves of the same draft may cause conflicts
+4. **Concurrency Safety**: Concurrent operations on the same draft are serialized by a draft lock; a request that cannot acquire the lock within 30 seconds returns error code `2042`
 
 ## Workflow
 

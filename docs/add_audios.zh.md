@@ -75,6 +75,8 @@ audio_infos是一个JSON字符串，解析后为数组，每个元素包含以�
 
 ```json
 {
+  "code": 0,
+  "message": "success",
   "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
   "track_id": "audio-track-uuid",
   "audio_ids": ["audio1-uuid", "audio2-uuid", "audio3-uuid"]
@@ -89,11 +91,12 @@ audio_infos是一个JSON字符串，解析后为数组，每个元素包含以�
 | track_id | string | 音频轨道ID |
 | audio_ids | array | 添加的音频ID列表 |
 
-### 错误响应 (4xx/5xx)
+### 错误响应
 
 ```json
 {
-  "detail": "错误信息描述"
+  "code": 2007,
+  "message": "无效的音频信息，请检查audio_infos字段值是否正确"
 }
 ```
 
@@ -138,16 +141,12 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_audios \
 
 | 错误码 | 错误信息 | 说明 | 解决方案 |
 |--------|----------|------|----------|
-| 400 | draft_url是必填项 | 缺少草稿URL参数 | 提供有效的草稿URL |
-| 400 | audio_infos是必填项 | 缺少音频信息参数 | 提供有效的音频信息JSON |
-| 400 | audio_infos格式错误 | JSON格式不正确 | 检查JSON字符串格式 |
-| 400 | 音频配置验证失败 | 音频参数不符合要求 | 检查每个音频的参数 |
-| 400 | audio_url是必填项 | 音频URL缺失 | 为每个音频提供URL |
-| 400 | 时间范围无效 | end必须大于start | 确保结束时间大于开始时间 |
-| 400 | 音量值无效 | volume不在0.0-2.0范围内 | 使用0.0-2.0之间的音量值 |
-| 404 | 草稿不存在 | 指定的草稿URL无效 | 检查草稿URL是否正确 |
-| 404 | 音频资源不存在 | 音频URL无法访问 | 检查音频URL是否可访问 |
-| 500 | 音频处理失败 | 内部处理错误 | 联系技术支持 |
+| 1001 | 参数校验失败 | 请求体未通过字段校验，如 `audio_infos` 不是合法 JSON、不是数组，或 `audio_url` 未以 `http://` / `https://` 开头 | 检查参数类型与必填字段 |
+| 2001 | 无效的草稿URL | `draft_url` 缺失、格式错误，或草稿不在缓存中 | 传入 `create_draft` 返回的 `draft_url` |
+| 2005 | 下载文件失败 | 无法从 `audio_url` 下载音频文件 | 检查音频 URL 是否可公开访问 |
+| 2007 | 无效的音频信息 | `audio_infos` 不是合法 JSON、某项缺少 `audio_url`/`start`/`end`、`start` 为负、`end` 不大于 `start`，或 `duration` 不为正数 | 修正 JSON 字符串与必填字段 |
+| 2008 | 音频添加失败 | 添加音频片段或保存草稿时出错 | 检查草稿状态后重试 |
+| 2042 | 草稿锁获取超时 | 同一时间只允许一个操作，草稿正被占用 | 稍后重试 |
 
 ## 注意事项
 

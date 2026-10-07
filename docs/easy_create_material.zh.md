@@ -1,7 +1,7 @@
 # EASY_CREATE_MATERIAL API 接口文档
 
 ## 🌐 语言切换
-[中文版](./add_audios.zh.md) | [English](./add_audios.md)
+[中文版](./easy_create_material.zh.md) | [English](./easy_create_material.md)
 
 ## 接口信息
 
@@ -95,7 +95,7 @@ POST /openapi/capcut-mate/v1/easy_create_material
 #### 素材处理规则
 
 - **音频处理**：
-  - 自动解析音频时长
+  - 固定 5 秒时长（音频实际更短时取实际时长）
   - 添加到音频轨道
   - 支持多种音频格式
 
@@ -120,6 +120,8 @@ POST /openapi/capcut-mate/v1/easy_create_material
 
 ```json
 {
+  "code": 0,
+  "message": "success",
   "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258"
 }
 ```
@@ -130,11 +132,12 @@ POST /openapi/capcut-mate/v1/easy_create_material
 |--------|------|------|
 | draft_url | string | 更新后的草稿URL |
 
-### 错误响应 (4xx/5xx)
+### 错误响应
 
 ```json
 {
-  "detail": "错误信息描述"
+  "code": 2028,
+  "message": "素材创建失败"
 }
 ```
 
@@ -188,11 +191,10 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/easy_create_ma
 
 | 错误码 | 错误信息 | 说明 | 解决方案 |
 |--------|----------|------|----------|
-| 400 | draft_url是必填项 | 缺少草稿URL参数 | 提供有效的draft_url |
-| 400 | audio_url是必填项 | 缺少音频URL参数 | 提供有效的audio_url |
-| 400 | 无效的草稿信息，请检查草稿参数是否正确 | 草稿参数校验失败 | 检查草稿参数是否符合要求 |
-| 404 | 草稿不存在 | 指定的草稿URL无效 | 检查草稿URL是否正确 |
-| 500 | 素材创建失败 | 内部处理错误 | 联系技术支持 |
+| 1001 | 参数校验失败 | `draft_url` 或 `audio_url` 缺失，或素材 URL 不是以 `http://` / `https://` 开头 | 检查参数类型与必填字段 |
+| 2001 | 无效的草稿URL | `draft_url` 缺少 `draft_id`，或草稿不在缓存中 | 传入 `create_draft` 返回的 `draft_url` |
+| 2028 | 素材创建失败 | 写入草稿过程出错 | 检查草稿状态与素材 URL 后重试 |
+| 2042 | 草稿锁获取超时 | 同一草稿正在被其他操作占用（超时 30 秒） | 稍后重试 |
 
 ## 注意事项
 
@@ -202,7 +204,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/easy_create_ma
 4. **字体大小**: font_size建议范围10-50
 5. **位置偏移**: text_transform_y用于调整文字在画面中的垂直位置
 6. **时长设置**: 不同素材类型有不同的默认显示时长
-   - 音频：自动获取原始时长
+   - 音频：固定 5 秒（音频实际更短时取实际时长）
    - 视频：固定5秒
    - 图片：默认3秒
    - 文字：默认5秒

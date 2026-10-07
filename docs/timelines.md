@@ -24,7 +24,7 @@ Create timelines based on specified duration and quantity. This interface is use
   "duration": 10000000,
   "num": 3,
   "start": 0,
-  "type": "equal"
+  "type": 0
 }
 ```
 
@@ -32,36 +32,35 @@ Create timelines based on specified duration and quantity. This interface is use
 
 | Parameter | Type | Required | Default | Description |
 |-----------|------|----------|---------|-------------|
-| duration | number |✅ | - | Total duration (microseconds) |
-| num | number |✅ | - | Number of time segments |
-| start | number |❌ | 0 | Start time (microseconds) |
-| type | string |❌ | "equal" | Timeline type |
+| duration | integer |✅ | - | Total duration (microseconds) |
+| num | integer |✅ | - | Number of time segments |
+| start | integer |✅ | - | Start time (microseconds) |
+| type | integer |✅ | - | 0: equal split, 1: random split |
 
 ### Parameter Details
 
 #### duration
-- **Type**: number
+- **Type**: integer
 - **Description**: Total duration in microseconds (1 second = 1,000,000 microseconds)
 - **Example**: 10000000 (10 seconds)
 
 #### num
-- **Type**: number
+- **Type**: integer
 - **Description**: Number of time segments to create
 - **Example**: 3 (Create 3 time segments)
 
 #### start
-- **Type**: number
+- **Type**: integer
 - **Description**: Start time of the timeline in microseconds
-- **Default**: 0
 - **Example**: 2000000 (Start from 2 seconds)
 
 #### type
-- **Type**: string
+- **Type**: integer
 - **Description**: Timeline segmentation type
 - **Options**: 
-  - "equal" - Equal division timeline
-  - "custom" - Custom timeline
-- **Default**: "equal"
+  - 0 - Equal division timeline
+  - 1 - Random timeline
+- **Example**: 0
 
 ## Response Format
 
@@ -69,6 +68,8 @@ Create timelines based on specified duration and quantity. This interface is use
 
 ```json
 {
+  "code": 0,
+  "message": "success",
   "timelines": [
     {
       "start": 0,
@@ -101,11 +102,12 @@ Create timelines based on specified duration and quantity. This interface is use
 | start | number | Start time of time segment (microseconds) |
 | end | number | End time of time segment (microseconds) |
 
-### Error Response (4xx/5xx)
+### Error Response
 
 ```json
 {
-  "detail": "Error message description"
+  "code": 1001,
+  "message": "Parameter validation failed"
 }
 ```
 
@@ -122,7 +124,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/timelines \
     "duration": 15000000,
     "num": 5,
     "start": 0,
-    "type": "equal"
+    "type": 0
   }'
 ```
 
@@ -135,7 +137,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/timelines \
     "duration": 20000000,
     "num": 4,
     "start": 5000000,
-    "type": "equal"
+    "type": 0
   }'
 ```
 
@@ -143,25 +145,20 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/timelines \
 
 | Error Code | Error Message | Description | Solution |
 |------------|---------------|-------------|----------|
-| 400 | duration is required | Missing total duration parameter | Provide valid duration parameter |
-| 400 | num is required | Missing time segment count parameter | Provide valid num parameter |
-| 400 | duration must be greater than 0 | Invalid duration parameter | Use duration value greater than 0 |
-| 400 | num must be greater than 0 | Invalid count parameter | Use count value greater than 0 |
-| 400 | Invalid timeline type | Unsupported type parameter | Use supported timeline type |
-| 500 | Timeline calculation failed | Internal processing error | Contact technical support |
+| 1001 | Parameter validation failed | Request body failed schema validation (`duration`/`num`/`start`/`type` missing or not integers) | Check parameter types and required fields |
 
 ## Notes
 
 1. **Time Unit**: All time parameters use microseconds (1 second = 1,000,000 microseconds)
-2. **Parameter Requirements**: duration and num are required parameters
-3. **Time Range**: Ensure start + (duration/num) * num <= total duration
+2. **Parameter Requirements**: duration, num, start and type are required parameters
+3. **Time Range**: `all_timelines` spans `start` to `start + duration`, and the segmented timelines are generated inside that range
 4. **Type Selection**: Choose appropriate timeline type based on actual needs
 5. **Precision Consideration**: Microsecond-level time precision is suitable for precise video editing
 
 ## Workflow
 
-1. Validate required parameters (duration, num)
-2. Check parameter validity (positive numbers, reasonable range)
+1. Validate required parameters (duration, num, start, type)
+2. Check parameter types (integers)
 3. Calculate timeline segmentation method based on type
 4. Generate segmented timeline array
 5. Generate complete timeline array

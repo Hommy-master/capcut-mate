@@ -38,7 +38,7 @@ POST /openapi/capcut-mate/v1/audio_infos
 | mp3_urls | array[string] |✅ | - | 音频文件URL数组 |
 | timelines | array[object] |✅ | - | 时间线配置数组 |
 | audio_effect | string |❌ | None | 音频效果名称 |
-| volume | number |❌ | 1.0 |音量大小(0.0-2.0) |
+| volume | number |❌ | None |音量大小(0.0-2.0) |
 
 ### 参数详解
 
@@ -61,7 +61,7 @@ POST /openapi/capcut-mate/v1/audio_infos
 #### volume
 - **类型**: number
 - **说明**: 音频音量大小
-- **默认值**: 1.0
+- **默认值**: None
 - **范围**: 0.0 - 2.0
 - **示例**: 0.8 (80%音量)
 
@@ -71,7 +71,9 @@ POST /openapi/capcut-mate/v1/audio_infos
 
 ```json
 {
-  "infos": "[{\"audio_url\":\"https://assets.jcaigc.cn/audio1.mp3\",\"start\":0,\"end\":3000000,\"duration\":5000000,\"volume\":0.8,\"audio_effect\":\"reverb\"},{\"audio_url\":\"https://assets.jcaigc.cn/audio2.mp3\",\"start\":3000000,\"end\":8000000,\"duration\":8000000,\"volume\":1.0,\"audio_effect\":null}]"
+  "code": 0,
+  "message": "success",
+  "infos": "[{\"audio_url\":\"https://assets.jcaigc.cn/audio1.mp3\",\"start\":0,\"end\":3000000,\"audio_effect\":\"reverb\",\"volume\":0.8},{\"audio_url\":\"https://assets.jcaigc.cn/audio2.mp3\",\"start\":3000000,\"end\":8000000,\"audio_effect\":\"reverb\",\"volume\":0.8}]"
 }
 ```
 
@@ -81,11 +83,12 @@ POST /openapi/capcut-mate/v1/audio_infos
 |--------|------|------|
 | infos | string |音信息JSON字符串 |
 
-###错误响应 (4xx/5xx)
+### 错误响应
 
 ```json
 {
-  "detail": "错误信息描述"
+  "code": 1001,
+  "message": "参数校验失败"
 }
 ```
 
@@ -122,16 +125,11 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/audio_infos \
 
 |错误码 | 错误信息 | 说明 | 解决方案 |
 |--------|----------|------|----------|
-| 400 | mp3_urls是必填项 |缺少音频URL参数 | 提供有效的音频URL数组 |
-| 400 | timelines是必填项 |缺少时间线参数 | 提供有效的时间线数组 |
-| 400 | 数组长度不匹配 | mp3_urls和timelines长度不一致 |确保两个数组长度相同 |
-| 400 | volume值无效 |音不在0.0-2.0范围内 | 使用0.0-2.0之间的音量值 |
-| 404 |音频资源不存在 |音频URL无法访问 |检查音频URL是否可访问 |
-| 500 |音频信息生成失败 |内部处理错误 |联技术支持 |
+| 1001 | 参数校验失败 | 请求体未通过字段校验（缺少 `mp3_urls`/`timelines`、时间线项缺少 `start`/`end`，或类型错误） | 检查参数类型与必填字段 |
 
 ## 注意事项
 
-1. **数组匹配**: mp3_urls和timelines数组长度必须相同
+1. **数组匹配**: `mp3_urls` 与 `timelines` 长度不一致时，按较短长度截断后继续生成（不会直接报错）
 2. **时间单位**:所有时间参数使用微秒（1秒 = 1,000,000微秒）
 3. **音量范围**: volume值必须在0.0-2.0范围内
 4. **效果支持**: audio_effect需要是系统支持的音频效果名称
@@ -141,9 +139,9 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/audio_infos \
 ##工作流程
 
 1.验证必填参数（mp3_urls, timelines）
-2.检查数组长度匹配
+2.按较短长度对齐两个数组
 3.验证时间线参数有效性
-4.验证音量参数范围
+4. 读取可选的 volume 和 audio_effect 参数
 5. 为每个音频URL生成对应的音频信息
 6.应用音量和音频效果设置
 7.将信息转换为JSON字符串格式

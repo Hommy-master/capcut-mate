@@ -1,7 +1,7 @@
 # ADD_STICKER API 接口文档
 
 ## 🌐 语言切换
-[中文版](./add_audios.zh.md) | [English](./add_audios.md)
+[中文版](./add_sticker.zh.md) | [English](./add_sticker.md)
 
 ## 接口信息
 
@@ -65,13 +65,13 @@ POST /openapi/capcut-mate/v1/add_sticker
   - 正值向右移动
   - 负值向左移动
   - 以画布中心为原点
-  - 实际存储时会转换为半画布宽单位（假设画布宽度1920，即除以960）
+  - 实际存储时会转换为半画布宽单位（除以草稿画布宽度，如1920×1080草稿即除以1920）
 
 - **transform_y**: 贴纸在Y轴方向的位置偏移，单位为像素
   - 正值向下移动
   - 负值向上移动
   - 以画布中心为原点
-  - 实际存储时会转换为半画布高单位（假设画布高度1080，即除以540）
+  - 实际存储时会转换为半画布高单位（除以草稿画布高度，如1920×1080草稿即除以1080）
 
 #### 贴纸ID说明
 
@@ -86,6 +86,8 @@ POST /openapi/capcut-mate/v1/add_sticker
 
 ```json
 {
+  "code": 0,
+  "message": "success",
   "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
   "sticker_id": "7326810673609018675",
   "track_id": "track-uuid",
@@ -104,11 +106,12 @@ POST /openapi/capcut-mate/v1/add_sticker
 | segment_id | string | 贴纸片段ID |
 | duration | number | 贴纸显示时长（微秒） |
 
-### 错误响应 (4xx/5xx)
+### 错误响应
 
 ```json
 {
-  "detail": "错误信息描述"
+  "code": 2011,
+  "message": "无效的贴纸信息，请检查贴纸参数是否正确"
 }
 ```
 
@@ -163,16 +166,11 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_sticker \
 
 | 错误码 | 错误信息 | 说明 | 解决方案 |
 |--------|----------|------|----------|
-| 400 | draft_url是必填项 | 缺少草稿URL参数 | 提供有效的draft_url |
-| 400 | sticker_id是必填项 | 缺少贴纸ID参数 | 提供有效的sticker_id |
-| 400 | start是必填项 | 缺少开始时间参数 | 提供有效的start时间 |
-| 400 | end是必填项 | 缺少结束时间参数 | 提供有效的end时间 |
-| 400 | 时间范围无效 | end必须大于start | 确保结束时间大于开始时间 |
-| 400 | 缩放比例无效 | scale超出建议范围 | 使用0.1-5.0范围内的缩放值 |
-| 400 | 无效的贴纸信息，请检查贴纸参数是否正确 | 贴纸参数校验失败 | 检查贴纸参数是否符合要求 |
-| 404 | 草稿不存在 | 指定的草稿URL无效 | 检查草稿URL是否正确 |
-| 404 | 贴纸不存在 | 指定的贴纸ID无效 | 确认贴纸ID是否正确 |
-| 500 | 贴纸添加失败 | 内部处理错误 | 联系技术支持 |
+| 1001 | 参数校验失败 | 请求体未通过字段校验，如缺少必填字段或字段类型错误 | 检查参数类型与必填字段 |
+| 2001 | 无效的草稿URL | `draft_url` 缺失、格式错误，或草稿不在缓存中 | 传入 `create_draft` 返回的 `draft_url` |
+| 2011 | 无效的贴纸信息 | `end` 不大于 `start` | 确保结束时间大于开始时间 |
+| 2012 | 贴纸添加失败 | 创建贴纸轨道/片段或保存草稿时出错 | 检查草稿状态后重试 |
+| 2042 | 草稿锁获取超时 | 同一时间只允许一个操作，草稿正被占用 | 稍后重试 |
 
 ## 注意事项
 
@@ -181,8 +179,8 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_sticker \
 3. **时间范围**: end必须大于start
 4. **缩放范围**: scale建议在0.1-5.0范围内
 5. **位置参数**: transform_x和transform_y单位为像素，但内部会转换为半画布单位存储
-   - transform_x转换公式：实际值 / 960（假设画布宽度1920）
-   - transform_y转换公式：实际值 / 540（假设画布高度1080）
+   - transform_x转换公式：实际值 / 草稿画布宽度（如1920）
+   - transform_y转换公式：实际值 / 草稿画布高度（如1080）
 6. **轨道管理**: 系统自动创建贴纸轨道
 7. **性能考虑**: 避免同时添加大量贴纸
 

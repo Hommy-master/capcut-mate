@@ -116,6 +116,8 @@ Build a caption-info JSON string from text list + timelines. The result can be p
 
 ```json
 {
+  "code": 0,
+  "message": "success",
   "infos": "[{\"start\":0,\"end\":3000000,\"text\":\"Welcome to the CapCut tutorial\",\"keyword\":\"CapCut\",\"keyword_color\":\"#FF5500\",\"keyword_border_color\":\"#000000\",\"keyword_font\":\"思源中宋\",\"keyword_font_size\":28,\"keyword_has_shadow\":true,\"keyword_shadow_info\":{\"shadow_alpha\":0.85,\"shadow_color\":\"#000000\",\"shadow_diffuse\":18.0,\"shadow_distance\":6.0,\"shadow_angle\":-45.0},\"font_size\":24,\"in_animation\":\"向上滑动\",\"in_animation_duration\":500000,\"loop_animation\":\"弹幕滚动\",\"loop_animation_duration\":1000000,\"out_animation\":\"向下滑动\",\"out_animation_duration\":500000,\"transition\":\"淡入淡出\",\"transition_duration\":300000},{\"start\":3000000,\"end\":6000000,\"text\":\"This is a caption example\",\"keyword\":\"caption\",\"keyword_color\":\"#FF5500\",\"keyword_border_color\":\"#000000\",\"keyword_font\":\"思源中宋\",\"keyword_font_size\":28,\"keyword_has_shadow\":true,\"keyword_shadow_info\":{\"shadow_alpha\":0.85,\"shadow_color\":\"#000000\",\"shadow_diffuse\":18.0,\"shadow_distance\":6.0,\"shadow_angle\":-45.0},\"font_size\":24,\"in_animation\":\"向上滑动\",\"in_animation_duration\":500000,\"loop_animation\":\"弹幕滚动\",\"loop_animation_duration\":1000000,\"out_animation\":\"向下滑动\",\"out_animation_duration\":500000,\"transition\":\"淡入淡出\",\"transition_duration\":300000}]"
 }
 ```
@@ -126,11 +128,12 @@ Build a caption-info JSON string from text list + timelines. The result can be p
 |-------|------|-------------|
 | infos | string | Caption info JSON string; usable as `add_captions.captions` |
 
-### Error Response (4xx/5xx)
+### Error Response
 
 ```json
 {
-  "detail": "Error message description"
+  "code": 1001,
+  "message": "Parameter validation failed"
 }
 ```
 
@@ -261,9 +264,9 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_captions \
 
 | Error Code | Error Message | Description | Solution |
 |------------|---------------|-------------|----------|
-| 400 | texts is required | Missing texts | Provide non-empty `texts` |
-| 400 | timelines is required | Missing timelines | Provide valid `timelines` |
-| 500 | Caption information generation failed | Internal error | Contact support |
+| 1001 | Parameter validation failed | Missing texts | Provide non-empty `texts` |
+| 1001 | Parameter validation failed | Missing timelines | Provide valid `timelines` |
+| 9998 | Internal server error | Internal error | Contact support |
 
 ## Notes
 

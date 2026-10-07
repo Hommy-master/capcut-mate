@@ -65,13 +65,13 @@ Add stickers to existing drafts. This interface is used to add sticker materials
   - Positive values move right
   - Negative values move left
   - Origin at canvas center
-  - Actually stored in half canvas width units (assuming canvas width 1920, i.e., divided by 960)
+  - Actually stored in half canvas width units (divided by the draft canvas width, e.g. 1920 for a 1920×1080 draft)
 
 - **transform_y**: Y-axis position offset of the sticker, unit pixels
   - Positive values move down
   - Negative values move up
   - Origin at canvas center
-  - Actually stored in half canvas height units (assuming canvas height 1080, i.e., divided by 540)
+  - Actually stored in half canvas height units (divided by the draft canvas height, e.g. 1080 for a 1920×1080 draft)
 
 #### Sticker ID Description
 
@@ -86,6 +86,8 @@ Add stickers to existing drafts. This interface is used to add sticker materials
 
 ```json
 {
+  "code": 0,
+  "message": "success",
   "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
   "sticker_id": "7326810673609018675",
   "track_id": "track-uuid",
@@ -104,11 +106,12 @@ Add stickers to existing drafts. This interface is used to add sticker materials
 | segment_id | string | Sticker segment ID |
 | duration | number | Sticker display duration (microseconds) |
 
-### Error Response (4xx/5xx)
+### Error Response
 
 ```json
 {
-  "detail": "Error message description"
+  "code": 2011,
+  "message": "Invalid sticker information, please check if sticker parameters are correct."
 }
 ```
 
@@ -163,16 +166,11 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_sticker \
 
 | Error Code | Error Message | Description | Solution |
 |------------|---------------|-------------|----------|
-| 400 | draft_url is required | Missing draft URL parameter | Provide a valid draft_url |
-| 400 | sticker_id is required | Missing sticker ID parameter | Provide a valid sticker_id |
-| 400 | start is required | Missing start time parameter | Provide a valid start time |
-| 400 | end is required | Missing end time parameter | Provide a valid end time |
-| 400 | Time range invalid | end must be greater than start | Ensure end time is greater than start time |
-| 400 | Scale ratio invalid | scale out of recommended range | Use scale values within 0.1-5.0 range |
-| 400 | Invalid sticker information, please check sticker parameters | Sticker parameter validation failed | Check if sticker parameters meet requirements |
-| 404 | Draft does not exist | Specified draft URL invalid | Check if draft URL is correct |
-| 404 | Sticker does not exist | Specified sticker ID invalid | Confirm if sticker ID is correct |
-| 500 | Sticker addition failed | Internal processing error | Contact technical support |
+| 1001 | Parameter validation failed | Request body failed schema validation, e.g. a required field is missing or has the wrong type | Check parameter types and required fields |
+| 2001 | Invalid draft URL | `draft_url` is missing, malformed, or the draft is not in the cache | Pass the `draft_url` returned by `create_draft` |
+| 2011 | Invalid sticker information | `end` is not greater than `start` | Ensure end time is greater than start time |
+| 2012 | Sticker addition failed | Failed while creating the sticker track/segment or saving the draft | Check the draft state and retry |
+| 2042 | Draft lock acquisition timeout | Only one operation is allowed on a draft at a time | Retry later |
 
 ## Notes
 
@@ -181,8 +179,8 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_sticker \
 3. **Time Range**: end must be greater than start
 4. **Scale Range**: scale recommended within 0.1-5.0 range
 5. **Position Parameters**: transform_x and transform_y units are pixels, but internally converted to half canvas units for storage
-   - transform_x conversion formula: actual value / 960 (assuming canvas width 1920)
-   - transform_y conversion formula: actual value / 540 (assuming canvas height 1080)
+   - transform_x conversion formula: actual value / draft canvas width (e.g. 1920)
+   - transform_y conversion formula: actual value / draft canvas height (e.g. 1080)
 6. **Track Management**: System automatically creates sticker track
 7. **Performance Consideration**: Avoid adding large numbers of stickers simultaneously
 

@@ -1,7 +1,7 @@
 # CREATE_DRAFT API 接口文档
 
 ## 🌐 语言切换
-[中文版](./add_audios.zh.md) | [English](./add_audios.md)
+[中文版](./create_draft.zh.md) | [English](./create_draft.md)
 
 ## 接口信息
 
@@ -30,8 +30,8 @@ POST /openapi/capcut-mate/v1/create_draft
 
 | 参数名 | 类型 | 必填 | 默认值 | 说明 |
 |--------|------|------|--------|------|
-| width | number | ❌ | 1920 | 视频宽度(像素)，必须大于等于1 |
-| height | number | ❌ | 1080 | 视频高度(像素)，必须大于等于1 |
+| width | integer | ❌ | 1920 | 视频宽度(像素)，必须大于等于1 |
+| height | integer | ❌ | 1080 | 视频高度(像素)，必须大于等于1 |
 
 ### 参数详解
 
@@ -63,8 +63,10 @@ POST /openapi/capcut-mate/v1/create_draft
 
 ```json
 {
-  "draft_url": "https://cm.jcaigc.cn/openapi/v1/get_draft?draft_id=2025092811473036584258",
-  "tip_url": "https://help.assets.jcaigc.cn/draft-usage"
+  "code": 0,
+  "message": "success",
+  "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
+  "tip_url": "https://docs.jcaigc.cn/"
 }
 ```
 
@@ -75,11 +77,12 @@ POST /openapi/capcut-mate/v1/create_draft
 | draft_url | string | 新创建的草稿URL，用于后续的编辑操作 |
 | tip_url | string | 草稿使用帮助文档URL |
 
-### 错误响应 (4xx/5xx)
+### 错误响应
 
 ```json
 {
-  "detail": "错误信息描述"
+  "code": 2002,
+  "message": "草稿创建失败"
 }
 ```
 
@@ -122,11 +125,8 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/create_draft \
 
 | 错误码 | 错误信息 | 说明 | 解决方案 |
 |--------|----------|------|----------|
-| 400 | width必须大于等于1 | 宽度参数无效 | 提供大于等于1的宽度值 |
-| 400 | height必须大于等于1 | 高度参数无效 | 提供大于等于1的高度值 |
-| 400 | 参数类型错误 | 参数类型不正确 | 确保width和height为数字类型 |
-| 500 | 草稿创建失败 | 内部服务错误 | 联系技术支持 |
-| 503 | 服务不可用 | 系统维护中 | 稍后重试 |
+| 1001 | 参数校验失败 | `width`/`height` 不是整数或小于 1 | 提供大于等于 1 的整数值 |
+| 2002 | 草稿创建失败 | 基于模板创建草稿失败 | 稍后重试或联系技术支持 |
 
 ## 注意事项
 

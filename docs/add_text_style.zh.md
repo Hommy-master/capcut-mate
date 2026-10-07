@@ -1,7 +1,7 @@
 # ADD_TEXT_STYLE API 接口文档
 
 ## 🌐 语言切换
-[中文版](./add_audios.zh.md) | [English](./add_audios.md)
+[中文版](./add_text_style.zh.md) | [English](./add_text_style.md)
 
 ## 接口信息
 
@@ -35,9 +35,9 @@ POST /openapi/capcut-mate/v1/add_text_style
 |--------|------|------|--------|------|
 | text | string | ✅ | - | 要处理的文本内容 |
 | keyword | string | ✅ | - | 关键词，多个用 \| 分隔 |
-| font_size | number | ❌ | 12 | 普通文本的字体大小 |
+| font_size | integer | ❌ | 12 | 普通文本的字体大小 |
 | keyword_color | string | ❌ | "#ff7100" | 关键词文本颜色（十六进制） |
-| keyword_font_size | number | ❌ | 15 | 关键词字体大小 |
+| keyword_font_size | integer | ❌ | 15 | 关键词字体大小 |
 
 ### 参数详解
 
@@ -75,7 +75,9 @@ POST /openapi/capcut-mate/v1/add_text_style
 
 ```json
 {
-  "text_style": "{\"styles\":[{\"fill\":{\"content\":{\"solid\":{\"color\":[1,1,1]}}},\"range\":[0,2],\"size\":12,\"font\":{\"id\":\"\",\"path\":\"\"}},{\"fill\":{\"content\":{\"solid\":{\"color\":[1,0.44313725490196076,0]}}},\"range\":[2,4],\"size\":15,\"font\":{\"id\":\"\",\"path\":\"\"},\"useLetterColor\":true},{\"fill\":{\"content\":{\"solid\":{\"color\":[1,1,1]}}},\"range\":[4,7],\"size\":12,\"font\":{\"id\":\"\",\"path\":\"\"}},{\"fill\":{\"content\":{\"solid\":{\"color\":[1,0.44313725490196076,0]}}},\"range\":[7,11],\"size\":15,\"font\":{\"id\":\"\",\"path\":\"\"},\"useLetterColor\":true}],\"text\":\"五个快乐到死的顶级思维\"}"
+  "code": 0,
+  "message": "success",
+  "text_style": "{\"styles\":[{\"fill\":{\"content\":{\"solid\":{\"color\":[1,1,1]}}},\"range\":[0,2],\"size\":12,\"font\":{\"id\":\"\",\"path\":\"D:\"}},{\"fill\":{\"content\":{\"solid\":{\"color\":[1,0.44313725490196076,0]}}},\"range\":[2,4],\"size\":15,\"font\":{\"id\":\"\",\"path\":\"D:\"},\"useLetterColor\":true},{\"fill\":{\"content\":{\"solid\":{\"color\":[1,1,1]}}},\"range\":[4,7],\"size\":12,\"font\":{\"id\":\"\",\"path\":\"D:\"}},{\"fill\":{\"content\":{\"solid\":{\"color\":[1,0.44313725490196076,0]}}},\"range\":[7,11],\"size\":15,\"font\":{\"id\":\"\",\"path\":\"D:\"},\"useLetterColor\":true}],\"text\":\"五个快乐到死的顶级思维\"}"
 }
 ```
 
@@ -85,7 +87,7 @@ POST /openapi/capcut-mate/v1/add_text_style
 |--------|------|------|
 | text_style | string | 文本样式JSON字符串，包含styles数组和text字段 |
 
-### 错误响应 (4xx/5xx)
+### 错误响应
 
 ```json
 {
@@ -138,7 +140,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_text_style
 
 | 错误码 | 错误信息 | 说明 | 解决方案 |
 |--------|----------|------|----------|
-| 2026 | 无效的文本样式信息，请检查文本或关键词参数 | 文本或关键词参数格式错误或值无效 | 检查text和keyword参数是否符合要求 |
+| 2026 | 无效的文本样式信息 | 文本或关键词参数格式错误或值无效 | 检查text和keyword参数是否符合要求 |
 | 2027 | 文本样式创建失败 | 创建文本样式过程中发生错误 | 联系技术支持 |
 
 ## 注意事项

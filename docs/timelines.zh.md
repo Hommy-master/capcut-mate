@@ -24,7 +24,7 @@ POST /openapi/capcut-mate/v1/timelines
   "duration": 10000000,
   "num": 3,
   "start": 0,
-  "type": "equal"
+  "type": 0
 }
 ```
 
@@ -32,36 +32,35 @@ POST /openapi/capcut-mate/v1/timelines
 
 | 参数名 | 类型 |必填 | 默认值 | 说明 |
 |--------|------|------|--------|------|
-| duration | number |✅ | - |总时长(微秒) |
-| num | number |✅ | - | 时间段数量 |
-| start | number |❌ | 0 |时间(微秒) |
-| type | string |❌ | "equal" | 时间线类型 |
+| duration | integer |✅ | - |总时长(微秒) |
+| num | integer |✅ | - | 时间段数量 |
+| start | integer |✅ | - |时间(微秒) |
+| type | integer |✅ | - | 时间线类型：0 平均分，1 随机 |
 
 ### 参数详解
 
 #### duration
-- **类型**: number
+- **类型**: integer
 - **说明**:总时长，单位为微秒（1秒 = 1,000,000微秒）
 - **示例**: 10000000 (10秒)
 
 #### num
-- **类型**: number
+- **类型**: integer
 - **说明**:需要创建的时间段数量
 - **示例**: 3 (创建3个时间段)
 
 #### start
-- **类型**: number
+- **类型**: integer
 - **说明**: 时间线的起始时间，单位为微秒
-- **默认值**: 0
 - **示例**: 2000000 (从2秒开始)
 
 #### type
-- **类型**: string
+- **类型**: integer
 - **说明**: 时间线分割类型
 - **可选值**: 
-  - "equal" -等分时间线
-  - "custom" - 自定义时间线
-- **默认值**: "equal"
+  - 0 - 平均分时间线
+  - 1 - 随机时间线
+- **示例**: 0
 
 ## 响应格式
 
@@ -69,6 +68,8 @@ POST /openapi/capcut-mate/v1/timelines
 
 ```json
 {
+  "code": 0,
+  "message": "success",
   "timelines": [
     {
       "start": 0,
@@ -101,11 +102,12 @@ POST /openapi/capcut-mate/v1/timelines
 | start | number | 时间段开始时间(微秒) |
 | end | number | 时间段结束时间(微秒) |
 
-###错误响应 (4xx/5xx)
+### 错误响应
 
 ```json
 {
-  "detail": "错误信息描述"
+  "code": 1001,
+  "message": "参数校验失败"
 }
 ```
 
@@ -122,7 +124,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/timelines \
     "duration": 15000000,
     "num": 5,
     "start": 0,
-    "type": "equal"
+    "type": 0
   }'
 ```
 
@@ -135,7 +137,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/timelines \
     "duration": 20000000,
     "num": 4,
     "start": 5000000,
-    "type": "equal"
+    "type": 0
   }'
 ```
 
@@ -143,25 +145,20 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/timelines \
 
 | 错误码 |错误信息 | 说明 | 解决方案 |
 |--------|----------|------|----------|
-| 400 | duration是必填项 |缺少总时长参数 | 提供有效的duration参数 |
-| 400 | num是必填项 |缺少时间段数量参数 | 提供有效的num参数 |
-| 400 | duration必须大于0 | 时长参数无效 | 使用大于0的时长值 |
-| 400 | num必须大于0 | 数量参数无效 | 使用大于0的数量值 |
-| 400 | 时间线类型无效 | type参数不支持 | 使用支持的时间线类型 |
-| 500 | 时间线计算失败 |内部处理错误 |联技术支持术支持 |
+| 1001 | 参数校验失败 | 请求体未通过字段校验（`duration`/`num`/`start`/`type` 缺失或不是整数） | 检查参数类型与必填字段 |
 
 ## 注意事项
 
 1. **时间单位**:所有时间参数使用微秒（1秒 = 1,000,000微秒）
-2. **参数要求**: duration和num为必填参数
-3. **时间范围**:确保start + (duration/num) * num <=总时长
+2. **参数要求**: duration、num、start、type 均为必填参数
+3. **时间范围**: `all_timelines` 覆盖 `start` 到 `start + duration`，分段时间线均在该范围内生成
 4. **类型选择**:根据实际需求选择合适的时间线类型
 5. **精度考虑**:微秒级别的时间精度适合精确的视频编辑
 
 ##工作流程
 
-1.验证必填参数（duration, num）
-2.检查参数有效性（正数、合理范围）
+1.验证必填参数（duration, num, start, type）
+2.检查参数类型（整数）
 3.根据type类型计算时间线分割方式
 4. 生成分段时间线数组
 5. 生成完整时间线数组

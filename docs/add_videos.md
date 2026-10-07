@@ -11,7 +11,7 @@ POST /openapi/capcut-mate/v1/add_videos
 
 ## Function Description
 
-Batch add video materials to existing drafts. This interface is a powerful video addition tool that supports batch processing of multiple videos, including time range control, transparency adjustment, mask effects, transition animations, volume control, scaling transformations, and other advanced features. Particularly suitable for creating complex multi-video combination scenes, such as picture-in-picture effects, video splicing, transition animations, etc.
+Batch add video materials to existing drafts. This interface is a powerful video addition tool that supports batch processing of multiple videos, including time range control, transparency adjustment, transition animations, volume control, scaling transformations, and other advanced features. Particularly suitable for creating complex multi-video combination scenes, such as picture-in-picture effects, video splicing, transition animations, etc.
 
 ## More Documentation
 
@@ -22,7 +22,7 @@ Batch add video materials to existing drafts. This interface is a powerful video
 ```json
 {
   "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
-  "video_infos": "[{\"video_url\":\"https://assets.jcaigc.cn/video1.mp4\",\"width\":1024,\"height\":1024,\"start\":0,\"end\":5000000,\"duration\":5000000,\"mask\":\"circle\",\"transition\":\"叠化\",\"transition_duration\":500000,\"volume\":0.8}]",
+  "video_infos": "[{\"video_url\":\"https://assets.jcaigc.cn/video1.mp4\",\"width\":1024,\"height\":1024,\"start\":0,\"end\":5000000,\"duration\":5000000,\"mask\":\"圆形\",\"transition\":\"叠化\",\"transition_duration\":500000,\"volume\":0.8}]",
   "scene_timelines": [{"start":0,"end":2500000}],
   "alpha": 0.5,
   "scale_x": 1.0,
@@ -55,10 +55,10 @@ Batch add video materials to existing drafts. This interface is a powerful video
 | start | number | ✅ | - | Video start playback time (microseconds) |
 | end | number | ✅ | - | Video end playback time (microseconds) |
 | duration | number | ❌ | end-start | Total video duration (microseconds) |
-| mask | string | ❌ | - | Mask type |
+| mask | string | ❌ | - | Mask name; currently not applied — use `add_masks` instead |
 | transition | string | ❌ | - | Transition name from Supported Transition Names below |
-| transition_duration | number | ❌ | 500000 | Transition duration (microseconds) |
-| volume | number | ❌ | 1.0 | Volume size (0-1) |
+| transition_duration | number | ❌ | - | Transition duration (microseconds); uses the transition type's default when omitted |
+| volume | number | ❌ | 1.0 | Volume size (0-10) |
 
 ### scene_timelines Array Structure
 
@@ -98,20 +98,13 @@ Batch add video materials to existing drafts. This interface is a powerful video
 
 #### Mask Types
 
-Supported mask types (all optional, default is no mask):
-- `circle` - Circular mask effect
-- `heart` - Heart-shaped mask
-- `star` - Star-shaped mask
-- `rectangle` - Rectangular mask
-- `linear` - Linear gradient mask
-- `mirror` - Mirror reflection mask
+`mask` accepts a JianYing mask name (`圆形` / `矩形` / `爱心` / `星形` / `线性` / `镜面`), but it is currently **not applied** when the video segment is written into the draft. To mask a segment, call `add_masks` after this interface and pass the returned `segment_ids`.
 
 #### Transition Effects
 
 - **transition**: Transition effect name
 - **transition_duration**: Transition duration
-  - Minimum: 100,000 microseconds (0.1 seconds)
-  - Maximum: 2,500,000 microseconds (2.5 seconds)
+  - Not validated by the API; omit to use the transition type's default duration
   - Recommended: 500,000 microseconds (0.5 seconds)
 
 #### Volume Control
@@ -120,7 +113,7 @@ Supported mask types (all optional, default is no mask):
   - 1.0 = Original volume
   - 0.5 = Half volume
   - 0.0 = Mute
-  - Range: 0.0 - 1.0
+  - Range: 0.0 - 10.0
 
 #### Video Speed Change (scene_timelines)
 
@@ -136,7 +129,7 @@ Supported mask types (all optional, default is no mask):
 // To make it 2x speed (play in 1 second):
 {
   "video_infos": "[{\"video_url\":\"...\", \"start\":0, \"end\":2000000}]",
-  "scene_timelines": "[{\"start\":0, \"end\":1000000}]"
+  "scene_timelines": [{"start":0, "end":1000000}]
 }
 // Result: Video plays at 2x speed, actual playback duration is 1 second
 ```
@@ -611,10 +604,19 @@ X形震闪
 
 ```json
 {
+  "code": 0,
+  "message": "success",
   "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
   "track_id": "video-track-uuid",
   "video_ids": ["video1-uuid", "video2-uuid", "video3-uuid"],
-  "segment_ids": ["segment1-uuid", "segment2-uuid", "segment3-uuid"]
+  "segment_ids": ["segment1-uuid", "segment2-uuid", "segment3-uuid"],
+  "segment_infos": [
+    {
+      "id": "segment1-uuid",
+      "start": 0,
+      "end": 5000000
+    }
+  ]
 }
 ```
 
@@ -624,8 +626,18 @@ X形震闪
 |-------|------|-------------|
 | draft_url | string | Updated draft URL |
 | track_id | string | Video track ID |
-| video_ids | array | List of added video IDs |
+| video_ids | array | List of video IDs |
 | segment_ids | array | List of segment IDs |
+| segment_infos | array | Segment info objects (`id` / `start` / `end`) |
+
+### Error Response
+
+```json
+{
+  "code": 2003,
+  "message": "Invalid video information, please check if the value of the video_infos field is correct."
+}
+```
 
 ## Usage Examples
 
@@ -654,14 +666,14 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_videos \
   }'
 ```
 
-#### 3. Video with Mask and Transition
+#### 3. Video with Transition (`mask` is accepted here but not applied; see `add_masks`)
 
 ```bash
 curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_videos \
   -H "Content-Type: application/json" \
   -d '{
     "draft_url": "YOUR_DRAFT_URL",
-    "video_infos": "[{\"video_url\":\"https://assets.jcaigc.cn/video1.mp4\",\"width\":1024,\"height\":1024,\"start\":0,\"end\":5000000,\"duration\":10000000,\"mask\":\"circle\",\"transition\":\"叠化\",\"transition_duration\":500000,\"volume\":0.8}]",
+    "video_infos": "[{\"video_url\":\"https://assets.jcaigc.cn/video1.mp4\",\"width\":1024,\"height\":1024,\"start\":0,\"end\":5000000,\"duration\":10000000,\"mask\":\"圆形\",\"transition\":\"叠化\",\"transition_duration\":500000,\"volume\":0.8}]",
     "alpha": 1.0,
     "scale_x": 1.2,
     "scale_y": 1.2
@@ -713,16 +725,13 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_videos \
 
 | Error Code | Error Message | Description | Solution |
 |------------|---------------|-------------|----------|
-| 400 | draft_url is required | Missing draft URL parameter | Provide a valid draft URL |
-| 400 | video_infos is required | Missing video information parameter | Provide valid video information JSON |
-| 400 | video_infos format error | JSON format is incorrect | Check JSON string format |
-| 400 | video_url is required | Video URL missing | Provide URL for each video |
-| 400 | Video dimensions invalid | width or height invalid | Provide positive width and height |
-| 400 | Time range invalid | end must be greater than start | Ensure end time is greater than start time |
-| 400 | Transparency value invalid | alpha not in 0-1 range | Use transparency value between 0-1 |
-| 404 | Draft does not exist | Specified draft URL invalid | Check if draft URL is correct |
-| 404 | Video resource does not exist | Video URL inaccessible | Check if video URL is accessible |
-| 500 | Video processing failed | Internal processing error | Contact technical support |
+| 1001 | Parameter validation failed | Request body failed schema validation, e.g. `video_infos` is not valid JSON, is not an array, an item is not an object, or `video_url` does not start with `http://` / `https://` | Check parameter types and required fields |
+| 2001 | Invalid draft URL | `draft_url` has no `draft_id`, or the draft is not in the cache | Pass the `draft_url` returned by `create_draft` |
+| 2003 | Invalid video information | `video_infos` is empty or invalid JSON, an item is missing `video_url` / `start` / `end`, `start` < 0, `end` <= `start`, or `duration` <= 0 | Fix the JSON string and the required fields |
+| 2004 | File size exceeds the limit | A downloaded video exceeds the size limit | Use a smaller video file |
+| 2005 | Download file failed | A `video_url` could not be downloaded | Check that every video URL is reachable |
+| 2006 | Video addition failed | Failed while writing a video segment into the draft | Check the video file and the draft state, then retry |
+| 2042 | Draft lock acquisition timeout | Another operation on the same draft holds the write lock | Retry later |
 
 ## Notes
 
@@ -731,7 +740,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_videos \
 3. **Video Format**: Ensure video file format is supported (e.g., MP4, AVI, etc.)
 4. **File Size**: Large video files may affect processing speed
 5. **Network Access**: Video URL must be accessible
-6. **Mask Limitation**: Only predefined mask types are supported
+6. **Mask Limitation**: `mask` is currently not applied; use the `add_masks` interface
 7. **Transition Limitation**: Transition duration has fixed range limitations
 8. **Performance Consideration**: Batch adding a large number of videos may affect performance
 9. **Speed Change**: scene_timelines is an object array, length should match video_infos array length
@@ -744,8 +753,8 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_videos \
 4. Obtain and decrypt draft content
 5. Create video track
 6. Add video segments to track
-7. Apply transparency, scaling and position transformation
-8. Add mask and transition effects
+7. Apply transparency, scaling and position transformation (masks are added separately via `add_masks`)
+8. Add transition effects (mask is not applied here; use the `add_masks` interface)
 9. Set volume
 10. Save and encrypt draft
 11. Return processing result

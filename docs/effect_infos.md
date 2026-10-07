@@ -42,7 +42,9 @@ Generate effect information based on effect names and timelines. This interface 
 
 ```json
 {
-  "infos": "[{\"effect\":\"blur\",\"start\":0,\"end\":3000000,\"duration\":5000000},{\"effect\":\"vignette\",\"start\":3000000,\"end\":6000000,\"duration\":5000000}]"
+  "code": 0,
+  "message": "success",
+  "infos": "[{\"effect_title\":\"blur\",\"start\":0,\"end\":3000000},{\"effect_title\":\"vignette\",\"start\":3000000,\"end\":6000000}]"
 }
 ```
 
@@ -52,11 +54,12 @@ Generate effect information based on effect names and timelines. This interface 
 |-------|------|-------------|
 | infos | string | Effect information JSON string |
 
-### Error Response (4xx/5xx)
+### Error Response
 
 ```json
 {
-  "detail": "Error message description"
+  "code": 1001,
+  "message": "Parameter validation failed"
 }
 ```
 
@@ -90,14 +93,11 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/effect_infos \
 
 | Error Code | Error Message | Description | Solution |
 |------------|---------------|-------------|----------|
-| 400 | effects is required | Missing effect name parameter | Provide valid effect name array |
-| 400 | timelines is required | Missing timeline parameter | Provide valid timeline array |
-| 400 | Array length mismatch | effects and timelines array lengths don't match | Ensure both arrays have the same length |
-| 500 | Effect information generation failed | Internal processing error | Contact technical support |
+| 1001 | Parameter validation failed | Request body failed schema validation (`effects`/`timelines` missing, timeline item lacking `start`/`end`, or wrong types) | Check parameter types and required fields |
 
 ## Notes
 
-1. **Array Matching**: effects and timelines array lengths must be the same
+1. **Array Matching**: if `effects` and `timelines` lengths differ, the shorter length is used (no hard error)
 2. **Time Unit**: All time parameters use microseconds (1 second = 1,000,000 microseconds)
 3. **Effect Names**: Need to use system-supported effect names
 4. **Continuity**: Effects are applied in timeline order
@@ -105,7 +105,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/effect_infos \
 ## Workflow
 
 1. Validate required parameters (effects, timelines)
-2. Check array length matching
+2. Align the two arrays by the shorter length
 3. Validate timeline parameter validity
 4. Generate corresponding effect information for each effect name
 5. Convert information to JSON string format

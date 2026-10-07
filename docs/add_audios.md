@@ -75,6 +75,8 @@ audio_infos is a JSON string that resolves to an array, with each element contai
 
 ```json
 {
+  "code": 0,
+  "message": "success",
   "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
   "track_id": "audio-track-uuid",
   "audio_ids": ["audio1-uuid", "audio2-uuid", "audio3-uuid"]
@@ -89,11 +91,12 @@ audio_infos is a JSON string that resolves to an array, with each element contai
 | track_id | string | Audio track ID |
 | audio_ids | array | List of added audio IDs |
 
-### Error Response (4xx/5xx)
+### Error Response
 
 ```json
 {
-  "detail": "Error message description"
+  "code": 2007,
+  "message": "Invalid audio information, please check if the value of the audio_infos field is correct."
 }
 ```
 
@@ -138,16 +141,12 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_audios \
 
 | Error Code | Error Message | Description | Solution |
 |------------|---------------|-------------|----------|
-| 400 | draft_url is required | Missing draft URL parameter | Provide a valid draft URL |
-| 400 | audio_infos is required | Missing audio information parameter | Provide valid audio information JSON |
-| 400 | audio_infos format error | JSON format is incorrect | Check JSON string format |
-| 400 | Audio configuration validation failed | Audio parameters do not meet requirements | Check parameters for each audio |
-| 400 | audio_url is required | Audio URL missing | Provide URL for each audio |
-| 400 | Time range invalid | end must be greater than start | Ensure end time is greater than start time |
-| 400 | Volume value invalid | volume not in 0.0-2.0 range | Use volume value between 0.0-2.0 |
-| 404 | Draft does not exist | Specified draft URL invalid | Check if draft URL is correct |
-| 404 | Audio resource does not exist | Audio URL inaccessible | Check if audio URL is accessible |
-| 500 | Audio processing failed | Internal processing error | Contact technical support |
+| 1001 | Parameter validation failed | Request body failed schema validation, e.g. `audio_infos` is not valid JSON, is not a list, or an `audio_url` does not start with `http://` / `https://` | Check parameter types and required fields |
+| 2001 | Invalid draft URL | `draft_url` is missing, malformed, or the draft is not in the cache | Pass the `draft_url` returned by `create_draft` |
+| 2005 | Download file failed | The audio file could not be downloaded from `audio_url` | Check that the audio URL is publicly accessible |
+| 2007 | Invalid audio information | `audio_infos` is not valid JSON, an item is missing `audio_url`/`start`/`end`, `start` is negative, `end` is not greater than `start`, or `duration` is not positive | Fix the JSON string and the required fields |
+| 2008 | Audio addition failed | Failed while adding the audio segment or saving the draft | Check the draft state and retry |
+| 2042 | Draft lock acquisition timeout | Only one operation is allowed on a draft at a time | Retry later |
 
 ## Notes
 

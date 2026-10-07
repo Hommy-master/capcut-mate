@@ -95,7 +95,7 @@ Add multiple types of material content to existing drafts, including audio, vide
 #### Material Processing Rules
 
 - **Audio Processing**:
-  - Automatically parse audio duration
+  - Fixed 5-second duration (the actual duration is used if the audio is shorter)
   - Add to audio track
   - Support multiple audio formats
 
@@ -120,6 +120,8 @@ Add multiple types of material content to existing drafts, including audio, vide
 
 ```json
 {
+  "code": 0,
+  "message": "success",
   "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258"
 }
 ```
@@ -130,11 +132,12 @@ Add multiple types of material content to existing drafts, including audio, vide
 |-------|------|-------------|
 | draft_url | string | Updated draft URL |
 
-### Error Response (4xx/5xx)
+### Error Response
 
 ```json
 {
-  "detail": "Error message description"
+  "code": 2028,
+  "message": "Material creation failed"
 }
 ```
 
@@ -188,11 +191,10 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/easy_create_ma
 
 | Error Code | Error Message | Description | Solution |
 |------------|---------------|-------------|----------|
-| 400 | draft_url is required | Missing draft URL parameter | Provide a valid draft_url |
-| 400 | audio_url is required | Missing audio URL parameter | Provide a valid audio_url |
-| 400 | Invalid draft information, please check draft parameters | Draft parameter validation failed | Check if draft parameters meet requirements |
-| 404 | Draft does not exist | Specified draft URL invalid | Check if draft URL is correct |
-| 500 | Material creation failed | Internal processing error | Contact technical support |
+| 1001 | Parameter validation failed | `draft_url` or `audio_url` is missing, or a media URL does not start with `http://` / `https://` | Provide valid parameters |
+| 2001 | Invalid draft URL | `draft_url` has no `draft_id`, or the draft is not in the cache | Pass the `draft_url` returned by `create_draft` |
+| 2028 | Material creation failed | Error while writing materials into the draft | Check the draft state and the media URLs, then retry |
+| 2042 | Draft lock acquisition timeout | Another operation on the same draft holds the write lock (30 second timeout) | Retry later |
 
 ## Notes
 
@@ -202,7 +204,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/easy_create_ma
 4. **Font Size**: font_size recommended range 10-50
 5. **Position Offset**: text_transform_y used to adjust vertical position of text in the frame
 6. **Duration Settings**: Different material types have different default display durations
-   - Audio: Automatically get original duration
+   - Audio: Fixed 5 seconds (the actual duration is used if the audio is shorter)
    - Video: Fixed 5 seconds
    - Image: Default 3 seconds
    - Text: Default 5 seconds

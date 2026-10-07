@@ -1139,6 +1139,8 @@ Y3K
 
 ```json
 {
+  "code": 0,
+  "message": "success",
   "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
   "track_id": "filter_track_123",
   "filter_ids": ["filter_001", "filter_002"],
@@ -1155,11 +1157,12 @@ Y3K
 | filter_ids | array | 添加的滤镜ID列表 |
 | segment_ids | array | 创建的滤镜片段ID列表 |
 
-### 错误响应 (4xx/5xx)
+### 错误响应
 
 ```json
 {
-  "detail": "错误信息描述"
+  "code": 2037,
+  "message": "无效的滤镜信息，请检查 filter_infos 字段值是否正确"
 }
 ```
 
@@ -1204,14 +1207,12 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_filters \
 
 | 错误码 | 错误信息 | 说明 | 解决方案 |
 |--------|----------|------|----------|
-| 400 | draft_url是必填项 | 缺少草稿URL参数 | 提供有效的draft_url |
-| 400 | filter_infos是必填项 | 缺少滤镜信息参数 | 提供有效的filter_infos |
-| 400 | 时间范围无效 | end必须大于start | 确保结束时间大于开始时间 |
-| 400 | 强度范围无效 | intensity必须在0-100之间 | 提供有效的强度值 |
-| 400 | 无效的滤镜信息，请检查filter_infos字段值是否正确 | 滤镜参数校验失败 | 检查滤镜参数是否符合要求 |
-| 404 | 草稿不存在 | 指定的草稿URL无效 | 检查草稿URL是否正确 |
-| 404 | 滤镜不存在 | 指定的滤镜名称无效 | 确认滤镜名称是否正确 |
-| 500 | 滤镜添加失败 | 内部处理错误 | 联系技术支持 |
+| 1001 | 参数校验失败 | 请求体未通过字段校验 | 检查参数类型与必填字段 |
+| 2001 | 无效的草稿URL | `draft_url` 缺失、格式错误，或草稿不在缓存中 | 传入 `create_draft` 返回的 `draft_url` |
+| 2037 | 无效的滤镜信息 | `filter_infos` 不是合法 JSON、某项缺少 `filter_title`/`start`/`end`、`end` 不大于 `start`、滤镜名称为空，或 `intensity` 超出 0-100 范围 | 修正 JSON 字符串与字段值 |
+| 2038 | 滤镜添加失败 | 写入草稿过程出错 | 检查草稿状态后重试 |
+| 2039 | 滤镜未找到 | `filter_title` 与任何支持的滤镜名称都不匹配 | 使用上方「支持的滤镜名称」列表中的名称 |
+| 2042 | 草稿锁获取超时 | 同一时间只允许一个操作，草稿正被占用 | 稍后重试 |
 
 ## 注意事项
 
@@ -1227,7 +1228,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_filters \
 1. 验证必填参数（draft_url, filter_infos）
 2. 检查时间范围的有效性
 3. 从缓存中获取草稿
-4. 创建滤镜轨道（如果不存在）
+4. 创建滤镜轨道
 5. 解析滤镜信息并创建滤镜片段
 6. 添加片段到轨道
 7. 保存草稿

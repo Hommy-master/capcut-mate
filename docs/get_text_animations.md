@@ -31,7 +31,7 @@ Get text entrance/exit animation list, returning all supported and qualified tex
 | Parameter | Type | Required | Default | Description |
 |-----------|------|----------|---------|-------------|
 | mode | integer |❌ | 0 | Animation mode: 0=all, 1=VIP, 2=free |
-| type | string |✅ | - | Animation type: in=entrance, out=exit, loop=loop |
+| type | string |❌ | null | Animation type: in=entrance, out=exit, loop=loop; omit to return all |
 
 ### Parameter Details
 
@@ -45,7 +45,7 @@ Get text entrance/exit animation list, returning all supported and qualified tex
 
 #### Animation Type Parameter
 
-- **type**: Animation type, required parameter
+- **type**: Animation type (optional; omit to return all types)
   - "in" = Entrance animation (animation effect when text appears)
   - "out" = Exit animation (animation effect when text disappears)
   - "loop" = Loop animation (continuous loop animation effect while text plays)
@@ -72,6 +72,8 @@ Get text entrance/exit animation list, returning all supported and qualified tex
 
 ```json
 {
+  "code": 0,
+  "message": "success",
   "effects": [
     {
       "resource_id": "7314291622525538843",
@@ -136,11 +138,12 @@ Each animation object contains the following fields:
 | path | string | Path information |
 | platform | string | Supported platform (usually "all") |
 
-### Error Response (4xx/5xx)
+### Error Response
 
 ```json
 {
-  "detail": "Error message description"
+  "code": 2029,
+  "message": "Get text animation failed"
 }
 ```
 
@@ -185,14 +188,12 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_text_anima
 
 | Error Code | Error Message | Description | Solution |
 |------------|---------------|-------------|----------|
-| 400 | type is required | Missing animation type parameter | Provide a valid type parameter |
-| 400 | Invalid mode parameter | mode parameter out of range | Use 0, 1, or 2 as mode value |
-| 400 | Invalid type parameter | type parameter value incorrect | Use in, out, or loop as type value |
-| 500 | Failed to get text animations | Internal processing error | Contact technical support |
+| 1001 | Parameter validation failed | type is not one of in, out, or loop (request body failed schema validation) | Use in, out, or loop as type value |
+| 2029 | Get text animation failed | mode is not 0, 1, or 2, or an internal error occurred | Use 0, 1, or 2 as mode value, or contact technical support |
 
 ## Notes
 
-1. **Parameter Requirements**: type parameter is required, mode parameter is optional
+1. **Parameter Requirements**: type and mode are both optional; omit type to return all animation types
 2. **Animation Types**: type parameter can only be one of "in", "out", "loop"
 3. **Animation Modes**: mode parameter can only be one of 0, 1, 2
 4. **Response Format**: Different from old version, current version directly returns object array instead of JSON string
@@ -200,7 +201,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_text_anima
 
 ## Workflow
 
-1. Validate required parameter (type)
+1. Validate optional parameter (type)
 2. Validate parameter validity (type and mode)
 3. Filter animation data based on type and mode
 4. Return animation list meeting conditions

@@ -76,6 +76,8 @@ Position coordinates: right is positive for X; up is positive for Y (Jianying di
 
 ```json
 {
+  "code": 0,
+  "message": "success",
   "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
   "keyframes_added": 3,
   "affected_segments": ["d62994b4-25fe-422a-a123-87ef05038558"]
@@ -96,7 +98,8 @@ Items that fail at apply time (unknown `segment_id`, non-visual segment, propert
 
 ```json
 {
-  "detail": "Error message description"
+  "code": 2013,
+  "message": "Invalid keyframe information, please check if the value of the keyframes field is correct."
 }
 ```
 

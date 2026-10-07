@@ -30,8 +30,8 @@ Create a Jianying draft. This interface is used to create a new Jianying draft p
 
 | Parameter | Type | Required | Default | Description |
 |-----------|------|----------|---------|-------------|
-| width | number | ❌ | 1920 | Video width (pixels), must be greater than or equal to 1 |
-| height | number | ❌ | 1080 | Video height (pixels), must be greater than or equal to 1 |
+| width | integer | ❌ | 1920 | Video width (pixels), must be greater than or equal to 1 |
+| height | integer | ❌ | 1080 | Video height (pixels), must be greater than or equal to 1 |
 
 ### Parameter Details
 
@@ -63,8 +63,10 @@ Create a Jianying draft. This interface is used to create a new Jianying draft p
 
 ```json
 {
-  "draft_url": "https://cm.jcaigc.cn/openapi/v1/get_draft?draft_id=2025092811473036584258",
-  "tip_url": "https://help.assets.jcaigc.cn/draft-usage"
+  "code": 0,
+  "message": "success",
+  "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
+  "tip_url": "https://docs.jcaigc.cn/"
 }
 ```
 
@@ -75,11 +77,12 @@ Create a Jianying draft. This interface is used to create a new Jianying draft p
 | draft_url | string | Newly created draft URL, used for subsequent editing operations |
 | tip_url | string | Draft usage help documentation URL |
 
-### Error Response (4xx/5xx)
+### Error Response
 
 ```json
 {
-  "detail": "Error message description"
+  "code": 2002,
+  "message": "Draft creation failed"
 }
 ```
 
@@ -122,11 +125,8 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/create_draft \
 
 | Error Code | Error Message | Description | Solution |
 |------------|---------------|-------------|----------|
-| 400 | width must be greater than or equal to 1 | Invalid width parameter | Provide a width value greater than or equal to 1 |
-| 400 | height must be greater than or equal to 1 | Invalid height parameter | Provide a height value greater than or equal to 1 |
-| 400 | Parameter type error | Parameter type is incorrect | Ensure width and height are numeric types |
-| 500 | Draft creation failed | Internal service error | Contact technical support |
-| 503 | Service unavailable | System maintenance | Retry later |
+| 1001 | Parameter validation failed | `width`/`height` is not an integer or is less than 1 | Provide integer values greater than or equal to 1 |
+| 2002 | Draft creation failed | Failed to create the draft from the template | Retry later or contact technical support |
 
 ## Notes
 

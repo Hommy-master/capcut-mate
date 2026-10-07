@@ -1,7 +1,7 @@
 # ADD_MASKS API 接口文档
 
 ## 🌐 语言切换
-[中文版](./add_audios.zh.md) | [English](./add_audios.md)
+[中文版](./add_masks.zh.md) | [English](./add_masks.md)
 
 ## 接口信息
 
@@ -116,6 +116,8 @@ POST /openapi/capcut-mate/v1/add_masks
 
 ```json
 {
+  "code": 0,
+  "message": "success",
   "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
   "masks_added": 1,
   "affected_segments": ["d62994b4-25fe-422a-a123-87ef05038558"],
@@ -132,11 +134,12 @@ POST /openapi/capcut-mate/v1/add_masks
 | affected_segments | array | 受影响的片段ID列表 |
 | mask_ids | array | 遮罩ID列表 |
 
-### 错误响应 (4xx/5xx)
+### 错误响应
 
 ```json
 {
-  "detail": "错误信息描述"
+  "code": 2023,
+  "message": "无效的遮罩信息，请检查遮罩参数是否正确"
 }
 ```
 
@@ -204,17 +207,14 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_masks \
 
 | 错误码 | 错误信息 | 说明 | 解决方案 |
 |--------|----------|------|----------|
-| 400 | draft_url是必填项 | 缺少草稿URL参数 | 提供有效的draft_url |
-| 400 | segment_ids是必填项 | 缺少片段ID参数 | 提供有效的segment_ids数组 |
-| 400 | 无效的遮罩信息，请检查遮罩参数是否正确 | 遮罩参数校验失败 | 检查遮罩参数是否符合要求 |
-| 400 | 羽化程度无效 | feather超出范围 | 使用0-100范围内的羽化值 |
-| 400 | 旋转角度无效 | rotation超出范围 | 使用0-360范围内的角度值 |
-| 400 | 圆角半径无效 | roundCorner超出范围 | 使用0-100范围内的圆角值 |
-| 404 | 草稿不存在 | 指定的草稿URL无效 | 检查草稿URL是否正确 |
-| 404 | 片段未找到 | 指定的片段ID不存在 | 确认片段ID是否正确 |
-| 400 | 无效的片段类型 | 片段类型不支持添加遮罩 | 确保使用视频片段ID |
-| 404 | 遮罩类型未找到 | 指定的遮罩名称不存在 | 使用有效的遮罩类型名称 |
-| 500 | 遮罩添加失败 | 内部处理错误 | 联系技术支持 |
+| 1001 | 参数校验失败 | 请求体未通过参数校验（如 X、width 传了小数） | 检查参数类型与必填项 |
+| 2001 | 无效的草稿URL | draft_url 缺失、格式错误或草稿不在缓存中 | 使用 create_draft 返回的 draft_url |
+| 2015 | 片段未找到 | 指定的片段ID不存在 | 确认片段ID是否正确 |
+| 2016 | 无效的片段类型 | 片段类型不支持添加遮罩 | 确保使用视频片段ID |
+| 2023 | 无效的遮罩信息 | segment_ids 为空 | 至少提供一个片段ID |
+| 2024 | 遮罩添加失败 | 写入草稿过程中出错 | 检查草稿状态后重试 |
+| 2025 | 遮罩类型未找到 | 指定的遮罩名称不存在 | 使用 线性 / 镜面 / 圆形 / 矩形 / 爱心 / 星形 |
+| 2042 | 草稿锁获取超时 | 同一草稿并发操作 | 稍后重试 |
 
 ## 注意事项
 

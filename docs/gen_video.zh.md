@@ -21,7 +21,8 @@ POST /openapi/capcut-mate/v1/gen_video
 
 ```json
 {
-  "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258"
+  "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
+  "apiKey": "123e4567-e89b-12d3-a456-426614174000"
 }
 ```
 
@@ -30,6 +31,7 @@ POST /openapi/capcut-mate/v1/gen_video
 | 参数名 | 类型 | 必填 | 默认值 | 说明 |
 |--------|------|------|--------|------|
 | draft_url | string | ✅ | - | 目标草稿的完整URL |
+| apiKey | string | 按服务端配置 | - | 合法的 UUID；`ENABLE_APIKEY=true` 时必填，可登录 https://jcaigc.cn 获取 |
 
 ### 参数详解
 
@@ -46,6 +48,7 @@ POST /openapi/capcut-mate/v1/gen_video
 
 ```json
 {
+  "code": 0,
   "message": "视频生成任务已提交，请使用draft_url查询进度"
 }
 ```
@@ -56,11 +59,12 @@ POST /openapi/capcut-mate/v1/gen_video
 |--------|------|------|
 | message | string | 响应消息 |
 
-### 错误响应 (4xx/5xx)
+### 错误响应
 
 ```json
 {
-  "detail": "错误信息描述"
+  "code": 2001,
+  "message": "无效的草稿URL"
 }
 ```
 
@@ -74,7 +78,8 @@ POST /openapi/capcut-mate/v1/gen_video
 curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/gen_video \
   -H "Content-Type: application/json" \
   -d '{
-    "draft_url": "YOUR_DRAFT_URL"
+    "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
+    "apiKey": "123e4567-e89b-12d3-a456-426614174000"
   }'
 ```
 
@@ -82,17 +87,11 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/gen_video \
 
 | 错误码 | 错误信息 | 说明 | 解决方案 |
 |--------|----------|------|----------|
-| 400 | draft_url是必填项 | 缺少草稿URL参数 | 提供有效的draft_url |
-| 400 | draft_url格式无效 | URL格式不正确 | 检查URL格式是否正确 |
-| 404 | 草稿不存在 | 指定的草稿无法找到 | 确认草稿URL是否正确且存在 |
-| 400 | 草稿内容为空 | 草稿中没有可导出的内容 | 确保草稿包含视频、音频或图片素材 |
-| 400 | 素材无法访问 | 草稿中的素材文件无法下载 | 检查素材URL是否有效 |
-| 500 | 视频渲染失败 | 视频处理过程中出错 | 检查草稿内容或联系技术支持 |
-| 500 | 音频处理失败 | 音频混合过程中出错 | 检查音频格式或联系技术支持 |
-| 500 | 编码失败 | 最终视频编码失败 | 联系技术支持 |
-| 503 | 服务繁忙 | 渲染服务器负载过高 | 稍后重试 |
-| 504 | 处理超时 | 视频生成超时 | 简化草稿内容或稍后重试 |
-| 500 | 视频生成任务提交失败 | 内部处理错误 | 联系技术支持 |
+| 1001 | 参数校验失败 | `apiKey` 不是合法 UUID，或参数类型不正确 | 检查参数类型与必填字段 |
+| 2001 | 无效的草稿URL | `draft_url` 缺失或不含 `draft_id` | 传入 `create_draft` 返回的 `draft_url` |
+| 2035 | 账户余额不足 | 当前积分不大于 1 | 完成充值后重试 |
+| 2036 | 无效的 apiKey | `ENABLE_APIKEY=true` 且未传 `apiKey` | 登录 https://jcaigc.cn 获取 apiKey |
+| 9998 | 系统内部错误 | 提交任务时发生未知错误 | 稍后重试或联系技术支持 |
 
 ## 注意事项
 

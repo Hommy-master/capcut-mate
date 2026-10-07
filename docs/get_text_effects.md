@@ -47,16 +47,18 @@ Get the list of supported text flower effects (decorative text styles), with opt
 
 ```json
 {
+  "code": 0,
+  "message": "success",
   "text_effects": [
     {
       "id": "7539407429763796249",
       "title": "红黄火焰综艺花字",
-      "is_vip": false
+      "is_vip": true
     },
     {
       "id": "7351316503771368713",
-      "title": "综艺 - 黑暗斑驳红色",
-      "is_vip": false
+      "title": "综艺-黑暗斑驳红色",
+      "is_vip": true
     }
   ]
 }
@@ -76,11 +78,12 @@ Get the list of supported text flower effects (decorative text styles), with opt
 | title | string | Text effect name |
 | is_vip | boolean | Whether this is a VIP effect |
 
-### Error Response (4xx/5xx)
+### Error Response
 
 ```json
 {
-  "detail": "Error message description"
+  "code": 1001,
+  "message": "Parameter validation failed"
 }
 ```
 
@@ -142,8 +145,8 @@ await fetch('/openapi/capcut-mate/v1/add_captions', {
 
 | Error Code | Error Message | Description | Solution |
 |------------|---------------|-------------|----------|
-| 400 | Invalid mode parameter | mode parameter out of range | Use 0, 1, or 2 as mode value |
-| 500 | filter_get_failed | Failed to get text effects list | Contact technical support |
+| 1001 | Parameter validation failed | mode is outside the 0-2 range (request body failed schema validation) | Use 0, 1, or 2 as mode value |
+| 2040 | Get filter list failed | Failed to get the text effects list | Contact technical support |
 
 ## Notes
 

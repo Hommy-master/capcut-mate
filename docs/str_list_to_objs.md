@@ -48,6 +48,8 @@ Convert string list to object list. This interface is used to convert input stri
 
 ```json
 {
+  "code": 0,
+  "message": "success",
   "infos": [
     {
       "output": "https://assets.jcaigc.cn/min.mp4"
@@ -66,11 +68,12 @@ Convert string list to object list. This interface is used to convert input stri
 | infos | array[object] | Object list |
 | output | string | URL address |
 
-### Error Response (4xx/5xx)
+### Error Response
 
 ```json
 {
-  "detail": "Error message description"
+  "code": 1001,
+  "message": "Parameter validation failed"
 }
 ```
 
@@ -95,8 +98,8 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/str_list_to_ob
 
 | Error Code | Error Message | Description | Solution |
 |------------|---------------|-------------|----------|
-| 400 | infos is required | Missing infos parameter | Provide a valid infos parameter |
-| 500 | String list conversion failed | Internal processing error | Contact technical support |
+| 1001 | Parameter validation failed | infos is missing (request body failed schema validation) | Provide a valid infos parameter |
+| 9999 | Unknown error | Unexpected internal processing error | Contact technical support |
 
 ## Notes
 

@@ -36,7 +36,7 @@ Generate filter information based on filter names, timelines, and intensities. T
 |-----------|------|----------|---------|-------------|
 | filters | array[string] |✅ | - | Filter name array |
 | timelines | array[object] |✅ | - | Timeline configuration array |
-| intensities | array[number] | ❌ | 100 | Filter intensity array (0-100), optional, defaults to 100 for all |
+| intensities | array[number] | ❌ | None | Filter intensity array (0-100), optional, defaults to 100 for all |
 
 ## Response Format
 
@@ -44,6 +44,8 @@ Generate filter information based on filter names, timelines, and intensities. T
 
 ```json
 {
+  "code": 0,
+  "message": "success",
   "infos": "[{\"filter_title\":\"复古\",\"start\":0,\"end\":3000000,\"intensity\":80},{\"filter_title\":\"黑白\",\"start\":3000000,\"end\":6000000,\"intensity\":100}]"
 }
 ```
@@ -54,11 +56,12 @@ Generate filter information based on filter names, timelines, and intensities. T
 |-------|------|-------------|
 | infos | string | Filter information JSON string |
 
-### Error Response (4xx/5xx)
+### Error Response
 
 ```json
 {
-  "detail": "Error message description"
+  "code": 1001,
+  "message": "Parameter validation failed"
 }
 ```
 
@@ -105,26 +108,22 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/filter_infos \
 
 | Error Code | Error Message | Description | Solution |
 |------------|---------------|-------------|----------|
-| 400 | filters is required | Missing filter name parameter | Provide valid filter name array |
-| 400 | timelines is required | Missing timeline parameter | Provide valid timeline array |
-| 400 | Array length mismatch | filters, timelines, and intensities array lengths don't match | Ensure all arrays have the same length |
-| 400 | Intensity out of range | Intensity must be between 0-100 | Provide valid intensity values |
-| 500 | Filter information generation failed | Internal processing error | Contact technical support |
+| 1001 | Parameter validation failed | Request body failed schema validation (`filters`/`timelines` missing, timeline item lacking `start`/`end`, or wrong types) | Check parameter types and required fields |
 
 ## Notes
 
-1. **Array Matching**: filters and timelines array lengths must be the same; intensities length should also match if provided
+1. **Array Matching**: `filters`, `timelines` and `intensities` are aligned by the shortest length when their lengths differ (no hard error)
 2. **Time Unit**: All time parameters use microseconds (1 second = 1,000,000 microseconds)
 3. **Filter Names**: Need to use system-supported filter names
-4. **Intensity Range**: Intensity values must be between 0-100, default is 100
+4. **Intensity Range**: Intensity values are clamped to 0-100, default is 100
 5. **Continuity**: Filters are applied in timeline order
 
 ## Workflow
 
 1. Validate required parameters (filters, timelines)
-2. Check array length matching
+2. Align the arrays by the shorter length
 3. Validate timeline parameter validity
-4. Validate intensity range (if provided)
+4. Clamp intensity values to the 0-100 range (if provided)
 5. Generate corresponding filter information for each filter name
 6. Convert information to JSON string format
 7. Return processing result

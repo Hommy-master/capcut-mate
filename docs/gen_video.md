@@ -21,7 +21,8 @@ Submit video generation task. This interface uses asynchronous processing mode, 
 
 ```json
 {
-  "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258"
+  "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
+  "apiKey": "123e4567-e89b-12d3-a456-426614174000"
 }
 ```
 
@@ -30,6 +31,7 @@ Submit video generation task. This interface uses asynchronous processing mode, 
 | Parameter | Type | Required | Default | Description |
 |-----------|------|----------|---------|-------------|
 | draft_url | string | ✅ | - | Complete URL of the target draft |
+| apiKey | string | Per server config | - | A valid UUID; required when `ENABLE_APIKEY=true`, get one at https://jcaigc.cn |
 
 ### Parameter Details
 
@@ -46,7 +48,8 @@ Submit video generation task. This interface uses asynchronous processing mode, 
 
 ```json
 {
-  "message": "Video generation task submitted, please use draft_url to check progress"
+  "code": 0,
+  "message": "视频生成任务已提交，请使用draft_url查询进度"
 }
 ```
 
@@ -56,11 +59,12 @@ Submit video generation task. This interface uses asynchronous processing mode, 
 |-------|------|-------------|
 | message | string | Response message |
 
-### Error Response (4xx/5xx)
+### Error Response
 
 ```json
 {
-  "detail": "Error message description"
+  "code": 2001,
+  "message": "Invalid draft URL"
 }
 ```
 
@@ -74,7 +78,8 @@ Submit video generation task. This interface uses asynchronous processing mode, 
 curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/gen_video \
   -H "Content-Type: application/json" \
   -d '{
-    "draft_url": "YOUR_DRAFT_URL"
+    "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
+    "apiKey": "123e4567-e89b-12d3-a456-426614174000"
   }'
 ```
 
@@ -82,17 +87,11 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/gen_video \
 
 | Error Code | Error Message | Description | Solution |
 |------------|---------------|-------------|----------|
-| 400 | draft_url is required | Missing draft URL parameter | Provide a valid draft_url |
-| 400 | Invalid draft_url format | URL format is incorrect | Check if URL format is correct |
-| 404 | Draft does not exist | Specified draft cannot be found | Confirm that draft URL is correct and exists |
-| 400 | Draft content is empty | Draft contains no exportable content | Ensure draft contains video, audio or image materials |
-| 400 | Material inaccessible | Material files in draft cannot be downloaded | Check if material URLs are valid |
-| 500 | Video rendering failed | Error occurred during video processing | Check draft content or contact technical support |
-| 500 | Audio processing failed | Error occurred during audio mixing | Check audio format or contact technical support |
-| 500 | Encoding failed | Final video encoding failed | Contact technical support |
-| 503 | Service busy | Rendering server overloaded | Retry later |
-| 504 | Processing timeout | Video generation timed out | Simplify draft content or retry later |
-| 500 | Video generation task submission failed | Internal processing error | Contact technical support |
+| 1001 | Parameter validation failed | `apiKey` is not a valid UUID, or a parameter has the wrong type | Check parameter types and required fields |
+| 2001 | Invalid draft URL | `draft_url` is missing or does not contain a `draft_id` | Pass the `draft_url` returned by `create_draft` |
+| 2035 | Insufficient account balance | The account has no more than 1 point | Recharge the account and retry |
+| 2036 | Invalid apiKey | `ENABLE_APIKEY=true` and `apiKey` is missing | Log in at https://jcaigc.cn to get an apiKey |
+| 9998 | Internal server error | Unexpected error while submitting the task | Retry later or contact technical support |
 
 ## Notes
 

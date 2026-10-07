@@ -1,7 +1,7 @@
 # SEARCH_STICKER API 接口文档
 
 ## 🌐 语言切换
-[中文版](./add_audios.zh.md) | [English](./add_audios.md)
+[中文版](./search_sticker.zh.md) | [English](./search_sticker.md)
 
 ## 接口信息
 
@@ -45,6 +45,8 @@ POST /openapi/capcut-mate/v1/search_sticker
 
 ```json
 {
+  "code": 0,
+  "message": "success",
   "data": [
     {
       "sticker": {
@@ -85,11 +87,12 @@ POST /openapi/capcut-mate/v1/search_sticker
 | sticker_id | string | 贴纸ID |
 | title | string | 贴纸标题 |
 
-### 错误响应 (4xx/5xx)
+### 错误响应
 
 ```json
 {
-  "detail": "错误信息描述"
+  "code": 1001,
+  "message": "参数校验失败"
 }
 ```
 
@@ -121,7 +124,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/search_sticker
 
 | 错误码 | 错误信息 | 说明 | 解决方案 |
 |--------|----------|------|----------|
-| 400 | keyword是必填项 | 缺少关键词参数 | 提供有效的keyword参数 |
+| 1001 | 参数校验失败 | 缺少 keyword 参数（请求体未通过参数校验） | 提供有效的keyword参数 |
 
 ## 注意事项
 

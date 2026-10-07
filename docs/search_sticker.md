@@ -45,6 +45,8 @@ Search stickers by keywords. This interface is used to search for related sticke
 
 ```json
 {
+  "code": 0,
+  "message": "success",
   "data": [
     {
       "sticker": {
@@ -85,11 +87,12 @@ Search stickers by keywords. This interface is used to search for related sticke
 | sticker_id | string | Sticker ID |
 | title | string | Sticker title |
 
-### Error Response (4xx/5xx)
+### Error Response
 
 ```json
 {
-  "detail": "Error message description"
+  "code": 1001,
+  "message": "Parameter validation failed"
 }
 ```
 
@@ -121,7 +124,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/search_sticker
 
 | Error Code | Error Message | Description | Solution |
 |------------|---------------|-------------|----------|
-| 400 | keyword is required | Missing keyword parameter | Provide a valid keyword parameter |
+| 1001 | Parameter validation failed | keyword is missing (request body failed schema validation) | Provide a valid keyword parameter |
 
 ## Notes
 

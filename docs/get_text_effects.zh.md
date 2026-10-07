@@ -47,16 +47,18 @@ POST /openapi/capcut-mate/v1/get_text_effects
 
 ```json
 {
+  "code": 0,
+  "message": "success",
   "text_effects": [
     {
       "id": "7539407429763796249",
       "title": "红黄火焰综艺花字",
-      "is_vip": false
+      "is_vip": true
     },
     {
       "id": "7351316503771368713",
-      "title": "综艺 - 黑暗斑驳红色",
-      "is_vip": false
+      "title": "综艺-黑暗斑驳红色",
+      "is_vip": true
     }
   ]
 }
@@ -76,11 +78,12 @@ POST /openapi/capcut-mate/v1/get_text_effects
 | title | string | 花字效果名称 |
 | is_vip | boolean | 是否为 VIP 效果 |
 
-### 错误响应 (4xx/5xx)
+### 错误响应
 
 ```json
 {
-  "detail": "错误信息描述"
+  "code": 1001,
+  "message": "参数校验失败"
 }
 ```
 
@@ -142,8 +145,8 @@ await fetch('/openapi/capcut-mate/v1/add_captions', {
 
 | 错误码 | 错误信息 | 说明 | 解决方案 |
 |--------|----------|------|----------|
-| 400 | Invalid mode parameter | mode 参数超出范围 | 使用 0、1 或 2 作为 mode 值 |
-| 500 | filter_get_failed | 获取花字效果列表失败 | 联系技术支持 |
+| 1001 | 参数校验失败 | mode 超出 0-2 范围（请求体未通过参数校验） | 使用 0、1 或 2 作为 mode 值 |
+| 2040 | 获取滤镜列表失败 | 获取花字效果列表失败 | 联系技术支持 |
 
 ## 注意事项
 

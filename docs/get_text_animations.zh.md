@@ -1,7 +1,7 @@
 # GET_TEXT_ANIMATIONS API 接口文档
 
 ## 🌐 语言切换
-[中文版](./add_audios.zh.md) | [English](./add_audios.md)
+[中文版](./get_text_animations.zh.md) | [English](./get_text_animations.md)
 
 ## 接口信息
 
@@ -31,7 +31,7 @@ POST /openapi/capcut-mate/v1/get_text_animations
 | 参数名 | 类型 | 必填 | 默认值 | 说明 |
 |--------|------|------|--------|------|
 | mode | integer | ❌ | 0 | 动画模式：0=所有，1=VIP，2=免费 |
-| type | string | ✅ | - | 动画类型：in=入场，out=出场，loop=循环 |
+| type | string | ❌ | null | 动画类型：in=入场，out=出场，loop=循环；不传则返回全部 |
 
 ### 参数详解
 
@@ -45,7 +45,7 @@ POST /openapi/capcut-mate/v1/get_text_animations
 
 #### 动画类型参数
 
-- **type**: 动画类型，必填参数
+- **type**: 动画类型（可选，不传则返回全部类型）
   - "in" = 入场动画（文字出现时的动画效果）
   - "out" = 出场动画（文字消失时的动画效果）
   - "loop" = 循环动画（文字持续播放的循环动画效果）
@@ -72,6 +72,8 @@ POST /openapi/capcut-mate/v1/get_text_animations
 
 ```json
 {
+  "code": 0,
+  "message": "success",
   "effects": [
     {
       "resource_id": "7314291622525538843",
@@ -136,11 +138,12 @@ POST /openapi/capcut-mate/v1/get_text_animations
 | path | string | 路径信息 |
 | platform | string | 支持平台（通常为"all"） |
 
-### 错误响应 (4xx/5xx)
+### 错误响应
 
 ```json
 {
-  "detail": "错误信息描述"
+  "code": 2029,
+  "message": "获取文字动画失败"
 }
 ```
 
@@ -185,14 +188,12 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_text_anima
 
 | 错误码 | 错误信息 | 说明 | 解决方案 |
 |--------|----------|------|----------|
-| 400 | type是必填项 | 缺少动画类型参数 | 提供有效的type参数 |
-| 400 | mode参数无效 | mode参数超出范围 | 使用0、1或2作为mode值 |
-| 400 | type参数无效 | type参数值不正确 | 使用in、out或loop作为type值 |
-| 500 | 获取文字动画失败 | 内部处理错误 | 联系技术支持 |
+| 1001 | 参数校验失败 | type 不在 in、out、loop 取值范围内（请求体未通过参数校验） | 使用 in、out 或 loop 作为 type 值 |
+| 2029 | 获取文字动画失败 | mode 不是 0、1、2，或内部处理出错 | 使用 0、1 或 2 作为 mode 值，或联系技术支持 |
 
 ## 注意事项
 
-1. **参数要求**: type参数为必填项，mode参数为可选项
+1. **参数要求**: type和mode参数均为可选项；不传type则返回全部动画类型
 2. **动画类型**: type参数只能是"in"、"out"、"loop"中的一个
 3. **动画模式**: mode参数只能是0、1、2中的一个
 4. **响应格式**: 与旧版本不同，当前版本直接返回对象数组而非JSON字符串
@@ -200,7 +201,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_text_anima
 
 ## 工作流程
 
-1. 验证必填参数（type）
+1. 验证可选参数（type）
 2. 验证参数有效性（type和mode）
 3. 根据type和mode筛选动画数据
 4. 返回符合条件的动画列表

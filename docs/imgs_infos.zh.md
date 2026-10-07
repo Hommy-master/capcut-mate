@@ -45,16 +45,16 @@ POST /openapi/capcut-mate/v1/imgs_infos
 |--------|------|------|--------|------|
 | imgs | array[string] |✅ | - | 图片文件URL数组 |
 | timelines | array[object] |✅ | - | 时间线配置数组 |
-| height | number |❌ | 1080 |图片高度 |
-| width | number |❌ | 1920 |图片宽度 |
+| height | integer |❌ | None |图片高度 |
+| width | integer |❌ | None |图片宽度 |
 | in_animation | string |❌ | None |入场动画名称，可用值见 [add_images](./add_images.zh.md) |
-| in_animation_duration | number |❌ | 500000 |入时长(微秒) |
+| in_animation_duration | integer |❌ | None |入场动画时长(微秒) |
 | loop_animation | string |❌ | None |循环动画名称，可用值见 [add_images](./add_images.zh.md) |
-| loop_animation_duration | number |❌ | 1000000 |循动画时长(微秒) |
+| loop_animation_duration | integer |❌ | None |循环动画时长(微秒) |
 | out_animation | string |❌ | None |出场动画名称，可用值见 [add_images](./add_images.zh.md) |
-| out_animation_duration | number |❌ | 500000 |出动画时长(微秒) |
+| out_animation_duration | integer |❌ | None |出场动画时长(微秒) |
 | transition | string |❌ | None |转场名称，可用值见 [add_images](./add_images.zh.md) / [add_videos](./add_videos.zh.md) |
-| transition_duration | number |❌ | 300000 |转场时长(微秒) |
+| transition_duration | integer |❌ | None |转场时长(微秒) |
 
 ### 可用转场与动画名称
 
@@ -66,7 +66,9 @@ POST /openapi/capcut-mate/v1/imgs_infos
 
 ```json
 {
-  "infos": "[{\"img_url\":\"https://assets.jcaigc.cn/img1.jpg\",\"start\":0,\"end\":3000000,\"duration\":5000000,\"height\":1080,\"width\":1920,\"in_animation\":\"渐显\",\"in_animation_duration\":500000,\"loop_animation\":\"动感摇晃I\",\"loop_animation_duration\":1000000,\"out_animation\":\"渐隐\",\"out_animation_duration\":500000,\"transition\":\"叠化\",\"transition_duration\":300000},{\"img_url\":\"https://assets.jcaigc.cn/img2.png\",\"start\":3000000,\"end\":6000000,\"duration\":5000000,\"height\":1080,\"width\":1920,\"in_animation\":\"渐显\",\"in_animation_duration\":500000,\"loop_animation\":\"动感摇晃I\",\"loop_animation_duration\":1000000,\"out_animation\":\"渐隐\",\"out_animation_duration\":500000,\"transition\":\"叠化\",\"transition_duration\":300000}]"
+  "code": 0,
+  "message": "success",
+  "infos": "[{\"image_url\":\"https://assets.jcaigc.cn/img1.jpg\",\"start\":0,\"end\":3000000,\"height\":1080,\"width\":1920,\"in_animation\":\"渐显\",\"in_animation_duration\":500000,\"out_animation\":\"渐隐\",\"out_animation_duration\":500000,\"loop_animation\":\"动感摇晃I\",\"loop_animation_duration\":1000000,\"transition\":\"叠化\",\"transition_duration\":300000},{\"image_url\":\"https://assets.jcaigc.cn/img2.png\",\"start\":3000000,\"end\":6000000,\"height\":1080,\"width\":1920,\"in_animation\":\"渐显\",\"in_animation_duration\":500000,\"out_animation\":\"渐隐\",\"out_animation_duration\":500000,\"loop_animation\":\"动感摇晃I\",\"loop_animation_duration\":1000000,\"transition\":\"叠化\",\"transition_duration\":300000}]"
 }
 ```
 
@@ -76,11 +78,12 @@ POST /openapi/capcut-mate/v1/imgs_infos
 |--------|------|------|
 | infos | string | 图片信息JSON字符串 |
 
-###错误响应 (4xx/5xx)
+### 错误响应
 
 ```json
 {
-  "detail": "错误信息描述"
+  "code": 1001,
+  "message": "参数校验失败"
 }
 ```
 
@@ -120,15 +123,11 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/imgs_infos \
 
 |错误码 | 错误信息 | 说明 | 解决方案 |
 |--------|----------|------|----------|
-| 400 | imgs是必填项 |缺少图片URL参数 | 提供有效的图片URL数组 |
-| 400 | timelines是必填项 |缺少时间线参数 | 提供有效的时间线数组 |
-| 400 | 数组长度不匹配 | imgs和timelines长度不一致 |确保两个数组长度相同 |
-| 404 | 图片资源不存在 |图片URL无法访问 |检查图片URL是否可访问 |
-| 500 | 图片信息生成失败 |内部处理错误 |联技术支持 |
+| 1001 | 参数校验失败 | 请求体未通过字段校验（缺少 `imgs`/`timelines`、时间线项缺少 `start`/`end`，或类型错误） | 检查参数类型与必填字段 |
 
 ## 注意事项
 
-1. **数组匹配**: imgs和timelines数组长度必须相同
+1. **数组匹配**: `imgs` 与 `timelines` 长度不一致时，按较短长度截断后继续生成（不会直接报错）
 2. **时间单位**:所有时间参数使用微秒（1秒 = 1,000,000微秒）
 3. **分辨率设置**: height和width参数用于设置图片显示分辨率
 4. **动画效果**:支持入动画、循环动画、出动画和转场效果
@@ -138,7 +137,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/imgs_infos \
 ##工作流程
 
 1.验证必填参数（imgs, timelines）
-2.检查数组长度匹配
+2.按较短长度对齐两个数组
 3.验证时间线参数有效性
 4. 设置图片分辨率参数
 5.应用动画效果参数

@@ -1,7 +1,7 @@
 # GET_AUDIO_DURATION API 接口文档
 
 ## 🌐 语言切换
-[中文版](./add_audios.zh.md) | [English](./add_audios.md)
+[中文版](./get_audio_duration.zh.md) | [English](./get_audio_duration.md)
 
 ## 接口信息
 
@@ -49,6 +49,8 @@ POST /openapi/capcut-mate/v1/get_audio_duration
 
 ```json
 {
+  "code": 0,
+  "message": "success",
   "duration": 2325333
 }
 ```
@@ -57,13 +59,14 @@ POST /openapi/capcut-mate/v1/get_audio_duration
 
 | 字段名 | 类型 | 说明 |
 |--------|------|------|
-| duration | number | 音频时长，单位：微秒 |
+| duration | integer | 音频时长，单位：微秒 |
 
-### 错误响应 (4xx/5xx)
+### 错误响应
 
 ```json
 {
-  "detail": "错误信息描述"
+  "code": 2034,
+  "message": "获取音频时长失败"
 }
 ```
 
@@ -85,9 +88,10 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_audio_dura
 
 | 错误码 | 错误信息 | 说明 | 解决方案 |
 |--------|----------|------|----------|
-| 400 | mp3_url是必填项 | 缺少音频URL参数 | 提供有效的mp3_url |
-| 404 | 音频文件无法访问 | 指定的音频URL无效 | 检查音频URL是否正确 |
-| 500 | 音频时长获取失败 | 内部处理错误 | 联系技术支持 |
+| 1001 | 参数校验失败 | `mp3_url` 缺失或不是合法 URL | 提供有效的 `mp3_url` |
+| 2004 | 文件大小超出限制 | 音频文件超过服务端下载大小限制 | 使用更小的音频文件 |
+| 2005 | 下载文件失败 | 音频文件下载失败 | 检查音频URL是否可公开访问 |
+| 2034 | 获取音频时长失败 | 读取音频时长失败 | 检查音频文件格式 |
 
 ## 注意事项
 
