@@ -1362,6 +1362,8 @@ VHS
 
 ```json
 {
+  "code": 0,
+  "message": "success",
   "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
   "track_id": "caption-track-uuid",
   "text_ids": ["text1-uuid", "text2-uuid"],
@@ -1386,11 +1388,12 @@ VHS
 | segment_ids | array | Segment IDs |
 | segment_infos | array | Segment info objects (`id` / `start` / `end`) |
 
-### Error Response (4xx/5xx)
+### Error Response
 
 ```json
 {
-  "detail": "Error message description"
+  "code": 2018,
+  "message": "Invalid caption information, please check if the value of the captions field is correct."
 }
 ```
 
@@ -1533,12 +1536,11 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_captions \
 
 | Error Code | Error Message | Description | Solution |
 |------------|---------------|-------------|----------|
-| 400 | draft_url is required | Missing draft URL | Provide a valid `draft_url` |
-| 400 | captions is required | Missing captions | Provide valid `captions` |
-| 400 | captions format error | Invalid JSON | Fix JSON string format |
-| 400 | Time range invalid | end must be > start | Fix start/end |
-| 404 | Draft does not exist | Invalid/missing draft | Check draft URL |
-| 500 | Caption processing failed | Internal error | Contact support |
+| 1001 | Parameter validation failed | Request body failed schema validation | Check parameter types and required fields |
+| 2001 | Invalid draft URL | `draft_url` is missing, malformed, or the draft is not in the cache | Pass the `draft_url` returned by `create_draft` |
+| 2018 | Invalid caption information | `captions` is not valid JSON, an item is missing `start`/`end`/`text`, `end` is not greater than `start`, or the text is empty | Fix the JSON string and the required fields |
+| 2019 | Caption addition failed | Failed while writing captions into the draft | Check the draft state and retry |
+| 2042 | Draft lock acquisition timeout | Only one operation is allowed on a draft at a time | Retry later |
 
 ## Notes
 

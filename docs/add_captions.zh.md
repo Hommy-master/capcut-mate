@@ -1364,6 +1364,8 @@ VHS
 
 ```json
 {
+  "code": 0,
+  "message": "success",
   "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
   "track_id": "text_track_123",
   "text_ids": ["text_001", "text_002"],
@@ -1393,11 +1395,12 @@ VHS
 | segment_ids | array | 字幕片段 ID 列表 |
 | segment_infos | array | 片段信息列表（含 `id`/`start`/`end`） |
 
-### 错误响应 (4xx/5xx)
+### 错误响应
 
 ```json
 {
-  "detail": "错误信息描述"
+  "code": 2018,
+  "message": "无效的字幕信息，请检查captions字段值是否正确"
 }
 ```
 
@@ -1543,12 +1546,11 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_captions \
 
 | 错误码 | 错误信息 | 说明 | 解决方案 |
 |--------|----------|------|----------|
-| 400 | draft_url是必填项 | 缺少草稿 URL | 提供有效的 `draft_url` |
-| 400 | captions是必填项 | 缺少字幕信息 | 提供有效的 `captions` |
-| 400 | 无效的字幕信息 | captions 校验失败 | 检查 JSON 与必填字段 |
-| 400 | 时间范围无效 | end 必须大于 start | 修正起止时间 |
-| 404 | 草稿不存在 | draft_id 无效或不在缓存中 | 检查草稿 URL |
-| 500 | 字幕添加失败 | 内部处理错误 | 联系技术支持 |
+| 1001 | 参数校验失败 | 请求体未通过字段校验 | 检查参数类型与必填字段 |
+| 2001 | 无效的草稿URL | `draft_url` 缺失、格式错误，或草稿不在缓存中 | 传入 `create_draft` 返回的 `draft_url` |
+| 2018 | 无效的字幕信息 | `captions` 不是合法 JSON、某项缺少 `start`/`end`/`text`、`end` 不大于 `start`，或文本为空 | 修正 JSON 字符串与必填字段 |
+| 2019 | 字幕添加失败 | 写入草稿过程出错 | 检查草稿状态后重试 |
+| 2042 | 草稿锁获取超时 | 同一时间只允许一个操作，草稿正被占用 | 稍后重试 |
 
 ## 注意事项
 

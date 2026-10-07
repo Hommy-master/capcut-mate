@@ -28,7 +28,7 @@ Sent as `multipart/form-data`: the file goes in the `file` field, the key in the
 ```bash
 curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/upload_file \
   -F "file=@demo.mp4" \
-  -F "apiKey=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+  -F "apiKey=123e8567-e89b-12d3-a856-826618178000"
 ```
 
 ### Parameter Description
@@ -95,7 +95,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/upload_file \
 ```bash
 curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/upload_file \
   -F "file=@demo.mp4" \
-  -F "apiKey=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+  -F "apiKey=123e4567-e89b-12d3-a456-426614174000"
 ```
 
 ### Python Example
@@ -107,7 +107,7 @@ with open("demo.mp4", "rb") as f:
     resp = requests.post(
         "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/upload_file",
         files={"file": ("demo.mp4", f, "video/mp4")},
-        data={"apiKey": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"},
+        data={"apiKey": "123e4567-e89b-12d3-a456-426614174000"},
         timeout=600,
     )
 
