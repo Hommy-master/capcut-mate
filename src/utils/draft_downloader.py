@@ -228,10 +228,19 @@ _NO_CACHE_HEADERS = {
 _TRANSIENT_HTTP_BACKOFF_MAX_SECONDS = 30
 _DEFAULT_NETWORK_RETRY_DELAY_SECONDS = 1.0
 
-_NON_RETRYABLE_NETWORK_MARKERS = (
-    "name or service not known",
+# 解析失败在报错上与「域名真的不存在」无法区分：对象存储普遍用泛解析
+# （bucket 被删也不会 NXDOMAIN），实际多为本地解析链路瞬时抖动。
+# 因此给一个小预算快速重试，避免一次抖动直接判死；域名真不可达也只多花几秒。
+_DNS_RETRY_BUDGET = 3
+_DNS_RETRY_DELAY_SECONDS = 1.0
+_DNS_FAILURE_MARKERS = (
     "getaddrinfo failed",
+    "name or service not known",
     "nodename nor servname provided",
+    "failed to resolve",
+)
+
+_NON_RETRYABLE_NETWORK_MARKERS = (
     "connection refused",
     "failed to establish a new connection",
 )
@@ -262,6 +271,7 @@ def _normalize_http_url(url: str) -> str:
 
 
 def _is_retryable_request_exception(exc: requests.exceptions.RequestException) -> bool:
+    """是否可用完整重试预算。解析失败不在此列，由 _is_dns_resolution_failure 走小预算。"""
     if isinstance(
         exc,
         (requests.exceptions.Timeout, requests.exceptions.ChunkedEncodingError),
@@ -273,6 +283,14 @@ def _is_retryable_request_exception(exc: requests.exceptions.RequestException) -
             return False
         return True
     return False
+
+
+def _is_dns_resolution_failure(exc: requests.exceptions.RequestException) -> bool:
+    """是否为 DNS 解析失败；这类错误按 _DNS_RETRY_BUDGET 快速重试后仍失败才判死。"""
+    if not isinstance(exc, requests.exceptions.ConnectionError):
+        return False
+    msg = str(exc).lower()
+    return any(marker in msg for marker in _DNS_FAILURE_MARKERS)
 
 
 def _parse_retry_after_seconds(headers) -> Optional[float]:
@@ -313,6 +331,30 @@ def _sleep_transient_http_backoff(
 
 def _sleep_network_retry_backoff() -> None:
     time.sleep(_DEFAULT_NETWORK_RETRY_DELAY_SECONDS)
+
+
+def _sleep_dns_retry_backoff() -> None:
+    time.sleep(_DNS_RETRY_DELAY_SECONDS)
+
+
+def _handle_dns_retry(retry_no: int, exc: Exception, url: str) -> None:
+    """解析失败的小预算重试：预算内仅告警（调用方睡后重试），耗尽则抛网络重试耗尽。
+
+    耗尽后按 NETWORK_RETRY_EXHAUSTED 归类，而非 RESOURCE_UNAVAILABLE：此时仍无法区分
+    「解析链路抖动」与「域名真不可达」，判成资源不可用会把用户引向错误的排查方向。
+    """
+    if retry_no > _DNS_RETRY_BUDGET:
+        logger.error(
+            f"DNS resolution failed after {_DNS_RETRY_BUDGET} retries: {url}, {exc}"
+        )
+        _abort(
+            DraftDownloadFailureKind.NETWORK_RETRY_EXHAUSTED,
+            detail=str(exc),
+            url=url,
+        )
+    logger.warning(
+        f"DNS resolution failed, retry ({retry_no}/{_DNS_RETRY_BUDGET}): {url}, {exc}"
+    )
 
 
 def _http_get(url: str, **kwargs) -> requests.Response:
@@ -692,6 +734,7 @@ def get_draft_files_list(draft_url: str) -> list:
 
 def _get_draft_files_list(draft_url: str) -> list:
     """获取草稿文件列表；失败时抛出 DraftDownloadAbort。"""
+    dns_retry_count = 0
     for attempt in range(_MAX_RETRIES + 1):
         try:
             response = _http_get(
@@ -758,6 +801,11 @@ def _get_draft_files_list(draft_url: str) -> list:
         except DraftDownloadAbort:
             raise
         except requests.exceptions.RequestException as e:
+            if _is_dns_resolution_failure(e):
+                dns_retry_count += 1
+                _handle_dns_retry(dns_retry_count, e, draft_url)
+                _sleep_dns_retry_backoff()
+                continue
             if not _is_retryable_request_exception(e) or attempt >= _MAX_RETRIES:
                 if attempt >= _MAX_RETRIES and _is_retryable_request_exception(e):
                     logger.error(
@@ -888,6 +936,7 @@ def download_single_file(file_url: str, target_dir: str) -> bool:
 def _download_single_file(file_url: str, target_dir: str) -> None:
     """下载单个文件；失败时抛出 DraftDownloadAbort。"""
     retry_count = 0
+    dns_retry_count = 0
 
     full_file_path, url_draft_id = _resolve_download_target_path(file_url, target_dir)
     # 仅视频/图片/音频走 Range 续传；json 等仍每次整文件覆盖下载。
@@ -1004,6 +1053,11 @@ def _download_single_file(file_url: str, target_dir: str) -> None:
         except DraftDownloadAbort:
             raise
         except requests.exceptions.RequestException as e:
+            if _is_dns_resolution_failure(e):
+                dns_retry_count += 1
+                _handle_dns_retry(dns_retry_count, e, file_url)
+                _sleep_dns_retry_backoff()
+                continue
             if not _is_retryable_request_exception(e):
                 logger.error(
                     f"Network error is not retryable: {e}, URL: {file_url}"
@@ -1265,6 +1319,7 @@ def _download_remote_material_raising(
     # 本函数只拉取音视频/图片（含无扩展名的 CDN URL），始终允许断点续传。
     local_path: Optional[str] = None
     bypass_cache = False
+    dns_retry_count = 0
     for attempt in range(_MAX_RETRIES + 1):
         response = None
         try:
@@ -1367,6 +1422,11 @@ def _download_remote_material_raising(
         except DraftDownloadAbort:
             raise
         except requests.exceptions.RequestException as e:
+            if _is_dns_resolution_failure(e):
+                dns_retry_count += 1
+                _handle_dns_retry(dns_retry_count, e, file_url)
+                _sleep_dns_retry_backoff()
+                continue
             if not _is_retryable_request_exception(e):
                 logger.error(
                     f"Remote material download failed, not retryable: {file_url}, error: {e}"
@@ -1422,6 +1482,7 @@ def _download_remote_file_raising(file_url: str, local_path: str) -> None:
     """下载单个 URL 素材；失败抛出 DraftDownloadAbort。"""
     enable_resume = _is_media_resource(file_url) or _is_media_resource(local_path)
     bypass_cache = False
+    dns_retry_count = 0
     for attempt in range(_MAX_RETRIES + 1):
         try:
             extra_headers = None
@@ -1518,6 +1579,11 @@ def _download_remote_file_raising(file_url: str, local_path: str) -> None:
         except DraftDownloadAbort:
             raise
         except requests.exceptions.RequestException as e:
+            if _is_dns_resolution_failure(e):
+                dns_retry_count += 1
+                _handle_dns_retry(dns_retry_count, e, file_url)
+                _sleep_dns_retry_backoff()
+                continue
             if not _is_retryable_request_exception(e):
                 logger.error(
                     f"Remote material download failed, not retryable: {file_url}, error: {e}"

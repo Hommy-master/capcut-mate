@@ -12,6 +12,16 @@ import requests
 import src.utils.draft_downloader as dd
 
 
+# 线上真实报错文本（阿里云 OSS 素材解析失败，素材本身可正常访问）
+DNS_ERROR_MESSAGE = (
+    "HTTPSConnectionPool(host='moushi-intelligent.oss-cn-hangzhou.aliyuncs.com', "
+    "port=443): Max retries exceeded with url: /aitrainer/a.mp3 "
+    "(Caused by NameResolutionError(\"<urllib3.connection.HTTPSConnection object>: "
+    "Failed to resolve 'moushi-intelligent.oss-cn-hangzhou.aliyuncs.com' "
+    "([Errno 11001] getaddrinfo failed)\"))"
+)
+
+
 @pytest.fixture
 def no_sleep():
     with patch.object(dd, "time") as m_time:
@@ -163,6 +173,21 @@ class TestRetryHelpers:
         exc = requests.exceptions.ReadTimeout("read timed out")
         assert dd._is_retryable_request_exception(exc) is True
 
+    def test_dns_failure_detected(self) -> None:
+        exc = requests.exceptions.ConnectionError(DNS_ERROR_MESSAGE)
+        assert dd._is_dns_resolution_failure(exc) is True
+
+    def test_dns_failure_is_no_longer_instantly_fatal(self) -> None:
+        """回归：getaddrinfo failed 曾被列为永久错误，一次解析抖动即判死整个任务。"""
+        assert "getaddrinfo failed" not in dd._NON_RETRYABLE_NETWORK_MARKERS
+        exc = requests.exceptions.ConnectionError(DNS_ERROR_MESSAGE)
+        assert dd._is_retryable_request_exception(exc) is True
+
+    def test_connection_refused_is_not_dns_failure(self) -> None:
+        exc = requests.exceptions.ConnectionError("Connection refused")
+        assert dd._is_dns_resolution_failure(exc) is False
+        assert dd._is_retryable_request_exception(exc) is False
+
 
 class TestDownloadRemoteFile:
     def _ok_response(self, content: bytes = b"data") -> MagicMock:
@@ -212,6 +237,46 @@ class TestDownloadRemoteFile:
             out = os.path.join(tempfile.gettempdir(), "t_dl_fail.bin")
             assert dd._download_remote_file("https://x.test/c.mp4", out) is False
             assert m_req.get.call_count == 1
+
+    def test_dns_failure_retries_then_succeeds(self, no_sleep) -> None:
+        """一次解析抖动不应让下载失败。"""
+        calls = []
+
+        def side_effect(*_a, **_kw):
+            calls.append(1)
+            if len(calls) < 2:
+                raise requests.exceptions.ConnectionError(DNS_ERROR_MESSAGE)
+            return self._ok_response()
+
+        out = os.path.join(tempfile.gettempdir(), "t_dl_dns_ok.bin")
+        try:
+            with patch.object(dd, "requests") as m_req:
+                m_req.get.side_effect = side_effect
+                m_req.exceptions = requests.exceptions
+                assert dd._download_remote_file("https://x.test/dns.mp4", out) is True
+            assert len(calls) == 2
+        finally:
+            if os.path.isfile(out):
+                os.remove(out)
+
+    def test_dns_failure_exhausts_small_budget_only(self, no_sleep) -> None:
+        """解析持续失败：只花 _DNS_RETRY_BUDGET 次，不必用满 _MAX_RETRIES。"""
+        with patch.object(dd, "requests") as m_req:
+            m_req.get.side_effect = requests.exceptions.ConnectionError(DNS_ERROR_MESSAGE)
+            m_req.exceptions = requests.exceptions
+            out = os.path.join(tempfile.gettempdir(), "t_dl_dns_fail.bin")
+            assert dd._download_remote_file("https://x.test/dns2.mp4", out) is False
+            assert m_req.get.call_count == dd._DNS_RETRY_BUDGET + 1
+
+    def test_dns_failure_reports_network_kind(self, no_sleep) -> None:
+        """归类为网络失败，避免用户看到「素材不存在/URL无效」的错误指引。"""
+        with patch.object(dd, "requests") as m_req:
+            m_req.get.side_effect = requests.exceptions.ConnectionError(DNS_ERROR_MESSAGE)
+            m_req.exceptions = requests.exceptions
+            out = os.path.join(tempfile.gettempdir(), "t_dl_dns_kind.bin")
+            with pytest.raises(dd.DraftDownloadAbort) as excinfo:
+                dd._download_remote_file_raising("https://x.test/dns3.mp4", out)
+        assert excinfo.value.kind is dd.DraftDownloadFailureKind.NETWORK_RETRY_EXHAUSTED
 
     def test_non200_404_does_not_retry(self, no_sleep) -> None:
         bad = MagicMock()
