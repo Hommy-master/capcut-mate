@@ -226,6 +226,49 @@ class TestDownloadDraftWithResult:
                     assert dd.download_draft_with_result(draft_url).ok is False
 
 
+class TestDraftFileListJsonRetry:
+    """草稿文件列表返回 200 但正文不是 JSON：网关截断/HTML 错误页，属瞬时故障。"""
+
+    DRAFT_URL = "https://api.example.com/get_draft?draft_id=20251204214904ccb1af38"
+
+    def _malformed(self) -> MagicMock:
+        r = MagicMock()
+        r.status_code = 200
+        r.close = MagicMock()
+        r.json.side_effect = json.JSONDecodeError("Expecting value", "<html>", 0)
+        return r
+
+    def _ok(self, files: list) -> MagicMock:
+        r = MagicMock()
+        r.status_code = 200
+        r.json.return_value = {"code": 0, "files": files}
+        return r
+
+    def test_retries_then_succeeds(self, no_sleep) -> None:
+        calls = []
+
+        def side_effect(*_a, **_kw):
+            calls.append(1)
+            return self._malformed() if len(calls) < 2 else self._ok(["https://x/a.mp4"])
+
+        with patch.object(dd, "requests") as m_req:
+            m_req.get.side_effect = side_effect
+            m_req.exceptions = requests.exceptions
+            files = dd._get_draft_files_list(self.DRAFT_URL)
+        assert len(calls) == 2
+        assert files == ["https://x/a.mp4"]
+
+    def test_exhausted_is_network_kind(self, no_sleep) -> None:
+        with patch.object(dd, "_MAX_RETRIES", 2):
+            with patch.object(dd, "requests") as m_req:
+                m_req.get.return_value = self._malformed()
+                m_req.exceptions = requests.exceptions
+                with pytest.raises(dd.DraftDownloadAbort) as excinfo:
+                    dd._get_draft_files_list(self.DRAFT_URL)
+        assert excinfo.value.kind is dd.DraftDownloadFailureKind.NETWORK_RETRY_EXHAUSTED
+        assert m_req.get.call_count == 3
+
+
 class TestRemoteMaterialFailureKind:
     def test_404_resource_unavailable(self, no_sleep) -> None:
         bad = MagicMock()

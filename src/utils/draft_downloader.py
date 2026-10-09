@@ -217,10 +217,11 @@ _REQUEST_HEADERS = {
     ),
 }
 
-# 网关/限流等暂时不可用，退避重试有效（与 desktop-client 一致；不含 500 等持久故障）。
+# 网关/限流等暂时不可用，退避重试有效；500 多为 OSS/Nginx 的瞬时内部错误，与 desktop-client 一致。
 # 416 不是「文件不存在」：常见于 CDN/Nginx 把上次 Range 续传的 416 缓存后，
-# 后续不带 Range 的 GET 仍返回 416，属于偶发瞬时错误，应重试而非直接失败。
-_RETRYABLE_TRANSIENT_HTTP_STATUSES = frozenset({408, 416, 429, 502, 503, 504})
+# 后续不带 Range 的 GET 仍返回 416，属于偶发瞬时错误，应重试而非直接失败
+# （desktop-client 不含 416，它在 resumableDownload 里单独处理续传边界）。
+_RETRYABLE_TRANSIENT_HTTP_STATUSES = frozenset({408, 416, 429, 500, 502, 503, 504})
 _NO_CACHE_HEADERS = {
     "Cache-Control": "no-cache",
     "Pragma": "no-cache",
@@ -274,7 +275,13 @@ def _is_retryable_request_exception(exc: requests.exceptions.RequestException) -
     """是否可用完整重试预算。解析失败不在此列，由 _is_dns_resolution_failure 走小预算。"""
     if isinstance(
         exc,
-        (requests.exceptions.Timeout, requests.exceptions.ChunkedEncodingError),
+        (
+            requests.exceptions.Timeout,
+            requests.exceptions.ChunkedEncodingError,
+            # 响应体解码失败最常见成因是传输被截断，属瞬时故障（它不继承 ConnectionError，
+            # 不显式列出会落到「永久不可重试」）。
+            requests.exceptions.ContentDecodingError,
+        ),
     ):
         return True
     if isinstance(exc, requests.exceptions.ConnectionError):
@@ -779,9 +786,19 @@ def _get_draft_files_list(draft_url: str) -> list:
             try:
                 json_data = response.json()
             except json.JSONDecodeError as e:
+                # 多为网关返回截断响应或 HTML 错误页，属瞬时故障，退避后重试。
+                if attempt < _MAX_RETRIES:
+                    retry_no = attempt + 1
+                    logger.warning(
+                        f"Failed to parse draft list JSON, retry "
+                        f"({retry_no}/{_MAX_RETRIES}): {e}"
+                    )
+                    response.close()
+                    _sleep_network_retry_backoff()
+                    continue
                 logger.error(f"Failed to parse draft list JSON: {e}")
                 _abort(
-                    DraftDownloadFailureKind.RESOURCE_UNAVAILABLE,
+                    DraftDownloadFailureKind.NETWORK_RETRY_EXHAUSTED,
                     detail=f"Failed to parse draft list JSON: {e}",
                     url=draft_url,
                 )

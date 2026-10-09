@@ -239,8 +239,8 @@ const GET_DRAFT_FETCH_DEADLINE_MS = 30000;
 const GET_DRAFT_FETCH_PER_ATTEMPT_MAX_MS = 15000;
 const GET_DRAFT_FETCH_BACKOFF_MS = [400, 1000];
 
-/** 网关/限流等暂时不可用，退避重试有效（不含 500 等通常表示持久故障的状态） */
-const RETRYABLE_TRANSIENT_HTTP_STATUSES = new Set([408, 429, 502, 503, 504]);
+/** 网关/限流等暂时不可用，退避重试有效；500 多为 OSS/Nginx 的瞬时内部错误，与 capcut-mate 服务端一致 */
+const RETRYABLE_TRANSIENT_HTTP_STATUSES = new Set([408, 429, 500, 502, 503, 504]);
 
 /** 限流/网关错误退避：1s 起指数增长，上限 30s */
 const TRANSIENT_HTTP_BACKOFF_MS = [1000, 2000, 4000, 8000, 16000];
@@ -305,7 +305,7 @@ function getRetryDelayMs(error, failedAttempt) {
 
 /**
  * 判断下载错误是否值得重试。
- * - HTTP：408 / 429 / 502 / 503 / 504 可重试（限流/网关暂时不可用）；404 等 4xx 及 500 等不重试
+ * - HTTP：408 / 429 / 500 / 502 / 503 / 504 可重试（限流/网关暂时不可用）；404 等 4xx 不重试
  * - 网络：DNS 失败、连接拒绝不重试；超时、连接重置等可重试
  * - 流写入/读取中断可重试
  */

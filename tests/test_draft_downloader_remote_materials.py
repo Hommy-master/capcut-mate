@@ -130,7 +130,8 @@ class TestRetryHelpers:
             (404, False),
             (400, False),
             (416, True),
-            (500, False),
+            (500, True),
+            (501, False),
             (408, True),
             (429, True),
             (502, True),
@@ -187,6 +188,11 @@ class TestRetryHelpers:
         exc = requests.exceptions.ConnectionError("Connection refused")
         assert dd._is_dns_resolution_failure(exc) is False
         assert dd._is_retryable_request_exception(exc) is False
+
+    def test_content_decoding_error_retryable(self) -> None:
+        """回归：它不是 ConnectionError 子类，曾被当作永久错误直接判死。"""
+        exc = requests.exceptions.ContentDecodingError("gzip decode failed")
+        assert dd._is_retryable_request_exception(exc) is True
 
 
 class TestDownloadRemoteFile:
@@ -301,6 +307,45 @@ class TestDownloadRemoteFile:
                     m_req.get.side_effect = [bad, bad, good]
                     m_req.exceptions = requests.exceptions
                     assert dd._download_remote_file("https://x.test/d.mp4", out) is True
+        finally:
+            if os.path.isfile(out):
+                os.remove(out)
+
+    def test_http_500_retries_then_success(self, no_sleep) -> None:
+        """500 多为 OSS/Nginx 瞬时内部错误，应与 502/503 同等对待。"""
+        bad = MagicMock()
+        bad.status_code = 500
+        bad.headers = {}
+        bad.close = MagicMock()
+        good = self._ok_response()
+        out = os.path.join(tempfile.gettempdir(), "t_dl_500.bin")
+        try:
+            with patch.object(dd, "_MAX_RETRIES", 2):
+                with patch.object(dd, "requests") as m_req:
+                    m_req.get.side_effect = [bad, good]
+                    m_req.exceptions = requests.exceptions
+                    assert dd._download_remote_file("https://x.test/e.mp4", out) is True
+        finally:
+            if os.path.isfile(out):
+                os.remove(out)
+
+    def test_content_decoding_error_retries_then_succeeds(self, no_sleep) -> None:
+        """响应体解码失败（多为传输截断）应重试，而非直接判死。"""
+        calls = []
+
+        def side_effect(*_a, **_kw):
+            calls.append(1)
+            if len(calls) < 2:
+                raise requests.exceptions.ContentDecodingError("gzip decode failed")
+            return self._ok_response()
+
+        out = os.path.join(tempfile.gettempdir(), "t_dl_decode.bin")
+        try:
+            with patch.object(dd, "requests") as m_req:
+                m_req.get.side_effect = side_effect
+                m_req.exceptions = requests.exceptions
+                assert dd._download_remote_file("https://x.test/f.mp4", out) is True
+            assert len(calls) == 2
         finally:
             if os.path.isfile(out):
                 os.remove(out)
