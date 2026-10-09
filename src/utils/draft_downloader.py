@@ -16,6 +16,7 @@ from urllib.parse import urlparse, parse_qs
 from typing import Optional, Dict, Any, List, Tuple
 from src.utils.logger import logger
 from src.utils.deferred_delete import dequeue_path
+from exceptions import CustomError
 import config
 
 
@@ -210,6 +211,15 @@ def _localize_draft_meta_info(target_dir: str, draft_id: str) -> None:
 _REQUEST_CONNECT_TIMEOUT = 10
 _REQUEST_READ_TIMEOUT = 30
 _MAX_RETRIES = 10
+
+# 整个下载阶段（文件列表 + 全部草稿文件 + 全部远程素材 + 其间的所有重试）共享的墙钟预算。
+# 读写超时是「每次 socket 读写」的，慢速滴流可以无限续期，重试预算又逐层相乘，
+# 因此必须另设总预算，让降级网络下有界失败而不是挂死（同 download.py 的 total_timeout 思路）。
+_DOWNLOAD_PHASE_BUDGET_SECONDS = 300.0
+
+# robocopy 仅用于触发目录扫描/复制，卡住不应拖垮整个阶段。
+_ROBOCOPY_TIMEOUT_SECONDS = 120
+
 _REQUEST_HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -222,6 +232,16 @@ _REQUEST_HEADERS = {
 # 后续不带 Range 的 GET 仍返回 416，属于偶发瞬时错误，应重试而非直接失败
 # （desktop-client 不含 416，它在 resumableDownload 里单独处理续传边界）。
 _RETRYABLE_TRANSIENT_HTTP_STATUSES = frozenset({408, 416, 429, 500, 502, 503, 504})
+
+# 服务端错误统一为「HTTP 200 + body 里的 code」（见 src/middlewares/response.py）：
+# code=0 成功，1001-2050 业务错误，9998/9999 系统内部错误；预想不到的非 200 会被
+# 中间件兜底改写成 code=原始状态码。因此系统内部错误属瞬时故障，应重试。
+_RETRYABLE_API_CODES = frozenset(
+    {
+        CustomError.INTERNAL_SERVER_ERROR.code,
+        CustomError.UNKNOWN_ERROR.code,
+    }
+)
 _NO_CACHE_HEADERS = {
     "Cache-Control": "no-cache",
     "Pragma": "no-cache",
@@ -342,6 +362,47 @@ def _sleep_network_retry_backoff() -> None:
 
 def _sleep_dns_retry_backoff() -> None:
     time.sleep(_DNS_RETRY_DELAY_SECONDS)
+
+
+def _now() -> float:
+    """下载预算的取时钟入口。单调钟，不受 NTP/改系统时间影响。"""
+    return time.monotonic()
+
+
+def _deadline_from_budget() -> float:
+    return _now() + _DOWNLOAD_PHASE_BUDGET_SECONDS
+
+
+def _check_download_deadline(deadline: Optional[float], *, url: str = "") -> None:
+    """总预算不足时中止下载。
+
+    deadline 为 None 时必须先短路（在取时钟之前），内部函数被直接调用时才不会白读时钟。
+    仅抛 DraftDownloadAbort：其它异常类型会被各层的 except OSError / except Exception
+    误判成 LOCAL_IO / RESOURCE_UNAVAILABLE，丢掉「网络重试耗尽」的归类与对应文案。
+    """
+    if deadline is None:
+        return
+    if _now() >= deadline:
+        logger.error(
+            "Download phase deadline exceeded (budget %.0fs): %s",
+            _DOWNLOAD_PHASE_BUDGET_SECONDS,
+            url or "unknown",
+        )
+        _abort(
+            DraftDownloadFailureKind.NETWORK_RETRY_EXHAUSTED,
+            detail=f"Download phase exceeded {_DOWNLOAD_PHASE_BUDGET_SECONDS:.0f}s budget",
+            url=url,
+        )
+
+
+def _is_retryable_api_code(code: Any) -> bool:
+    """body 里的 code 是否表示瞬时故障（可重试）。业务错误码（1001-2050）不算。"""
+    if not isinstance(code, int) or isinstance(code, bool):
+        return False
+    if code in _RETRYABLE_API_CODES:
+        return True
+    # 中间件兜底会把预想不到的非 200 改写为 code=原始状态码
+    return _is_retryable_http_status(code)
 
 
 def _handle_dns_retry(retry_no: int, exc: Exception, url: str) -> None:
@@ -517,13 +578,21 @@ def _is_download_success_status(status_code: int, resume_from: int) -> bool:
 
 
 def _write_http_body_to_file(
-    response: requests.Response, file_path: str, *, append: bool
+    response: requests.Response,
+    file_path: str,
+    *,
+    append: bool,
+    deadline: Optional[float] = None,
+    url: str = "",
 ) -> None:
     """
     将 HTTP 响应体写入本地文件。
 
     append=True：断点续传，在已有内容后追加（配合 206）。
     append=False：覆盖写入（JSON 等非资源，或服务端忽略 Range 返回 200 时的整文件重下）。
+
+    这里按 chunk 检查总预算：读写超时只管单次 socket 读写，慢速滴流能无限续期，
+    这是唯一能拦住它的地方。中断点落在 chunk 之间，最坏多等一个读超时（30s）。
     """
     parent_dir = os.path.dirname(file_path)
     if parent_dir:
@@ -531,6 +600,7 @@ def _write_http_body_to_file(
     mode = "ab" if append else "wb"
     with open(file_path, mode) as out:
         for chunk in response.iter_content(chunk_size=8192):
+            _check_download_deadline(deadline, url=url)
             if chunk:
                 out.write(chunk)
 
@@ -672,10 +742,13 @@ def download_draft(draft_url: str, save_path: Optional[str] = None) -> bool:
 
 
 def download_draft_with_result(
-    draft_url: str, save_path: Optional[str] = None
+    draft_url: str, save_path: Optional[str] = None, *, deadline: Optional[float] = None
 ) -> DraftDownloadResult:
     """
     下载草稿并返回结构化结果（含失败分类）。
+
+    deadline: 单调钟时间戳；None 时按 _DOWNLOAD_PHASE_BUDGET_SECONDS 从现在起算。
+        在入口处计算一次并向下传递，绝不层层重置，否则重试会突破总预算。
 
     Returns:
         DraftDownloadResult: ok=True 表示成功；失败时 kind 区分资源不可用与网络重试耗尽等。
@@ -693,13 +766,16 @@ def download_draft_with_result(
     if save_path is None:
         save_path = config.DRAFT_SAVE_PATH
 
+    if deadline is None:
+        deadline = _deadline_from_budget()
+
     target_dir = prepare_target_directory(save_path, draft_id)
     dequeue_path(target_dir)
 
     logger.info(f"Downloading draft {draft_id} to {target_dir}")
 
     try:
-        files = _get_draft_files_list(draft_url)
+        files = _get_draft_files_list(draft_url, deadline=deadline)
         if not files:
             logger.error(f"Cannot get draft file list: {draft_id}")
             _abort(
@@ -707,7 +783,7 @@ def download_draft_with_result(
                 detail=f"Empty draft file list: {draft_id}",
                 url=draft_url,
             )
-        _download_all_files(files, target_dir, draft_id)
+        _download_all_files(files, target_dir, draft_id, deadline=deadline)
         return DraftDownloadResult(ok=True)
     except DraftDownloadAbort as exc:
         if not exc.url:
@@ -739,10 +815,11 @@ def get_draft_files_list(draft_url: str) -> list:
         return []
 
 
-def _get_draft_files_list(draft_url: str) -> list:
+def _get_draft_files_list(draft_url: str, *, deadline: Optional[float] = None) -> list:
     """获取草稿文件列表；失败时抛出 DraftDownloadAbort。"""
     dns_retry_count = 0
     for attempt in range(_MAX_RETRIES + 1):
+        _check_download_deadline(deadline, url=draft_url)
         try:
             response = _http_get(
                 draft_url,
@@ -804,7 +881,28 @@ def _get_draft_files_list(draft_url: str) -> list:
                 )
 
             if json_data.get('code') != 0:
+                code = json_data.get('code')
                 message = json_data.get('message', 'unknown error')
+                if _is_retryable_api_code(code):
+                    # 服务端错误码在 body 里而非 HTTP 状态，这里才是真实错误路径
+                    if attempt < _MAX_RETRIES:
+                        retry_no = attempt + 1
+                        logger.warning(
+                            f"Draft file list API transient error (code={code}), "
+                            f"retry ({retry_no}/{_MAX_RETRIES}): {message}"
+                        )
+                        response.close()
+                        _sleep_network_retry_backoff()
+                        continue
+                    logger.error(
+                        f"Failed to get draft file list after {_MAX_RETRIES} "
+                        f"retries: code={code}, {message}"
+                    )
+                    _abort(
+                        DraftDownloadFailureKind.NETWORK_RETRY_EXHAUSTED,
+                        detail=f"Draft file list API code={code} after retries: {message}",
+                        url=draft_url,
+                    )
                 logger.error(f"Failed to get draft file list: {message}")
                 _abort(
                     DraftDownloadFailureKind.RESOURCE_UNAVAILABLE,
@@ -881,7 +979,9 @@ def download_all_files(files: list, target_dir: str, draft_id: str) -> bool:
         return False
 
 
-def _download_all_files(files: list, target_dir: str, draft_id: str) -> None:
+def _download_all_files(
+    files: list, target_dir: str, draft_id: str, *, deadline: Optional[float] = None
+) -> None:
     """下载所有草稿文件；任一失败立即抛出 DraftDownloadAbort（快速失败）。"""
     success_count = 0
     total_files = len(files)
@@ -895,8 +995,9 @@ def _download_all_files(files: list, target_dir: str, draft_id: str) -> None:
                 file_url,
             )
             continue
+        _check_download_deadline(deadline, url=file_url)
         try:
-            _download_single_file(file_url, target_dir)
+            _download_single_file(file_url, target_dir, deadline=deadline)
             success_count += 1
         except DraftDownloadAbort:
             logger.error(f"Failed to download file (fail fast): {file_url}")
@@ -950,7 +1051,9 @@ def download_single_file(file_url: str, target_dir: str) -> bool:
         return False
 
 
-def _download_single_file(file_url: str, target_dir: str) -> None:
+def _download_single_file(
+    file_url: str, target_dir: str, *, deadline: Optional[float] = None
+) -> None:
     """下载单个文件；失败时抛出 DraftDownloadAbort。"""
     retry_count = 0
     dns_retry_count = 0
@@ -961,6 +1064,7 @@ def _download_single_file(file_url: str, target_dir: str) -> None:
     bypass_cache = False
 
     while retry_count <= _MAX_RETRIES:
+        _check_download_deadline(deadline, url=file_url)
         try:
             extra_headers = None
             resume_from = 0
@@ -1058,12 +1162,20 @@ def _download_single_file(file_url: str, target_dir: str) -> None:
                         "Server ignored Range, re-downloading from start: %s",
                         file_url,
                     )
-                _write_http_body_to_file(response, full_file_path, append=append)
+                _write_http_body_to_file(
+                    response,
+                    full_file_path,
+                    append=append,
+                    deadline=deadline,
+                    url=file_url,
+                )
             finally:
                 response.close()
 
             if full_file_path.endswith("draft_content.json"):
-                _update_json_file_paths(full_file_path, target_dir, url_draft_id)
+                _update_json_file_paths(
+                    full_file_path, target_dir, url_draft_id, deadline=deadline
+                )
 
             return
 
@@ -1123,7 +1235,13 @@ def update_json_file_paths(json_file_path: str, target_dir: str, draft_id: str) 
         return False
 
 
-def _update_json_file_paths(json_file_path: str, target_dir: str, draft_id: str) -> None:
+def _update_json_file_paths(
+    json_file_path: str,
+    target_dir: str,
+    draft_id: str,
+    *,
+    deadline: Optional[float] = None,
+) -> None:
     """更新 draft_content 路径并本地化远程素材；失败抛出 DraftDownloadAbort。"""
     try:
         with open(json_file_path, 'r', encoding='utf-8') as f:
@@ -1135,7 +1253,7 @@ def _update_json_file_paths(json_file_path: str, target_dir: str, draft_id: str)
         updated_data = update_material_paths(data, remote_prefix, local_prefix)
 
         try:
-            _localize_remote_material_paths(updated_data, target_dir)
+            _localize_remote_material_paths(updated_data, target_dir, deadline=deadline)
         except DraftDownloadAbort:
             logger.error(
                 f"Remote material localization failed after retries; skip JSON update: {json_file_path}"
@@ -1331,6 +1449,8 @@ def _download_remote_material_raising(
     sub_dir: str,
     base_name: str,
     fallback_ext: str,
+    *,
+    deadline: Optional[float] = None,
 ) -> str:
     """下载 URL 素材；失败抛出 DraftDownloadAbort。"""
     # 本函数只拉取音视频/图片（含无扩展名的 CDN URL），始终允许断点续传。
@@ -1339,6 +1459,7 @@ def _download_remote_material_raising(
     dns_retry_count = 0
     for attempt in range(_MAX_RETRIES + 1):
         response = None
+        _check_download_deadline(deadline, url=file_url)
         try:
             extra_headers = None
             resume_from = 0
@@ -1434,7 +1555,13 @@ def _download_remote_material_raising(
                     "Server ignored Range, re-downloading from start: %s",
                     file_url,
                 )
-            _write_http_body_to_file(response, local_path, append=append)
+            _write_http_body_to_file(
+                response,
+                local_path,
+                append=append,
+                deadline=deadline,
+                url=file_url,
+            )
             return local_path
         except DraftDownloadAbort:
             raise
@@ -1501,6 +1628,7 @@ def _download_remote_file_raising(file_url: str, local_path: str) -> None:
     bypass_cache = False
     dns_retry_count = 0
     for attempt in range(_MAX_RETRIES + 1):
+        response = None
         try:
             extra_headers = None
             resume_from = 0
@@ -1632,6 +1760,10 @@ def _download_remote_file_raising(file_url: str, local_path: str) -> None:
                 detail=str(e),
                 url=file_url,
             )
+        finally:
+            # stream=True 下不关闭就不会归还连接池；成功与各失败分支都要关。
+            if response is not None:
+                response.close()
     _abort(
         DraftDownloadFailureKind.NETWORK_RETRY_EXHAUSTED,
         detail="Remote file download exhausted retries",
@@ -1652,7 +1784,9 @@ def localize_remote_material_paths(data: Dict[str, Any], target_dir: str) -> boo
         return False
 
 
-def _localize_remote_material_paths(data: Dict[str, Any], target_dir: str) -> None:
+def _localize_remote_material_paths(
+    data: Dict[str, Any], target_dir: str, *, deadline: Optional[float] = None
+) -> None:
     """本地化远程素材路径；任一失败立即抛出 DraftDownloadAbort（快速失败）。"""
     materials = data.get("materials", {}) if isinstance(data, dict) else {}
     if not isinstance(materials, dict):
@@ -1690,9 +1824,15 @@ def _localize_remote_material_paths(data: Dict[str, Any], target_dir: str) -> No
             fallback_ext = ".mp3" if material_type == "audios" else ".mp4"
             base_name = _safe_name(str(item.get("material_name") or item.get("name") or item.get("id") or "material"))
 
+            _check_download_deadline(deadline, url=remote_path)
             try:
                 local_path = _download_remote_material_raising(
-                    remote_path, target_dir, sub_dir, base_name, fallback_ext
+                    remote_path,
+                    target_dir,
+                    sub_dir,
+                    base_name,
+                    fallback_ext,
+                    deadline=deadline,
                 )
             except DraftDownloadAbort:
                 logger.error(
@@ -1780,11 +1920,12 @@ def copy_with_robocopy(src: str, dst: str, verbose: bool = False) -> bool:
             logger.info("-" * 50)
             
             result = subprocess.run(
-                cmd, 
+                cmd,
                 capture_output=False,  # 实时显示输出
-                text=True, 
+                text=True,
                 check=False,
-                encoding='gbk'  # Windows命令行通常使用GBK编码
+                encoding='gbk',  # Windows命令行通常使用GBK编码
+                timeout=_ROBOCOPY_TIMEOUT_SECONDS
             )
             
             # 获取返回码
@@ -1794,11 +1935,12 @@ def copy_with_robocopy(src: str, dst: str, verbose: bool = False) -> bool:
         else:
             # 静默模式下，捕获输出但不显示
             result = subprocess.run(
-                cmd, 
-                capture_output=True, 
-                text=True, 
+                cmd,
+                capture_output=True,
+                text=True,
                 check=False,
-                encoding='gbk'
+                encoding='gbk',
+                timeout=_ROBOCOPY_TIMEOUT_SECONDS
             )
             return_code = result.returncode
             

@@ -242,6 +242,15 @@ const GET_DRAFT_FETCH_BACKOFF_MS = [400, 1000];
 /** 网关/限流等暂时不可用，退避重试有效；500 多为 OSS/Nginx 的瞬时内部错误，与 capcut-mate 服务端一致 */
 const RETRYABLE_TRANSIENT_HTTP_STATUSES = new Set([408, 429, 500, 502, 503, 504]);
 
+/**
+ * DNS 解析小预算，与 capcut-mate 服务端的 _DNS_RETRY_BUDGET 对齐。
+ * ENOTFOUND 是 NXDOMAIN，多为解析链路瞬时抖动，但域名真不可达时不该耗满整个重试预算。
+ */
+const DNS_RETRY_BUDGET = 3;
+
+/** 服务端 body 里的系统错误码（见服务端 src/middlewares/response.py 与 exceptions.py） */
+const RETRYABLE_API_CODES = new Set([9998, 9999]);
+
 /** 限流/网关错误退避：1s 起指数增长，上限 30s */
 const TRANSIENT_HTTP_BACKOFF_MS = [1000, 2000, 4000, 8000, 16000];
 const TRANSIENT_HTTP_BACKOFF_MAX_MS = 30000;
@@ -305,11 +314,14 @@ function getRetryDelayMs(error, failedAttempt) {
 
 /**
  * 判断下载错误是否值得重试。
+ * @param {unknown} error 本次失败错误
+ * @param {number} attempt 刚失败的尝试序号（1-based），用于 DNS 这类小预算判定
  * - HTTP：408 / 429 / 500 / 502 / 503 / 504 可重试（限流/网关暂时不可用）；404 等 4xx 不重试
- * - 网络：DNS 失败、连接拒绝不重试；超时、连接重置等可重试
+ * - 网络：连接拒绝不重试；DNS 解析失败（ENOTFOUND）按 DNS_RETRY_BUDGET 小预算重试；
+ *   超时、连接重置、EAI_AGAIN 等可重试
  * - 流写入/读取中断可重试
  */
-function isRetryableDownloadError(error) {
+function isRetryableDownloadError(error, attempt = 1) {
   if (!error) return false;
 
   const status = getHttpStatusFromError(error);
@@ -318,7 +330,8 @@ function isRetryableDownloadError(error) {
   }
 
   const code = error.code;
-  if (code === "ENOTFOUND" || code === "ECONNREFUSED") return false;
+  if (code === "ECONNREFUSED") return false;
+  if (code === "ENOTFOUND") return attempt <= DNS_RETRY_BUDGET;
   if (
     code === "ECONNABORTED" ||
     code === "ETIMEDOUT" ||
@@ -350,11 +363,15 @@ function isTimeoutError(error) {
   return /timeout of \d+ms exceeded/i.test(String(error?.message || ""));
 }
 
-/** get_draft 元数据请求便宜，5xx 也值得短退避重试 */
-function isRetryableGetDraftError(error) {
+/**
+ * get_draft 元数据请求便宜，5xx 也值得短退避重试。
+ * 服务端始终返回 HTTP 200，真实错误码在 body 的 code 里，因此还要认信封错误码。
+ */
+function isRetryableGetDraftError(error, attempt = 1) {
+  if (RETRYABLE_API_CODES.has(error?.apiCode)) return true;
   const status = getHttpStatusFromError(error);
   if (status !== null && status >= 500) return true;
-  return isRetryableDownloadError(error);
+  return isRetryableDownloadError(error, attempt);
 }
 
 function formatGetDraftError(error, url) {
@@ -378,12 +395,25 @@ function formatGetDraftError(error, url) {
 }
 
 async function requestGetDraftOnce(remoteUrl, timeoutMs) {
-  return axios({
+  const response = await axios({
     ...axiosConfig,
     url: remoteUrl,
     responseType: "json",
     timeout: timeoutMs,
   });
+
+  // 服务端把非 200 也改写成 HTTP 200（真实错误码在 body 的 code 里），axios 不会抛错。
+  // 必须在这里抛，才能落在 fetchGetDraftWithRetry 的重试循环内被重试。
+  // 只挂 apiCode、不挂 response：response.status 恒为 200，挂上去会让
+  // formatGetDraftError 把「服务器返回错误 (200)」当成错误原因报给用户。
+  const payload = response?.data;
+  if (payload && typeof payload.code === "number" && payload.code !== 0) {
+    const envelopeError = new Error(payload.message || `服务端返回错误 (code ${payload.code})`);
+    envelopeError.apiCode = payload.code;
+    throw envelopeError;
+  }
+
+  return response;
 }
 
 async function fetchGetDraftWithRetry(remoteUrl) {
@@ -418,7 +448,7 @@ async function fetchGetDraftWithRetry(remoteUrl) {
       const willRetry =
         attempt < GET_DRAFT_FETCH_MAX_ATTEMPTS &&
         timeLeftMs() > 0 &&
-        isRetryableGetDraftError(error);
+        isRetryableGetDraftError(error, attempt);
       if (willRetry) {
         logger.warn(
           `[warn] get draft url attempt ${attempt}/${GET_DRAFT_FETCH_MAX_ATTEMPTS} failed: ${error.message}`
@@ -454,7 +484,7 @@ async function retryDownloadTask(task, options = {}) {
     } catch (error) {
       lastError = error;
       const hasNextAttempt = attempt < maxAttempts;
-      const canRetry = hasNextAttempt && isRetryableError(error);
+      const canRetry = hasNextAttempt && isRetryableError(error, attempt);
 
       if (!canRetry) {
         if (hasNextAttempt) {

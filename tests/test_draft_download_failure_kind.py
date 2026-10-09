@@ -2,6 +2,7 @@
 import json
 import os
 import tempfile
+import time
 from datetime import datetime
 from unittest.mock import MagicMock, patch
 
@@ -16,6 +17,9 @@ from src.utils.video_task_manager import TaskStatus, VideoGenTask, VideoGenTaskM
 def no_sleep():
     with patch.object(dd, "time") as m_time:
         m_time.sleep = MagicMock()
+        # 下载总预算检查读 time.monotonic()；不还真实函数的话它会拿到 MagicMock，
+        # 比较时抛 TypeError 并被误分类成资源不可用。预算 300s，测试里永不触发。
+        m_time.monotonic = time.monotonic
         yield m_time
 
 
@@ -243,6 +247,68 @@ class TestDraftFileListJsonRetry:
         r.status_code = 200
         r.json.return_value = {"code": 0, "files": files}
         return r
+
+    def _api_error(self, code: int, message: str) -> MagicMock:
+        r = MagicMock()
+        r.status_code = 200
+        r.close = MagicMock()
+        r.json.return_value = {"code": code, "message": message}
+        return r
+
+    def test_api_system_error_retries_then_succeeds(self, no_sleep) -> None:
+        """服务端错误是 HTTP 200 + body code，这里才是真实错误路径。"""
+        calls = []
+
+        def side_effect(*_a, **_kw):
+            calls.append(1)
+            if len(calls) < 2:
+                return self._api_error(9998, "系统内部错误")
+            return self._ok(["https://x/a.mp4"])
+
+        with patch.object(dd, "requests") as m_req:
+            m_req.get.side_effect = side_effect
+            m_req.exceptions = requests.exceptions
+            files = dd._get_draft_files_list(self.DRAFT_URL)
+        assert len(calls) == 2
+        assert files == ["https://x/a.mp4"]
+
+    def test_api_system_error_exhausted_is_network_kind(self, no_sleep) -> None:
+        with patch.object(dd, "_MAX_RETRIES", 2):
+            with patch.object(dd, "requests") as m_req:
+                m_req.get.return_value = self._api_error(9998, "系统内部错误")
+                m_req.exceptions = requests.exceptions
+                with pytest.raises(dd.DraftDownloadAbort) as excinfo:
+                    dd._get_draft_files_list(self.DRAFT_URL)
+        assert excinfo.value.kind is dd.DraftDownloadFailureKind.NETWORK_RETRY_EXHAUSTED
+        assert m_req.get.call_count == 3
+
+    def test_business_code_is_not_retried(self, no_sleep) -> None:
+        """业务错误码（如 2001 无效草稿URL）重试无意义，保持立即失败。"""
+        with patch.object(dd, "requests") as m_req:
+            m_req.get.return_value = self._api_error(2001, "无效的草稿URL")
+            m_req.exceptions = requests.exceptions
+            with pytest.raises(dd.DraftDownloadAbort) as excinfo:
+                dd._get_draft_files_list(self.DRAFT_URL)
+        assert excinfo.value.kind is dd.DraftDownloadFailureKind.RESOURCE_UNAVAILABLE
+        assert m_req.get.call_count == 1
+
+    @pytest.mark.parametrize(
+        "code, expected",
+        [
+            (9998, True),   # INTERNAL_SERVER_ERROR
+            (9999, True),   # UNKNOWN_ERROR
+            (502, True),    # 中间件兜底透传的真实状态码
+            (503, True),
+            (404, False),
+            (2001, False),  # 业务错误码
+            (1002, False),  # 资源不存在
+            (None, False),
+            ("9998", False),
+            (True, False),  # bool 是 int 子类，不应误判
+        ],
+    )
+    def test_is_retryable_api_code(self, code, expected: bool) -> None:
+        assert dd._is_retryable_api_code(code) is expected
 
     def test_retries_then_succeeds(self, no_sleep) -> None:
         calls = []

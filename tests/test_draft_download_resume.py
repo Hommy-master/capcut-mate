@@ -1,6 +1,7 @@
 """草稿下载：资源文件断点续传；JSON 等非资源仍整文件重下。"""
 import os
 import tempfile
+import time
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -13,6 +14,9 @@ import src.utils.draft_downloader as dd
 def no_sleep():
     with patch.object(dd, "time") as m_time:
         m_time.sleep = MagicMock()
+        # 下载总预算检查读 time.monotonic()；不还真实函数的话它会拿到 MagicMock，
+        # 比较时抛 TypeError 并被误分类成资源不可用。预算 300s，测试里永不触发。
+        m_time.monotonic = time.monotonic
         yield m_time
 
 

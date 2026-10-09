@@ -4,6 +4,7 @@ Unit tests for src.utils.draft_downloader remote material download and path loca
 import json
 import os
 import tempfile
+import time
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -26,6 +27,9 @@ DNS_ERROR_MESSAGE = (
 def no_sleep():
     with patch.object(dd, "time") as m_time:
         m_time.sleep = MagicMock()
+        # 下载总预算检查读 time.monotonic()；不还真实函数的话它会拿到 MagicMock，
+        # 比较时抛 TypeError 并被误分类成资源不可用。预算 300s，测试里永不触发。
+        m_time.monotonic = time.monotonic
         yield m_time
 
 
@@ -294,7 +298,9 @@ class TestDownloadRemoteFile:
             m_req.exceptions = requests.exceptions
             assert dd._download_remote_file("https://x.test/miss.mp4", out) is False
             assert m_req.get.call_count == 1
-        bad.close.assert_not_called()
+        # 该断言原为 assert_not_called()，即把「404 分支不归还连接」这个泄漏当成了预期行为；
+        # 补上 finally 后连接会被关闭，这里改为断言修复后的行为。
+        bad.close.assert_called_once()
 
     def test_non200_retries_then_success(self, no_sleep) -> None:
         bad = MagicMock()
@@ -349,6 +355,63 @@ class TestDownloadRemoteFile:
         finally:
             if os.path.isfile(out):
                 os.remove(out)
+
+
+class TestDownloadDeadline:
+    """下载阶段总预算：降级网络必须在有界时间内失败，且归类为网络重试耗尽。"""
+
+    def test_expired_deadline_aborts_before_any_request(self, no_sleep) -> None:
+        with patch.object(dd, "requests") as m_req:
+            m_req.exceptions = requests.exceptions
+            with pytest.raises(dd.DraftDownloadAbort) as excinfo:
+                dd._download_single_file(
+                    "https://x.test/a.mp4",
+                    tempfile.gettempdir(),
+                    deadline=dd._now() - 1,
+                )
+        assert excinfo.value.kind is dd.DraftDownloadFailureKind.NETWORK_RETRY_EXHAUSTED
+        assert m_req.get.call_count == 0
+
+    def test_chunk_loop_aborts_mid_transfer(self, no_sleep) -> None:
+        """慢速滴流：读写超时管不住，靠 chunk 间的总预算检查中断。"""
+        resp = MagicMock()
+        resp.status_code = 200
+        resp.headers = {"Content-Type": "audio/mpeg"}
+        resp.iter_content = MagicMock(return_value=[b"aa", b"bb"])
+        resp.close = MagicMock()
+
+        target = tempfile.mkdtemp()
+        # 第 1 次：循环开头检查（未超）；第 2 次：第 1 个 chunk（未超，写入）；第 3 次：已超
+        with patch.object(dd, "_now", side_effect=[100.0, 100.0, 400.0]):
+            with patch.object(dd, "requests") as m_req:
+                m_req.get.return_value = resp
+                m_req.exceptions = requests.exceptions
+                with pytest.raises(dd.DraftDownloadAbort) as excinfo:
+                    dd._download_remote_material_raising(
+                        "https://x.test/slow.mp3",
+                        target,
+                        "audio",
+                        "slow",
+                        ".mp3",
+                        deadline=300.0,
+                    )
+        assert excinfo.value.kind is dd.DraftDownloadFailureKind.NETWORK_RETRY_EXHAUSTED
+        assert m_req.get.call_count == 1, "总预算中止不应再重试"
+        resp.close.assert_called()
+        written = os.path.join(target, "assets", "audio", "slow.mp3")
+        assert os.path.isfile(written), "已落盘的 chunk 不应被丢弃"
+        assert open(written, "rb").read() == b"aa"
+
+    def test_material_loop_deadline_skips_download(self, no_sleep) -> None:
+        data = {"materials": {"audios": [{"path": "https://x.test/a.mp3", "name": "n"}]}}
+        with patch.object(dd, "_download_remote_material_raising") as m_dl:
+            with pytest.raises(dd.DraftDownloadAbort) as excinfo:
+                dd._localize_remote_material_paths(
+                    data, tempfile.gettempdir(), deadline=dd._now() - 1
+                )
+        assert excinfo.value.kind is dd.DraftDownloadFailureKind.NETWORK_RETRY_EXHAUSTED
+        m_dl.assert_not_called()
+        assert data["materials"]["audios"][0]["path"] == "https://x.test/a.mp3"
 
 
 class TestLocalizeRemoteMaterialPaths:
@@ -407,7 +470,9 @@ class TestLocalizeRemoteMaterialPaths:
             assert new_path == expected
             assert new_path.endswith(".png")
             assert not new_path.endswith(".image")
-            m_dl.assert_called_once_with(url, td, "images", "双行", ".mp4")
+            m_dl.assert_called_once_with(
+                url, td, "images", "双行", ".mp4", deadline=None
+            )
 
     @patch.object(
         dd,
