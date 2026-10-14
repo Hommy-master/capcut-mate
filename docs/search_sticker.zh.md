@@ -45,21 +45,9 @@ POST /openapi/capcut-mate/v1/search_sticker
   "message": "success",
   "data": [
     {
-      "sticker": {
-        "large_image": {
-          "image_url": "https://p3-heycan-jy-sign.byteimg.com/tos-cn-i-3jr8j4ixpe/29351205dbd943658d94c8feb17e5ed4~tplv-3jr8j4ixpe-resize:1920:1920.png?x-expires=1797257777&x-signature=r18I9uLQzgm%2FcvF8WNLbgw8BRwg%3D"
-        },
-        "preview_cover": "",
-        "sticker_package": {
-          "height_per_frame": 540,
-          "size": 305932,
-          "width_per_frame": 540
-        },
-        "sticker_type": 1,
-        "track_thumbnail": "https://p3-heycan-jy-sign.byteimg.com/tos-cn-i-3jr8j4ixpe/29351205dbd943658d94c8feb17e5ed4~tplv-3jr8j4ixpe-resize:120:120.png?x-expires=1797257777&x-signature=NqeKYGyeqIjCzF0Ls07ctnP%2BehI%3D&format=.png"
-      },
+      "title": "大笑",
       "sticker_id": "7521200021564427545",
-      "title": "大笑"
+      "image_url": "https://p3-heycan-jy-sign.byteimg.com/tos-cn-i-3jr8j4ixpe/29351205dbd943658d94c8feb17e5ed4~tplv-3jr8j4ixpe-resize:1920:1920.png?x-expires=1797257777&x-signature=r18I9uLQzgm%2FcvF8WNLbgw8BRwg%3D"
     }
   ]
 }
@@ -70,18 +58,11 @@ POST /openapi/capcut-mate/v1/search_sticker
 | 字段名 | 类型 | 说明 |
 |--------|------|------|
 | data | array | 贴纸数据列表 |
-| sticker | object | 贴纸详细信息 |
-| large_image | object | 大图信息 |
-| image_url | string | 图片URL |
-| preview_cover | string | 预览封面 |
-| sticker_package | object | 贴纸包信息 |
-| height_per_frame | number | 每帧高度 |
-| size | number | 贴纸包大小 |
-| width_per_frame | number | 每帧宽度 |
-| sticker_type | number | 贴纸类型 |
-| track_thumbnail | string | 轨道缩略图 |
-| sticker_id | string | 贴纸ID |
-| title | string | 贴纸标题 |
+| title | string | 贴纸标题（唯一的搜索键） |
+| sticker_id | string | 贴纸ID，`add_sticker` 的入参 |
+| image_url | string | 贴纸预览图URL（1920×1920） |
+
+> 早期版本还返回 `sticker.large_image`、`sticker.track_thumbnail`、`sticker.sticker_package`、`sticker.sticker_type`、`sticker.preview_cover` 等字段，现已移除：`preview_cover` 在全部条目中均为空串，其余字段无任何代码读取。响应结构由嵌套改为扁平，请调用方相应调整。
 
 ### 错误响应
 

@@ -21,10 +21,40 @@ DEFAULT_CONFIG = {
     "output_file": os.path.join(OUTPUT_DIR, "sticker.json")
 }
 
+def flatten_sticker(item):
+    """把上游的嵌套贴纸对象转成 config/sticker.json 的扁平格式
+
+    上游返回形如::
+
+        {"sticker": {"large_image": {"image_url": ...}, "preview_cover": "",
+                     "sticker_package": {...}, "sticker_type": 1,
+                     "track_thumbnail": ...},
+         "sticker_id": "...", "title": "..."}
+
+    本配置只保留检索与实际使用所需的 title/sticker_id/image_url 三个字段：其余字段
+    无任何代码读取（preview_cover 在全部条目中恒为空串），保留只会让配置膨胀。
+    缺少 title/sticker_id 的条目无法被检索或使用，返回 None 由调用方跳过。
+    """
+    if not isinstance(item, dict):
+        return None
+
+    sticker_id = item.get("sticker_id") or ""
+    title = item.get("title") or ""
+    if not (sticker_id and title):
+        return None
+
+    image_url = item.get("image_url") or ""
+    large_image = item.get("sticker", {}).get("large_image") if isinstance(item.get("sticker"), dict) else None
+    if isinstance(large_image, dict):
+        image_url = large_image.get("image_url") or image_url
+
+    return {"title": title, "sticker_id": sticker_id, "image_url": image_url}
+
+
 def query_stickers(keyword, workflow_id=None, auth_token=None):
     """
     调用 Coze API 获取贴纸信息
-    
+
     Args:
         keyword (str): 搜索关键词
         workflow_id (str): workflow ID
@@ -113,10 +143,14 @@ def save_result(result, output_file=None):
                 elif not isinstance(sticker_data, list):
                     print(f"警告: sticker_data不是列表类型，而是 {type(sticker_data)}")
                     sticker_data = []        
-        # 保存结果，只保存贴纸数组部分
+        # 保存结果，只保存贴纸数组部分（扁平化为 title/sticker_id/image_url）
+        flattened = [f for f in (flatten_sticker(item) for item in sticker_data) if f]
+        skipped = len(sticker_data) - len(flattened)
+        if skipped:
+            print(f"跳过 {skipped} 条缺少 title/sticker_id 的贴纸")
         with open(output_file, 'w', encoding='utf-8') as f:
-            json.dump(sticker_data, f, indent=2, ensure_ascii=False)
-            
+            json.dump(flattened, f, indent=2, ensure_ascii=False)
+
         return output_file
     except Exception as e:
         print(f"保存结果失败: {e}")
@@ -166,9 +200,10 @@ def query_multiple_keywords(keywords, output_file=None):
                         sticker_data = []
             
             print(f"关键词 '{keyword}' 找到 {len(sticker_data)} 个贴纸")
-            # 合并贴纸数据
-            all_stickers.extend(sticker_data)
-    
+            # 合并贴纸数据（扁平化为 title/sticker_id/image_url）
+            all_stickers.extend(
+                f for f in (flatten_sticker(item) for item in sticker_data) if f)
+
     # 去重处理，根据sticker_id去重
     unique_stickers = []
     seen_ids = set()

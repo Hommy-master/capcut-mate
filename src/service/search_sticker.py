@@ -1,6 +1,5 @@
 from src.utils.logger import logger
 from typing import List, Dict, Any
-from src.schemas.search_sticker import StickerItem, StickerInfo, StickerPackage, LargeImage
 import json
 import config
 import random

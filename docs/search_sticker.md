@@ -45,21 +45,9 @@ Search stickers by keywords. This interface is used to search for related sticke
   "message": "success",
   "data": [
     {
-      "sticker": {
-        "large_image": {
-          "image_url": "https://p3-heycan-jy-sign.byteimg.com/tos-cn-i-3jr8j4ixpe/29351205dbd943658d94c8feb17e5ed4~tplv-3jr8j4ixpe-resize:1920:1920.png?x-expires=1797257777&x-signature=r18I9uLQzgm%2FcvF8WNLbgw8BRwg%3D"
-        },
-        "preview_cover": "",
-        "sticker_package": {
-          "height_per_frame": 540,
-          "size": 305932,
-          "width_per_frame": 540
-        },
-        "sticker_type": 1,
-        "track_thumbnail": "https://p3-heycan-jy-sign.byteimg.com/tos-cn-i-3jr8j4ixpe/29351205dbd943658d94c8feb17e5ed4~tplv-3jr8j4ixpe-resize:120:120.png?x-expires=1797257777&x-signature=NqeKYGyeqIjCzF0Ls07ctnP%2BehI%3D&format=.png"
-      },
+      "title": "大笑",
       "sticker_id": "7521200021564427545",
-      "title": "大笑"
+      "image_url": "https://p3-heycan-jy-sign.byteimg.com/tos-cn-i-3jr8j4ixpe/29351205dbd943658d94c8feb17e5ed4~tplv-3jr8j4ixpe-resize:1920:1920.png?x-expires=1797257777&x-signature=r18I9uLQzgm%2FcvF8WNLbgw8BRwg%3D"
     }
   ]
 }
@@ -70,18 +58,11 @@ Search stickers by keywords. This interface is used to search for related sticke
 | Field | Type | Description |
 |-------|------|-------------|
 | data | array | Sticker data list |
-| sticker | object | Detailed sticker information |
-| large_image | object | Large image information |
-| image_url | string | Image URL |
-| preview_cover | string | Preview cover |
-| sticker_package | object | Sticker package information |
-| height_per_frame | number | Height per frame |
-| size | number | Sticker package size |
-| width_per_frame | number | Width per frame |
-| sticker_type | number | Sticker type |
-| track_thumbnail | string | Track thumbnail |
-| sticker_id | string | Sticker ID |
-| title | string | Sticker title |
+| title | string | Sticker title (the only search key) |
+| sticker_id | string | Sticker ID, the input for `add_sticker` |
+| image_url | string | Sticker preview image URL (1920×1920) |
+
+> Earlier versions also returned `sticker.large_image`, `sticker.track_thumbnail`, `sticker.sticker_package`, `sticker.sticker_type` and `sticker.preview_cover`. These have been removed: `preview_cover` is an empty string in every entry, and the rest are read by no code. The response is now flat instead of nested, so callers must be updated accordingly.
 
 ### Error Response
 

@@ -11978,103 +11978,30 @@ components:
                     keyword: 人
                 RespExample:
                     data:
-                        - sticker:
-                            large_image:
-                                image_url: https://p3-heycan-jy-sign.byteimg.com/tos-cn-i-3jr8j4ixpe/91ada02f8fec440798fbce5b6c8052f4~tplv-3jr8j4ixpe-image.image?x-expires=1797257777&x-signature=JGLXAdKzUC1SNFOG1DBIj7deSm0%3D
-                            preview_cover: ""
-                            sticker_package:
-                                height_per_frame: 128
-                                size: 2233
-                                width_per_frame: 128
-                            sticker_type: 1
-                            track_thumbnail: https://p3-heycan-jy-sign.byteimg.com/tos-cn-i-3jr8j4ixpe/91ada02f8fec440798fbce5b6c8052f4~tplv-3jr8j4ixpe-resize:120:120.png?x-expires=1797257777&x-signature=OlE4ZjEFzZ0%2BZE2hx984dtqX1JY%3D&format=.png
+                        - image_url: https://p3-heycan-jy-sign.byteimg.com/tos-cn-i-3jr8j4ixpe/91ada02f8fec440798fbce5b6c8052f4~tplv-3jr8j4ixpe-image.image?x-expires=1797257777&x-signature=JGLXAdKzUC1SNFOG1DBIj7deSm0%3D
                           sticker_id: "7128787497496120613"
                           title: '人物剪影 '
-                        - sticker:
-                            large_image:
-                                image_url: https://p3-heycan-jy-sign.byteimg.com/tos-cn-i-3jr8j4ixpe/dde1931edf4e4026b24b52bdf83cdcc0~tplv-3jr8j4ixpe-resize:1920:1920.png?x-expires=1797257777&x-signature=C69yhUjUgvAfbKC%2B3lnqRj4d4Mo%3D
-                            preview_cover: ""
-                            sticker_package:
-                                height_per_frame: 512
-                                size: 34542
-                                width_per_frame: 512
-                            sticker_type: 1
-                            track_thumbnail: https://p3-heycan-jy-sign.byteimg.com/tos-cn-i-3jr8j4ixpe/dde1931edf4e4026b24b52bdf83cdcc0~tplv-3jr8j4ixpe-resize:120:120.png?x-expires=1797257777&x-signature=4zY6CNDljdwTfxWGCcNdI7VX54U%3D&format=.png
+                        - image_url: https://p3-heycan-jy-sign.byteimg.com/tos-cn-i-3jr8j4ixpe/dde1931edf4e4026b24b52bdf83cdcc0~tplv-3jr8j4ixpe-resize:1920:1920.png?x-expires=1797257777&x-signature=C69yhUjUgvAfbKC%2B3lnqRj4d4Mo%3D
                           sticker_id: "7075169384330726663"
                           title: 男性卡通手绘人物
-                        - sticker:
-                            large_image:
-                                image_url: https://p3-heycan-jy-sign.byteimg.com/tos-cn-i-3jr8j4ixpe/edbd487bfbe347b49183ac297dece704~tplv-3jr8j4ixpe-resize:1920:1920.png?x-expires=1797257777&x-signature=w%2FYtiqgjYd89ZRiBz0CmlhPaYWg%3D
-                            preview_cover: ""
-                            sticker_package:
-                                height_per_frame: 452
-                                size: 172903
-                                width_per_frame: 256
-                            sticker_type: 1
-                            track_thumbnail: https://p3-heycan-jy-sign.byteimg.com/tos-cn-i-3jr8j4ixpe/edbd487bfbe347b49183ac297dece704~tplv-3jr8j4ixpe-resize:120:120.png?x-expires=1797257777&x-signature=GAb5g%2B0hERhVIOqy9HG%2BGzvBR2E%3D&format=.png
+                        - image_url: https://p3-heycan-jy-sign.byteimg.com/tos-cn-i-3jr8j4ixpe/edbd487bfbe347b49183ac297dece704~tplv-3jr8j4ixpe-resize:1920:1920.png?x-expires=1797257777&x-signature=w%2FYtiqgjYd89ZRiBz0CmlhPaYWg%3D
                           sticker_id: "7141375321454021922"
                           title: 3d 人物
-                        - sticker:
-                            large_image:
-                                image_url: https://p3-heycan-jy-sign.byteimg.com/tos-cn-i-3jr8j4ixpe/e42cb5d3d37146738d2b9b714c9a0ce3~tplv-3jr8j4ixpe-resize:1920:1920.gif?x-expires=1797257777&x-signature=5%2BKU1MAEkt4E6uRzqBiqpG6GPKw%3D
-                            preview_cover: ""
-                            sticker_package:
-                                height_per_frame: 280
-                                size: 122700
-                                width_per_frame: 280
-                            sticker_type: 2
-                            track_thumbnail: https://p3-heycan-jy-sign.byteimg.com/tos-cn-i-3jr8j4ixpe/e42cb5d3d37146738d2b9b714c9a0ce3~tplv-3jr8j4ixpe-resize:120:120.png?x-expires=1797257777&x-signature=uF1QWPpgsM62Jc%2BgIpKFkH0PwwM%3D&format=.png
+                        - image_url: https://p3-heycan-jy-sign.byteimg.com/tos-cn-i-3jr8j4ixpe/e42cb5d3d37146738d2b9b714c9a0ce3~tplv-3jr8j4ixpe-resize:1920:1920.gif?x-expires=1797257777&x-signature=5%2BKU1MAEkt4E6uRzqBiqpG6GPKw%3D
                           sticker_id: "7002854862090210590"
                           title: 人挤人
-                        - sticker:
-                            large_image:
-                                image_url: https://p3-heycan-jy-sign.byteimg.com/tos-cn-i-3jr8j4ixpe/d05c664aceba49d2896660562ae5fe4d~tplv-3jr8j4ixpe-resize:1920:1920.png?x-expires=1797257777&x-signature=dTV36p4iN055SxRvTcovbiq9QEs%3D
-                            preview_cover: ""
-                            sticker_package:
-                                height_per_frame: 490
-                                size: 126967
-                                width_per_frame: 463
-                            sticker_type: 1
-                            track_thumbnail: https://p3-heycan-jy-sign.byteimg.com/tos-cn-i-3jr8j4ixpe/d05c664aceba49d2896660562ae5fe4d~tplv-3jr8j4ixpe-resize:120:120.png?x-expires=1797257777&x-signature=jmY7LUydyEJr9vVpGFBPQFhYp7Y%3D&format=.png
+                        - image_url: https://p3-heycan-jy-sign.byteimg.com/tos-cn-i-3jr8j4ixpe/d05c664aceba49d2896660562ae5fe4d~tplv-3jr8j4ixpe-resize:1920:1920.png?x-expires=1797257777&x-signature=dTV36p4iN055SxRvTcovbiq9QEs%3D
                           sticker_id: "6989061706173500703"
                           title: 人物背影
-                        - sticker:
-                            large_image:
-                                image_url: https://p3-heycan-jy-sign.byteimg.com/tos-cn-i-3jr8j4ixpe/adff9a9ac6b14db291eb1da1964b140f~tplv-3jr8j4ixpe-resize:1920:1920.png?x-expires=1797257777&x-signature=ISDIKQ6grSn9cyZW0TFq%2BF86y5M%3D
-                            preview_cover: ""
-                            sticker_package:
-                                height_per_frame: 419
-                                size: 91220
-                                width_per_frame: 540
-                            sticker_type: 1
-                            track_thumbnail: https://p3-heycan-jy-sign.byteimg.com/tos-cn-i-3jr8j4ixpe/adff9a9ac6b14db291eb1da1964b140f~tplv-3jr8j4ixpe-resize:120:120.png?x-expires=1797257777&x-signature=OQokcDqdpZrfjbbJ5I2miMz9vF8%3D&format=.png
+                        - image_url: https://p3-heycan-jy-sign.byteimg.com/tos-cn-i-3jr8j4ixpe/adff9a9ac6b14db291eb1da1964b140f~tplv-3jr8j4ixpe-resize:1920:1920.png?x-expires=1797257777&x-signature=ISDIKQ6grSn9cyZW0TFq%2BF86y5M%3D
                           sticker_id: "6972844711287524621"
                           title: 商务人物工作会议人员扁平化职场 (28)
-                        - sticker:
-                            large_image:
-                                image_url: https://p3-heycan-jy-sign.byteimg.com/tos-cn-i-3jr8j4ixpe/656e900a0bb6415db5199c58e8148b55~tplv-3jr8j4ixpe-resize:1920:1920.png?x-expires=1797257777&x-signature=MLWZQjACxbpcUkQyznGMzpyHn9I%3D
-                            preview_cover: ""
-                            sticker_package:
-                                height_per_frame: 512
-                                size: 33884
-                                width_per_frame: 512
-                            sticker_type: 1
-                            track_thumbnail: https://p3-heycan-jy-sign.byteimg.com/tos-cn-i-3jr8j4ixpe/656e900a0bb6415db5199c58e8148b55~tplv-3jr8j4ixpe-resize:120:120.png?x-expires=1797257777&x-signature=
+                        - image_url: https://p3-heycan-jy-sign.byteimg.com/tos-cn-i-3jr8j4ixpe/656e900a0bb6415db5199c58e8148b55~tplv-3jr8j4ixpe-resize:1920:1920.png?x-expires=1797257777&x-signature=MLWZQjACxbpcUkQyznGMzpyHn9I%3D
                           sticker_id: "6972844711287524622"
                           title: 商务人物工作会议人员扁平化职场 (29)
-                        - sticker:
-                            large_image:
-                                image_url: https://p3-heycan-jy-sign.byteimg.com/tos-cn-i-3jr8j4ixpe/4f77f60ad9924712baa4e32d534e342c~tplv-3jr8j4ixpe-resize:1920:1920.png?x-expires=1797258668&x-signature=Co7%2B81Xhn880nPNA7UBRlI2UPyE%3D
-                            preview_cover: ""
-                            sticker_package:
-                                height_per_frame: 540
-                                size: 104066
-                                width_per_frame: 540
-                            sticker_type: 1
-                            track_thumbnail: https://p3-heycan-jy-sign.byteimg.com/tos-cn-i-3jr8j4ixpe/4f77f60ad9924712baa4e32d534e342c~tplv-3jr8j4ixpe-resize:120:120.png?x-expires=1797258668&x-signature=V7SlC36041lGmBHWsvY3lYgEuRk%3D&format=.png
+                        - image_url: https://p3-heycan-jy-sign.byteimg.com/tos-cn-i-3jr8j4ixpe/4f77f60ad9924712baa4e32d534e342c~tplv-3jr8j4ixpe-resize:1920:1920.png?x-expires=1797258668&x-signature=Co7%2B81Xhn880nPNA7UBRlI2UPyE%3D
                           sticker_id: "7243670138606718265"
                           title: 人气爆款标签
-                    message: 成功
         str_list_to_objs:
             value:
                 ReqExample:
@@ -13888,32 +13815,14 @@ paths:
                                     data:
                                         items:
                                             properties:
-                                                sticker:
-                                                    properties:
-                                                        large_image:
-                                                            properties:
-                                                                image_url:
-                                                                    type: string
-                                                            type: object
-                                                        preview_cover:
-                                                            type: string
-                                                        sticker_package:
-                                                            properties:
-                                                                height_per_frame:
-                                                                    type: number
-                                                                size:
-                                                                    type: number
-                                                                width_per_frame:
-                                                                    type: number
-                                                            type: object
-                                                        sticker_type:
-                                                            type: number
-                                                        track_thumbnail:
-                                                            type: string
-                                                    type: object
+                                                image_url:
+                                                    description: 贴纸预览图URL（1920×1920）
+                                                    type: string
                                                 sticker_id:
+                                                    description: 贴纸ID，add_sticker 的入参
                                                     type: string
                                                 title:
+                                                    description: 贴纸标题（唯一的搜索键）
                                                     type: string
                                             type: object
                                         type: array
