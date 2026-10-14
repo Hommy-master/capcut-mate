@@ -41,6 +41,7 @@ POST /openapi/capcut-mate/v1/add_captions
 | has_shadow | boolean | ❌ | `false` | 是否启用**整段字幕**文本阴影 |
 | shadow_info | object | ❌ | `null` | 整段字幕阴影参数；`has_shadow=true` 且本字段为 `null` 时使用默认阴影 |
 | text_effect | string | ❌ | `null` | 花字效果名称或 `effect_id`；有效花字会重置颜色/描边/阴影相关效果 |
+| text_template | string | ❌ | `null` | 文字模板名称或 `effect_id`（数字 id 可直接透传）；与 `text_effect` 互斥，同时传入时文字模板优先 |
 
 ### captions 字段详细说明
 
@@ -65,6 +66,7 @@ POST /openapi/capcut-mate/v1/add_captions
 | in_animation_duration | integer | ❌ | `null` | 入场动画时长（微秒）；不填则用动画默认时长 |
 | out_animation_duration | integer | ❌ | `null` | 出场动画时长（微秒）；不填则用动画默认时长 |
 | loop_animation_duration | integer | ❌ | `null` | 循环动画**单次循环**时长（微秒）；不填则用动画默认时长 |
+| text_template | string | ❌ | `null` | 本条字幕的文字模板名称或 `effect_id`；未指定则使用接口级 `text_template` |
 
 ### shadow_info / keyword_shadow_info 字段说明
 
@@ -106,6 +108,16 @@ POST /openapi/capcut-mate/v1/add_captions
 #### 花字与阴影的关系
 
 当 `text_effect` 能解析到有效花字时，系统会将 `text_color` 重置为 `#ffffff`、`border_color` 重置为 `null`、`has_shadow` 重置为 `false`，并禁用关键词阴影（`keyword_has_shadow` 不生效）。若需要自定义颜色/阴影，请不要同时传有效花字。
+
+#### 文字模板
+
+`text_template` 用于套用剪映的「文字模板」（字体、配色、描边、装饰贴纸、入场动画的成套预设）。取值可以是模板名称（中文）或 `effect_id`；不在已知映射表中的纯数字会被当作 `effect_id` 直接透传。
+
+- **接口级与逐条**：接口级 `text_template` 作为整批字幕的默认值，单条字幕（`captions` 数组项）里的 `text_template` 优先。
+- **与花字互斥**：同时传入 `text_effect` 与 `text_template` 时，**文字模板优先**，`text_effect` 会被忽略（并记录告警）。模板掌管片段的素材身份，花字掌管 `styles[0].effectStyle`，两者同时生效的渲染结果未定义。
+- **颜色/描边/阴影**：文字模板不重置 `text_color` / `border_color` / `has_shadow`（与花字不同）—— 模板的配色由模板自身决定。模板无法解析时，按普通字幕处理并记录告警。
+- **草稿结构**：套用模板的字幕，其片段 `material_id` 指向 `materials.text_templates` 中的模板素材，文本素材仍写入 `materials.texts`，由模板的 `text_info_resources[].text_material_id` 反向关联。接口返回的 `text_ids` 仍是**文本素材** id。
+- **已知限制**：模板资源（本机缓存路径、装饰贴纸等）由剪映按 `effect_id` 自行拉取；目前每个字幕只支持模板的**单个文本槽**。
 
 #### 关键词阴影如何生效
 
@@ -1350,7 +1362,9 @@ VHS
     "shadow_angle": -45.0
   },
   // 【可选】花字；与自定义颜色/阴影冲突，完整示例中置为 null 以保留阴影效果
-  "text_effect": null
+  "text_effect": null,
+  // 【可选】文字模板；与花字互斥且优先，完整示例中置为 null
+  "text_template": null
 }
 ```
 
@@ -1439,7 +1453,8 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_captions \
       "shadow_distance": 5.0,
       "shadow_angle": -45.0
     },
-    "text_effect": null
+    "text_effect": null,
+    "text_template": null
   }'
 ```
 
@@ -1467,6 +1482,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_captions \
 | has_shadow | `true` | 【可选】启用整段阴影 |
 | shadow_info.* | 见上 | 【可选】整段阴影详细参数 |
 | text_effect | `null` | 【可选】不使用花字，避免覆盖颜色/阴影 |
+| text_template | `null` | 【可选】不使用文字模板；与花字互斥且优先 |
 
 **captions 内每条字幕字段含义速查：**
 
@@ -1486,6 +1502,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_captions \
 | out_animation | `向下滑动` | 【可选】出场动画 |
 | loop_animation | `弹幕滚动` | 【可选】循环动画 |
 | *_animation_duration | `500000` 等 | 【可选】对应动画时长（微秒） |
+| text_template | `嘎嘎香！红色 简约 美食 情绪表达 字幕` | 【可选】本条字幕的文字模板；优先于接口级 |
 
 #### 2. 仅必填参数
 
@@ -1538,6 +1555,31 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_captions \
   }'
 ```
 
+#### 6. 使用文字模板
+
+接口级模板（整批字幕套用同一个模板）：
+
+```bash
+curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_captions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
+    "captions": "[{\"start\":0,\"end\":5000000,\"text\":\"文字模板演示\"}]",
+    "text_template": "嘎嘎香！红色 简约 美食 情绪表达 字幕"
+  }'
+```
+
+逐条指定模板（可与普通字幕混合，普通字幕不受影响）：
+
+```bash
+curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_captions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
+    "captions": "[{\"start\":0,\"end\":5000000,\"text\":\"普通字幕\"},{\"start\":5000000,\"end\":10000000,\"text\":\"模板字幕\",\"text_template\":\"7383613902744980770\"}]"
+  }'
+```
+
 ## 错误码说明
 
 | 错误码 | 错误信息 | 说明 | 解决方案 |
@@ -1555,6 +1597,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_captions \
 3. **颜色格式**：十六进制，如 `#ffffff`、`#ff0000`
 4. **动画名称**：请通过 `get_text_animations` 获取可用名称
 5. **花字名称**：请通过 `get_text_effects` 获取可用名称或 `effect_id`
+5.1. **文字模板**：传模板名称或数字 `effect_id`；与 `text_effect` 互斥且优先。模板名称映射表见 `config/text_template.json`，不在表中的纯数字 id 会直接透传
 6. **坐标系统**：`transform_x` / `transform_y` 使用像素，内部会按画布尺寸换算
 7. **关键词阴影**：与关键词颜色/描边一样写在同一字幕的 styles 分区内，不另建字幕行；整段阴影仍由 `has_shadow` / `shadow_info` 控制
 

@@ -12266,6 +12266,9 @@ paths:
                                 text_effect:
                                     description: 文本花字
                                     type: string
+                                text_template:
+                                    description: 文字模板名称或 effect_id；与 text_effect 互斥，同时传入时文字模板优先
+                                    type: string
                                 transform_x:
                                     default: 0
                                     description: 水平位移

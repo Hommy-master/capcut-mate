@@ -45,6 +45,10 @@ class AddCaptionsRequest(BaseModel):
     has_shadow: bool = Field(default=False, description="是否启用文本阴影")
     shadow_info: Optional[ShadowInfo] = Field(default=None, description="文本阴影参数")
     text_effect: Optional[str] = Field(default=None, description="花字效果名称或 effect_id，例如：'白字橘色发光花字'")
+    text_template: Optional[str] = Field(
+        default=None,
+        description="文字模板名称或 effect_id（数字 resource_id 可直接透传）；与 text_effect 互斥，同时传入时文字模板优先",
+    )
 
 
 class CaptionItem(BaseModel):
@@ -70,6 +74,10 @@ class CaptionItem(BaseModel):
         description="循环动画单次循环时长（微秒），与 get_text_animations 中 loop 的 duration 一致；不填则用该动画默认值",
     )
     text_effect: Optional[str] = Field(default=None, description="花字效果名称或 effect_id，例如：'白字橘色发光花字'")
+    text_template: Optional[str] = Field(
+        default=None,
+        description="文字模板名称或 effect_id；未指定则使用接口级 text_template；与 text_effect 互斥，文字模板优先",
+    )
 
 
 class SegmentInfo(BaseModel):

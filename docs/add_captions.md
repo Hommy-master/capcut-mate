@@ -41,6 +41,7 @@ Batch-add captions to an existing CapCut/Jianying draft. Supports text color, bo
 | has_shadow | boolean | ❌ | `false` | Enable **full-caption** text shadow |
 | shadow_info | object | ❌ | `null` | Full-caption shadow params; defaults apply if `has_shadow=true` and this is `null` |
 | text_effect | string | ❌ | `null` | Text effect name or `effect_id`; a valid effect resets color/border/shadow |
+| text_template | string | ❌ | `null` | Text template name or `effect_id` (numeric ids pass through); mutually exclusive with `text_effect`, template wins |
 
 ### captions Fields
 
@@ -65,6 +66,7 @@ Batch-add captions to an existing CapCut/Jianying draft. Supports text color, bo
 | in_animation_duration | integer | ❌ | `null` | Intro duration (µs); omit to use animation default |
 | out_animation_duration | integer | ❌ | `null` | Outro duration (µs); omit to use animation default |
 | loop_animation_duration | integer | ❌ | `null` | Single loop duration (µs); omit to use animation default |
+| text_template | string | ❌ | `null` | Text template name or `effect_id` for this caption; falls back to top-level `text_template` |
 
 ### shadow_info / keyword_shadow_info Fields
 
@@ -104,6 +106,16 @@ Default shadow when enabled without `*_shadow_info`:
 ### Notes on text_effect vs shadow
 
 If `text_effect` resolves to a valid effect, the API resets `text_color` to `#ffffff`, `border_color` to `null`, `has_shadow` to `false`, and disables keyword shadow. Omit/leave `text_effect` null when you need custom colors or shadows.
+
+### Notes on text_template
+
+`text_template` applies a JianYing 文字模板 (a bundled preset of font, colors, stroke, decorative stickers and intro animation). The value is either the template name (Chinese) or its `effect_id`; a numeric value not present in the mapping table is passed through as an `effect_id`.
+
+- **Top-level vs per-caption**: the top-level `text_template` is the default for the whole batch; a per-caption `text_template` takes precedence.
+- **Mutually exclusive with text effects**: when both `text_effect` and `text_template` are supplied, the **template wins** and `text_effect` is ignored (a warning is logged). The template owns the segment's material identity while the effect owns `styles[0].effectStyle`, so applying both has undefined rendering.
+- **Colors / stroke / shadow**: unlike text effects, a template does **not** reset `text_color` / `border_color` / `has_shadow` — the template supplies its own colors. An unresolvable template falls back to a plain caption with a warning.
+- **Draft structure**: for a templated caption the segment's `material_id` points at the template material in `materials.text_templates`, while the text material is still written to `materials.texts` and linked back via the template's `text_info_resources[].text_material_id`. The returned `text_ids` remain **text material** ids.
+- **Known limitations**: template resources (local cache paths, decorative stickers) are fetched by JianYing itself using the `effect_id`; only a template's **single text slot** is supported for now.
 
 ### Notes on keyword shadow
 
@@ -1348,7 +1360,9 @@ VHS
     "shadow_angle": -45.0
   },
   // [Optional] set null so custom colors/shadows remain effective
-  "text_effect": null
+  "text_effect": null,
+  // [Optional] text template; mutually exclusive with text_effect and wins; null here
+  "text_template": null
 }
 ```
 
@@ -1432,7 +1446,8 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_captions \
       "shadow_distance": 5.0,
       "shadow_angle": -45.0
     },
-    "text_effect": null
+    "text_effect": null,
+    "text_template": null
   }'
 ```
 
@@ -1459,6 +1474,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_captions \
 | has_shadow | `true` | [Optional] Full-text shadow on |
 | shadow_info.* | see above | [Optional] Full-text shadow details |
 | text_effect | `null` | [Optional] No 花字, keep colors/shadows |
+| text_template | `null` | [Optional] No text template; mutually exclusive with text_effect and wins |
 
 **Per-caption field meanings:**
 
@@ -1528,6 +1544,31 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_captions \
   }'
 ```
 
+#### 6. Text template (文字模板)
+
+Top-level template applied to the whole batch:
+
+```bash
+curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_captions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
+    "captions": "[{\"start\":0,\"end\":5000000,\"text\":\"Template demo\"}]",
+    "text_template": "嘎嘎香！红色 简约 美食 情绪表达 字幕"
+  }'
+```
+
+Per-caption template (mixable with plain captions, which are unaffected):
+
+```bash
+curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_captions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
+    "captions": "[{\"start\":0,\"end\":5000000,\"text\":\"Plain caption\"},{\"start\":5000000,\"end\":10000000,\"text\":\"Templated caption\",\"text_template\":\"7383613902744980770\"}]"
+  }'
+```
+
 ## Error Code Description
 
 | Error Code | Error Message | Description | Solution |
@@ -1545,6 +1586,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_captions \
 3. **Color format**: hex, e.g. `#ffffff`
 4. **Animation names**: from `get_text_animations`
 5. **Text effect names**: from `get_text_effects`
+5.1. **Text template**: pass a template name or a numeric `effect_id`; mutually exclusive with `text_effect` and wins. Name mappings live in `config/text_template.json`; numeric ids absent from that table pass straight through
 6. **Coordinates**: `transform_x` / `transform_y` are pixels, converted internally by canvas size
 7. **Keyword shadow**: applies only to keyword ranges; full-text shadow uses `has_shadow` / `shadow_info`
 

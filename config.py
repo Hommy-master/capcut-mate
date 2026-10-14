@@ -35,6 +35,9 @@ STICKER_CONFIG_PATH = os.path.join(os.path.dirname(__file__), "config", "sticker
 # 花字配置文件路径
 HUAZI_CONFIG_PATH = os.path.join(os.path.dirname(__file__), "config", "huazi.json")
 
+# 文字模板配置文件路径
+TEXT_TEMPLATE_CONFIG_PATH = os.path.join(os.path.dirname(__file__), "config", "text_template.json")
+
 # 模板目录路径
 TEMPLATE_DIR = os.path.join(os.path.dirname(__file__), "template")
 

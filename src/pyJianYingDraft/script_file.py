@@ -65,6 +65,7 @@ class ScriptMaterial:
         self.videos = []
         self.stickers = []
         self.texts = []
+        self.text_templates = []
 
         self.audio_effects = []
         self.audio_fades = []
@@ -159,7 +160,7 @@ class ScriptMaterial:
             "speeds": [spd.export_json() for spd in self.speeds],
             "stickers": self.stickers,
             "tail_leaders": [],
-            "text_templates": [],
+            "text_templates": self.text_templates,
             "texts": self.texts,
             "time_marks": [],
             "transitions": [transition.export_json() for transition in self.transitions],
@@ -405,6 +406,9 @@ class ScriptFile:
                 self.materials.filters.append(segment.effect)
             # 字体样式
             self.materials.texts.append(segment.export_material())
+            # 文字模板（片段 material_id 指向模板素材，文本素材改由模板反向关联）
+            if segment.text_template is not None:
+                self.materials.text_templates.append(segment.build_text_template_material())
         elif isinstance(segment, EffectSegment):
             # 特效素材
             if segment.effect_inst not in self.materials:

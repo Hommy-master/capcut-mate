@@ -253,6 +253,43 @@ class TextEffect(TextBubble):
         ret["source_platform"] = 1
         return ret
 
+class TextTemplateRef:
+    """剪映「文字模板」素材的标识信息, 与文本素材通过 material_id 关联
+
+    模板素材的其余字段(本机缓存 path、resources、装饰贴纸等)取决于创建者本机的
+    剪映缓存, 本服务侧无从得知, 由剪映按 effect_id/resource_id 自行拉取。
+    """
+
+    effect_id: str
+    """文字模板的effect_id, 也同时是其resource_id"""
+    material_id: str
+    """模板素材id, 文本片段的material_id指向它"""
+    name: str
+    """模板名称"""
+    category_id: str
+    """模板分类id"""
+    category_name: str
+    """模板分类名称"""
+    extra_material: Dict[str, Any]
+    """需要原样写入模板素材的额外字段, 由配置提供"""
+
+    def __init__(self, effect_id: str, *, name: str = "", category_id: str = "",
+                 category_name: str = "", extra_material: Optional[Dict[str, Any]] = None):
+        """
+        Args:
+            effect_id (`str`): 文字模板的effect_id, 也同时是其resource_id
+            name (`str`, optional): 模板名称, 默认为空
+            category_id (`str`, optional): 模板分类id, 默认为空
+            category_name (`str`, optional): 模板分类名称, 默认为空
+            extra_material (`Dict[str, Any]`, optional): 原样写入模板素材的额外字段
+        """
+        self.effect_id = effect_id
+        self.material_id = str(uuid.uuid4()).upper()
+        self.name = name
+        self.category_id = category_id
+        self.category_name = category_name
+        self.extra_material = dict(extra_material) if extra_material else {}
+
 class TextShadow:
     """文本阴影参数"""
 
@@ -317,6 +354,8 @@ class TextSegment(VisualSegment):
     """文本气泡效果, 在放入轨道时加入素材列表中"""
     effect: Optional[TextEffect]
     """文本花字效果, 在放入轨道时加入素材列表中, 目前仅支持一部分花字效果"""
+    text_template: Optional[TextTemplateRef]
+    """文字模板, 设置后片段的material_id指向模板素材, 在放入轨道时加入素材列表中"""
     extra_styles: List[Dict[str, Any]]
     """额外的文本样式，用于关键词高亮等特殊样式"""
 
@@ -350,6 +389,7 @@ class TextSegment(VisualSegment):
 
         self.bubble = None
         self.effect = None
+        self.text_template = None
         self.extra_styles = []
         # 为 True 时 export 使用 extra_styles 作为完整 styles（互不重叠分区），不再叠加全量 base_style
         self.use_extra_styles_only = False
@@ -376,6 +416,15 @@ class TextSegment(VisualSegment):
             new_segment.add_bubble(template.bubble.effect_id, template.bubble.resource_id)
         if template.effect:
             new_segment.add_effect(template.effect.effect_id)
+        if template.text_template:
+            # 必须重新生成素材id: 一个模板素材只能对应一个文本素材
+            new_segment.add_text_template(
+                template.text_template.effect_id,
+                name=template.text_template.name,
+                category_id=template.text_template.category_id,
+                category_name=template.text_template.category_name,
+                extra_material=template.text_template.extra_material,
+            )
 
         return new_segment
 
@@ -443,9 +492,34 @@ class TextSegment(VisualSegment):
         self.extra_material_refs.append(self.effect.global_id)
         return self
 
+    def add_text_template(self, effect_id: str, *, name: str = "", category_id: str = "",
+                          category_name: str = "",
+                          extra_material: Optional[Dict[str, Any]] = None) -> "TextSegment":
+        """为文本片段套用剪映「文字模板」
+
+        与`add_effect`(花字)不同, 文字模板不写入`extra_material_refs`, 而是让片段的
+        material_id指向模板素材; 文本素材仍留在materials.texts中, 由模板素材的
+        text_info_resources[].text_material_id反向关联。
+
+        Args:
+            effect_id (`str`): 文字模板的effect_id, 也同时是其resource_id
+            name (`str`, optional): 模板名称, 默认为空
+            category_id (`str`, optional): 模板分类id, 默认为空
+            category_name (`str`, optional): 模板分类名称, 默认为空
+            extra_material (`Dict[str, Any]`, optional): 原样写入模板素材的额外字段
+                (如剪映本机缓存path/resources), 默认不写
+        """
+        self.text_template = TextTemplateRef(
+            effect_id, name=name, category_id=category_id,
+            category_name=category_name, extra_material=extra_material)
+        return self
+
     def export_json(self) -> Dict[str, Any]:
         """导出轨道片段 JSON，对齐剪映官方文本片段字段。"""
         json_dict = super().export_json()
+        if self.text_template is not None:
+            # 套用文字模板时, 片段指向模板素材而非文本素材
+            json_dict["material_id"] = self.text_template.material_id
         json_dict.update({
             "caption_info": None,
             "cartoon": False,
@@ -675,4 +749,92 @@ class TextSegment(VisualSegment):
         if self.background:
             ret.update(self.background.export_json())
 
+        if self.text_template is not None:
+            # 套用文字模板时由模板决定配色, 素材侧不再提供默认颜色(对齐剪映官方草稿)
+            ret["use_effect_default_color"] = False
+            ret["text_color"] = ""
+
         return ret
+
+    def build_text_template_material(self) -> Dict[str, Any]:
+        """导出materials.text_templates中的模板素材, 字段对齐剪映官方草稿
+
+        模板素材在片段加入轨道时快照一次, 此时`extra_material_refs`已就绪
+        (动画素材id在片段构造时即已确定, 后续`add_animation`只往同一实例追加).
+
+        Returns:
+            模板素材字典, 其`id`即片段导出时的material_id
+
+        Raises:
+            `ValueError`: 当前片段未设置文字模板
+        """
+        if self.text_template is None:
+            raise ValueError("当前文本片段未设置文字模板")
+
+        material: Dict[str, Any] = {
+            "aigc_config": {
+                "font_item": {
+                    "category_id": "",
+                    "category_name": "",
+                    "effect_id": "",
+                    "file_uri": "",
+                    "id": str(uuid.uuid4()).upper(),
+                    "path": "",
+                    "request_id": "",
+                    "resource_id": "",
+                    "source_platform": 0,
+                    "team_id": "",
+                    "title": "",
+                },
+                "model": "",
+                "prompt": "",
+                "seed": 0,
+            },
+            "aigc_type": "none",
+            "category_id": self.text_template.category_id,
+            "category_name": self.text_template.category_name,
+            "check_flag": 7,
+            "effect_id": self.text_template.effect_id,
+            "formula_id": "",
+            "id": self.text_template.material_id,
+            "is_3d": False,
+            "is_pre_rendered": False,
+            "name": self.text_template.name,
+            # 装饰贴纸、本机缓存路径等依赖创建者本机剪映缓存, 此处留空由剪映自行拉取
+            "non_text_info_resources": [],
+            "path": "",
+            "platform": "all",
+            "request_id": "",
+            "resource_id": self.text_template.effect_id,
+            "resources": [],
+            "source_platform": 1,
+            "text_info_resources": [
+                {
+                    # 此处为本模板自带的固有布局, 与片段自身的clip(用户位移)无关
+                    "attach_info": {
+                        "clip": {
+                            "alpha": 1.0,
+                            "flip": {"horizontal": False, "vertical": False},
+                            "rotation": 0.0,
+                            "scale": {"x": 1.0, "y": 1.0},
+                            "transform": {"x": 0.0, "y": 0.0},
+                        },
+                        "duration": self.target_timerange.duration,
+                        "original_size_height": 0.0,
+                        "original_size_width": 0.0,
+                        "start_time": 0,
+                    },
+                    "extra_material_refs": list(self.extra_material_refs),
+                    "text_material_id": self.material_id,
+                }
+            ],
+            "text_template_preset_resource_id": "",
+            "text_to_audio_ids": [],
+            "type": "text_template",
+            "version": "1.0.0",
+        }
+
+        # 配置提供的字段(如确切的path/resources)原样覆写
+        material.update(self.text_template.extra_material)
+
+        return material

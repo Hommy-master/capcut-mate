@@ -249,6 +249,7 @@ async def add_captions(acr: AddCaptionsRequest) -> AddCaptionsResponse:
         has_shadow=acr.has_shadow,
         shadow_info=acr.shadow_info,
         text_effect=acr.text_effect,
+        text_template=acr.text_template,
         lock_timeout=30.0  # 30 秒超时
     )
 
