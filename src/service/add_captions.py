@@ -24,6 +24,7 @@ from src.utils import helper
 from src.schemas.add_captions import ShadowInfo
 from src.service.get_text_effects import resolve_text_effect
 from src.service.get_text_templates import resolve_text_template
+from src.service.get_text_bubbles import resolve_text_bubble
 from src.utils.draft_lock_manager import DraftLockManager
 
 
@@ -150,7 +151,8 @@ def add_captions(
     has_shadow: bool = False,
     shadow_info: Optional[ShadowInfo] = None,
     text_effect: Optional[str] = None,
-    text_template: Optional[str] = None
+    text_template: Optional[str] = None,
+    text_bubble: Optional[str] = None
 ) -> Tuple[str, str, List[str], List[str], List[dict]]:
     """
     批量添加字幕到剪映草稿的业务逻辑
@@ -201,6 +203,9 @@ def add_captions(
         text_effect: 花字效果名称或 effect_id，默认 None
         text_template: 文字模板名称或 effect_id，默认 None。逐条 caption 中的
             text_template 优先于本参数；与 text_effect 互斥，同时传入时文字模板优先
+        text_bubble: 气泡名称、resource_id/effect_id，或 "effect_id:resource_id"
+            显式 ID 对，默认 None。逐条 caption 中的 text_bubble 优先于本参数；
+            优先级为 文字模板 > 气泡 > 花字，同时传入时低优先级者被忽略并告警
 
     Returns:
         draft_url: 草稿 URL
@@ -275,6 +280,7 @@ def add_captions(
                     shadow_info=shadow_info,
                     text_effect=text_effect,
                     text_template=text_template,
+                    text_bubble=text_bubble,
                 )
                 segment_ids.append(segment_id)
                 text_ids.append(text_id)
@@ -333,6 +339,7 @@ async def add_captions_async(
     shadow_info: Optional[ShadowInfo] = None,
     text_effect: Optional[str] = None,
     text_template: Optional[str] = None,
+    text_bubble: Optional[str] = None,
     lock_timeout: float = 30.0
 ) -> Tuple[str, str, List[str], List[str], List[dict]]:
     """
@@ -367,6 +374,8 @@ async def add_captions_async(
         shadow_info: 文本阴影参数，默认 None
         text_effect: 花字效果名称或 effect_id，默认 None
         text_template: 文字模板名称或 effect_id，默认 None；与 text_effect 互斥，文字模板优先
+        text_bubble: 气泡名称、resource_id/effect_id，或 "effect_id:resource_id"
+            显式 ID 对，默认 None；优先级为 文字模板 > 气泡 > 花字
         lock_timeout: 获取锁的超时时间（秒），默认 30 秒
     
     Returns:
@@ -426,7 +435,8 @@ async def add_captions_async(
             has_shadow=has_shadow,
             shadow_info=shadow_info,
             text_effect=text_effect,
-            text_template=text_template
+            text_template=text_template,
+            text_bubble=text_bubble
         )
     finally:
         # 释放锁
@@ -459,6 +469,7 @@ def add_caption_to_draft(
     shadow_info: Optional[ShadowInfo] = None,
     text_effect: Optional[str] = None,
     text_template: Optional[str] = None,
+    text_bubble: Optional[str] = None,
 ) -> Tuple[str, str, dict]:
     """
     向剪映草稿中添加单个字幕
@@ -505,6 +516,9 @@ def add_caption_to_draft(
         shadow_info: 文本阴影参数，默认 None
         text_effect: 花字效果名称或 effect_id，默认 None
         text_template: 文字模板名称或 effect_id，默认 None。与 text_effect 互斥，同时传入时文字模板优先
+        text_bubble: 气泡名称、resource_id/effect_id，或 "effect_id:resource_id"
+            显式 ID 对，默认 None。与 text_effect 互斥，同时传入时气泡优先；
+            与 text_template 同时传入时文字模板优先
 
     Returns:
         segment_id: 片段 ID
@@ -539,8 +553,36 @@ def add_caption_to_draft(
             else:
                 logger.warning(f"Text template not found: {template_identifier}")
 
-        # 0.1 在函数开头统一处理参数约束：
+        # 0.1 解析气泡（逐条优先，其次接口级默认值）
+        # 气泡与花字同属文字效果（分别对应 text_shape / text_effect 素材）且互斥，
+        # 气泡优先；文字模板掌管片段素材身份，优先级更高，模板生效时不处理气泡。
+        bubble_identifier = caption.get('text_bubble') or text_bubble
+        resolved_bubble = None
+        if resolved_template:
+            if bubble_identifier:
+                logger.warning(
+                    f"Both text_template '{template_identifier}' and text_bubble "
+                    f"'{bubble_identifier}' provided, text_template takes precedence"
+                )
+        elif bubble_identifier:
+            try:
+                resolved_bubble = resolve_text_bubble(bubble_identifier)
+            except Exception as e:
+                logger.error(f"Failed to resolve text bubble '{bubble_identifier}': {str(e)}")
+
+            if resolved_bubble:
+                if text_effect:
+                    logger.warning(
+                        f"Both text_effect '{text_effect}' and text_bubble '{bubble_identifier}' "
+                        f"provided, text_bubble takes precedence"
+                    )
+                    text_effect = None
+            else:
+                logger.warning(f"Text bubble not found: {bubble_identifier}")
+
+        # 0.2 在函数开头统一处理参数约束：
         # 当花字有效时，直接将 text_color / border_color / has_shadow 重置为默认值
+        # （须在上一步之后：气泡生效时 text_effect 已被置空，不应再做花字的颜色重置）
         disable_keyword_shadow = False
         if text_effect:
             try:
@@ -682,6 +724,27 @@ def add_caption_to_draft(
                 )
             except Exception as e:
                 logger.error(f"Failed to add text template '{template_identifier}': {str(e)}")
+
+        # 10.2 处理气泡（挂到 extra_material_refs 上，须在片段加入轨道前绑定）
+        # 气泡只负责文字底下的装饰底板，不动文字自身的 fill/stroke/shadow，
+        # 故不像花字那样重置 text_color / border_color / has_shadow。
+        if resolved_bubble:
+            try:
+                text_segment.add_bubble(
+                    resolved_bubble['effect_id'],
+                    resolved_bubble['resource_id'],
+                    name=resolved_bubble.get('name', ''),
+                    category_id=resolved_bubble.get('category_id', ''),
+                    category_name=resolved_bubble.get('category_name', ''),
+                    extra_material=resolved_bubble.get('extra_material'),
+                )
+                logger.info(
+                    f"Added text bubble: {bubble_identifier} "
+                    f"(effect_id: {resolved_bubble['effect_id']}, "
+                    f"resource_id: {resolved_bubble['resource_id']})"
+                )
+            except Exception as e:
+                logger.error(f"Failed to add text bubble '{bubble_identifier}': {str(e)}")
 
         # 11. 处理关键词高亮（颜色/描边/字号/阴影均在同一字幕的 styles 分区内完成，不另建片段）
         if caption.get('keyword'):
@@ -1098,8 +1161,8 @@ def apply_keyword_highlight(
             start_pos = end_pos
 
 
-def _normalize_caption_text_template(value: Any) -> Optional[str]:
-    """将逐条字幕的 text_template 归一化：非字符串或空白视为未指定"""
+def _normalize_caption_identifier(value: Any) -> Optional[str]:
+    """将逐条字幕的 text_template / text_bubble 归一化：非字符串或空白视为未指定"""
     if isinstance(value, str) and value.strip():
         return value
     return None
@@ -1130,7 +1193,8 @@ def parse_captions_data(json_str: str) -> List[Dict[str, Any]]:
                 "in_animation_duration": None,  # [可选] 入场动画时长，默认None
                 "out_animation_duration": None,  # [可选] 出场动画时长，默认None
                 "loop_animation_duration": None,  # [可选] 循环动画时长，默认None
-                "text_template": None  # [可选] 文字模板名称或effect_id，默认None
+                "text_template": None,  # [可选] 文字模板名称或effect_id，默认None
+                "text_bubble": None  # [可选] 气泡名称/resource_id/effect_id，或"effect_id:resource_id"显式ID对，默认None
             }
         ]
         
@@ -1187,7 +1251,8 @@ def parse_captions_data(json_str: str) -> List[Dict[str, Any]]:
             "in_animation_duration": item.get("in_animation_duration", None),
             "out_animation_duration": item.get("out_animation_duration", None),
             "loop_animation_duration": item.get("loop_animation_duration", None),
-            "text_template": _normalize_caption_text_template(item.get("text_template", None))
+            "text_template": _normalize_caption_identifier(item.get("text_template", None)),
+            "text_bubble": _normalize_caption_identifier(item.get("text_bubble", None))
         }
         
         # 验证数值类型和范围

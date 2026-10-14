@@ -49,6 +49,13 @@ class AddCaptionsRequest(BaseModel):
         default=None,
         description="文字模板名称或 effect_id（数字 resource_id 可直接透传）；与 text_effect 互斥，同时传入时文字模板优先",
     )
+    text_bubble: Optional[str] = Field(
+        default=None,
+        description=(
+            "气泡名称或 resource_id/effect_id；清单外的气泡传 \"effect_id:resource_id\" 显式 ID 对。"
+            "优先级为 文字模板 > 气泡 > 花字"
+        ),
+    )
 
 
 class CaptionItem(BaseModel):
@@ -77,6 +84,13 @@ class CaptionItem(BaseModel):
     text_template: Optional[str] = Field(
         default=None,
         description="文字模板名称或 effect_id；未指定则使用接口级 text_template；与 text_effect 互斥，文字模板优先",
+    )
+    text_bubble: Optional[str] = Field(
+        default=None,
+        description=(
+            "本条字幕的气泡名称或 resource_id/effect_id，或 \"effect_id:resource_id\" 显式 ID 对；"
+            "未指定则使用接口级 text_bubble"
+        ),
     )
 
 

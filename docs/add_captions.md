@@ -42,6 +42,7 @@ Batch-add captions to an existing CapCut/Jianying draft. Supports text color, bo
 | shadow_info | object | ❌ | `null` | Full-caption shadow params; defaults apply if `has_shadow=true` and this is `null` |
 | text_effect | string | ❌ | `null` | Text effect name or `effect_id`; a valid effect resets color/border/shadow |
 | text_template | string | ❌ | `null` | Text template name or `effect_id` (numeric ids pass through); mutually exclusive with `text_effect`, template wins |
+| text_bubble | string | ❌ | `null` | Bubble name or `resource_id`/`effect_id`; for bubbles outside the catalog pass an explicit `"effect_id:resource_id"` pair. Priority: text template > bubble > text effect |
 
 ### captions Fields
 
@@ -67,6 +68,7 @@ Batch-add captions to an existing CapCut/Jianying draft. Supports text color, bo
 | out_animation_duration | integer | ❌ | `null` | Outro duration (µs); omit to use animation default |
 | loop_animation_duration | integer | ❌ | `null` | Single loop duration (µs); omit to use animation default |
 | text_template | string | ❌ | `null` | Text template name or `effect_id` for this caption; falls back to top-level `text_template` |
+| text_bubble | string | ❌ | `null` | Bubble name, `resource_id`/`effect_id`, or an explicit `"effect_id:resource_id"` pair for this caption; falls back to top-level `text_bubble` |
 
 ### shadow_info / keyword_shadow_info Fields
 
@@ -120,6 +122,27 @@ The catalog lives in `config/text_template.json` and currently holds **5166** te
 - **Duplicate names**: the catalog contains 498 duplicate names (e.g. 41 templates called `我的水印`). A name lookup always resolves to the **first matching entry** in the config; pass the `effect_id` when you need an exact template.
 - **VIP templates**: 4735 of the 5166 templates are VIP (`is_vip: true`). A VIP template the account has not purchased may not render in JianYing — callers should ensure entitlement; the `is_vip` field is available for filtering.
 - **Known limitations**: template resources (local cache paths, decorative stickers) are fetched by JianYing itself using the `effect_id`; only a template's **single text slot** is supported for now.
+
+### Notes on text_bubble
+
+`text_bubble` applies a JianYing 气泡 — the decorative plate drawn behind the text (speech bubbles, labels, stamps). A bubble is the third kind of text effect, separate from text effects and templates: in the draft it is one entry in `materials.effects` with `type: "text_shape"`, referenced by the text segment's `extra_material_refs`.
+
+**The key difference from effects/templates: a bubble's `effect_id` and `resource_id` are not the same value.** In a real draft they look like `effect_id: "716434"` and `resource_id: "6821385652727190024"`. Both are required — with only one, JianYing cannot locate the resource. Therefore:
+
+- The catalog `config/bubble.json` stores them separately: `id` is the **resource_id** and `effect_id` is given on its own (note this differs from `text_template.json`, where `id` doubles as the `effect_id`).
+- For any bubble outside the catalog, pass an explicit `"effect_id:resource_id"` pair, e.g. `"716434:6821385652727190024"`.
+- **A single numeric value is not passed through** (the opposite of `text_template`), because the other id cannot be inferred; it is treated as not found and the caption falls back to a plain one.
+
+Accepted forms and priority:
+
+- **Four forms**: bubble name (e.g. `"背景装饰54"`), `resource_id`, `effect_id`, or an explicit `"effect_id:resource_id"` pair.
+- **Top-level vs per-caption**: the top-level `text_bubble` is the default for the whole batch; a per-caption `text_bubble` takes precedence.
+- **Priority is text template > bubble > text effect**: a bubble and a text effect are both text effects and are mutually exclusive, so **the bubble wins** over `text_effect` (which is ignored with a warning); when combined with `text_template` the **template wins** and the bubble is ignored with a warning.
+- **Colors / stroke / shadow**: a bubble only draws a decorative plate behind the text and does **not** reset `text_color` / `border_color` / `has_shadow` (unlike a text effect, matching a template). An unresolvable bubble falls back to a plain caption with a warning.
+- **Known limitations**: bubble material fields such as `path` and `request_id` depend on the creator's local JianYing cache and are not emitted by this service — JianYing fetches them by `effect_id`/`resource_id` (the same approach used for text effects). To pin such fields verbatim, put them in the `material` field of the `config/bubble.json` entry; they are written into the bubble material as-is.
+- **Not verified in JianYing**: the `气泡1` draft only proves the **draft structure** (material fields and segment references match item by item); the bubble's **actual rendering** has not been verified. Text effects emit the same minimal field set and work, but a bubble is a different material type (`text_shape`) on a different render path, so this is inferred rather than measured — run it once in JianYing before shipping.
+- **Catalog size**: only **1** bubble verified against a real draft (`背景装饰54`) is included, so a **name lookup only resolves within the catalog**. Use the explicit id pair for any other bubble, or extend `config/bubble.json` with the same field shape (`id` is the resource_id, `effect_id` is given separately, both required).
+- **On bulk import**: 速创小助手's bubble page lists 326 bubbles with names and preview images (its names are the JianYing bubble names, e.g. `情绪07` / `会话105`), but it **does not expose `effect_id`/`resource_id`** (only that site's 特效 page carries id pairs), so they cannot be imported in bulk — filling in ids requires confirming each bubble in JianYing's 气泡 panel.
 
 ### Notes on keyword shadow
 
@@ -1366,7 +1389,9 @@ VHS
   // [Optional] set null so custom colors/shadows remain effective
   "text_effect": null,
   // [Optional] text template; mutually exclusive with text_effect and wins; null here
-  "text_template": null
+  "text_template": null,
+  // [Optional] bubble; for bubbles outside the catalog use an "effect_id:resource_id" pair
+  "text_bubble": null
 }
 ```
 
@@ -1451,7 +1476,8 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_captions \
       "shadow_angle": -45.0
     },
     "text_effect": null,
-    "text_template": null
+    "text_template": null,
+    "text_bubble": null
   }'
 ```
 
@@ -1479,6 +1505,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_captions \
 | shadow_info.* | see above | [Optional] Full-text shadow details |
 | text_effect | `null` | [Optional] No 花字, keep colors/shadows |
 | text_template | `null` | [Optional] No text template; mutually exclusive with text_effect and wins |
+| text_bubble | `null` | [Optional] No bubble. Pass a name or an `"effect_id:resource_id"` pair to use one; priority is text template > bubble > text effect |
 
 **Per-caption field meanings:**
 
@@ -1573,6 +1600,31 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_captions \
   }'
 ```
 
+#### 7. Using a bubble
+
+By name, using a bubble from the catalog (`config/bubble.json`):
+
+```bash
+curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_captions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
+    "captions": "[{\"start\":0,\"end\":5000000,\"text\":\"Bubble caption\"}]",
+    "text_bubble": "背景装饰54"
+  }'
+```
+
+For a bubble outside the catalog use the explicit `"effect_id:resource_id"` pair; it can also be set per caption, mixed with plain captions:
+
+```bash
+curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_captions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
+    "captions": "[{\"start\":0,\"end\":5000000,\"text\":\"Plain caption\"},{\"start\":5000000,\"end\":10000000,\"text\":\"Bubble caption\",\"text_bubble\":\"716434:6821385652727190024\"}]"
+  }'
+```
+
 ## Error Code Description
 
 | Error Code | Error Message | Description | Solution |
@@ -1591,6 +1643,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_captions \
 4. **Animation names**: from `get_text_animations`
 5. **Text effect names**: from `get_text_effects`
 5.1. **Text template**: pass a template name or a numeric `effect_id`; mutually exclusive with `text_effect` and wins. The catalog lives in `config/text_template.json` (5166 templates); duplicate names resolve to the first entry, so use the `effect_id` for an exact match. Numeric ids absent from the table pass straight through
+5.2. **Bubble**: pass a bubble name, `resource_id` or `effect_id`; a bubble's `effect_id` and `resource_id` are **not the same value**, so for bubbles outside the catalog pass an explicit `"effect_id:resource_id"` pair (e.g. `"716434:6821385652727190024"`) — a lone numeric value is not passed through. Priority is text template > bubble > text effect; a bubble does not reset colors/stroke/shadow
 6. **Coordinates**: `transform_x` / `transform_y` are pixels, converted internally by canvas size
 7. **Keyword shadow**: applies only to keyword ranges; full-text shadow uses `has_shadow` / `shadow_info`
 

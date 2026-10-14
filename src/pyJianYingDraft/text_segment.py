@@ -220,21 +220,40 @@ class TextBackground:
         }
 
 class TextBubble:
-    """文本气泡素材, 与滤镜素材本质上一致"""
+    """文本气泡素材, 与滤镜素材本质上一致
+
+    与花字/文字模板不同, 气泡的`effect_id`与`resource_id`**不是同一个值**
+    (剪映草稿中形如``effect_id="716434"``、``resource_id="6821385652727190024"``),
+    两者都需给出。
+    """
 
     global_id: str
     """气泡全局id, 由程序自动生成"""
 
     effect_id: str
     resource_id: str
+    name: str
+    """气泡名称, 未知时为空"""
+    category_id: str
+    """气泡分类id, 未知时为空"""
+    category_name: str
+    """气泡分类名称, 未知时为空"""
+    extra_material: Dict[str, Any]
+    """需要原样写入气泡素材的额外字段, 由配置提供"""
 
-    def __init__(self, effect_id: str, resource_id: str):
+    def __init__(self, effect_id: str, resource_id: str, *, name: str = "",
+                 category_id: str = "", category_name: str = "",
+                 extra_material: Optional[Dict[str, Any]] = None):
         self.global_id = uuid.uuid4().hex
         self.effect_id = effect_id
         self.resource_id = resource_id
+        self.name = name
+        self.category_id = category_id
+        self.category_name = category_name
+        self.extra_material = dict(extra_material) if extra_material else {}
 
     def export_json(self) -> Dict[str, Any]:
-        return {
+        ret = {
             "apply_target_type": 0,
             "effect_id": self.effect_id,
             "id": self.global_id,
@@ -243,6 +262,15 @@ class TextBubble:
             "value": 1.0,
             # 不导出path和request_id
         }
+        # 已知的名称/分类原样写入, 便于剪映气泡面板回显; 未知时保持最小结构
+        if self.name:
+            ret["name"] = self.name
+        if self.category_id:
+            ret["category_id"] = self.category_id
+        if self.category_name:
+            ret["category_name"] = self.category_name
+        ret.update(self.extra_material)
+        return ret
 
 class TextEffect(TextBubble):
     """文本花字素材, 与滤镜素材本质上也一致"""
@@ -413,7 +441,14 @@ class TextSegment(VisualSegment):
             # 替换默认空动画引用，避免重复挂载
             new_segment.extra_material_refs = [new_segment.animations_instance.animation_id]
         if template.bubble:
-            new_segment.add_bubble(template.bubble.effect_id, template.bubble.resource_id)
+            new_segment.add_bubble(
+                template.bubble.effect_id,
+                template.bubble.resource_id,
+                name=template.bubble.name,
+                category_id=template.bubble.category_id,
+                category_name=template.bubble.category_name,
+                extra_material=template.bubble.extra_material,
+            )
         if template.effect:
             new_segment.add_effect(template.effect.effect_id)
         if template.text_template:
@@ -471,14 +506,26 @@ class TextSegment(VisualSegment):
 
         return self
 
-    def add_bubble(self, effect_id: str, resource_id: str) -> "TextSegment":
+    def add_bubble(self, effect_id: str, resource_id: str, *, name: str = "",
+                   category_id: str = "", category_name: str = "",
+                   extra_material: Optional[Dict[str, Any]] = None) -> "TextSegment":
         """根据素材信息添加气泡效果, 相应素材信息可通过`ScriptFile.inspect_material`从模板中获取
+
+        气泡的`effect_id`与`resource_id`并非同一个值, 两者都需给出, 否则剪映无法
+        定位到该气泡资源。
 
         Args:
             effect_id (`str`): 气泡效果的effect_id
             resource_id (`str`): 气泡效果的resource_id
+            name (`str`, optional): 气泡名称, 默认为空
+            category_id (`str`, optional): 气泡分类id, 默认为空
+            category_name (`str`, optional): 气泡分类名称, 默认为空
+            extra_material (`Dict[str, Any]`, optional): 原样写入气泡素材的额外字段
+                (如剪映本机缓存path), 默认不写
         """
-        self.bubble = TextBubble(effect_id, resource_id)
+        self.bubble = TextBubble(effect_id, resource_id, name=name,
+                                 category_id=category_id, category_name=category_name,
+                                 extra_material=extra_material)
         self.extra_material_refs.append(self.bubble.global_id)
         return self
 

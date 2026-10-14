@@ -42,6 +42,7 @@ POST /openapi/capcut-mate/v1/add_captions
 | shadow_info | object | ❌ | `null` | 整段字幕阴影参数；`has_shadow=true` 且本字段为 `null` 时使用默认阴影 |
 | text_effect | string | ❌ | `null` | 花字效果名称或 `effect_id`；有效花字会重置颜色/描边/阴影相关效果 |
 | text_template | string | ❌ | `null` | 文字模板名称或 `effect_id`（数字 id 可直接透传）；与 `text_effect` 互斥，同时传入时文字模板优先 |
+| text_bubble | string | ❌ | `null` | 气泡名称或 `resource_id`/`effect_id`；清单外的气泡传 `"effect_id:resource_id"` 显式 ID 对。优先级：文字模板 > 气泡 > 花字 |
 
 ### captions 字段详细说明
 
@@ -67,6 +68,7 @@ POST /openapi/capcut-mate/v1/add_captions
 | out_animation_duration | integer | ❌ | `null` | 出场动画时长（微秒）；不填则用动画默认时长 |
 | loop_animation_duration | integer | ❌ | `null` | 循环动画**单次循环**时长（微秒）；不填则用动画默认时长 |
 | text_template | string | ❌ | `null` | 本条字幕的文字模板名称或 `effect_id`；未指定则使用接口级 `text_template` |
+| text_bubble | string | ❌ | `null` | 本条字幕的气泡名称、`resource_id`/`effect_id`，或 `"effect_id:resource_id"` 显式 ID 对；未指定则使用接口级 `text_bubble` |
 
 ### shadow_info / keyword_shadow_info 字段说明
 
@@ -122,6 +124,27 @@ POST /openapi/capcut-mate/v1/add_captions
 - **重名如何处理**：清单里有 498 条重名模板（如「我的水印」重名 41 条），按名称调用时固定命中配置中**靠前的一条**。需要精确定位某个模板时请直接传 `effect_id`。
 - **VIP 模板**：5166 个模板中 4735 个为 VIP（`is_vip: true`）。未购买的 VIP 模板在剪映侧可能无法渲染，调用方应自行确保账号有权限；清单中的 `is_vip` 字段可用于筛选。
 - **已知限制**：模板资源（本机缓存路径、装饰贴纸等）由剪映按 `effect_id` 自行拉取；目前每个字幕只支持模板的**单个文本槽**。
+
+#### 气泡
+
+`text_bubble` 用于给字幕套用剪映的「气泡」（文字底下的装饰底板，如对话框、标签、印章）。气泡是剪映里独立于花字与文字模板的第三种文字效果，草稿中表现为 `materials.effects` 里一条 `type: "text_shape"` 的素材，由文本片段的 `extra_material_refs` 引用。
+
+**与花字/文字模板最大的差异：气泡的 `effect_id` 与 `resource_id` 不是同一个值。** 例如剪映草稿中的 `effect_id: "716434"` 与 `resource_id: "6821385652727190024"`，两者都需给出，少一个剪映就定位不到气泡资源。因此：
+
+- 清单 `config/bubble.json` 中两者分别记录：`id` 是 **resource_id**，`effect_id` 单独给出（注意与 `text_template.json` 里 `id` 兼作 `effect_id` 的约定不同）。
+- 清单外的任意气泡，用 `"effect_id:resource_id"` 显式 ID 对传入，如 `"716434:6821385652727190024"`。
+- **只传一个纯数字不会被透传**（这点与 `text_template` 相反），因为无法补全另一个 id，会按未找到处理并回退为普通字幕。
+
+取值方式与优先级：
+
+- **四种写法**：气泡名称（如 `"背景装饰54"`）、`resource_id`、`effect_id`，或 `"effect_id:resource_id"` 显式 ID 对。
+- **接口级与逐条**：接口级 `text_bubble` 作为整批字幕的默认值，单条字幕里的 `text_bubble` 优先。
+- **优先级为 文字模板 > 气泡 > 花字**：气泡与花字同属文字效果且互斥，同时传入时**气泡优先**，`text_effect` 被忽略并告警；与 `text_template` 同时传入时**文字模板优先**，气泡被忽略并告警。
+- **颜色/描边/阴影**：气泡只负责文字底下的装饰底板，**不重置** `text_color` / `border_color` / `has_shadow`（这点与花字相反，与文字模板一致）。气泡无法解析时，按普通字幕处理并记录告警。
+- **已知限制**：气泡素材的 `path`、`request_id` 等取决于创建者本机剪映缓存，本服务不导出，由剪映按 `effect_id`/`resource_id` 自行拉取（与花字相同的做法）。需要原样覆写这些字段时，可在 `config/bubble.json` 的 `material` 字段中提供，会原样写入气泡素材。
+- **未经实测**：`气泡1` 草稿只证明了**草稿结构**（素材字段与片段引用关系逐项对齐），气泡在剪映里的**实际渲染**尚未验证。花字发同样的最小字段集且工作正常，但气泡是不同素材类型（`text_shape`）与渲染路径，属推断而非实测——上线前请在剪映里实跑一次。
+- **清单规模**：当前只收录 `气泡1` 草稿实证过的 **1** 个气泡（`背景装饰54`），故**按名称只能在清单内用这 1 个**；其余气泡请用显式 ID 对传入，或按同样字段格式向 `config/bubble.json` 增补（`id` 为 resource_id，`effect_id` 单独给出，两者缺一不可）。
+- **关于批量导入**：速创小助手的气泡页收录了 326 个气泡的名称与预览图（名称即剪映气泡名，如 `情绪07`/`会话105`），但**不提供 `effect_id`/`resource_id`**（该站的「特效」页才提供 id 对），因此无法直接批量导入，补齐 id 需在剪映「气泡」面板逐个确认。
 
 #### 关键词阴影如何生效
 
@@ -1368,7 +1391,9 @@ VHS
   // 【可选】花字；与自定义颜色/阴影冲突，完整示例中置为 null 以保留阴影效果
   "text_effect": null,
   // 【可选】文字模板；与花字互斥且优先，完整示例中置为 null
-  "text_template": null
+  "text_template": null,
+  // 【可选】气泡；清单外的气泡用 "effect_id:resource_id" 显式 ID 对
+  "text_bubble": null
 }
 ```
 
@@ -1458,7 +1483,8 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_captions \
       "shadow_angle": -45.0
     },
     "text_effect": null,
-    "text_template": null
+    "text_template": null,
+    "text_bubble": null
   }'
 ```
 
@@ -1487,6 +1513,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_captions \
 | shadow_info.* | 见上 | 【可选】整段阴影详细参数 |
 | text_effect | `null` | 【可选】不使用花字，避免覆盖颜色/阴影 |
 | text_template | `null` | 【可选】不使用文字模板；与花字互斥且优先 |
+| text_bubble | `null` | 【可选】不使用气泡。需要时传名称或 `"effect_id:resource_id"`；优先级 文字模板 > 气泡 > 花字 |
 
 **captions 内每条字幕字段含义速查：**
 
@@ -1507,6 +1534,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_captions \
 | loop_animation | `弹幕滚动` | 【可选】循环动画 |
 | *_animation_duration | `500000` 等 | 【可选】对应动画时长（微秒） |
 | text_template | `嘎嘎香！红色 简约 美食 情绪表达 字幕` | 【可选】本条字幕的文字模板；优先于接口级 |
+| text_bubble | `背景装饰54` / `716434:6821385652727190024` | 【可选】本条字幕的气泡；优先于接口级 |
 
 #### 2. 仅必填参数
 
@@ -1584,6 +1612,31 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_captions \
   }'
 ```
 
+#### 7. 使用气泡
+
+按名称使用清单内的气泡（`config/bubble.json`）：
+
+```bash
+curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_captions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
+    "captions": "[{\"start\":0,\"end\":5000000,\"text\":\"气泡字幕\"}]",
+    "text_bubble": "背景装饰54"
+  }'
+```
+
+清单外的气泡用 `"effect_id:resource_id"` 显式 ID 对；也可逐条指定，与普通字幕混合：
+
+```bash
+curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_captions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
+    "captions": "[{\"start\":0,\"end\":5000000,\"text\":\"普通字幕\"},{\"start\":5000000,\"end\":10000000,\"text\":\"气泡字幕\",\"text_bubble\":\"716434:6821385652727190024\"}]"
+  }'
+```
+
 ## 错误码说明
 
 | 错误码 | 错误信息 | 说明 | 解决方案 |
@@ -1602,6 +1655,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_captions \
 4. **动画名称**：请通过 `get_text_animations` 获取可用名称
 5. **花字名称**：请通过 `get_text_effects` 获取可用名称或 `effect_id`
 5.1. **文字模板**：传模板名称或数字 `effect_id`；与 `text_effect` 互斥且优先。模板清单见 `config/text_template.json`（5166 个），名称重名时命中靠前一条，精确定位请用 `effect_id`；不在表中的纯数字 id 会直接透传
+5.2. **气泡**：传气泡名称、`resource_id` 或 `effect_id`；气泡的 `effect_id` 与 `resource_id` **不是同一个值**，清单外的气泡请传 `"effect_id:resource_id"` 显式 ID 对（如 `"716434:6821385652727190024"`），只传单个数字不会透传。优先级为 文字模板 > 气泡 > 花字；气泡不重置颜色/描边/阴影
 6. **坐标系统**：`transform_x` / `transform_y` 使用像素，内部会按画布尺寸换算
 7. **关键词阴影**：与关键词颜色/描边一样写在同一字幕的 styles 分区内，不另建字幕行；整段阴影仍由 `has_shadow` / `shadow_info` 控制
 
