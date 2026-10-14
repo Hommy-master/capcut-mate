@@ -1,9 +1,13 @@
 """
 文字模板(剪映「文字模板」)标识符解析的业务逻辑处理模块
 
-模板素材本机缓存相关的字段(path/resources/装饰贴纸等)无法在本服务侧得知，
-由剪映按 effect_id/resource_id 自行拉取；若需要精确复刻某个模板，可在
-config/text_template.json 的 "material" 字段中原样覆写这些字段。
+模板清单维护在 config/text_template.json，字段为 id/title/is_vip/category_id/
+category_name。模板素材本机缓存相关的字段(path/resources/装饰贴纸等)无法在本
+服务侧得知，由剪映按 effect_id/resource_id 自行拉取；若需要精确复刻某个模板，
+可在配置项的 "material" 字段中原样覆写这些字段。
+
+注意 id 即剪映的 effect_id/resource_id，两者同值；is_vip 仅作筛选标记，未购买
+的 VIP 模板在剪映侧可能无法渲染。
 """
 import json
 from typing import List, Dict, Any, Optional
@@ -35,6 +39,8 @@ def _load_text_template_data() -> None:
     """在进程启动时加载文字模板数据到内存
 
     配置文件缺失或损坏时退化为空表并告警，不影响纯 effect_id 的调用方式。
+    模板名称存在重复（如多个「我的水印」），名称查找固定取配置中靠前的一条，
+    需要精确定位时请传 effect_id。
     """
     global _TEXT_TEMPLATE_DATA, _TEXT_TEMPLATE_MAP_BY_NAME, _TEXT_TEMPLATE_MAP_BY_ID
 
@@ -45,6 +51,7 @@ def _load_text_template_data() -> None:
         if not isinstance(_TEXT_TEMPLATE_DATA, list):
             raise ValueError("文字模板配置应为数组")
 
+        duplicate_names = 0
         for item in _TEXT_TEMPLATE_DATA:
             if not isinstance(item, dict):
                 continue
@@ -53,11 +60,19 @@ def _load_text_template_data() -> None:
             resource_id = template_data["resource_id"]
 
             if title:
-                _TEXT_TEMPLATE_MAP_BY_NAME[title] = template_data
+                # 重名取靠前的一条，保证结果稳定且与配置顺序一致
+                if title in _TEXT_TEMPLATE_MAP_BY_NAME:
+                    duplicate_names += 1
+                else:
+                    _TEXT_TEMPLATE_MAP_BY_NAME[title] = template_data
             if resource_id:
                 _TEXT_TEMPLATE_MAP_BY_ID[resource_id] = template_data
 
-        logger.info(f"成功加载 {len(_TEXT_TEMPLATE_DATA)} 个文字模板到内存")
+        logger.info(
+            f"成功加载 {len(_TEXT_TEMPLATE_DATA)} 个文字模板到内存"
+            f"（{len(_TEXT_TEMPLATE_MAP_BY_NAME)} 个不重名模板"
+            f"{f'，{duplicate_names} 条重名已忽略' if duplicate_names else ''}）"
+        )
 
     except FileNotFoundError:
         logger.warning(
@@ -83,7 +98,8 @@ def resolve_text_template(template_identifier: str) -> Optional[Dict[str, Any]]:
     解析文字模板标识符，返回对应的模板信息
 
     Args:
-        template_identifier: 可以是 effect_id（数字字符串）或模板名称（中文名称）
+        template_identifier: 可以是 effect_id（数字字符串）或模板名称（中文名称）。
+            名称存在重名时固定命中配置中靠前的一条，需要精确定位请传 effect_id。
 
     Returns:
         文字模板信息字典，包含 effect_id、resource_id、name、category_id、

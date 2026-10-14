@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 
+from config import TEXT_TEMPLATE_CONFIG_PATH
 from src.pyJianYingDraft import ScriptFile, TrackType
 from src.service.add_captions import add_caption_to_draft
 from src.service.get_text_templates import resolve_text_template
@@ -50,6 +51,57 @@ def test_resolve_by_name_and_id():
     assert by_id is not None
     assert by_id["effect_id"] == TEMPLATE_ID
     assert by_id["name"] == TEMPLATE_NAME
+
+
+def test_config_covers_template_catalog():
+    """配置应覆盖整份文字模板清单，且分类名均已填充。"""
+    entries = json.load(open(TEXT_TEMPLATE_CONFIG_PATH, encoding="utf-8"))
+    assert len(entries) > 5000
+
+    for entry in entries:
+        assert entry["id"].isdigit()
+        assert entry["title"].strip()
+        assert entry["category_id"].isdigit()
+        assert entry["category_name"].strip()
+        assert isinstance(entry["is_vip"], bool)
+
+
+def test_resolve_by_name_across_catalog():
+    """清单里的模板都能按名称查到，且 id 与配置一致。"""
+    entries = json.load(open(TEXT_TEMPLATE_CONFIG_PATH, encoding="utf-8"))
+    # 抽样（含中文名、含符号名、免费与 VIP），避免全量断言拖慢测试
+    sample = [e for e in entries if not e["is_vip"]][:20] + entries[:20]
+    for entry in sample:
+        resolved = resolve_text_template(entry["title"])
+        # 名称可能重名，此时应命中配置中靠前的一条；用 id 查找则必须精确命中
+        assert resolve_text_template(entry["id"])["effect_id"] == entry["id"]
+        assert resolved is not None
+        assert resolved["effect_id"] in {e["id"] for e in entries}
+
+
+def test_duplicate_names_resolve_deterministically():
+    """重名模板固定命中配置中靠前的一条。"""
+    entries = json.load(open(TEXT_TEMPLATE_CONFIG_PATH, encoding="utf-8"))
+    seen, dup_title = {}, None
+    for entry in entries:
+        if entry["title"] in seen:
+            dup_title = entry["title"]
+            break
+        seen[entry["title"]] = entry
+    assert dup_title is not None, "配置中应存在重名模板以覆盖该分支"
+
+    first = seen[dup_title]
+    for _ in range(3):
+        resolved = resolve_text_template(dup_title)
+        assert resolved["effect_id"] == first["id"]
+        assert resolved["category_id"] == first["category_id"]
+
+
+def test_verified_template_keeps_draft_category():
+    """草稿1 实证过的模板保留其草稿内的分类，不被第三方数据覆盖。"""
+    resolved = resolve_text_template(TEMPLATE_ID)
+    assert resolved["category_id"] == "10577"
+    assert resolved["category_name"] == "热门"
 
 
 def test_resolve_numeric_passthrough_and_unknown():

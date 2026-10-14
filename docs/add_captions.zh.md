@@ -113,10 +113,14 @@ POST /openapi/capcut-mate/v1/add_captions
 
 `text_template` 用于套用剪映的「文字模板」（字体、配色、描边、装饰贴纸、入场动画的成套预设）。取值可以是模板名称（中文）或 `effect_id`；不在已知映射表中的纯数字会被当作 `effect_id` 直接透传。
 
+模板清单维护在 `config/text_template.json`，目前收录 **5166** 个模板（4668 个不重名），字段为 `id`（即 `effect_id`/`resource_id`，两者同值）、`title`、`is_vip`、`category_id`、`category_name`。清单来自第三方整理，可按需增删。
+
 - **接口级与逐条**：接口级 `text_template` 作为整批字幕的默认值，单条字幕（`captions` 数组项）里的 `text_template` 优先。
 - **与花字互斥**：同时传入 `text_effect` 与 `text_template` 时，**文字模板优先**，`text_effect` 会被忽略（并记录告警）。模板掌管片段的素材身份，花字掌管 `styles[0].effectStyle`，两者同时生效的渲染结果未定义。
 - **颜色/描边/阴影**：文字模板不重置 `text_color` / `border_color` / `has_shadow`（与花字不同）—— 模板的配色由模板自身决定。模板无法解析时，按普通字幕处理并记录告警。
 - **草稿结构**：套用模板的字幕，其片段 `material_id` 指向 `materials.text_templates` 中的模板素材，文本素材仍写入 `materials.texts`，由模板的 `text_info_resources[].text_material_id` 反向关联。接口返回的 `text_ids` 仍是**文本素材** id。
+- **重名如何处理**：清单里有 498 条重名模板（如「我的水印」重名 41 条），按名称调用时固定命中配置中**靠前的一条**。需要精确定位某个模板时请直接传 `effect_id`。
+- **VIP 模板**：5166 个模板中 4735 个为 VIP（`is_vip: true`）。未购买的 VIP 模板在剪映侧可能无法渲染，调用方应自行确保账号有权限；清单中的 `is_vip` 字段可用于筛选。
 - **已知限制**：模板资源（本机缓存路径、装饰贴纸等）由剪映按 `effect_id` 自行拉取；目前每个字幕只支持模板的**单个文本槽**。
 
 #### 关键词阴影如何生效
@@ -1597,7 +1601,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_captions \
 3. **颜色格式**：十六进制，如 `#ffffff`、`#ff0000`
 4. **动画名称**：请通过 `get_text_animations` 获取可用名称
 5. **花字名称**：请通过 `get_text_effects` 获取可用名称或 `effect_id`
-5.1. **文字模板**：传模板名称或数字 `effect_id`；与 `text_effect` 互斥且优先。模板名称映射表见 `config/text_template.json`，不在表中的纯数字 id 会直接透传
+5.1. **文字模板**：传模板名称或数字 `effect_id`；与 `text_effect` 互斥且优先。模板清单见 `config/text_template.json`（5166 个），名称重名时命中靠前一条，精确定位请用 `effect_id`；不在表中的纯数字 id 会直接透传
 6. **坐标系统**：`transform_x` / `transform_y` 使用像素，内部会按画布尺寸换算
 7. **关键词阴影**：与关键词颜色/描边一样写在同一字幕的 styles 分区内，不另建字幕行；整段阴影仍由 `has_shadow` / `shadow_info` 控制
 
