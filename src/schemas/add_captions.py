@@ -11,6 +11,34 @@ class ShadowInfo(BaseModel):
     shadow_angle: float = Field(default=-45.0, ge=-180.0, le=180.0, description="阴影角度, 取值范围为[-180, 180]")
 
 
+class TextBackgroundInfo(BaseModel):
+    """文本背景参数
+
+    字段名与剪映草稿 `materials.texts[*]` 的 `background_*` 字段一一对应，
+    取值也按草稿语义给出（故可把草稿字段直接搬过来）。
+    """
+    background_color: str = Field(default="#000000", description="背景颜色（十六进制，如 #000000）")
+    background_style: int = Field(
+        default=1, ge=1, le=2, description="背景样式, 1/2 分别对应剪映中的两种样式（0 表示无背景，不可传入）"
+    )
+    background_alpha: float = Field(default=1.0, ge=0.0, le=1.0, description="背景不透明度, 取值范围为[0, 1]")
+    background_round_radius: float = Field(
+        default=0.0, ge=0.0, le=1.0, description="背景圆角半径, 与剪映中一致, 取值范围为[0, 1]"
+    )
+    background_height: float = Field(
+        default=0.14, ge=0.0, le=1.0, description="背景高度, 与剪映中一致, 取值范围为[0, 1]"
+    )
+    background_width: float = Field(
+        default=0.14, ge=0.0, le=1.0, description="背景宽度, 与剪映中一致, 取值范围为[0, 1]"
+    )
+    background_horizontal_offset: float = Field(
+        default=0.0, ge=-1.0, le=1.0, description="背景水平偏移（草稿坐标）, 0 为居中, 负值向左"
+    )
+    background_vertical_offset: float = Field(
+        default=0.0, ge=-1.0, le=1.0, description="背景竖直偏移（草稿坐标）, 0 为居中, 负值向上"
+    )
+
+
 class AddCaptionsRequest(BaseModel):
     """批量添加字幕请求参数"""
     draft_url: str = Field(default="", description="草稿URL")
@@ -44,6 +72,12 @@ class AddCaptionsRequest(BaseModel):
     bold: bool = Field(default=False, description="文本加粗开关")
     has_shadow: bool = Field(default=False, description="是否启用文本阴影")
     shadow_info: Optional[ShadowInfo] = Field(default=None, description="文本阴影参数")
+    has_background: bool = Field(
+        default=False, description="是否启用字幕背景（文字底下的一层纯色底板）；未提供 background_info 时使用剪映默认黑色背景"
+    )
+    background_info: Optional[TextBackgroundInfo] = Field(
+        default=None, description="字幕背景参数；has_background=false 时本字段被忽略"
+    )
     text_effect: Optional[str] = Field(default=None, description="花字效果名称或 effect_id，例如：'白字橘色发光花字'")
     text_template: Optional[str] = Field(
         default=None,
@@ -54,6 +88,13 @@ class AddCaptionsRequest(BaseModel):
         description=(
             "气泡名称或 resource_id/effect_id；清单外的气泡传 \"effect_id:resource_id\" 显式 ID 对。"
             "优先级为 文字模板 > 气泡 > 花字"
+        ),
+    )
+    text_glow: Optional[str] = Field(
+        default=None,
+        description=(
+            "发光预设名称（如 '外发光'）或 resource_id/effect_id；"
+            "清单外的发光传 \"effect_id:resource_id\" 显式 ID 对。与花字/文字模板/气泡都不互斥，可叠加"
         ),
     )
 

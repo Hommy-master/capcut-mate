@@ -17,7 +17,7 @@ from .segment import BaseSegment, Speed, ClipSettings
 from .audio_segment import AudioSegment, AudioFade, AudioEffect
 from .video_segment import VideoSegment, StickerSegment, SegmentAnimations, VideoEffect, Transition, Filter, BackgroundFilling, MixMode, FigureEffect
 from .effect_segment import EffectSegment, FilterSegment
-from .text_segment import TextSegment, TextStyle, TextBubble
+from .text_segment import TextSegment, TextStyle, TextBubble, TextGlow
 from .track import TrackType, BaseTrack, Track
 
 from .metadata import VideoSceneEffectType, VideoCharacterEffectType, FilterType
@@ -49,8 +49,8 @@ class ScriptMaterial:
     """蒙版列表"""
     transitions: List[Transition]
     """转场效果列表"""
-    filters: List[Union[Filter, TextBubble]]
-    """滤镜/文本花字/文本气泡列表, 导出到`effects`中"""
+    filters: List[Union[Filter, TextBubble, TextGlow]]
+    """滤镜/文本花字/文本气泡/文本发光列表, 导出到`effects`中"""
     mix_modes: List[MixMode]
     """混合模式列表, 导出到`effects`中"""
     canvases: List[BackgroundFilling]
@@ -398,9 +398,15 @@ class ScriptFile:
             # 出入场等动画（含空 sticker_animation，对齐剪映文本片段引用）
             if segment.animations_instance is not None and segment.animations_instance not in self.materials:
                 self.materials.animations.append(segment.animations_instance)
+            # 以下气泡/发光/花字一律无条件追加，不做 `in self.materials` 去重：
+            # Materials.__contains__ 按类型分派，不认 TextBubble/TextGlow，
+            # 贸然复用会在运行期抛 TypeError
             # 气泡效果
             if segment.bubble is not None:
                 self.materials.filters.append(segment.bubble)
+            # 发光效果
+            if segment.glow is not None:
+                self.materials.filters.append(segment.glow)
             # 花字效果
             if segment.effect is not None:
                 self.materials.filters.append(segment.effect)
@@ -824,7 +830,7 @@ class ScriptFile:
         return self
 
     def inspect_material(self) -> None:
-        """输出草稿中导入的贴纸、文本气泡以及花字素材的元数据"""
+        """输出草稿中导入的贴纸、文本气泡、花字以及文字发光素材的元数据"""
         print("贴纸素材:")
         for sticker in self.imported_materials["stickers"]:
             print("\tResource id: %s '%s'" % (sticker["resource_id"], sticker.get("name", "")))
@@ -839,6 +845,14 @@ class ScriptFile:
         for effect in self.imported_materials["effects"]:
             if effect["type"] == "text_effect":
                 print("\tResource id: %s '%s'" % (effect["resource_id"], effect.get("name", "")))
+
+        print("文字发光效果:")
+        for effect in self.imported_materials["effects"]:
+            # 模板可能来自任意草稿, 用 get 兜底避免第三条 KeyError
+            if effect.get("type") == "bloom":
+                print("\tEffect id: %s ,Resource id: %s '%s' bloom_params: %s" %
+                      (effect.get("effect_id", ""), effect.get("resource_id", ""),
+                       effect.get("name", ""), effect.get("bloom_params")))
 
     def dumps(self) -> str:
         """将草稿文件内容导出为JSON字符串"""

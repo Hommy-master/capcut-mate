@@ -16,15 +16,16 @@ from typing import List, Dict, Any, Tuple, Optional, Literal
 import asyncio
 
 from src.utils.logger import logger
-from src.pyJianYingDraft import ScriptFile, TrackType, TextSegment, TextStyle, ClipSettings, Timerange, FontType, TextBorder, TextShadow
+from src.pyJianYingDraft import ScriptFile, TrackType, TextSegment, TextStyle, ClipSettings, Timerange, FontType, TextBorder, TextBackground, TextShadow
 from src.pyJianYingDraft.metadata import TextIntro, TextOutro, TextLoopAnim
 from src.utils.draft_cache import DRAFT_CACHE
 from exceptions import CustomException, CustomError
 from src.utils import helper
-from src.schemas.add_captions import ShadowInfo
+from src.schemas.add_captions import ShadowInfo, TextBackgroundInfo
 from src.service.get_text_effects import resolve_text_effect
 from src.service.get_text_templates import resolve_text_template
 from src.service.get_text_bubbles import resolve_text_bubble
+from src.service.get_text_glows import resolve_text_glow
 from src.utils.draft_lock_manager import DraftLockManager
 
 
@@ -150,9 +151,12 @@ def add_captions(
     bold: bool = False,
     has_shadow: bool = False,
     shadow_info: Optional[ShadowInfo] = None,
+    has_background: bool = False,
+    background_info: Optional[TextBackgroundInfo] = None,
     text_effect: Optional[str] = None,
     text_template: Optional[str] = None,
-    text_bubble: Optional[str] = None
+    text_bubble: Optional[str] = None,
+    text_glow: Optional[str] = None,
 ) -> Tuple[str, str, List[str], List[str], List[dict]]:
     """
     批量添加字幕到剪映草稿的业务逻辑
@@ -200,12 +204,19 @@ def add_captions(
         bold: 文本加粗开关，默认 False
         has_shadow: 是否启用文本阴影，默认 False
         shadow_info: 文本阴影参数，默认 None
+        has_background: 是否启用字幕背景（文字底下的一层纯色底板），默认 False。
+            为 False 时 background_info 被忽略
+        background_info: 字幕背景参数，默认 None。has_background 为 True 且本参数为 None
+            时使用剪映默认背景（黑色 #000000，不透明度 1.0）
         text_effect: 花字效果名称或 effect_id，默认 None
         text_template: 文字模板名称或 effect_id，默认 None。逐条 caption 中的
             text_template 优先于本参数；与 text_effect 互斥，同时传入时文字模板优先
         text_bubble: 气泡名称、resource_id/effect_id，或 "effect_id:resource_id"
             显式 ID 对，默认 None。逐条 caption 中的 text_bubble 优先于本参数；
             优先级为 文字模板 > 气泡 > 花字，同时传入时低优先级者被忽略并告警
+        text_glow: 发光预设名称（如 "外发光"）、resource_id/effect_id，或
+            "effect_id:resource_id" 显式 ID 对，默认 None。发光只叠加一层辉光，
+            与花字/文字模板/气泡都不互斥，可同时使用
 
     Returns:
         draft_url: 草稿 URL
@@ -223,7 +234,8 @@ def add_captions(
                  f"alignment: {alignment}, alpha: {alpha}, font: {font}, font_size: {font_size}, "
                  f"line_max_width: {line_max_width}, "
                  f"scale_x: {scale_x}, scale_y: {scale_y}, transform_x: {transform_x}, transform_y: {transform_y}, "
-                 f"style_text: {style_text}, underline: {underline}, italic: {italic}, bold: {bold}, has_shadow: {has_shadow}, shadow_info: {shadow_info}")
+                 f"style_text: {style_text}, underline: {underline}, italic: {italic}, bold: {bold}, has_shadow: {has_shadow}, shadow_info: {shadow_info}, "
+                 f"has_background: {has_background}, background_info: {background_info}")
     
     try:
         # 1. 提取草稿ID
@@ -278,9 +290,12 @@ def add_captions(
                     bold=bold,
                     has_shadow=has_shadow,
                     shadow_info=shadow_info,
+                    has_background=has_background,
+                    background_info=background_info,
                     text_effect=text_effect,
                     text_template=text_template,
                     text_bubble=text_bubble,
+                    text_glow=text_glow,
                 )
                 segment_ids.append(segment_id)
                 text_ids.append(text_id)
@@ -337,9 +352,12 @@ async def add_captions_async(
     bold: bool = False,
     has_shadow: bool = False,
     shadow_info: Optional[ShadowInfo] = None,
+    has_background: bool = False,
+    background_info: Optional[TextBackgroundInfo] = None,
     text_effect: Optional[str] = None,
     text_template: Optional[str] = None,
     text_bubble: Optional[str] = None,
+    text_glow: Optional[str] = None,
     lock_timeout: float = 30.0
 ) -> Tuple[str, str, List[str], List[str], List[dict]]:
     """
@@ -372,10 +390,14 @@ async def add_captions_async(
         bold: 文本加粗开关，默认 False
         has_shadow: 是否启用文本阴影，默认 False
         shadow_info: 文本阴影参数，默认 None
+        has_background: 是否启用字幕背景，默认 False；为 False 时 background_info 被忽略
+        background_info: 字幕背景参数，默认 None；为 None 时使用剪映默认黑色背景
         text_effect: 花字效果名称或 effect_id，默认 None
         text_template: 文字模板名称或 effect_id，默认 None；与 text_effect 互斥，文字模板优先
         text_bubble: 气泡名称、resource_id/effect_id，或 "effect_id:resource_id"
             显式 ID 对，默认 None；优先级为 文字模板 > 气泡 > 花字
+        text_glow: 发光预设名称、resource_id/effect_id，或 "effect_id:resource_id"
+            显式 ID 对，默认 None；与花字/文字模板/气泡都不互斥
         lock_timeout: 获取锁的超时时间（秒），默认 30 秒
     
     Returns:
@@ -434,9 +456,12 @@ async def add_captions_async(
             bold=bold,
             has_shadow=has_shadow,
             shadow_info=shadow_info,
+            has_background=has_background,
+            background_info=background_info,
             text_effect=text_effect,
             text_template=text_template,
-            text_bubble=text_bubble
+            text_bubble=text_bubble,
+            text_glow=text_glow,
         )
     finally:
         # 释放锁
@@ -467,9 +492,12 @@ def add_caption_to_draft(
     bold: bool = False,
     has_shadow: bool = False,
     shadow_info: Optional[ShadowInfo] = None,
+    has_background: bool = False,
+    background_info: Optional[TextBackgroundInfo] = None,
     text_effect: Optional[str] = None,
     text_template: Optional[str] = None,
     text_bubble: Optional[str] = None,
+    text_glow: Optional[str] = None,
 ) -> Tuple[str, str, dict]:
     """
     向剪映草稿中添加单个字幕
@@ -514,11 +542,18 @@ def add_caption_to_draft(
         bold: 文本加粗开关，默认 False
         has_shadow: 是否启用文本阴影，默认 False
         shadow_info: 文本阴影参数，默认 None
+        has_background: 是否启用字幕背景（文字底下的一层纯色底板），默认 False。
+            为 False 时 background_info 被忽略
+        background_info: 字幕背景参数，默认 None。has_background 为 True 且本参数为 None
+            时使用剪映默认背景（黑色 #000000，不透明度 1.0）
         text_effect: 花字效果名称或 effect_id，默认 None
         text_template: 文字模板名称或 effect_id，默认 None。与 text_effect 互斥，同时传入时文字模板优先
         text_bubble: 气泡名称、resource_id/effect_id，或 "effect_id:resource_id"
             显式 ID 对，默认 None。与 text_effect 互斥，同时传入时气泡优先；
             与 text_template 同时传入时文字模板优先
+        text_glow: 发光预设名称、resource_id/effect_id，或 "effect_id:resource_id"
+            显式 ID 对，默认 None。发光只叠加一层辉光，不重置颜色/描边/阴影，
+            与花字/文字模板/气泡都不互斥
 
     Returns:
         segment_id: 片段 ID
@@ -580,6 +615,20 @@ def add_caption_to_draft(
             else:
                 logger.warning(f"Text bubble not found: {bubble_identifier}")
 
+        # 0.3 解析发光
+        # 发光与花字/文字模板/气泡都**不互斥**：它既不掌管片段的素材身份（那是模板的事），
+        # 也不改动文字自身的 fill/stroke/shadow（那是花字的事），只是再往
+        # extra_material_refs 上挂一条 bloom 素材，故这里没有优先级告警。
+        resolved_glow = None
+        if text_glow:
+            try:
+                resolved_glow = resolve_text_glow(text_glow)
+            except Exception as e:
+                logger.error(f"Failed to resolve text glow '{text_glow}': {str(e)}")
+
+            if not resolved_glow:
+                logger.warning(f"Text glow not found: {text_glow}")
+
         # 0.2 在函数开头统一处理参数约束：
         # 当花字有效时，直接将 text_color / border_color / has_shadow 重置为默认值
         # （须在上一步之后：气泡生效时 text_effect 已被置空，不应再做花字的颜色重置）
@@ -595,6 +644,18 @@ def add_caption_to_draft(
                     border_color = None
                     has_shadow = False
                     disable_keyword_shadow = True
+                    # 花字不重置背景/发光（与气泡一样，二者都不在 effectStyle 管辖范围内），
+                    # 但会视觉叠加，提醒调用方确认效果符合预期
+                    if has_background:
+                        logger.warning(
+                            f"Both text effect '{text_effect}' and background enabled, "
+                            f"they will stack visually (background is not reset by text effect)"
+                        )
+                    if text_glow:
+                        logger.warning(
+                            f"Both text effect '{text_effect}' and glow '{text_glow}' enabled, "
+                            f"they will stack visually (glow is not reset by text effect)"
+                        )
                 else:
                     logger.warning(f"Text effect not found: {text_effect}")
             except Exception as e:
@@ -683,14 +744,41 @@ def add_caption_to_draft(
                     angle=shadow_info.shadow_angle
                 )
         
+        # 7.1 创建文本背景（has_background 为开关，未给 background_info 时用剪映默认黑色背景）
+        text_background = None
+        if has_background:
+            bg_info = background_info or TextBackgroundInfo()
+            text_background = TextBackground(
+                color=_normalize_hex_color(bg_info.background_color),
+                style=bg_info.background_style,
+                alpha=bg_info.background_alpha,
+                round_radius=bg_info.background_round_radius,
+                height=bg_info.background_height,
+                width=bg_info.background_width,
+                # 构造器的偏移参数按剪映 UI 坐标（0.5 居中）再换算成草稿坐标，
+                # 这里先给居中值占位，下面直接写草稿坐标，避免 *2-1 往返引入浮点噪声
+                horizontal_offset=0.5,
+                vertical_offset=0.5,
+            )
+            text_background.horizontal_offset = bg_info.background_horizontal_offset
+            text_background.vertical_offset = bg_info.background_vertical_offset
+            logger.info(
+                f"Created text background, color: {text_background.color}, "
+                f"style: {text_background.style}, alpha: {text_background.alpha}, "
+                f"round_radius: {text_background.round_radius}, "
+                f"size: {text_background.width}x{text_background.height}, "
+                f"offset: ({text_background.horizontal_offset}, {text_background.vertical_offset})"
+            )
+
         # 8. 创建文本片段
         text_segment = TextSegment(
             text=caption['text'],
             timerange=timerange,
             style=text_style,
-            border=text_border,  # 添加边框
-            font=font_type,      # 添加字体
-            shadow=text_shadow,  # 添加阴影
+            border=text_border,            # 添加边框
+            background=text_background,    # 添加背景
+            font=font_type,                # 添加字体
+            shadow=text_shadow,            # 添加阴影
             clip_settings=clip_settings
         )
         
@@ -745,6 +833,27 @@ def add_caption_to_draft(
                 )
             except Exception as e:
                 logger.error(f"Failed to add text bubble '{bubble_identifier}': {str(e)}")
+
+        # 10.3 处理发光（同样挂到 extra_material_refs 上，须在片段加入轨道前绑定）
+        # 发光只负责文字边缘的一层辉光，不动文字自身的 fill/stroke/shadow，
+        # 与气泡一样不重置 text_color / border_color / has_shadow。
+        if resolved_glow:
+            try:
+                text_segment.add_glow(
+                    resolved_glow['effect_id'],
+                    resolved_glow['resource_id'],
+                    name=resolved_glow.get('name', ''),
+                    panel_id=resolved_glow.get('panel_id', 'text_glow'),
+                    bloom_params=resolved_glow.get('bloom_params'),
+                    extra_material=resolved_glow.get('extra_material'),
+                )
+                logger.info(
+                    f"Added text glow: {text_glow} "
+                    f"(effect_id: {resolved_glow['effect_id']}, "
+                    f"resource_id: {resolved_glow['resource_id']})"
+                )
+            except Exception as e:
+                logger.error(f"Failed to add text glow '{text_glow}': {str(e)}")
 
         # 11. 处理关键词高亮（颜色/描边/字号/阴影均在同一字幕的 styles 分区内完成，不另建片段）
         if caption.get('keyword'):
@@ -1398,3 +1507,29 @@ def hex_to_rgb(hex_color: str) -> tuple:
     except ValueError:
         logger.warning(f"Invalid hex color format: {hex_color}, using white as default")
         return (1.0, 1.0, 1.0)
+
+
+_HEX_DIGITS = frozenset("0123456789abcdefABCDEF")
+
+
+def _normalize_hex_color(hex_color: str, default: str = "#000000") -> str:
+    """
+    归一化十六进制颜色为草稿使用的 "#RRGGBB" 形式
+
+    与 hex_to_rgb 不同，背景色不做 RGB 转换——剪映草稿的 background_color
+    就是原始的 "#RRGGBB" 字符串，非法值会原样落进草稿，故这里先做一次校验。
+
+    Args:
+        hex_color: 十六进制颜色值，如 "#ffffff" 或 "ffffff"
+        default: 校验失败时的回退颜色，默认黑色
+
+    Returns:
+        形如 "#RRGGBB" 的颜色字符串
+    """
+    raw = (hex_color or "").strip()
+    digits = raw.lstrip('#')
+    # 逐字符判断，不用 int(digits, 16)：后者会接受 "0x1234" 这类带前缀的写法
+    if len(digits) != 6 or any(c not in _HEX_DIGITS for c in digits):
+        logger.warning(f"Invalid hex color format: {raw}, using {default} as default")
+        return default
+    return f"#{digits.upper()}"

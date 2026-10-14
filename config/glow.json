@@ -1,0 +1,4 @@
+[
+  {"id": "7202576698775179837", "effect_id": "9762443", "title": "外发光", "panel_id": "text_glow", "bloom_params": {"color": "#FFFFFF", "dir_x": 0.5, "dir_y": 0.5, "range": 0.2, "strength": 0.3}},
+  {"id": "7202575978646737469", "effect_id": "9762325", "title": "轮廓光", "panel_id": "text_glow", "bloom_params": {"color": "#ffffff", "dir_x": 0.5, "dir_y": 0.5, "range": 0.4, "strength": 0.5}}
+]

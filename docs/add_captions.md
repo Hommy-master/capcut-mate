@@ -40,9 +40,12 @@ Batch-add captions to an existing CapCut/Jianying draft. Supports text color, bo
 | bold | boolean | ❌ | `false` | Bold |
 | has_shadow | boolean | ❌ | `false` | Enable **full-caption** text shadow |
 | shadow_info | object | ❌ | `null` | Full-caption shadow params; defaults apply if `has_shadow=true` and this is `null` |
+| has_background | boolean | ❌ | `false` | Enable the **full-caption** text background (a solid plate drawn behind the text) |
+| background_info | object | ❌ | `null` | Full-caption background params; defaults apply if `has_background=true` and this is `null`. Ignored when `has_background=false` |
 | text_effect | string | ❌ | `null` | Text effect name or `effect_id`; a valid effect resets color/border/shadow |
 | text_template | string | ❌ | `null` | Text template name or `effect_id` (numeric ids pass through); mutually exclusive with `text_effect`, template wins |
 | text_bubble | string | ❌ | `null` | Bubble name or `resource_id`/`effect_id`; for bubbles outside the catalog pass an explicit `"effect_id:resource_id"` pair. Priority: text template > bubble > text effect |
+| text_glow | string | ❌ | `null` | Glow preset name (e.g. `"外发光"`) or `resource_id`/`effect_id`; for glows outside the catalog pass an explicit `"effect_id:resource_id"` pair. **Not** mutually exclusive with text effects/templates/bubbles — it stacks with them |
 
 ### captions Fields
 
@@ -89,6 +92,37 @@ Default shadow when enabled without `*_shadow_info`:
   "shadow_diffuse": 15,
   "shadow_distance": 5,
   "shadow_angle": -45
+}
+```
+
+### background_info Fields
+
+Field names map **one-to-one** onto the `background_*` fields of a JianYing draft's `materials.texts[*]`,
+and values use draft semantics too — a background-bearing text material from a real draft can be copied in as-is.
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| background_color | string | ❌ | `"#000000"` | Background color (hex). The leading `#` is optional and case is insensitive; output is normalized to `#RRGGBB` |
+| background_style | integer | ❌ | `1` | Background style; `1`/`2` are the two styles offered by JianYing. `0` means "no background" and **must not be passed** |
+| background_alpha | number | ❌ | `1.0` | Background opacity `[0, 1]` |
+| background_round_radius | number | ❌ | `0.0` | Background corner radius `[0, 1]` |
+| background_height | number | ❌ | `0.14` | Background height (padding around the text) `[0, 1]` |
+| background_width | number | ❌ | `0.14` | Background width (padding around the text) `[0, 1]` |
+| background_horizontal_offset | number | ❌ | `0.0` | Background horizontal offset `[-1, 1]`; `0` is centered, negative moves left |
+| background_vertical_offset | number | ❌ | `0.0` | Background vertical offset `[-1, 1]`; `0` is centered, negative moves up |
+
+Default background when `has_background=true` without `background_info`:
+
+```json
+{
+  "background_color": "#000000",
+  "background_style": 1,
+  "background_alpha": 1.0,
+  "background_round_radius": 0.0,
+  "background_height": 0.14,
+  "background_width": 0.14,
+  "background_horizontal_offset": 0.0,
+  "background_vertical_offset": 0.0
 }
 ```
 
@@ -143,6 +177,38 @@ Accepted forms and priority:
 - **Not verified in JianYing**: the `气泡1` draft only proves the **draft structure** (material fields and segment references match item by item); the bubble's **actual rendering** has not been verified. Text effects emit the same minimal field set and work, but a bubble is a different material type (`text_shape`) on a different render path, so this is inferred rather than measured — run it once in JianYing before shipping.
 - **Catalog size**: only **1** bubble verified against a real draft (`背景装饰54`) is included, so a **name lookup only resolves within the catalog**. Use the explicit id pair for any other bubble, or extend `config/bubble.json` with the same field shape (`id` is the resource_id, `effect_id` is given separately, both required).
 - **On bulk import**: 速创小助手's bubble page lists 326 bubbles with names and preview images (its names are the JianYing bubble names, e.g. `情绪07` / `会话105`), but it **does not expose `effect_id`/`resource_id`** (only that site's 特效 page carries id pairs), so they cannot be imported in bulk — filling in ids requires confirming each bubble in JianYing's 气泡 panel.
+
+### Notes on text background
+
+`has_background` / `background_info` apply a JianYing 背景 — a solid plate drawn behind the text, commonly used to keep captions readable over busy footage. In the draft it is a group of `background_*` fields on the text material `materials.texts[*]`, plus bit 16 set in `check_flag` (`7 → 23`).
+
+- **Switch semantics**: it only takes effect when `has_background=true`; passing `background_info` alone is **silently ignored** (same as `has_shadow` / `shadow_info`). With `has_background=true` and no `background_info`, the default black background is used.
+- **Values are draft values**: `background_info` field names and values map **one-to-one** onto the draft, with no unit conversion — the one exception is that the color is normalized to uppercase `#RRGGBB`. Note `background_style` only accepts `1`/`2`; the draft's `0` (meaning "no background") **cannot be passed** — just omit `has_background` instead.
+- **The color is not RGB-converted**: border and shadow colors go through `hex_to_rgb` and become `[r, g, b]`, but the background color **does not** — the draft stores the `"#RRGGBB"` string verbatim. So an invalid color **falls back to black with a warning**, rather than to white like `text_color`.
+- **With text effects**: an effect resets `text_color` / `border_color` / `has_shadow` to their defaults but **does not reset the background** (the background is outside the effect's `effectStyle`, matching how bubbles behave). Using both stacks them visually, and the service logs a warning.
+- **With templates**: the background lives on the text material, while the template material (`materials.text_templates`) is a **separate entry** carrying no `background_*` fields, so it is not applied twice. The template's own decoration may still clash visually — verify by running it.
+- **With keyword highlighting**: highlighting uses `content.styles` partitions while the background sits on the material, so the two do not interact.
+- **Not verified in JianYing**: the `背景` draft proves the **draft structure** (all 8 `background_*` fields and `check_flag: 23` match item by item, and the defaults are exactly the values of the background-bearing caption in that draft), but the **actual rendering** of a draft generated by this service has not been verified. `background_style: 2` and every non-default value have no verified sample at all — run it once in JianYing before shipping.
+- **Offset pitfall**: `background_horizontal_offset` / `background_vertical_offset` use **draft coordinates** `[-1, 1]` where `0` is centered — not the `[0, 1]` coordinates some internal APIs use. Copying values straight from a draft is the safe route.
+
+### Notes on text glow
+
+`text_glow` applies a JianYing 发光 — a halo around the text edges. It is the fourth kind of text effect, separate from text effects, templates and bubbles: in the draft it is one entry in `materials.effects` with `type: "bloom"`, referenced by the text segment's `extra_material_refs` (appended after `sticker_animation`), and the text material gets bit 64 set in `check_flag` (`7 → 71`). Apart from `check_flag`, **a glowing text material is field-for-field identical to a plain caption** — the glow does not touch the fill/stroke/shadow.
+
+**As with bubbles, a glow's `effect_id` and `resource_id` are not the same value** (`effect_id: "9762443"`, `resource_id: "7202576698775179837"`). Both are required — with only one, JianYing cannot locate the resource. Therefore:
+
+- The catalog `config/glow.json` stores them separately: `id` is the **resource_id** and `effect_id` is given on its own.
+- For any glow outside the catalog, pass an explicit `"effect_id:resource_id"` pair.
+- **A single numeric value is not passed through** (the opposite of `text_template`); it is treated as not found and the caption falls back to a plain one.
+
+Accepted forms and priority:
+
+- **Four forms**: preset name (e.g. `"外发光"`, `"轮廓光"`), `resource_id`, `effect_id`, or an explicit `"effect_id:resource_id"` pair.
+- **No mutual exclusion**: a glow neither owns the segment's material identity (that is the template's job) nor changes the text styling (that is the effect's job) — it just adds one more material, so it **can be combined** with a text effect, a template and a bubble. There is no precedence between them. A text effect does not reset the glow (matching how it treats the background), and the service logs a warning that the two stack visually.
+- **`bloom_params` differ per preset**: the glow's color/strength/range/direction live in the material's `bloom_params`, supplied by the catalog per preset (外发光 `range 0.2, strength 0.3`; 轮廓光 `range 0.4, strength 0.5`). **An out-of-catalog glow has no verified values** — the service falls back to the 外发光 values with a warning. JianYing does not re-derive these from `resource_id`, so add the preset to `config/glow.json` to reproduce it exactly.
+- **Top-level only**: `text_glow` applies to the whole batch and is **not settable per caption**. Mixing two presets in one draft (e.g. 默认文本2 with 外发光, 默认文本3 with 轮廓光) requires two `add_captions` calls.
+- **Not verified in JianYing**: the `发光` draft proves the **draft structure** (both presets' material fields and `check_flag: 71` match item by item), but the **actual rendering** of a draft generated by this service has not been verified — including whether `bloom_params` is required, whether the out-of-catalog fallback values work, and how a glow actually looks stacked with a text effect or background. Run it once in JianYing before shipping.
+- **Catalog size**: only the **2** presets verified against the `发光` draft (`外发光`, `轮廓光`) are included. Use an explicit id pair for any other glow, or extend `config/glow.json` with the same field shape.
 
 ### Notes on keyword shadow
 
@@ -1386,12 +1452,25 @@ VHS
     "shadow_distance": 5.0,
     "shadow_angle": -45.0
   },
+  "has_background": true,                      // [Optional] full-caption text background switch
+  "background_info": {                         // [Optional] full-caption text background params
+    "background_color": "#000000",
+    "background_style": 1,
+    "background_alpha": 1.0,
+    "background_round_radius": 0.0,
+    "background_height": 0.14,
+    "background_width": 0.14,
+    "background_horizontal_offset": 0.0,
+    "background_vertical_offset": 0.0
+  },
   // [Optional] set null so custom colors/shadows remain effective
   "text_effect": null,
   // [Optional] text template; mutually exclusive with text_effect and wins; null here
   "text_template": null,
   // [Optional] bubble; for bubbles outside the catalog use an "effect_id:resource_id" pair
-  "text_bubble": null
+  "text_bubble": null,
+  // [Optional] glow; preset name or an "effect_id:resource_id" pair; not mutually exclusive with other text effects
+  "text_glow": null
 }
 ```
 
@@ -1503,9 +1582,12 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_captions \
 | bold | `true` | [Optional] Bold on |
 | has_shadow | `true` | [Optional] Full-text shadow on |
 | shadow_info.* | see above | [Optional] Full-text shadow details |
+| has_background | `true` | [Optional] Full-caption text background on |
+| background_info.* | see above | [Optional] Full-caption text background details |
 | text_effect | `null` | [Optional] No 花字, keep colors/shadows |
 | text_template | `null` | [Optional] No text template; mutually exclusive with text_effect and wins |
 | text_bubble | `null` | [Optional] No bubble. Pass a name or an `"effect_id:resource_id"` pair to use one; priority is text template > bubble > text effect |
+| text_glow | `null` | [Optional] No glow. Pass a preset name or an `"effect_id:resource_id"` pair to use one; not mutually exclusive with other text effects |
 
 **Per-caption field meanings:**
 
@@ -1625,6 +1707,66 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_captions \
   }'
 ```
 
+#### 8. Using a text background
+
+Flip the switch only, for JianYing's default black background:
+
+```bash
+curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_captions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
+    "captions": "[{\"start\":0,\"end\":5000000,\"text\":\"Default text 1\"},{\"start\":5000000,\"end\":10000000,\"text\":\"Default text 2\"}]",
+    "has_background": true
+  }'
+```
+
+A custom color with rounded corners (a semi-transparent orange plate):
+
+```bash
+curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_captions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
+    "captions": "[{\"start\":0,\"end\":5000000,\"text\":\"Caption with background\"}]",
+    "text_color": "#ffffff",
+    "has_background": true,
+    "background_info": {
+      "background_color": "#ff7100",
+      "background_alpha": 0.8,
+      "background_round_radius": 0.3,
+      "background_width": 0.2
+    }
+  }'
+```
+
+#### 9. Using a glow
+
+By preset name, using a glow from the catalog (`config/glow.json`):
+
+```bash
+curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_captions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
+    "captions": "[{\"start\":0,\"end\":5000000,\"text\":\"Glowing caption\"}]",
+    "text_glow": "外发光"
+  }'
+```
+
+For a glow outside the catalog use the explicit `"effect_id:resource_id"` pair; a glow also stacks with the background, a bubble, and so on:
+
+```bash
+curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_captions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
+    "captions": "[{\"start\":0,\"end\":5000000,\"text\":\"Glowing caption\"}]",
+    "text_glow": "9762443:7202576698775179837",
+    "has_background": true
+  }'
+```
+
 ## Error Code Description
 
 | Error Code | Error Message | Description | Solution |
@@ -1644,7 +1786,9 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_captions \
 5. **Text effect names**: from `get_text_effects`
 5.1. **Text template**: pass a template name or a numeric `effect_id`; mutually exclusive with `text_effect` and wins. The catalog lives in `config/text_template.json` (5166 templates); duplicate names resolve to the first entry, so use the `effect_id` for an exact match. Numeric ids absent from the table pass straight through
 5.2. **Bubble**: pass a bubble name, `resource_id` or `effect_id`; a bubble's `effect_id` and `resource_id` are **not the same value**, so for bubbles outside the catalog pass an explicit `"effect_id:resource_id"` pair (e.g. `"716434:6821385652727190024"`) — a lone numeric value is not passed through. Priority is text template > bubble > text effect; a bubble does not reset colors/stroke/shadow
-6. **Coordinates**: `transform_x` / `transform_y` are pixels, converted internally by canvas size
+5.3. **Text background**: only takes effect with `has_background=true` — passing `background_info` alone is ignored; without `background_info` the default black background is used. The `background_info` fields map one-to-one onto the draft's `background_*`, `background_style` accepts only `1`/`2`, and an invalid color falls back to black with a warning. A text effect does not reset the background, so the two stack visually
+5.4. **Glow**: pass a preset name (`外发光`/`轮廓光`) or `resource_id`/`effect_id`; as with bubbles the `effect_id` and `resource_id` are **not the same value**, so for glows outside the catalog pass an explicit `"effect_id:resource_id"` pair (e.g. `"9762443:7202576698775179837"`) — a lone numeric value is not passed through. A glow is **not mutually exclusive** with text effects/templates/bubbles (it does not reset colors/stroke/shadow), but it is **top-level only**, so mixing two presets needs two calls; an out-of-catalog glow falls back to the default `bloom_params` with a warning
+6. **Coordinates**: `transform_x` / `transform_y` are pixels, converted internally by canvas size; `background_horizontal_offset` / `background_vertical_offset` instead use draft coordinates `[-1, 1]` where `0` is centered
 7. **Keyword shadow**: applies only to keyword ranges; full-text shadow uses `has_shadow` / `shadow_info`
 
 ## Related Interfaces

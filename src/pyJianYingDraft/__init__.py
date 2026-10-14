@@ -8,7 +8,7 @@ from .time_util import Timerange
 from .audio_segment import AudioSegment
 from .video_segment import VideoSegment, StickerSegment, ClipSettings
 from .effect_segment import EffectSegment, FilterSegment
-from .text_segment import TextSegment, TextStyle, TextBorder, TextBackground, TextShadow, TextTemplateRef, TextBubble
+from .text_segment import TextSegment, TextStyle, TextBorder, TextBackground, TextShadow, TextTemplateRef, TextBubble, TextGlow
 
 from .metadata import FontType
 from .metadata import MaskType
@@ -228,6 +228,8 @@ __all__ = [
     "TextBorder",
     "TextBackground",
     "TextShadow",
+    "TextBubble",
+    "TextGlow",
     "TrackType",
     "ShrinkMode",
     "ExtendMode",

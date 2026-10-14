@@ -12119,6 +12119,34 @@ paths:
                                     default: 1
                                     description: 文本透明度（0.0-1.0）
                                     type: number
+                                background_info:
+                                    description: '文本背景（文字底下的纯色底板），字段与草稿的 background_* 一一对应；只有 has_background=true 时生效，不填则用默认黑色背景'
+                                    properties:
+                                        background_alpha:
+                                            description: 背景不透明度, 取值范围为[0, 1]
+                                            type: number
+                                        background_color:
+                                            description: 背景颜色（十六进制），默认 #000000
+                                            type: string
+                                        background_height:
+                                            description: 背景高度, 取值范围为[0, 1]
+                                            type: number
+                                        background_horizontal_offset:
+                                            description: 背景水平偏移（草稿坐标 [-1, 1]）, 0 为居中, 负值向左
+                                            type: number
+                                        background_round_radius:
+                                            description: 背景圆角半径, 取值范围为[0, 1]
+                                            type: number
+                                        background_style:
+                                            description: 背景样式, 1/2 分别对应剪映中的两种样式（0 表示无背景，不可传入）
+                                            type: integer
+                                        background_vertical_offset:
+                                            description: 背景竖直偏移（草稿坐标 [-1, 1]）, 0 为居中, 负值向上
+                                            type: number
+                                        background_width:
+                                            description: 背景宽度, 取值范围为[0, 1]
+                                            type: number
+                                    type: object
                                 bold:
                                     default: false
                                     description: 文本加粗开关
@@ -12139,6 +12167,10 @@ paths:
                                     default: 15
                                     description: 字体大小
                                     type: integer
+                                has_background:
+                                    default: false
+                                    description: '文本背景开关（true为打开，false为关闭），如果打开了，但没有填background_info，默认就是黑色背景'
+                                    type: boolean
                                 has_shadow:
                                     default: false
                                     description: '文本阴影开关（true为打开，false为关闭），如果打开了，但没有填shadow_info，默认就是{ "shadow_color": "#000000", "shadow_alpha": 0.9, "shadow_diffuse": 15, "shadow_distance": 5, "shadow_angle", -45 }'
@@ -12192,6 +12224,9 @@ paths:
                                     type: string
                                 text_effect:
                                     description: 文本花字
+                                    type: string
+                                text_glow:
+                                    description: '发光预设名称（如"外发光"）、resource_id/effect_id，或"effect_id:resource_id"显式ID对。与花字/文字模板/气泡都不互斥，可叠加；仅支持接口级'
                                     type: string
                                 text_template:
                                     description: 文字模板名称或 effect_id；与 text_effect 互斥，同时传入时文字模板优先

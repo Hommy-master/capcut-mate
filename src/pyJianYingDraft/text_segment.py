@@ -21,6 +21,17 @@ def _rgb_to_hex(color: Tuple[float, float, float]) -> str:
     return f"#{r:02X}{g:02X}{b:02X}"
 
 
+# 发光的 bloom_params 兜底值: 取自剪映草稿里「外发光」预设的实证取值。
+# 各预设的 range/strength 不同, 由调用方按预设传入; 这里只保证字段齐全可用。
+DEFAULT_BLOOM_PARAMS: Dict[str, Any] = {
+    "color": "#FFFFFF",
+    "dir_x": 0.5,
+    "dir_y": 0.5,
+    "range": 0.2,
+    "strength": 0.3,
+}
+
+
 def _style_range_end(text: str) -> int:
     """剪映 content.styles[].range 使用字符下标（非 UTF-16 字节长度）。"""
     return len(text)
@@ -281,6 +292,89 @@ class TextEffect(TextBubble):
         ret["source_platform"] = 1
         return ret
 
+class TextGlow:
+    """文本发光素材
+
+    与气泡同属挂在文本片段``extra_material_refs``上的装饰素材, 但素材类型不同:
+    发光的``type``为``"bloom"``(剪映发光面板``panel_id="text_glow"``),
+    额外携带``bloom_params``(发光颜色/强度/范围/方向), ``value``为``0.0``而非``1.0``。
+
+    与气泡一样, ``effect_id``与``resource_id``**不是同一个值**, 两者都需给出,
+    否则剪映无法定位到该发光资源。
+    """
+
+    global_id: str
+    """发光全局id, 由程序自动生成"""
+
+    effect_id: str
+    resource_id: str
+    name: str
+    """发光名称, 未知时为空"""
+    panel_id: str
+    """所属剪映面板, 默认为``text_glow``"""
+    bloom_params: Dict[str, Any]
+    """发光参数, 如颜色/强度/范围/方向"""
+    extra_material: Dict[str, Any]
+    """需要原样写入发光素材的额外字段, 由配置提供"""
+
+    def __init__(self, effect_id: str, resource_id: str, *, name: str = "",
+                 panel_id: str = "text_glow",
+                 bloom_params: Optional[Dict[str, Any]] = None,
+                 extra_material: Optional[Dict[str, Any]] = None):
+        """
+        Args:
+            effect_id (`str`): 发光效果的effect_id
+            resource_id (`str`): 发光效果的resource_id
+            name (`str`, optional): 发光名称, 默认为空
+            panel_id (`str`, optional): 所属剪映面板, 默认为``text_glow``
+            bloom_params (`Dict[str, Any]`, optional): 发光参数(颜色/强度/范围/方向),
+                各预设的取值不同, 默认用外发光的实证值
+            extra_material (`Dict[str, Any]`, optional): 原样写入发光素材的额外字段
+                (如剪映本机缓存path), 默认不写
+        """
+        self.global_id = uuid.uuid4().hex
+        self.effect_id = effect_id
+        self.resource_id = resource_id
+        self.name = name
+        self.panel_id = panel_id
+        self.bloom_params = dict(bloom_params) if bloom_params else dict(DEFAULT_BLOOM_PARAMS)
+        self.extra_material = dict(extra_material) if extra_material else {}
+
+    def export_json(self) -> Dict[str, Any]:
+        ret = {
+            "adjust_params": [],
+            "algorithm_artifact_path": "",
+            "apply_target_type": 0,
+            "bloom_params": dict(self.bloom_params),
+            "category_id": "",
+            "category_name": "",
+            "color_match_info": None,
+            "effect_id": self.effect_id,
+            "enable_skin_tone_correction": False,
+            "exclusion_group": [],
+            "face_adjust_params": [],
+            "formula_id": "",
+            "id": self.global_id,
+            "intensity_key": "",
+            "multi_language_current": "",
+            "panel_id": self.panel_id,
+            "platform": "all",
+            "request_id": "",
+            "resource_id": self.resource_id,
+            "source_platform": 0,
+            "sub_type": "none",
+            "time_range": None,
+            "type": "bloom",
+            "value": 0.0,
+            "version": "",
+            # 不导出path: 依赖创建者本机剪映缓存, 由剪映按resource_id自行拉取
+        }
+        # 已知的名称原样写入, 便于剪映发光面板回显; 未知时保持最小结构
+        if self.name:
+            ret["name"] = self.name
+        ret.update(self.extra_material)
+        return ret
+
 class TextTemplateRef:
     """剪映「文字模板」素材的标识信息, 与文本素材通过 material_id 关联
 
@@ -380,6 +474,8 @@ class TextSegment(VisualSegment):
 
     bubble: Optional[TextBubble]
     """文本气泡效果, 在放入轨道时加入素材列表中"""
+    glow: Optional[TextGlow]
+    """文本发光效果, 在放入轨道时加入素材列表中"""
     effect: Optional[TextEffect]
     """文本花字效果, 在放入轨道时加入素材列表中, 目前仅支持一部分花字效果"""
     text_template: Optional[TextTemplateRef]
@@ -416,6 +512,7 @@ class TextSegment(VisualSegment):
         self.shadow = shadow
 
         self.bubble = None
+        self.glow = None
         self.effect = None
         self.text_template = None
         self.extra_styles = []
@@ -448,6 +545,15 @@ class TextSegment(VisualSegment):
                 category_id=template.bubble.category_id,
                 category_name=template.bubble.category_name,
                 extra_material=template.bubble.extra_material,
+            )
+        if template.glow:
+            new_segment.add_glow(
+                template.glow.effect_id,
+                template.glow.resource_id,
+                name=template.glow.name,
+                panel_id=template.glow.panel_id,
+                bloom_params=template.glow.bloom_params,
+                extra_material=template.glow.extra_material,
             )
         if template.effect:
             new_segment.add_effect(template.effect.effect_id)
@@ -529,6 +635,33 @@ class TextSegment(VisualSegment):
         self.extra_material_refs.append(self.bubble.global_id)
         return self
 
+    def add_glow(self, effect_id: str, resource_id: str, *, name: str = "",
+                 panel_id: str = "text_glow",
+                 bloom_params: Optional[Dict[str, Any]] = None,
+                 extra_material: Optional[Dict[str, Any]] = None) -> "TextSegment":
+        """根据素材信息添加发光效果(剪映发光面板的预设, 如「外发光」「轮廓光」)
+
+        相应素材信息可通过`ScriptFile.inspect_material`从模板中获取
+
+        与气泡一样, 发光的`effect_id`与`resource_id`并非同一个值, 两者都需给出,
+        否则剪映无法定位到该发光资源。发光只叠加一层辉光, 不改动文字自身的
+        填充/描边/阴影。
+
+        Args:
+            effect_id (`str`): 发光效果的effect_id
+            resource_id (`str`): 发光效果的resource_id
+            name (`str`, optional): 发光名称, 默认为空
+            panel_id (`str`, optional): 所属剪映面板, 默认为``text_glow``
+            bloom_params (`Dict[str, Any]`, optional): 发光参数(颜色/强度/范围/方向),
+                各预设的取值不同, 不传则用`DEFAULT_BLOOM_PARAMS`
+            extra_material (`Dict[str, Any]`, optional): 原样写入发光素材的额外字段
+                (如剪映本机缓存path), 默认不写
+        """
+        self.glow = TextGlow(effect_id, resource_id, name=name, panel_id=panel_id,
+                             bloom_params=bloom_params, extra_material=extra_material)
+        self.extra_material_refs.append(self.glow.global_id)
+        return self
+
     def add_effect(self, effect_id: str) -> "TextSegment":
         """根据素材信息添加花字效果, 相应素材信息可通过`ScriptFile.inspect_material`从模板中获取
 
@@ -595,6 +728,8 @@ class TextSegment(VisualSegment):
             check_flag |= 8
         if self.background:
             check_flag |= 16
+        if self.glow:
+            check_flag |= 64
 
         if self.use_extra_styles_only and self.extra_styles:
             styles = list(self.extra_styles)

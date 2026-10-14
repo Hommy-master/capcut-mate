@@ -41,6 +41,9 @@ TEXT_TEMPLATE_CONFIG_PATH = os.path.join(os.path.dirname(__file__), "config", "t
 # 气泡配置文件路径
 BUBBLE_CONFIG_PATH = os.path.join(os.path.dirname(__file__), "config", "bubble.json")
 
+# 发光配置文件路径
+GLOW_CONFIG_PATH = os.path.join(os.path.dirname(__file__), "config", "glow.json")
+
 # 模板目录路径
 TEMPLATE_DIR = os.path.join(os.path.dirname(__file__), "template")
 

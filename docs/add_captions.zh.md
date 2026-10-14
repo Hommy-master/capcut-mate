@@ -40,9 +40,12 @@ POST /openapi/capcut-mate/v1/add_captions
 | bold | boolean | ❌ | `false` | 是否开启文字加粗 |
 | has_shadow | boolean | ❌ | `false` | 是否启用**整段字幕**文本阴影 |
 | shadow_info | object | ❌ | `null` | 整段字幕阴影参数；`has_shadow=true` 且本字段为 `null` 时使用默认阴影 |
+| has_background | boolean | ❌ | `false` | 是否启用**整段字幕**文字背景（文字底下的一层纯色底板） |
+| background_info | object | ❌ | `null` | 整段字幕背景参数；`has_background=true` 且本字段为 `null` 时使用默认黑色背景。`has_background=false` 时本字段被忽略 |
 | text_effect | string | ❌ | `null` | 花字效果名称或 `effect_id`；有效花字会重置颜色/描边/阴影相关效果 |
 | text_template | string | ❌ | `null` | 文字模板名称或 `effect_id`（数字 id 可直接透传）；与 `text_effect` 互斥，同时传入时文字模板优先 |
 | text_bubble | string | ❌ | `null` | 气泡名称或 `resource_id`/`effect_id`；清单外的气泡传 `"effect_id:resource_id"` 显式 ID 对。优先级：文字模板 > 气泡 > 花字 |
+| text_glow | string | ❌ | `null` | 发光预设名称（如 `"外发光"`）或 `resource_id`/`effect_id`；清单外的发光传 `"effect_id:resource_id"` 显式 ID 对。与花字/文字模板/气泡**都不互斥**，可叠加 |
 
 ### captions 字段详细说明
 
@@ -89,6 +92,37 @@ POST /openapi/capcut-mate/v1/add_captions
   "shadow_diffuse": 15,
   "shadow_distance": 5,
   "shadow_angle": -45
+}
+```
+
+### background_info 字段说明
+
+字段名与剪映草稿 `materials.texts[*]` 的 `background_*` 字段**一一对应**，取值也按草稿语义给出，
+从草稿里抄一条带背景的文本素材过来即可直接用。
+
+| 字段名 | 类型 | 必填 | 默认值 | 说明 |
+|--------|------|------|--------|------|
+| background_color | string | ❌ | `"#000000"` | 背景颜色（十六进制）；可省略 `#`，大小写不敏感，输出统一为 `#RRGGBB` |
+| background_style | integer | ❌ | `1` | 背景样式，`1`/`2` 分别对应剪映中的两种样式；`0` 表示无背景，**不可传入** |
+| background_alpha | number | ❌ | `1.0` | 背景不透明度，取值范围 `[0, 1]` |
+| background_round_radius | number | ❌ | `0.0` | 背景圆角半径，取值范围 `[0, 1]` |
+| background_height | number | ❌ | `0.14` | 背景高度（相对文字的外扩），取值范围 `[0, 1]` |
+| background_width | number | ❌ | `0.14` | 背景宽度（相对文字的外扩），取值范围 `[0, 1]` |
+| background_horizontal_offset | number | ❌ | `0.0` | 背景水平偏移，取值范围 `[-1, 1]`，`0` 为居中，负值向左 |
+| background_vertical_offset | number | ❌ | `0.0` | 背景竖直偏移，取值范围 `[-1, 1]`，`0` 为居中，负值向上 |
+
+当 `has_background=true` 且未提供 `background_info` 时，使用剪映的默认背景：
+
+```json
+{
+  "background_color": "#000000",
+  "background_style": 1,
+  "background_alpha": 1.0,
+  "background_round_radius": 0.0,
+  "background_height": 0.14,
+  "background_width": 0.14,
+  "background_horizontal_offset": 0.0,
+  "background_vertical_offset": 0.0
 }
 ```
 
@@ -145,6 +179,66 @@ POST /openapi/capcut-mate/v1/add_captions
 - **未经实测**：`气泡1` 草稿只证明了**草稿结构**（素材字段与片段引用关系逐项对齐），气泡在剪映里的**实际渲染**尚未验证。花字发同样的最小字段集且工作正常，但气泡是不同素材类型（`text_shape`）与渲染路径，属推断而非实测——上线前请在剪映里实跑一次。
 - **清单规模**：当前只收录 `气泡1` 草稿实证过的 **1** 个气泡（`背景装饰54`），故**按名称只能在清单内用这 1 个**；其余气泡请用显式 ID 对传入，或按同样字段格式向 `config/bubble.json` 增补（`id` 为 resource_id，`effect_id` 单独给出，两者缺一不可）。
 - **关于批量导入**：速创小助手的气泡页收录了 326 个气泡的名称与预览图（名称即剪映气泡名，如 `情绪07`/`会话105`），但**不提供 `effect_id`/`resource_id`**（该站的「特效」页才提供 id 对），因此无法直接批量导入，补齐 id 需在剪映「气泡」面板逐个确认。
+
+#### 文字背景
+
+`has_background` / `background_info` 用于给字幕加剪映的「背景」——文字底下的一层纯色底板，
+常用来压住花哨画面、提高字幕可读性。草稿中表现为文本素材 `materials.texts[*]` 上的一组
+`background_*` 字段，同时 `check_flag` 置上第 16 位（`7 → 23`）。
+
+- **开关语义**：必须传 `has_background=true` 才会生效；只传 `background_info` 不开开关时**静默忽略**
+  （与 `has_shadow` / `shadow_info` 一致）。`has_background=true` 且不给 `background_info` 时用默认黑色背景。
+- **取值即草稿值**：`background_info` 的字段名与取值**与草稿一一对应**，没有单位换算；
+  唯一例外是颜色会归一为 `#RRGGBB` 大写形式。注意 `background_style` 只接受 `1`/`2`，
+  草稿里表示「无背景」的 `0` **不能传入**（无背景请直接不传 `has_background`）。
+- **颜色不做 RGB 转换**：描边/阴影的颜色会经 `hex_to_rgb` 转成 `[r, g, b]`，背景色**不走这条路**，
+  草稿里存的就是 `"#RRGGBB"` 字符串。因此颜色非法时会**回退为黑色并记录告警**，
+  而不是像 `text_color` 那样回退白色。
+- **与花字共存**：花字把 `text_color` / `border_color` / `has_shadow` 重置为默认值，
+  但**不重置背景**（背景不在花字的 `effectStyle` 管辖范围内，这点与气泡一致）。
+  两者同时使用时画面会叠加，服务会记录一条告警提醒。
+- **与文字模板共存**：背景写在文本素材上，模板素材（`materials.text_templates`）是**另一条独立素材**，
+  不含 `background_*`，不会被重复套用。模板自带的装饰可能与背景视觉冲突，需自行实跑确认。
+- **与关键词高亮共存**：关键词高亮走 `content.styles` 分区，背景挂在素材侧，两者互不影响。
+- **未经实测**：`背景` 草稿证明了**草稿结构**（8 个 `background_*` 字段与 `check_flag: 23`
+  逐项对齐，默认值即该草稿里带背景那条字幕的原值），但**本服务生成的草稿在剪映里的实际渲染尚未验证**——
+  且 `background_style: 2` 及各类非默认取值均无实证样本。上线前请在剪映里实跑一次。
+- **偏移量的坑**：`background_horizontal_offset` / `background_vertical_offset` 用的是**草稿坐标**
+  `[-1, 1]`、`0` 为居中，不是某些内部 API 的 `[0, 1]` 坐标——照抄草稿最稳妥。
+
+#### 发光
+
+`text_glow` 用于给字幕加剪映的「发光」（文字边缘的一层辉光）。发光是剪映里独立于花字、
+文字模板、气泡的第四种文字效果，草稿中表现为 `materials.effects` 里一条 `type: "bloom"`
+的素材，由文本片段的 `extra_material_refs` 引用（追加在 `sticker_animation` 之后），
+同时文本素材的 `check_flag` 置上第 64 位（`7 → 71`）。除 `check_flag` 外，
+**带发光的文本素材与普通字幕逐字段完全相同**——发光不碰文字的填充/描边/阴影。
+
+**与气泡一样，发光的 `effect_id` 与 `resource_id` 不是同一个值**（如 `effect_id: "9762443"`、
+`resource_id: "7202576698775179837"`），两者都需给出，少一个剪映就定位不到发光资源。因此：
+
+- 清单 `config/glow.json` 中两者分别记录：`id` 是 **resource_id**，`effect_id` 单独给出。
+- 清单外的任意发光，用 `"effect_id:resource_id"` 显式 ID 对传入。
+- **只传一个纯数字不会被透传**（这点与 `text_template` 相反），会按未找到处理并回退为普通字幕。
+
+取值方式与优先级：
+
+- **四种写法**：预设名称（如 `"外发光"`、`"轮廓光"`）、`resource_id`、`effect_id`，
+  或 `"effect_id:resource_id"` 显式 ID 对。
+- **不互斥**：发光既不掌管片段的素材身份（那是文字模板的事），也不改动文字样式
+  （那是花字的事），只是再挂一条素材，因此与花字 / 文字模板 / 气泡**可以同时使用**，
+  没有优先级关系。花字也不重置发光（与背景一致），服务会记录一条告警提醒两者会视觉叠加。
+- **`bloom_params` 各预设不同**：发光的颜色/强度/范围/方向存在素材的 `bloom_params` 里，
+  由清单按预设给出（外发光 `range 0.2, strength 0.3`；轮廓光 `range 0.4, strength 0.5`）。
+  **清单外的发光没有实证取值**，服务会落到外发光的默认值并告警——剪映不会按 `resource_id`
+  重新推导这些数值，需要精确复刻请把该预设加入 `config/glow.json`。
+- **接口级**：`text_glow` 只作用于整批字幕，**不支持逐条指定**。想在一次草稿里混用两种预设
+  （如「默认文本2 用外发光、默认文本3 用轮廓光」），需分两次调用 `add_captions`。
+- **未经实测**：`发光` 草稿证明了**草稿结构**（两个预设的素材字段与 `check_flag: 71` 逐项对齐），
+  但**本服务生成的草稿在剪映里的实际渲染尚未验证**——包括 `bloom_params` 是否必需、
+  清单外的兜底值是否可用、以及与花字/背景叠加时的实际效果。上线前请在剪映里实跑一次。
+- **清单规模**：当前只收录 `发光` 草稿实证过的 **2** 个预设（`外发光`、`轮廓光`）；
+  其余发光请用显式 ID 对传入，或按同样字段格式向 `config/glow.json` 增补。
 
 #### 关键词阴影如何生效
 
@@ -1388,12 +1482,25 @@ VHS
     "shadow_distance": 5.0,
     "shadow_angle": -45.0
   },
+  "has_background": true,                      // 【可选】整段文字背景开关
+  "background_info": {                         // 【可选】整段文字背景参数
+    "background_color": "#000000",
+    "background_style": 1,
+    "background_alpha": 1.0,
+    "background_round_radius": 0.0,
+    "background_height": 0.14,
+    "background_width": 0.14,
+    "background_horizontal_offset": 0.0,
+    "background_vertical_offset": 0.0
+  },
   // 【可选】花字；与自定义颜色/阴影冲突，完整示例中置为 null 以保留阴影效果
   "text_effect": null,
   // 【可选】文字模板；与花字互斥且优先，完整示例中置为 null
   "text_template": null,
   // 【可选】气泡；清单外的气泡用 "effect_id:resource_id" 显式 ID 对
-  "text_bubble": null
+  "text_bubble": null,
+  // 【可选】发光；预设名称或 "effect_id:resource_id" 显式 ID 对，与其它文字效果不互斥
+  "text_glow": null
 }
 ```
 
@@ -1511,9 +1618,12 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_captions \
 | bold | `true` | 【可选】加粗 |
 | has_shadow | `true` | 【可选】启用整段阴影 |
 | shadow_info.* | 见上 | 【可选】整段阴影详细参数 |
+| has_background | `true` | 【可选】启用整段文字背景 |
+| background_info.* | 见上 | 【可选】整段文字背景详细参数 |
 | text_effect | `null` | 【可选】不使用花字，避免覆盖颜色/阴影 |
 | text_template | `null` | 【可选】不使用文字模板；与花字互斥且优先 |
 | text_bubble | `null` | 【可选】不使用气泡。需要时传名称或 `"effect_id:resource_id"`；优先级 文字模板 > 气泡 > 花字 |
+| text_glow | `null` | 【可选】不使用发光。需要时传预设名称或 `"effect_id:resource_id"`；与其它文字效果不互斥 |
 
 **captions 内每条字幕字段含义速查：**
 
@@ -1637,6 +1747,66 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_captions \
   }'
 ```
 
+#### 8. 使用文字背景
+
+只开开关，用剪映默认的黑色背景：
+
+```bash
+curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_captions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
+    "captions": "[{\"start\":0,\"end\":5000000,\"text\":\"默认文本1\"},{\"start\":5000000,\"end\":10000000,\"text\":\"默认文本2\"}]",
+    "has_background": true
+  }'
+```
+
+自定义背景色与圆角（半透明橙色底板）：
+
+```bash
+curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_captions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
+    "captions": "[{\"start\":0,\"end\":5000000,\"text\":\"带背景的字幕\"}]",
+    "text_color": "#ffffff",
+    "has_background": true,
+    "background_info": {
+      "background_color": "#ff7100",
+      "background_alpha": 0.8,
+      "background_round_radius": 0.3,
+      "background_width": 0.2
+    }
+  }'
+```
+
+#### 9. 使用发光
+
+按预设名称使用清单内的发光（`config/glow.json`）：
+
+```bash
+curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_captions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
+    "captions": "[{\"start\":0,\"end\":5000000,\"text\":\"外发光字幕\"}]",
+    "text_glow": "外发光"
+  }'
+```
+
+清单外的发光用 `"effect_id:resource_id"` 显式 ID 对；发光与背景/气泡等可同时叠加：
+
+```bash
+curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_captions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "draft_url": "https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/get_draft?draft_id=2025092811473036584258",
+    "captions": "[{\"start\":0,\"end\":5000000,\"text\":\"发光字幕\"}]",
+    "text_glow": "9762443:7202576698775179837",
+    "has_background": true
+  }'
+```
+
 ## 错误码说明
 
 | 错误码 | 错误信息 | 说明 | 解决方案 |
@@ -1656,7 +1826,9 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_captions \
 5. **花字名称**：请通过 `get_text_effects` 获取可用名称或 `effect_id`
 5.1. **文字模板**：传模板名称或数字 `effect_id`；与 `text_effect` 互斥且优先。模板清单见 `config/text_template.json`（5166 个），名称重名时命中靠前一条，精确定位请用 `effect_id`；不在表中的纯数字 id 会直接透传
 5.2. **气泡**：传气泡名称、`resource_id` 或 `effect_id`；气泡的 `effect_id` 与 `resource_id` **不是同一个值**，清单外的气泡请传 `"effect_id:resource_id"` 显式 ID 对（如 `"716434:6821385652727190024"`），只传单个数字不会透传。优先级为 文字模板 > 气泡 > 花字；气泡不重置颜色/描边/阴影
-6. **坐标系统**：`transform_x` / `transform_y` 使用像素，内部会按画布尺寸换算
+5.3. **文字背景**：`has_background=true` 才生效，只传 `background_info` 会被忽略；不给 `background_info` 时用剪映默认黑色背景。`background_info` 字段与草稿 `background_*` 一一对应，`background_style` 只能传 `1`/`2`，颜色非法会回退黑色并告警。花字不重置背景，两者会视觉叠加
+5.4. **发光**：传预设名称（`外发光`/`轮廓光`）或 `resource_id`/`effect_id`；与气泡一样 `effect_id` 与 `resource_id` **不是同一个值**，清单外的发光请传 `"effect_id:resource_id"` 显式 ID 对（如 `"9762443:7202576698775179837"`），只传单个数字不会透传。发光**与花字/文字模板/气泡都不互斥**（不重置颜色/描边/阴影），但**只支持接口级**，混用两种预设需分两次调用；清单外的发光其 `bloom_params` 会落到默认值并告警
+6. **坐标系统**：`transform_x` / `transform_y` 使用像素，内部会按画布尺寸换算；`background_horizontal_offset` / `background_vertical_offset` 则是 `[-1, 1]` 的草稿坐标，`0` 为居中
 7. **关键词阴影**：与关键词颜色/描边一样写在同一字幕的 styles 分区内，不另建字幕行；整段阴影仍由 `has_shadow` / `shadow_info` 控制
 
 ## 工作流程
