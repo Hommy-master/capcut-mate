@@ -786,17 +786,17 @@ class VideoGenTaskManager:
                     # 将微秒转换为秒
                     video_duration = duration_us / 1_000_000  # 微秒转秒
                     
-                    # 计算费用：0.005积分/秒
+                    # 计算费用：0.005元/秒
                     cost = video_duration * 0.005
                     
                     # 导入扣费函数
                     from src.utils.points import deduct_user_points
                     
-                    # 扣除用户积分（必需执行但不关心结果）
+                    # 扣除用户余额（必需执行但不关心结果）
                     charge_success = deduct_user_points(
                         api_key=task.api_key,
                         points=cost,
-                        desc=f"剪映草稿导出视频，时长{video_duration:.2f}秒，费用{cost:.2f}积分"
+                        desc=f"剪映草稿导出视频，时长{video_duration:.2f}秒，费用{cost:.2f}元"
                     )
                     
                     if charge_success:

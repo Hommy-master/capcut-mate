@@ -85,7 +85,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/gen_video \
 |--------|----------|------|----------|
 | 1001 | 参数校验失败 | `apiKey` 不是合法 UUID，或参数类型不正确 | 检查参数类型与必填字段 |
 | 2001 | 无效的草稿URL | `draft_url` 缺失或不含 `draft_id` | 传入 `create_draft` 返回的 `draft_url` |
-| 2035 | 账户余额不足 | 当前积分不大于 1 | 完成充值后重试 |
+| 2035 | 充值余额不足 | 当前余额不大于 1 | 完成充值后重试 |
 | 2036 | 无效的 apiKey | `ENABLE_APIKEY=true` 且未传 `apiKey` | 登录 https://jcaigc.cn 获取 apiKey |
 | 9998 | 系统内部错误 | 提交任务时发生未知错误 | 稍后重试或联系技术支持 |
 

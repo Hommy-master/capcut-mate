@@ -14,7 +14,7 @@ from src.utils.points import deduct_user_points, get_user_points
 from src.utils.storage_key import build_upload_object_key, sanitize_object_filename
 from src.utils.upload_file import upload_file as upload_file_to_storage
 
-# 上传计费单价（元/MB；1 积分 = 1 元），按文件实际字节数计费
+# 上传计费单价（元/MB），按文件实际字节数计费
 UPLOAD_PRICE_PER_MB = 0.0005
 
 # 单文件大小上限（500MB）
