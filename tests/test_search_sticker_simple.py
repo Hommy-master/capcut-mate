@@ -14,6 +14,9 @@ import config
 # 添加项目根目录到 Python 路径
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+# 贴纸配置文件路径（固定路径，无需外部配置）
+STICKER_CONFIG_PATH = os.path.join(config.PROJECT_ROOT, "config", "sticker.json")
+
 
 def search_sticker(keyword: str) -> list:
     """
@@ -29,10 +32,10 @@ def search_sticker(keyword: str) -> list:
     
     # 从配置文件中读取贴纸数据
     try:
-        with open(config.STICKER_CONFIG_PATH, 'r', encoding='utf-8') as f:
+        with open(STICKER_CONFIG_PATH, 'r', encoding='utf-8') as f:
             sticker_data = json.load(f)
     except FileNotFoundError:
-        print(f"Sticker config file not found: {config.STICKER_CONFIG_PATH}")
+        print(f"Sticker config file not found: {STICKER_CONFIG_PATH}")
         return []
     except json.JSONDecodeError as e:
         print(f"Failed to parse sticker config file: {e}")

@@ -18,9 +18,13 @@
 (``id`` 为 resource_id, ``effect_id`` 单独给出, 两者缺一不可)。
 """
 import json
+import os
 from typing import List, Dict, Any, Optional
 from src.utils.logger import logger
-from config import BUBBLE_CONFIG_PATH
+from config import PROJECT_ROOT
+
+# 气泡配置文件路径（固定路径，无需外部配置）
+_BUBBLE_CONFIG_PATH = os.path.join(PROJECT_ROOT, "config", "bubble.json")
 
 
 # 进程启动时加载气泡数据到内存
@@ -63,7 +67,7 @@ def _load_bubble_data() -> None:
     global _BUBBLE_DATA, _BUBBLE_MAP_BY_NAME, _BUBBLE_MAP_BY_RESOURCE_ID, _BUBBLE_MAP_BY_EFFECT_ID
 
     try:
-        with open(BUBBLE_CONFIG_PATH, "r", encoding="utf-8") as f:
+        with open(_BUBBLE_CONFIG_PATH, "r", encoding="utf-8") as f:
             _BUBBLE_DATA = json.load(f)
 
         if not isinstance(_BUBBLE_DATA, list):
@@ -100,7 +104,7 @@ def _load_bubble_data() -> None:
 
     except FileNotFoundError:
         logger.warning(
-            f"气泡配置文件不存在: {BUBBLE_CONFIG_PATH}，"
+            f"气泡配置文件不存在: {_BUBBLE_CONFIG_PATH}，"
             f"仅支持传入 \"effect_id:resource_id\" 显式 ID 对"
         )
         _BUBBLE_DATA = []

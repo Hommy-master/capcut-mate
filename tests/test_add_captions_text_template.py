@@ -8,11 +8,14 @@ text_info_resources[].text_material_id 反向关联。
 from __future__ import annotations
 
 import json
+import os
 
-from config import TEXT_TEMPLATE_CONFIG_PATH
+from config import PROJECT_ROOT
 from src.pyJianYingDraft import ScriptFile, TrackType
 from src.service.add_captions import add_caption_to_draft
 from src.service.get_text_templates import resolve_text_template
+
+TEXT_TEMPLATE_CONFIG_PATH = os.path.join(PROJECT_ROOT, "config", "text_template.json")
 
 TEMPLATE_NAME = "嘎嘎香！红色 简约 美食 情绪表达 字幕"
 TEMPLATE_ID = "7383613902744980770"

@@ -1,8 +1,12 @@
 from src.utils.logger import logger
 from typing import List, Dict, Any
 import json
-import config
+import os
 import random
+from config import PROJECT_ROOT
+
+# 贴纸配置文件路径（固定路径，无需外部配置）
+_STICKER_CONFIG_PATH = os.path.join(PROJECT_ROOT, "config", "sticker.json")
 
 
 def search_sticker(keyword: str) -> List[Dict[str, Any]]:
@@ -19,10 +23,10 @@ def search_sticker(keyword: str) -> List[Dict[str, Any]]:
     
     # 从配置文件中读取贴纸数据
     try:
-        with open(config.STICKER_CONFIG_PATH, 'r', encoding='utf-8') as f:
+        with open(_STICKER_CONFIG_PATH, 'r', encoding='utf-8') as f:
             sticker_data = json.load(f)
     except FileNotFoundError:
-        logger.error(f"Sticker config file not found: {config.STICKER_CONFIG_PATH}")
+        logger.error(f"Sticker config file not found: {_STICKER_CONFIG_PATH}")
         return []
     except json.JSONDecodeError as e:
         logger.error(f"Failed to parse sticker config file: {e}")

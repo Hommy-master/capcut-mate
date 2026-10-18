@@ -10,9 +10,13 @@ category_name。模板素材本机缓存相关的字段(path/resources/装饰贴
 的 VIP 模板在剪映侧可能无法渲染。
 """
 import json
+import os
 from typing import List, Dict, Any, Optional
 from src.utils.logger import logger
-from config import TEXT_TEMPLATE_CONFIG_PATH
+from config import PROJECT_ROOT
+
+# 文字模板配置文件路径（固定路径，无需外部配置）
+_TEXT_TEMPLATE_CONFIG_PATH = os.path.join(PROJECT_ROOT, "config", "text_template.json")
 
 
 # 进程启动时加载文字模板数据到内存
@@ -45,7 +49,7 @@ def _load_text_template_data() -> None:
     global _TEXT_TEMPLATE_DATA, _TEXT_TEMPLATE_MAP_BY_NAME, _TEXT_TEMPLATE_MAP_BY_ID
 
     try:
-        with open(TEXT_TEMPLATE_CONFIG_PATH, "r", encoding="utf-8") as f:
+        with open(_TEXT_TEMPLATE_CONFIG_PATH, "r", encoding="utf-8") as f:
             _TEXT_TEMPLATE_DATA = json.load(f)
 
         if not isinstance(_TEXT_TEMPLATE_DATA, list):
@@ -76,7 +80,7 @@ def _load_text_template_data() -> None:
 
     except FileNotFoundError:
         logger.warning(
-            f"文字模板配置文件不存在: {TEXT_TEMPLATE_CONFIG_PATH}，"
+            f"文字模板配置文件不存在: {_TEXT_TEMPLATE_CONFIG_PATH}，"
             f"仅支持直接传入 effect_id"
         )
         _TEXT_TEMPLATE_DATA = []

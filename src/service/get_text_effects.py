@@ -2,10 +2,14 @@
 获取花字效果列表和解析花字效果标识符的业务逻辑处理模块
 """
 import json
+import os
 from typing import List, Dict, Any, Optional
 from src.utils.logger import logger
 from exceptions import CustomException, CustomError
-from config import HUAZI_CONFIG_PATH
+from config import PROJECT_ROOT
+
+# 花字配置文件路径（固定路径，无需外部配置）
+_HUAZI_CONFIG_PATH = os.path.join(PROJECT_ROOT, "config", "huazi.json")
 
 
 # 进程启动时加载花字数据到内存
@@ -19,7 +23,7 @@ def _load_huazi_data() -> None:
     global _HUAZI_DATA, _HUAZI_MAP_BY_NAME, _HUAZI_MAP_BY_ID
     
     try:
-        with open(HUAZI_CONFIG_PATH, "r", encoding="utf-8") as f:
+        with open(_HUAZI_CONFIG_PATH, "r", encoding="utf-8") as f:
             _HUAZI_DATA = json.load(f)
         
         # 构建映射表以便快速查找

@@ -6,7 +6,8 @@ import sys
 import config
 
 
-LOG_DIR = config.LOG_DIR
+# 日志目录（固定路径，无需外部配置）
+LOG_DIR = os.path.join(config.PROJECT_ROOT, "logs")
 LOG_FILE = os.path.join(LOG_DIR, "capcut-mate.log")
 LOG_MAX_BYTES = 20 * 1024 * 1024  # 20MB
 LOG_BACKUP_COUNT = 10

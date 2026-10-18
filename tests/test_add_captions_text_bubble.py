@@ -9,11 +9,14 @@ sticker_animation 之后）。与花字/文字模板不同，气泡的 effect_id
 from __future__ import annotations
 
 import json
+import os
 
-from config import BUBBLE_CONFIG_PATH
+from config import PROJECT_ROOT
 from src.pyJianYingDraft import ScriptFile, TrackType
 from src.service.add_captions import add_caption_to_draft
 from src.service.get_text_bubbles import resolve_text_bubble
+
+BUBBLE_CONFIG_PATH = os.path.join(PROJECT_ROOT, "config", "bubble.json")
 
 # 取自剪映草稿 气泡1：默认文本2 应用的气泡
 BUBBLE_NAME = "背景装饰54"

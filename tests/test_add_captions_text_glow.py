@@ -13,14 +13,17 @@ extra_material_refs 引用（追加在 sticker_animation 之后）。与气泡�
 from __future__ import annotations
 
 import json
+import os
 
 import pytest
 
-from config import GLOW_CONFIG_PATH
+from config import PROJECT_ROOT
 from src.pyJianYingDraft import ScriptFile, TrackType
 from src.pyJianYingDraft.text_segment import DEFAULT_BLOOM_PARAMS
 from src.service.add_captions import add_caption_to_draft
 from src.service.get_text_glows import resolve_text_glow
+
+GLOW_CONFIG_PATH = os.path.join(PROJECT_ROOT, "config", "glow.json")
 
 # 取自 发光 草稿实证的两个预设
 OUTER_NAME = "外发光"

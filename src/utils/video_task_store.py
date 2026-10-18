@@ -14,6 +14,9 @@ from typing import Any, Dict, Optional
 import config
 from src.utils.logger import logger
 
+# 任务结果 SQLite 文件路径（固定路径，无需外部配置）
+_DB_PATH = os.path.join(config.PROJECT_ROOT, "db", "video_gen_tasks.sqlite3")
+
 _MAX_ROWS = 100_000
 _PRUNE_BATCH = 1_000
 # 高并发下避免每次状态查询都跑 COUNT/竞争锁；超过间隔才真正检查是否需清理
@@ -24,7 +27,7 @@ _lock = threading.Lock()
 
 
 def _connect() -> sqlite3.Connection:
-    path = config.VIDEO_GEN_TASK_DB_PATH
+    path = _DB_PATH
     os.makedirs(os.path.dirname(path), exist_ok=True)
     conn = sqlite3.connect(path, check_same_thread=False)
     conn.row_factory = sqlite3.Row

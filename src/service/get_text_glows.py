@@ -18,10 +18,14 @@
 格式增补(``id`` 为 resource_id, ``effect_id`` 单独给出, 两者缺一不可)。
 """
 import json
+import os
 from typing import List, Dict, Any, Optional
 from src.utils.logger import logger
 from src.pyJianYingDraft.text_segment import DEFAULT_BLOOM_PARAMS
-from config import GLOW_CONFIG_PATH
+from config import PROJECT_ROOT
+
+# 发光配置文件路径（固定路径，无需外部配置）
+_GLOW_CONFIG_PATH = os.path.join(PROJECT_ROOT, "config", "glow.json")
 
 
 # 进程启动时加载发光数据到内存
@@ -65,7 +69,7 @@ def _load_glow_data() -> None:
     global _GLOW_DATA, _GLOW_MAP_BY_NAME, _GLOW_MAP_BY_RESOURCE_ID, _GLOW_MAP_BY_EFFECT_ID
 
     try:
-        with open(GLOW_CONFIG_PATH, "r", encoding="utf-8") as f:
+        with open(_GLOW_CONFIG_PATH, "r", encoding="utf-8") as f:
             _GLOW_DATA = json.load(f)
 
         if not isinstance(_GLOW_DATA, list):
@@ -102,7 +106,7 @@ def _load_glow_data() -> None:
 
     except FileNotFoundError:
         logger.warning(
-            f"发光配置文件不存在: {GLOW_CONFIG_PATH}，"
+            f"发光配置文件不存在: {_GLOW_CONFIG_PATH}，"
             f"仅支持传入 \"effect_id:resource_id\" 显式 ID 对"
         )
         _GLOW_DATA = []
