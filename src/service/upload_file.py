@@ -17,6 +17,9 @@ from src.utils.upload_file import upload_file as upload_file_to_storage
 # 上传计费单价（元/MB），按文件实际字节数计费
 UPLOAD_PRICE_PER_MB = 0.005
 
+# 单次上传最低扣费（元），避免小文件因 6 位小数舍入被算成 0
+UPLOAD_MIN_PRICE = 0.002
+
 # 单文件大小上限（500MB）
 MAX_UPLOAD_SIZE_BYTES = 500 * 1024 * 1024
 
@@ -131,9 +134,9 @@ def upload_file(file: UploadFile, api_key: Optional[str] = None) -> dict:
     """
     服务端中转上传：接收客户端文件 → 落盘统计体积 → 校验余额 → 上传对象存储 → 按体积扣费 → 返回签名 URL。
 
-    计费规则：0.005 元/MB，按实际字节数计算（保留 6 位小数）；扣费在上传成功后进行，
-    扣费失败只记日志，不影响本次上传结果。余额不足以覆盖本次费用时直接拒绝，
-    避免服务端「余额不足不再透支」后仍能免费上传。
+    计费规则：0.005 元/MB，按实际字节数计算（保留 6 位小数），单次最低扣费 0.002 元；
+    扣费在上传成功后进行，扣费失败只记日志，不影响本次上传结果。余额不足以覆盖
+    本次费用时直接拒绝，避免服务端「余额不足不再透支」后仍能免费上传。
 
     Args:
         file: 客户端上传的文件（multipart/form-data 的 file 字段）
@@ -165,7 +168,7 @@ def upload_file(file: UploadFile, api_key: Optional[str] = None) -> dict:
         tmp_path, size = _save_upload_to_temp(file, suffix=os.path.splitext(safe_name)[1])
 
         size_mb = size / (1024 * 1024)
-        cost = round(size_mb * UPLOAD_PRICE_PER_MB, 6)
+        cost = max(round(size_mb * UPLOAD_PRICE_PER_MB, 6), UPLOAD_MIN_PRICE)
 
         # 扣费接口已改为「余额不足直接拒绝、不再透支」。这里在真正的对象存储上传前
         # 按精确费用再校验一次，避免余额大于 0 但不够本次费用时白用一次上传。

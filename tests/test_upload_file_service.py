@@ -7,7 +7,12 @@ from starlette.datastructures import Headers, UploadFile
 
 import config
 from exceptions import CustomError, CustomException
-from src.service.upload_file import MAX_UPLOAD_SIZE_BYTES, UPLOAD_PRICE_PER_MB, upload_file
+from src.service.upload_file import (
+    MAX_UPLOAD_SIZE_BYTES,
+    UPLOAD_MIN_PRICE,
+    UPLOAD_PRICE_PER_MB,
+    upload_file,
+)
 
 _API_KEY = "11111111-1111-1111-1111-111111111111"
 
@@ -199,12 +204,14 @@ def test_charge_failure_still_returns_success(service_mocks) -> None:
         assert upload_file(_make_file(b"x" * 1024), api_key=_API_KEY)["url"] == "https://bucket.example/signed-url"
 
 
-def test_tiny_file_cost_rounds_to_zero_and_skips_charge(service_mocks) -> None:
+def test_tiny_file_charges_minimum_price(service_mocks) -> None:
+    """小文件不足 0.002 元时按最低扣费收取，不再因 6 位小数舍入变成 0。"""
     m_upload, m_points, m_deduct, _ = service_mocks
     with patch.object(config, "ENABLE_APIKEY", True):
         result = upload_file(_make_file(b"x" * 100), api_key=_API_KEY)
-    assert result["cost"] == 0.0
-    m_deduct.assert_not_called()
+    assert result["cost"] == UPLOAD_MIN_PRICE == 0.002
+    m_deduct.assert_called_once()
+    assert m_deduct.call_args.kwargs["points"] == UPLOAD_MIN_PRICE
 
 
 def test_apikey_disabled_skips_billing(service_mocks) -> None:
@@ -220,3 +227,4 @@ def test_apikey_disabled_skips_billing(service_mocks) -> None:
 def test_default_max_size_is_500mb() -> None:
     assert MAX_UPLOAD_SIZE_BYTES == 500 * 1024 * 1024
     assert UPLOAD_PRICE_PER_MB == 0.005
+    assert UPLOAD_MIN_PRICE == 0.002

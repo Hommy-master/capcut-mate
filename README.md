@@ -185,7 +185,7 @@ The following are the core interfaces provided by CapCut Mate API, supporting a 
 ### 📤 Material Upload
 | Interface | Function | Description | Documentation Link |
 |-----------|----------|-------------|-------------------|
-| **upload_file** | Upload File | Server-relayed upload to object storage (max 500MB, 0.005 CNY/MB), returns a usable signed URL | [📖 View Documentation](./docs/upload_file.md) |
+| **upload_file** | Upload File | Server-relayed upload to object storage (max 500MB, 0.005 CNY/MB, minimum 0.002 CNY per upload), returns a usable signed URL | [📖 View Documentation](./docs/upload_file.md) |
 
 ### 🛠️ Utility Tools
 | Interface | Function | Description | Documentation Link |

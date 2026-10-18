@@ -72,7 +72,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/upload_file \
 | key | string | Object storage object key |
 | size | int | Actual file size in bytes |
 | size_mb | float | File size in MB (3 decimal places) |
-| cost | float | Cost of this upload in CNY; 0 when billing is disabled |
+| cost | float | Cost of this upload in CNY (minimum 0.002); 0 when billing is disabled |
 | url_expire_days | int | URL validity in days; comes from `VIDEO_GEN_RETENTION_DAYS` (7 by default) |
 
 ### Error Response
@@ -127,7 +127,7 @@ print("size:", result["size_mb"], "MB", "cost:", result["cost"], "CNY")
 ## Notes
 
 1. **Server-relayed**: the file is uploaded to this service first and then relayed to object storage; storage credentials are never sent to the client
-2. **Billing**: 0.005 CNY/MB based on the actual file size (6 decimal places), charged only after a successful object storage upload; the upload is rejected up front when the balance cannot cover it
+2. **Billing**: 0.005 CNY/MB based on the actual file size (6 decimal places), with a minimum charge of 0.002 CNY per upload, charged only after a successful object storage upload; the upload is rejected up front when the balance cannot cover it
 3. **Size limit**: max 500MB per file; behind nginx you must also raise `client_max_body_size` (the stock 1MB default returns 413)
 4. **Expiry**: the returned `url` is a signed temporary address whose lifetime comes from `VIDEO_GEN_RETENTION_DAYS` (7 days by default)
 5. **Ready to use**: `url` can be passed directly to add_videos / add_images / add_audios

@@ -71,7 +71,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/upload_file \
 | key | string | 对象存储 object key |
 | size | int | 文件实际字节数 |
 | size_mb | float | 文件体积（MB，保留 3 位小数） |
-| cost | float | 本次上传费用（元）；未启用计费时为 0 |
+| cost | float | 本次上传费用（元，最低 0.002）；未启用计费时为 0 |
 | url_expire_days | int | url 有效期（天），取 `VIDEO_GEN_RETENTION_DAYS`（默认 7 天） |
 
 ### 错误响应
@@ -126,7 +126,7 @@ print("体积:", result["size_mb"], "MB", "费用:", result["cost"], "元")
 ## 注意事项
 
 1. **服务端中转**：文件先上传到本服务，再由服务端上传到对象存储；对象存储密钥不会下发给客户端
-2. **计费规则**：0.005 元/MB，按文件实际字节数计算（保留 6 位小数），仅在对象存储上传成功后才扣费；余额不足以覆盖本次费用时会在上传前直接拒绝
+2. **计费规则**：0.005 元/MB，按文件实际字节数计算（保留 6 位小数），单次最低扣费 0.002 元，仅在对象存储上传成功后才扣费；余额不足以覆盖本次费用时会在上传前直接拒绝
 3. **大小限制**：单文件最大 500MB；若部署在 nginx 之后，需同时放开 `client_max_body_size`（默认 1MB 会直接返回 413）
 4. **有效期**：返回的 `url` 为带签名的临时地址，有效期由 `VIDEO_GEN_RETENTION_DAYS` 控制（默认 7 天）
 5. **上传完成即可用**：`url` 可直接传给 add_videos / add_images / add_audios 等接口使用

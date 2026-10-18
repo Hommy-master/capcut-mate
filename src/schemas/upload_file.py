@@ -7,7 +7,7 @@ class UploadFileResponse(BaseModel):
     key: str = Field(..., description="对象存储 object key")
     size: int = Field(..., description="文件实际字节数")
     size_mb: float = Field(..., description="文件体积，单位：MB（保留 3 位小数）")
-    cost: float = Field(..., description="本次上传费用，单位：元（0.005 元/MB，上传成功后扣费；未启用计费时为 0）")
+    cost: float = Field(..., description="本次上传费用，单位：元（0.005 元/MB，单次最低 0.002 元，上传成功后扣费；未启用计费时为 0）")
     url_expire_days: int = Field(..., description="url 有效期，单位：天")
 
     class Config:
