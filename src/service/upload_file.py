@@ -15,7 +15,7 @@ from src.utils.storage_key import build_upload_object_key, sanitize_object_filen
 from src.utils.upload_file import upload_file as upload_file_to_storage
 
 # 上传计费单价（元/MB），按文件实际字节数计费
-UPLOAD_PRICE_PER_MB = 0.0005
+UPLOAD_PRICE_PER_MB = 0.005
 
 # 单文件大小上限（500MB）
 MAX_UPLOAD_SIZE_BYTES = 500 * 1024 * 1024
