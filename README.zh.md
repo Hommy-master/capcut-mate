@@ -185,7 +185,7 @@ docker-compose pull && docker-compose up -d
 ### 📤素材上传
 | 接口 | 功能 | 描述 | 文档链接 |
 |------|------|------|----------|
-| **upload_file** | 上传文件 | 服务端中转上传文件到对象存储（最大 500MB，0.0005 元/MB），返回带签名的可用 URL | [📖 查看文档](./docs/upload_file.zh.md) |
+| **upload_file** | 上传文件 | 服务端中转上传文件到对象存储（最大 500MB，0.005 元/MB），返回带签名的可用 URL | [📖 查看文档](./docs/upload_file.zh.md) |
 
 ### 🛠️工具类接口
 |接口 |功能 |描述 | 文档链接 |

@@ -13,7 +13,7 @@ Content-Type: multipart/form-data
 ## Function Description
 
 Upload a file to object storage (server-relayed). The client sends the file bytes to this service,
-which relays them to object storage, charges by the actual file size (0.0005 CNY/MB) after a
+which relays them to object storage, charges by the actual file size (0.005 CNY/MB) after a
 successful upload, and returns a signed download URL.
 Object storage credentials stay on the server and are never exposed to the client.
 
@@ -32,7 +32,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/upload_file \
 | Parameter | Type | Required | Default | Description |
 |-----------|------|----------|---------|-------------|
 | file | file | ✅ | - | File to upload, max 500MB |
-| apiKey | string | Per server config | - | A valid UUID; required when `ENABLE_APIKEY=true`, get one at https://jcaigc.cn |
+| apiKey | string | Per server config | - | A valid UUID; required when `ENABLE_APIKEY=true`, get one at https://jcaigc.cn/user-info |
 
 ### Parameter Details
 
@@ -45,7 +45,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/upload_file \
 #### apiKey
 
 - **Type**: string
-- **Description**: Must be a valid UUID; required when the server enforces apiKey, and the account balance must be greater than 1
+- **Description**: Must be a valid UUID; required when the server enforces apiKey, and the account balance must be greater than 0
 
 ## Response Format
 
@@ -59,7 +59,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/upload_file \
   "key": "jianchuang/2026-10-06/8f3a1c2d5e6b7a90_demo.mp4",
   "size": 10485760,
   "size_mb": 10.0,
-  "cost": 0.005,
+  "cost": 0.05,
   "url_expire_days": 7
 }
 ```
@@ -118,8 +118,8 @@ print("size:", result["size_mb"], "MB", "cost:", result["cost"], "CNY")
 |------|---------|-------------|----------|
 | 1001 | Parameter validation failed | Missing file field, apiKey is not a valid UUID, or the file is empty | Check the request payload |
 | 2004 | File size exceeds the limit | File is larger than 500MB | Compress or split the file and retry |
-| 2035 | Insufficient account balance | The account balance must be greater than 1 | Top up and retry |
-| 2036 | Invalid apiKey | `ENABLE_APIKEY=true` and apiKey is missing or invalid | Get an apiKey at https://jcaigc.cn |
+| 2035 | Insufficient account balance | The account balance must be greater than 0 and cover this upload | Recharge at https://jcaigc.cn/recharge and retry |
+| 2036 | Invalid apiKey | `ENABLE_APIKEY=true` and apiKey is missing or invalid | Get an apiKey at https://jcaigc.cn/user-info |
 | 2049 | Invalid file name | File name is empty or nothing usable remains after sanitization | Provide a valid file name |
 | 2050 | Unsupported file type | Extension not in the built-in whitelist | Use a supported format |
 | 9998 | Internal server error | No object storage configured, or the upload failed | Check the server storage configuration |
@@ -127,14 +127,14 @@ print("size:", result["size_mb"], "MB", "cost:", result["cost"], "CNY")
 ## Notes
 
 1. **Server-relayed**: the file is uploaded to this service first and then relayed to object storage; storage credentials are never sent to the client
-2. **Billing**: 0.0005 CNY/MB based on the actual file size (6 decimal places), charged only after a successful object storage upload
+2. **Billing**: 0.005 CNY/MB based on the actual file size (6 decimal places), charged only after a successful object storage upload; the upload is rejected up front when the balance cannot cover it
 3. **Size limit**: max 500MB per file; behind nginx you must also raise `client_max_body_size` (the stock 1MB default returns 413)
 4. **Expiry**: the returned `url` is a signed temporary address whose lifetime comes from `VIDEO_GEN_RETENTION_DAYS` (7 days by default)
 5. **Ready to use**: `url` can be passed directly to add_videos / add_images / add_audios
 
 ## Workflow
 
-1. Validate the apiKey (when `ENABLE_APIKEY=true`) and the account balance (must be greater than 1)
+1. Validate the apiKey (when `ENABLE_APIKEY=true`) and the account balance (must be greater than 0)
 2. Sanitize the file name and check the extension whitelist
 3. Stream the file to disk while counting bytes (reject when empty or over 500MB)
 4. Upload the file to object storage (COS / OSS / TOS)

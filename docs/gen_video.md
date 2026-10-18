@@ -27,7 +27,7 @@ Submit video generation task. This interface uses asynchronous processing mode, 
 | Parameter | Type | Required | Default | Description |
 |-----------|------|----------|---------|-------------|
 | draft_url | string | ✅ | - | Complete URL of the target draft |
-| apiKey | string | Per server config | - | A valid UUID; required when `ENABLE_APIKEY=true`, get one at https://jcaigc.cn |
+| apiKey | string | Per server config | - | A valid UUID; required when `ENABLE_APIKEY=true`, get one at https://jcaigc.cn/user-info |
 
 ### Parameter Details
 
@@ -85,8 +85,8 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/gen_video \
 |------------|---------------|-------------|----------|
 | 1001 | Parameter validation failed | `apiKey` is not a valid UUID, or a parameter has the wrong type | Check parameter types and required fields |
 | 2001 | Invalid draft URL | `draft_url` is missing or does not contain a `draft_id` | Pass the `draft_url` returned by `create_draft` |
-| 2035 | Insufficient account balance | The account has no more than 1 point | Recharge the account and retry |
-| 2036 | Invalid apiKey | `ENABLE_APIKEY=true` and `apiKey` is missing | Log in at https://jcaigc.cn to get an apiKey |
+| 2035 | Insufficient account balance | The account balance must be greater than 0 | Recharge at https://jcaigc.cn/recharge and retry |
+| 2036 | Invalid apiKey | `ENABLE_APIKEY=true` and `apiKey` is missing | Log in at https://jcaigc.cn/user-info to get an apiKey |
 | 9998 | Internal server error | Unexpected error while submitting the task | Retry later or contact technical support |
 
 ## Notes

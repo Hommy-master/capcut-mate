@@ -13,7 +13,7 @@ Content-Type: multipart/form-data
 ## 功能描述
 
 上传文件到对象存储（服务端中转）。客户端把文件字节提交到本服务，服务端转发上传到对象存储，
-上传成功后按文件实际体积计费（0.0005 元/MB），并返回带签名的下载 URL。
+上传成功后按文件实际体积计费（0.005 元/MB），并返回带签名的下载 URL。
 对象存储密钥全程留在服务端，不会下发给客户端。
 
 ## 请求参数
@@ -31,7 +31,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/upload_file \
 | 参数名 | 类型 | 必填 | 默认值 | 说明 |
 |--------|------|------|--------|------|
 | file | file | ✅ | - | 待上传文件，单文件最大 500MB |
-| apiKey | string | 按服务端配置 | - | 合法的 UUID；`ENABLE_APIKEY=true` 时必填，可登录 https://jcaigc.cn 获取 |
+| apiKey | string | 按服务端配置 | - | 合法的 UUID；`ENABLE_APIKEY=true` 时必填，可登录 https://jcaigc.cn/user-info 获取 |
 
 ### 参数详解
 
@@ -44,7 +44,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/upload_file \
 #### apiKey
 
 - **类型**: string
-- **说明**: 必须是合法的 UUID 格式；服务端开启 apiKey 校验时必填，且充值余额需大于 1 才可上传
+- **说明**: 必须是合法的 UUID 格式；服务端开启 apiKey 校验时必填，且充值余额需大于 0 才可上传
 
 ## 响应格式
 
@@ -58,7 +58,7 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/upload_file \
   "key": "jianchuang/2026-10-06/8f3a1c2d5e6b7a90_demo.mp4",
   "size": 10485760,
   "size_mb": 10.0,
-  "cost": 0.005,
+  "cost": 0.05,
   "url_expire_days": 7
 }
 ```
@@ -117,8 +117,8 @@ print("体积:", result["size_mb"], "MB", "费用:", result["cost"], "元")
 |--------|----------|------|----------|
 | 1001 | 参数校验失败 | 缺少 file 字段、apiKey 不是合法 UUID，或上传了空文件 | 检查请求参数 |
 | 2004 | 文件大小超出限制 | 文件超过 500MB | 压缩或切分文件后重试 |
-| 2035 | 充值余额不足 | 充值余额需大于 1 才可继续使用服务 | 完成充值后重试 |
-| 2036 | 无效的 apiKey | `ENABLE_APIKEY=true` 且 apiKey 缺失或非法 | 登录 https://jcaigc.cn 获取 apiKey |
+| 2035 | 充值余额不足 | 充值余额需大于 0，且需覆盖本次上传费用 | 前往 https://jcaigc.cn/recharge 充值后重试 |
+| 2036 | 无效的 apiKey | `ENABLE_APIKEY=true` 且 apiKey 缺失或非法 | 登录 https://jcaigc.cn/user-info 获取 apiKey |
 | 2049 | 无效的文件名 | 文件名为空或清洗后没有可用字符 | 提供合法的文件名 |
 | 2050 | 不支持的文件类型 | 扩展名不在内置白名单内 | 改用受支持的格式 |
 | 9998 | 系统内部错误 | 未配置任何对象存储或上传失败 | 检查服务端对象存储配置 |
@@ -126,14 +126,14 @@ print("体积:", result["size_mb"], "MB", "费用:", result["cost"], "元")
 ## 注意事项
 
 1. **服务端中转**：文件先上传到本服务，再由服务端上传到对象存储；对象存储密钥不会下发给客户端
-2. **计费规则**：0.0005 元/MB，按文件实际字节数计算（保留 6 位小数），仅在对象存储上传成功后才扣费
+2. **计费规则**：0.005 元/MB，按文件实际字节数计算（保留 6 位小数），仅在对象存储上传成功后才扣费；余额不足以覆盖本次费用时会在上传前直接拒绝
 3. **大小限制**：单文件最大 500MB；若部署在 nginx 之后，需同时放开 `client_max_body_size`（默认 1MB 会直接返回 413）
 4. **有效期**：返回的 `url` 为带签名的临时地址，有效期由 `VIDEO_GEN_RETENTION_DAYS` 控制（默认 7 天）
 5. **上传完成即可用**：`url` 可直接传给 add_videos / add_images / add_audios 等接口使用
 
 ## 工作流程
 
-1. 校验 apiKey（`ENABLE_APIKEY=true` 时）与充值余额（需大于 1）
+1. 校验 apiKey（`ENABLE_APIKEY=true` 时）与充值余额（需大于 0）
 2. 清洗文件名并校验扩展名白名单
 3. 流式落盘并统计文件体积（超过 500MB 或为空则拒绝）
 4. 上传文件到对象存储（COS / OSS / TOS）

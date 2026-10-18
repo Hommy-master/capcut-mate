@@ -29,8 +29,8 @@ def gen_video(draft_url: str, apiKey: str = None) -> str:
             # 查询用户积分
             user_points = get_user_points(apiKey)
         
-            # 检查积分是否足够（需要大于1）
-            if user_points <= 1:
+            # 检查余额是否足够（需要大于 0）
+            if user_points <= 0:
                 logger.error(f"Insufficient account balance: {user_points} for API key: {apiKey[:8]}***")
                 raise CustomException(CustomError.INSUFFICIENT_ACCOUNT_BALANCE)
         

@@ -1,5 +1,6 @@
 from typing import Dict, Any, Optional
 import time
+import uuid
 
 from exceptions import CustomException, CustomError
 from src.utils.logger import logger
@@ -18,19 +19,19 @@ USER_API_RETRY_INTERVAL_SEC = 1
 
 def get_user_points(api_key: str) -> float:
     """
-    根据API Key获取用户积分
-    
+    根据API Key获取用户充值余额（单位：元）
+
     Args:
         api_key: 用户的API Key
-    
+
     Returns:
-        float: 用户当前积分
-    
+        float: 用户当前充值余额
+
     Raises:
-        CustomException: 当获取积分失败时
+        CustomException: 当获取余额失败时
     """
     try:
-        # 调用获取积分API
+        # 调用查询余额API
         params = {'apiKey': api_key}
         result = _call_user_api('GET', '', params=params)
         
@@ -55,37 +56,48 @@ def get_user_points(api_key: str) -> float:
         raise CustomException(CustomError.UNKNOWN_ERROR, detail=f"Unknown error occurred while getting user points: {str(e)}")
 
 
-def deduct_user_points(api_key: str, points: float, desc: str) -> bool:
+def deduct_user_points(api_key: str, points: float, desc: str, request_id: Optional[str] = None) -> bool:
     """
-    根据API Key减少用户积分
-    
+    根据API Key减少用户充值余额
+
     Args:
         api_key: 用户的API Key
-        points: 要减少的积分数量（必须为正数）
-        desc: 减少积分的原因描述
-    
+        points: 要减少的余额数量（必须为正数）
+        desc: 减少余额的原因描述
+        request_id: 可选幂等键。同一次扣费在网络重试时必须传相同值，服务端只会扣一次；
+                    不传时自动生成一个 UUID，并在本次调用的重试之间复用。
+
     Returns:
-        bool: True表示扣减成功，False表示失败
+        bool: True表示扣减成功，False表示失败（含余额不足）
     Raises:
         CustomException: 仅当apiKey无效时抛出异常
     """
     try:
-        # 调用扣减积分API
+        # requestId 是服务端新增的幂等键：_call_user_api 在超时/连接失败时会重试，
+        # 复用同一个值可以避免「第一次已扣费、响应丢失、重试再扣一次」。
+        if not request_id:
+            request_id = str(uuid.uuid4())
+
+        # 调用扣减余额API
         json_data = {
             'apiKey': api_key,
             'points': float(points),
-            'desc': desc.strip()
+            'desc': desc.strip(),
+            'requestId': request_id
         }
-        
+
         result = _call_user_api('POST', '/deduct', json_data=json_data)
         code = result.get('code', -1)
-        
+
         if code == 0:
             logger.info(f"Successfully deducted {points} points for API key {api_key[:8]}***, reason: {desc}")
             return True
         elif code == 10007:  # API Key无效
             logger.error(f"Invalid API key for deduct points: {result}, code: {code}")
             raise CustomException(CustomError.INVALID_APIKEY, detail=f"{api_key}")
+        elif code == 10008:  # 余额不足：服务端不再允许透支，本次未扣减
+            logger.warning(f"Insufficient balance for deduct points: {result}, points: {points}, code: {code}")
+            return False
         else:
             logger.error(f"Failed to deduct points: {result}, code: {code}")
             return False

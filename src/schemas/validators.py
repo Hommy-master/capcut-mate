@@ -22,6 +22,6 @@ def validate_api_key_uuid(value: Optional[str]) -> Optional[str]:
         uuid.UUID(value)
     except ValueError:
         raise ValueError(
-            "API密钥格式不正确，必须是合法的UUID；请登录官网 https://jcaigc.cn 获取 apiKey"
+            "API密钥格式不正确，必须是合法的UUID；请登录官网 https://jcaigc.cn/user-info 获取 apiKey"
         )
     return value

@@ -779,13 +779,13 @@ def get_url(gur: GetUrlRequest) -> GetUrlResponse:
 @router.post(path="/upload_file", response_model=UploadFileResponse)
 def upload_file(
     file: UploadFile = File(..., description="待上传文件（multipart/form-data 的 file 字段），单文件最大 500MB"),
-    apiKey: Optional[str] = Form(default=None, description="apiKey 必须是合法的 UUID 格式；可登录官网 https://jcaigc.cn 获取"),
+    apiKey: Optional[str] = Form(default=None, description="apiKey 必须是合法的 UUID 格式；可登录官网 https://jcaigc.cn/user-info 获取"),
 ) -> UploadFileResponse:
     """
     上传文件到对象存储（服务端中转，v1版本）
 
     客户端以 multipart/form-data 提交文件，服务端中转上传到对象存储，上传成功后按文件体积
-    （0.0005 元/MB）计费，并返回带签名的下载 URL，可直接传给 add_videos / add_images /
+    （0.005 元/MB）计费，并返回带签名的下载 URL，可直接传给 add_videos / add_images /
     add_audios 等接口使用。对象存储密钥全程留在服务端，不会下发给客户端。
     """
     result = service.upload_file(

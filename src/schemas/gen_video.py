@@ -10,7 +10,7 @@ class GenVideoRequest(BaseModel):
     draft_url: str = Field(default="", description="草稿URL")
     apiKey: Optional[str] = Field(
         default=None,
-        description="apiKey 必须是合法的 UUID 格式；可登录官网 https://jcaigc.cn 获取",
+        description="apiKey 必须是合法的 UUID 格式；可登录官网 https://jcaigc.cn/user-info 获取",
     )
     
     @field_validator('apiKey')

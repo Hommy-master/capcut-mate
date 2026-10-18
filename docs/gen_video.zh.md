@@ -27,7 +27,7 @@ POST /openapi/capcut-mate/v1/gen_video
 | 参数名 | 类型 | 必填 | 默认值 | 说明 |
 |--------|------|------|--------|------|
 | draft_url | string | ✅ | - | 目标草稿的完整URL |
-| apiKey | string | 按服务端配置 | - | 合法的 UUID；`ENABLE_APIKEY=true` 时必填，可登录 https://jcaigc.cn 获取 |
+| apiKey | string | 按服务端配置 | - | 合法的 UUID；`ENABLE_APIKEY=true` 时必填，可登录 https://jcaigc.cn/user-info 获取 |
 
 ### 参数详解
 
@@ -85,8 +85,8 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/gen_video \
 |--------|----------|------|----------|
 | 1001 | 参数校验失败 | `apiKey` 不是合法 UUID，或参数类型不正确 | 检查参数类型与必填字段 |
 | 2001 | 无效的草稿URL | `draft_url` 缺失或不含 `draft_id` | 传入 `create_draft` 返回的 `draft_url` |
-| 2035 | 充值余额不足 | 当前余额不大于 1 | 完成充值后重试 |
-| 2036 | 无效的 apiKey | `ENABLE_APIKEY=true` 且未传 `apiKey` | 登录 https://jcaigc.cn 获取 apiKey |
+| 2035 | 充值余额不足 | 当前余额不大于 0 | 前往 https://jcaigc.cn/recharge 充值后重试 |
+| 2036 | 无效的 apiKey | `ENABLE_APIKEY=true` 且未传 `apiKey` | 登录 https://jcaigc.cn/user-info 获取 apiKey |
 | 9998 | 系统内部错误 | 提交任务时发生未知错误 | 稍后重试或联系技术支持 |
 
 ## 注意事项

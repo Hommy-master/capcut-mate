@@ -41,6 +41,7 @@ def test_requires_apikey_when_enabled(service_mocks) -> None:
         with pytest.raises(CustomException) as ei:
             upload_file(_make_file(b"x"))
     assert ei.value.err == CustomError.INVALID_APIKEY
+    assert "https://jcaigc.cn/user-info" in ei.value.err.cn_message
     m_points.assert_not_called()
     m_upload.assert_not_called()
 
@@ -66,13 +67,30 @@ def test_invalid_apikey_propagates(service_mocks) -> None:
 
 def test_low_balance_rejected_before_upload(service_mocks) -> None:
     m_upload, m_points, m_deduct, _ = service_mocks
-    m_points.return_value = 1.0  # 与 gen_video 一致：余额需大于 1
+    m_points.return_value = 0.0  # 与 gen_video 一致：余额需大于 0
     with patch.object(config, "ENABLE_APIKEY", True):
         with pytest.raises(CustomException) as ei:
             upload_file(_make_file(b"x" * 1024), api_key=_API_KEY)
     assert ei.value.err == CustomError.INSUFFICIENT_ACCOUNT_BALANCE
+    assert "https://jcaigc.cn/recharge" in ei.value.err.cn_message
     m_upload.assert_not_called()
     m_deduct.assert_not_called()
+
+
+def test_balance_below_upload_cost_rejected_before_storage(service_mocks) -> None:
+    """余额大于 0 但不够本次费用时，上传前就拒绝，避免服务端不再透支后白用一次。"""
+    m_upload, m_points, m_deduct, tmp_path = service_mocks
+    m_points.return_value = 5.0
+    with (
+        patch.object(config, "ENABLE_APIKEY", True),
+        patch("src.service.upload_file.UPLOAD_PRICE_PER_MB", 10.0),
+    ):
+        with pytest.raises(CustomException) as ei:
+            upload_file(_make_file(b"x" * 1024 * 1024), api_key=_API_KEY)
+    assert ei.value.err == CustomError.INSUFFICIENT_ACCOUNT_BALANCE
+    m_upload.assert_not_called()
+    m_deduct.assert_not_called()
+    assert list(tmp_path.iterdir()) == []
 
 
 def test_disallowed_extension_rejected(service_mocks) -> None:
@@ -144,7 +162,7 @@ def test_success_charges_by_size(service_mocks) -> None:
     assert result["url"] == "https://bucket.example/signed-url"
     assert result["size"] == len(payload)
     assert result["size_mb"] == round(size_mb, 3)
-    assert result["cost"] == expected_cost == 0.0005
+    assert result["cost"] == expected_cost == 0.005
     assert result["url_expire_days"] == config.VIDEO_GEN_RETENTION_DAYS
     assert result["key"].endswith("_我的_视频.mp4")
 
@@ -201,4 +219,4 @@ def test_apikey_disabled_skips_billing(service_mocks) -> None:
 
 def test_default_max_size_is_500mb() -> None:
     assert MAX_UPLOAD_SIZE_BYTES == 500 * 1024 * 1024
-    assert UPLOAD_PRICE_PER_MB == 0.0005
+    assert UPLOAD_PRICE_PER_MB == 0.005

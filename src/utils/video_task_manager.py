@@ -28,6 +28,9 @@ import json
 # draft_content.json 中 duration 为微秒；低于 3 秒视为空草稿，不进入剪映导出
 MIN_DRAFT_EXPORT_DURATION_US = 3 * 1_000_000
 
+# 云渲染计费单价（元/秒），按导出视频的实际时长计费
+VIDEO_PRICE_PER_SECOND = 0.005
+
 # gen_video：同时下载草稿的最大并发，超出部分在 _download_executor 队列中排队
 DRAFT_DOWNLOAD_MAX_CONCURRENT = 3
 
@@ -437,6 +440,49 @@ class VideoGenTaskManager:
             )
             return False
 
+    def _ensure_export_balance(self, task: VideoGenTask) -> str:
+        """
+        导出前的余额准入：按草稿时长预估费用，余额不足时直接失败。
+
+        扣费接口已改为「余额不足直接拒绝、不再透支」。如果只保留提交时的
+        「余额 > 0」门槛，余额在 0 元与本次费用之间的用户会在导出后扣费失败，
+        而账户余额仍大于 0，可以反复免费导出。这里按预估费用提前拦截。
+
+        Returns:
+            str: 空字符串表示允许导出，否则为失败原因
+        """
+        if not config.ENABLE_APIKEY or not task.api_key:
+            return ""
+
+        try:
+            draft_content_path = os.path.join(
+                config.DRAFT_SAVE_PATH, task.draft_id, "draft_content.json"
+            )
+            with open(draft_content_path, 'r', encoding='utf-8') as f:
+                duration_us = json.load(f).get("duration", 0)
+
+            if duration_us <= 0:
+                return ""
+
+            estimated_cost = round(duration_us / 1_000_000 * VIDEO_PRICE_PER_SECOND, 6)
+
+            from src.utils.points import get_user_points
+            balance = get_user_points(task.api_key)
+            if balance < estimated_cost:
+                return (
+                    f"充值余额不足，本次导出预计需要 {estimated_cost:.2f} 元，"
+                    f"当前余额 {balance:.2f} 元，请前往 https://jcaigc.cn/recharge 充值后重试"
+                )
+            return ""
+        except Exception as e:
+            # 余额查询失败不阻断导出：扣费本身是尽力而为，不能因计费接口故障影响出片。
+            logger.warning(
+                "export balance check skipped: draft_id=%s error=%s",
+                task.draft_id,
+                e,
+            )
+            return ""
+
     def _phase_download_and_prepare(self, task: VideoGenTask) -> str:
         """
         下载草稿并校验时长（可并发执行）。
@@ -478,6 +524,15 @@ class VideoGenTaskManager:
                     task.draft_id,
                 )
                 return f"草稿中视频时长不大于3秒，请检查草稿内容: {task.draft_id}"
+
+            balance_error = self._ensure_export_balance(task)
+            if balance_error:
+                logger.error(
+                    "export balance check failed: draft_id=%s error=%s",
+                    task.draft_id,
+                    balance_error,
+                )
+                return balance_error
 
             task.progress = 40
             return ""
@@ -786,8 +841,8 @@ class VideoGenTaskManager:
                     # 将微秒转换为秒
                     video_duration = duration_us / 1_000_000  # 微秒转秒
                     
-                    # 计算费用：0.005元/秒
-                    cost = video_duration * 0.005
+                    # 计算费用
+                    cost = video_duration * VIDEO_PRICE_PER_SECOND
                     
                     # 导入扣费函数
                     from src.utils.points import deduct_user_points

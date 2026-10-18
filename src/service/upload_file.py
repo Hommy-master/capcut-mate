@@ -34,9 +34,12 @@ _ALLOWED_EXTENSIONS = frozenset({
 })
 
 
-def _ensure_api_key(api_key: Optional[str]) -> None:
+def _ensure_api_key(api_key: Optional[str]) -> Optional[float]:
     """
-    校验 apiKey 与余额门槛；开启 apiKey 时余额需大于 1 才可继续（与 gen_video 一致）。
+    校验 apiKey 与余额门槛；开启 apiKey 时余额需大于 0 才可继续（与 gen_video 一致）。
+
+    Returns:
+        Optional[float]: 开启计费时返回当前充值余额，否则返回 None（供按体积精确校验用）
 
     Raises:
         CustomException: apiKey 格式非法（1001）、缺失（2036）或余额不足（2035）
@@ -47,13 +50,15 @@ def _ensure_api_key(api_key: Optional[str]) -> None:
         raise CustomException(CustomError.PARAM_VALIDATION_FAILED, detail=str(e))
 
     if not config.ENABLE_APIKEY:
-        return
+        return None
 
     if not api_key:  # 未传或空字符串
         raise CustomException(CustomError.INVALID_APIKEY)
 
-    if get_user_points(api_key) <= 1:
+    balance = get_user_points(api_key)
+    if balance <= 0:
         raise CustomException(CustomError.INSUFFICIENT_ACCOUNT_BALANCE)
+    return balance
 
 
 def _extract_extension(file_name: str) -> str:
@@ -124,10 +129,11 @@ def _cleanup_temp_file(temp_file_path: Optional[str]) -> None:
 
 def upload_file(file: UploadFile, api_key: Optional[str] = None) -> dict:
     """
-    服务端中转上传：接收客户端文件 → 落盘统计体积 → 上传对象存储 → 上传成功后按体积扣费 → 返回签名 URL。
+    服务端中转上传：接收客户端文件 → 落盘统计体积 → 校验余额 → 上传对象存储 → 按体积扣费 → 返回签名 URL。
 
-    计费规则：0.0005 元/MB，按实际字节数计算（保留 6 位小数）；仅在对象存储上传成功后扣费，
-    扣费失败只记日志，不影响本次上传结果。
+    计费规则：0.005 元/MB，按实际字节数计算（保留 6 位小数）；扣费在上传成功后进行，
+    扣费失败只记日志，不影响本次上传结果。余额不足以覆盖本次费用时直接拒绝，
+    避免服务端「余额不足不再透支」后仍能免费上传。
 
     Args:
         file: 客户端上传的文件（multipart/form-data 的 file 字段）
@@ -141,8 +147,8 @@ def upload_file(file: UploadFile, api_key: Optional[str] = None) -> dict:
     """
     tmp_path: Optional[str] = None
     try:
-        # 校验 apiKey 与余额门槛（余额需大于 1，与 gen_video 一致），在接收文件之前拦截
-        _ensure_api_key(api_key)
+        # 校验 apiKey 与余额门槛（余额需大于 0，与 gen_video 一致），在接收文件之前拦截
+        balance = _ensure_api_key(api_key)
 
         if not file.filename:
             raise CustomException(CustomError.INVALID_FILE_NAME)
@@ -160,6 +166,14 @@ def upload_file(file: UploadFile, api_key: Optional[str] = None) -> dict:
 
         size_mb = size / (1024 * 1024)
         cost = round(size_mb * UPLOAD_PRICE_PER_MB, 6)
+
+        # 扣费接口已改为「余额不足直接拒绝、不再透支」。这里在真正的对象存储上传前
+        # 按精确费用再校验一次，避免余额大于 0 但不够本次费用时白用一次上传。
+        if balance is not None and balance < cost:
+            raise CustomException(
+                CustomError.INSUFFICIENT_ACCOUNT_BALANCE,
+                detail=f"当前余额 {balance:.6f} 元，本次上传需要 {cost:.6f} 元"
+            )
 
         # 签名下载 URL 的有效期与草稿成片一致，共用 config.VIDEO_GEN_RETENTION_DAYS
         expire_days = config.VIDEO_GEN_RETENTION_DAYS
