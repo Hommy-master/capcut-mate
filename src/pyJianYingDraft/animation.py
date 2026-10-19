@@ -92,6 +92,54 @@ class Text_animation(Animation):
 
         self.is_video_animation = False
 
+class TemplateAnimation:
+    """文字模板内嵌的动画
+
+    与`Text_animation`不同, 模板动画没有独立的effect_id和名称, 只能通过模板资源包
+    里的`resource_id`引用, 因而单列一类, 避免混入标准文字动画目录。
+    """
+
+    animation_type: str
+    """动画类型, 模板目前只使用入场动画"""
+    start: int
+    """动画相对片段开头的偏移, 单位为微秒"""
+    duration: int
+    """动画持续时间, 单位为微秒"""
+    resource_id: str
+    """模板资源包内的动画资源id"""
+    path: str
+    """本机缓存路径, 留空时由剪映按resource_id拉取"""
+
+    is_template_animation: bool = True
+    """标记为模板自带动画, 用户显式指定的入场动画会替换它"""
+
+    def __init__(self, *, animation_type: str = "in", start: int = 0,
+                 duration: int = 0, resource_id: str = "", path: str = ""):
+        self.animation_type = animation_type
+        self.start = start
+        self.duration = duration
+        self.resource_id = resource_id
+        self.path = path
+
+    def export_json(self) -> Dict[str, Any]:
+        return {
+            "anim_adjust_params": None,
+            "category_id": "",
+            "category_name": "",
+            "duration": self.duration,
+            "id": "",
+            "material_type": "sticker",
+            "name": "",
+            "panel": "",
+            "path": self.path,
+            "platform": "all",
+            "request_id": "",
+            "resource_id": self.resource_id,
+            "start": self.start,
+            "type": self.animation_type,
+        }
+
+
 class SegmentAnimations:
     """附加于某素材上的一系列动画
 
@@ -114,7 +162,7 @@ class SegmentAnimations:
                 return Timerange(animation.start, animation.duration)
         return None
 
-    def add_animation(self, animation: Union[VideoAnimation, Text_animation]) -> None:
+    def add_animation(self, animation: Union[VideoAnimation, Text_animation, TemplateAnimation]) -> None:
         # 不允许添加超过一个同类型的动画（如两个入场动画）
         if animation.animation_type in [ani.animation_type for ani in self.animations]:
             raise ValueError(f"当前片段已存在类型为 '{animation.animation_type}' 的动画")

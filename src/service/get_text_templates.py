@@ -2,9 +2,11 @@
 文字模板(剪映「文字模板」)标识符解析的业务逻辑处理模块
 
 模板清单维护在 config/text_template.json，字段为 id/title/is_vip/category_id/
-category_name。模板素材本机缓存相关的字段(path/resources/装饰贴纸等)无法在本
-服务侧得知，由剪映按 effect_id/resource_id 自行拉取；若需要精确复刻某个模板，
-可在配置项的 "material" 字段中原样覆写这些字段。
+category_name，以及可选的 resources/animation/material。模板自带的动画必须写入
+片段的 sticker_animation 素材，且模板资源清单(resources)需要提供给剪映，否则
+剪映不会加载动画资源；这两项无法从 effect_id 推导，只能按模板补录。path 可留空，
+由剪映按 resource_id 拉取。若需要精确复刻某个模板，可在 "material" 字段中原样
+覆写模板素材的其它字段(如装饰贴纸)。
 
 注意 id 即剪映的 effect_id/resource_id，两者同值；is_vip 仅作筛选标记，未购买
 的 VIP 模板在剪映侧可能无法渲染。
@@ -29,12 +31,17 @@ def _normalize_text_template(item: Dict[str, Any]) -> Dict[str, Any]:
     """将配置项标准化为 resolve_text_template 的返回格式"""
     resource_id = str(item.get("id", "") or "")
     extra_material = item.get("material")
+    resources = item.get("resources")
+    animation = item.get("animation")
     return {
         "effect_id": resource_id,
         "resource_id": resource_id,
         "name": item.get("title", "") or "",
         "category_id": str(item.get("category_id", "") or ""),
         "category_name": item.get("category_name", "") or "",
+        "resources": [dict(resource) for resource in resources
+                      if isinstance(resource, dict)] if isinstance(resources, list) else [],
+        "animation": dict(animation) if isinstance(animation, dict) else None,
         "extra_material": dict(extra_material) if isinstance(extra_material, dict) else {},
     }
 
@@ -131,6 +138,8 @@ def resolve_text_template(template_identifier: str) -> Optional[Dict[str, Any]]:
             "name": "",
             "category_id": "",
             "category_name": "",
+            "resources": [],
+            "animation": None,
             "extra_material": {},
         }
 

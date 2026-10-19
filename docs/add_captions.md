@@ -147,7 +147,7 @@ If `text_effect` resolves to a valid effect, the API resets `text_color` to `#ff
 
 `text_template` applies a JianYing 文字模板 (a bundled preset of font, colors, stroke, decorative stickers and intro animation). The value is either the template name (Chinese) or its `effect_id`; a numeric value not present in the mapping table is passed through as an `effect_id`.
 
-The catalog lives in `config/text_template.json` and currently holds **5166** templates (4668 distinct names), with fields `id` (the `effect_id`/`resource_id` — the same value), `title`, `is_vip`, `category_id` and `category_name`. The list is community-sourced and can be edited freely.
+The catalog lives in `config/text_template.json` and currently holds **5166** templates (4668 distinct names), with fields `id` (the `effect_id`/`resource_id` — the same value), `title`, `is_vip`, `category_id` and `category_name`, plus two optional fields: `resources` (the template resource manifest) and `animation` (the template's built-in intro animation). The list is community-sourced and can be edited freely.
 
 - **Top-level vs per-caption**: the top-level `text_template` is the default for the whole batch; a per-caption `text_template` takes precedence.
 - **Mutually exclusive with text effects**: when both `text_effect` and `text_template` are supplied, the **template wins** and `text_effect` is ignored (a warning is logged). The template owns the segment's material identity while the effect owns `styles[0].effectStyle`, so applying both has undefined rendering.
@@ -155,7 +155,7 @@ The catalog lives in `config/text_template.json` and currently holds **5166** te
 - **Draft structure**: for a templated caption the segment's `material_id` points at the template material in `materials.text_templates`, while the text material is still written to `materials.texts` and linked back via the template's `text_info_resources[].text_material_id`. The returned `text_ids` remain **text material** ids.
 - **Duplicate names**: the catalog contains 498 duplicate names (e.g. 41 templates called `我的水印`). A name lookup always resolves to the **first matching entry** in the config; pass the `effect_id` when you need an exact template.
 - **VIP templates**: 4735 of the 5166 templates are VIP (`is_vip: true`). A VIP template the account has not purchased may not render in JianYing — callers should ensure entitlement; the `is_vip` field is available for filtering.
-- **Known limitations**: template resources (local cache paths, decorative stickers) are fetched by JianYing itself using the `effect_id`; only a template's **single text slot** is supported for now.
+- **Intro animation and resource manifest**: a template's built-in intro animation does not appear from `effect_id` alone. Add `resources` (including the `panel: "text"` animation resource) and `animation` (`type`/`duration`/`resource_id`) to the catalog entry; the generator then writes it into the segment's `sticker_animation` material. `path` may be left empty — JianYing fetches by `resource_id`. Templates without these fields still render text, but without the template animation. Only a template's **single text slot** is supported for now.
 
 ### Notes on text_bubble
 

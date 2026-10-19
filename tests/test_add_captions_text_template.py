@@ -145,7 +145,15 @@ def test_text_template_material_structure():
     assert template["platform"] == "all"
     assert template["source_platform"] == 1
     assert template["non_text_info_resources"] == []
-    assert template["resources"] == []
+    # 模板资源清单随配置写入，path 留空由剪映按 resource_id 拉取
+    assert [resource["panel"] for resource in template["resources"]] == [
+        "default", "sticker", "fonts", "text"
+    ]
+    assert all(resource["path"] == "" for resource in template["resources"])
+    assert [resource["resource_id"] for resource in template["resources"]] == [
+        "7383613020657749300", "6764189482871689742",
+        "7035906361040835079", "7074854080388010532",
+    ]
 
     # 片段指向模板素材，而非文本素材
     seg_json = segment.export_json()
@@ -165,6 +173,32 @@ def test_text_template_material_structure():
     assert resources[0]["extra_material_refs"] == seg_json["extra_material_refs"]
     assert resources[0]["attach_info"]["duration"] == 3_000_000
     assert resources[0]["attach_info"]["start_time"] == 0
+
+    # 模板自带的入场动画写入 sticker_animation 素材
+    animations = segment.animations_instance.export_json()["animations"]
+    assert len(animations) == 1
+    assert animations[0]["type"] == "in"
+    assert animations[0]["resource_id"] == "7074854080388010532"
+    assert animations[0]["start"] == 0
+    assert animations[0]["duration"] == 500_000
+    assert animations[0]["path"] == ""
+
+
+def test_explicit_in_animation_overrides_template_animation():
+    """用户显式指定的入场动画优先于模板自带动画，且不会触发同类型冲突。"""
+    script = _build_script()
+    _, segment = _add_caption(
+        script,
+        caption_extra={"in_animation": "右上弹入", "in_animation_duration": 300_000},
+        text_template=TEMPLATE_ID,
+    )
+
+    animations = segment.animations_instance.export_json()["animations"]
+    assert len(animations) == 1
+    # 标准文字动画带 effect_id，模板动画的 id 为空
+    assert animations[0]["id"] == "1621978"
+    assert animations[0]["resource_id"] == "7074854080388010532"
+    assert animations[0]["duration"] == 300_000
 
 
 def test_text_template_via_name_and_per_caption():

@@ -1108,7 +1108,7 @@
 {"id": "7586556821595393305", "title": "喜迎元旦", "is_vip": true, "category_id": "10701", "category_name": "节日"},
 {"id": "7494189179245448472", "title": "嗨爽开趴", "is_vip": true, "category_id": "10692", "category_name": "美食"},
 {"id": "7647147021639404825", "title": "嗨起来", "is_vip": true, "category_id": "5914896", "category_name": "⚽️世界杯"},
-{"id": "7383613902744980770", "title": "嘎嘎香！红色 简约 美食 情绪表达 字幕", "is_vip": true, "category_id": "10577", "category_name": "热门"},
+{"id": "7383613902744980770", "title": "嘎嘎香！红色 简约 美食 情绪表达 字幕", "is_vip": true, "category_id": "10577", "category_name": "热门", "resources": [{"panel": "default", "path": "", "resource_id": "7383613020657749300", "source_platform": 1}, {"panel": "sticker", "path": "", "resource_id": "6764189482871689742", "source_platform": 0}, {"panel": "fonts", "path": "", "resource_id": "7035906361040835079", "source_platform": 0}, {"panel": "text", "path": "", "resource_id": "7074854080388010532", "source_platform": 0}], "animation": {"type": "in", "start": 0, "duration": 500000, "resource_id": "7074854080388010532", "path": ""}},
 {"id": "7480784409369693465", "title": "回到2000年", "is_vip": true, "category_id": "11509", "category_name": "复古"},
 {"id": "7577652731490471230", "title": "回忆加载中", "is_vip": true, "category_id": "10689", "category_name": "片头标题"},
 {"id": "7526507971128479001", "title": "回购率爆表榜单", "is_vip": true, "category_id": "10678", "category_name": "🛍️电商"},

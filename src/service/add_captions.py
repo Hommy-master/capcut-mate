@@ -803,6 +803,8 @@ def add_caption_to_draft(
                     name=resolved_template.get('name', ''),
                     category_id=resolved_template.get('category_id', ''),
                     category_name=resolved_template.get('category_name', ''),
+                    resources=resolved_template.get('resources'),
+                    animation=resolved_template.get('animation'),
                     extra_material=resolved_template.get('extra_material'),
                 )
                 logger.info(

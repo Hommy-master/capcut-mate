@@ -10,7 +10,7 @@ from typing import Union, Optional, Literal
 
 from .time_util import Timerange, tim
 from .segment import ClipSettings, VisualSegment
-from .animation import SegmentAnimations, Text_animation
+from .animation import SegmentAnimations, TemplateAnimation, Text_animation
 
 from .metadata import FontType, EffectMeta
 from .metadata import TextIntro, TextOutro, TextLoopAnim
@@ -392,17 +392,25 @@ class TextTemplateRef:
     """模板分类id"""
     category_name: str
     """模板分类名称"""
+    resources: List[Dict[str, Any]]
+    """模板资源清单(面板/path/resource_id), 剪映据此按resource_id拉取资源"""
+    animation: Optional[Dict[str, Any]]
+    """模板自带的入场动画参数, 写入片段的sticker_animation素材"""
     extra_material: Dict[str, Any]
     """需要原样写入模板素材的额外字段, 由配置提供"""
 
     def __init__(self, effect_id: str, *, name: str = "", category_id: str = "",
-                 category_name: str = "", extra_material: Optional[Dict[str, Any]] = None):
+                 category_name: str = "", resources: Optional[List[Dict[str, Any]]] = None,
+                 animation: Optional[Dict[str, Any]] = None,
+                 extra_material: Optional[Dict[str, Any]] = None):
         """
         Args:
             effect_id (`str`): 文字模板的effect_id, 也同时是其resource_id
             name (`str`, optional): 模板名称, 默认为空
             category_id (`str`, optional): 模板分类id, 默认为空
             category_name (`str`, optional): 模板分类名称, 默认为空
+            resources (`List[Dict[str, Any]]`, optional): 模板资源清单, 默认不写
+            animation (`Dict[str, Any]`, optional): 模板自带的入场动画参数, 默认无
             extra_material (`Dict[str, Any]`, optional): 原样写入模板素材的额外字段
         """
         self.effect_id = effect_id
@@ -410,6 +418,8 @@ class TextTemplateRef:
         self.name = name
         self.category_id = category_id
         self.category_name = category_name
+        self.resources = [dict(item) for item in resources] if resources else []
+        self.animation = dict(animation) if animation else None
         self.extra_material = dict(extra_material) if extra_material else {}
 
 class TextShadow:
@@ -564,6 +574,8 @@ class TextSegment(VisualSegment):
                 name=template.text_template.name,
                 category_id=template.text_template.category_id,
                 category_name=template.text_template.category_name,
+                resources=template.text_template.resources,
+                animation=template.text_template.animation,
                 extra_material=template.text_template.extra_material,
             )
 
@@ -589,6 +601,12 @@ class TextSegment(VisualSegment):
         duration = min(tim(duration), self.target_timerange.duration)
 
         if isinstance(animation_type, TextIntro):
+            # 用户显式指定的入场动画优先于模板自带动画
+            self.animations_instance.animations = [
+                animation for animation in self.animations_instance.animations
+                if not (animation.animation_type == "in"
+                        and getattr(animation, "is_template_animation", False))
+            ]
             start = 0
         elif isinstance(animation_type, TextOutro):
             start = self.target_timerange.duration - duration
@@ -674,6 +692,8 @@ class TextSegment(VisualSegment):
 
     def add_text_template(self, effect_id: str, *, name: str = "", category_id: str = "",
                           category_name: str = "",
+                          resources: Optional[List[Dict[str, Any]]] = None,
+                          animation: Optional[Dict[str, Any]] = None,
                           extra_material: Optional[Dict[str, Any]] = None) -> "TextSegment":
         """为文本片段套用剪映「文字模板」
 
@@ -686,13 +706,49 @@ class TextSegment(VisualSegment):
             name (`str`, optional): 模板名称, 默认为空
             category_id (`str`, optional): 模板分类id, 默认为空
             category_name (`str`, optional): 模板分类名称, 默认为空
+            resources (`List[Dict[str, Any]]`, optional): 模板资源清单(panel/path/
+                resource_id), 剪映据此拉取模板资源; 不提供则模板自带的动画等资源
+                无法加载
+            animation (`Dict[str, Any]`, optional): 模板自带的入场动画参数
+                (type/start/duration/resource_id/path), 默认无
             extra_material (`Dict[str, Any]`, optional): 原样写入模板素材的额外字段
-                (如剪映本机缓存path/resources), 默认不写
+                (如装饰贴纸等), 默认不写
         """
         self.text_template = TextTemplateRef(
             effect_id, name=name, category_id=category_id,
-            category_name=category_name, extra_material=extra_material)
+            category_name=category_name, resources=resources,
+            animation=animation, extra_material=extra_material)
+        self._apply_template_animation()
         return self
+
+    def _apply_template_animation(self) -> None:
+        """把模板自带的动画追加到片段的sticker_animation素材
+
+        用户显式调用`add_animation`时由后者替换模板动画, 见`add_animation`。
+        """
+        if self.text_template is None or not self.text_template.animation:
+            return
+        animation = self.text_template.animation
+        resource_id = str(animation.get("resource_id", "") or "")
+        animation_type = str(animation.get("type", "in") or "in")
+        if not resource_id:
+            return
+        if self.animations_instance.get_animation_trange(animation_type) is not None:
+            return
+
+        start = max(0, int(animation.get("start", 0) or 0))
+        duration = min(int(animation.get("duration", 500000) or 0),
+                       max(0, self.target_timerange.duration - start))
+        if duration <= 0:
+            return
+
+        self.animations_instance.add_animation(TemplateAnimation(
+            animation_type=animation_type,
+            start=start,
+            duration=duration,
+            resource_id=resource_id,
+            path=str(animation.get("path", "") or ""),
+        ))
 
     def export_json(self) -> Dict[str, Any]:
         """导出轨道片段 JSON，对齐剪映官方文本片段字段。"""
@@ -988,7 +1044,9 @@ class TextSegment(VisualSegment):
             "platform": "all",
             "request_id": "",
             "resource_id": self.text_template.effect_id,
-            "resources": [],
+            # 资源清单让剪映按resource_id拉取模板自带的字体/贴纸/动画资源;
+            # path可留空, 不依赖创建者本机缓存
+            "resources": [dict(resource) for resource in self.text_template.resources],
             "source_platform": 1,
             "text_info_resources": [
                 {
