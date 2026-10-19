@@ -5,6 +5,10 @@ const logger = require('./nodeapi/logger');
 // 引入IPC处理程序模块，OK
 const { setupIpcHandlers } = require('./nodeapi/ipcHandlers');
 const { attachEditContextMenu } = require('./nodeapi/editContextMenu');
+const {
+  isPermissionError,
+  getMacPrivacySettingsUrl,
+} = require('./nodeapi/filePermission');
 
 // Windows 任务栏 / 快捷方式图标依赖 AppUserModelId，需与 electron-builder appId 一致
 if (process.platform === 'win32') {
@@ -86,17 +90,24 @@ function createWindow() {
 // 处理未捕获的异常，特别是与文件权限相关的错误
 process.on('uncaughtException', (error) => {
   logger.error('未捕获的异常:', error);
-  
-  // 在 macOS 沙箱环境下，某些权限错误可能在这里捕获
-  if (process.platform === 'darwin' && error.message && 
-      (error.message.includes('Operation not permitted') || error.message.includes('EPERM'))) {
-    dialog.showMessageBoxSync({
+
+  if (process.platform === 'darwin' && isPermissionError(error)) {
+    const response = dialog.showMessageBoxSync({
       type: 'error',
-      title: '权限错误',
-      message: '应用缺少必要的文件访问权限，请检查系统偏好设置中的隐私与安全性设置。',
-      detail: '请在 系统偏好设置 > 安全性与隐私 > 隐私 > 文件夹访问 中允许本应用访问相关文件夹。',
-      buttons: ['确定']
+      title: '需要文件夹访问权限',
+      message: '剪映小助手没有写入剪映草稿目录的权限。',
+      detail:
+        '请在「系统设置 → 隐私与安全性 → 文件与文件夹」中允许「剪映小助手」访问「影片」文件夹，然后重试。',
+      buttons: ['打开系统设置', '取消'],
+      defaultId: 0,
+      cancelId: 1,
+      noLink: true,
     });
+    if (response === 0) {
+      shell
+        .openExternal(getMacPrivacySettingsUrl('files'))
+        .catch((err) => logger.warn('打开系统设置失败:', err.message));
+    }
   }
 });
 

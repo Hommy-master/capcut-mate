@@ -7,8 +7,18 @@ const { detectJianyingDraftRoot } = require("./draftPathDetect");
 const { v4: uuidv4 } = require('uuid');
 const { downloadBinaryToFile } = require("./resumableDownload");
 const draftPaths = require("./draftPaths");
+const {
+  isPermissionError,
+  getMacProtectedFolderName,
+  probeWriteAccess,
+  probeReadAccess,
+  getMacPrivacySettingsUrl,
+} = require("./filePermission");
 
 const RECORD_MAX = 500;
+
+/** 下载失败是因为没有目标目录写入权限（macOS TCC 或文件系统 ACL） */
+const DRAFT_PERMISSION_DENIED = "DRAFT_PERMISSION_DENIED";
 
 const LOG_MAX = 2000;
 
@@ -324,6 +334,9 @@ function getRetryDelayMs(error, failedAttempt) {
 function isRetryableDownloadError(error, attempt = 1) {
   if (!error) return false;
 
+  // 权限错误重试多少次都不会成功，反而会拖慢失败反馈
+  if (isPermissionError(error)) return false;
+
   const status = getHttpStatusFromError(error);
   if (status !== null) {
     return RETRYABLE_TRANSIENT_HTTP_STATUSES.has(status);
@@ -563,6 +576,8 @@ async function downloadOneRemoteMaterial(
     await logFileDownloadStatus(parentWindow, logMeta, "error");
     tracker.recordFailure();
     logger.error(`[error] 下载URL素材失败，已达到重试上限: ${sourceUrl}`, err);
+    // 权限问题要让上层立即中止整批下载，而不是继续下载其余文件
+    if (isPermissionError(err)) throw err;
     item.path = cache.get(sourceUrl) || item.path;
   }
 }
@@ -624,6 +639,7 @@ async function localizeRemoteMaterialPaths(
             return localPath;
           } catch (err) {
             logger.error(`[error] 下载URL素材失败: ${sourceUrl}`, err);
+            if (isPermissionError(err)) throw err;
             return cache.get(sourceUrl) || sourceUrl;
           }
         })();
@@ -868,27 +884,97 @@ async function getDraftUrls(remoteUrl, parentWindow) {
   }
 }
 
+/**
+ * 构造「没有草稿目录写入权限」的统一返回值，渲染层据此弹出授权引导。
+ */
+function buildDraftPermissionResult(targetDirectory) {
+  const folderName = getMacProtectedFolderName(targetDirectory);
+  const isMac = process.platform === "darwin";
+  const message = isMac
+    ? `无法写入剪映草稿目录：macOS 未授予${folderName ? `「${folderName}」` : ""}文件夹访问权限`
+    : `无法写入剪映草稿目录：${targetDirectory}`;
+  return {
+    success: false,
+    code: DRAFT_PERMISSION_DENIED,
+    platform: process.platform,
+    targetDirectory: targetDirectory || "",
+    protectedFolder: folderName,
+    message,
+  };
+}
+
+/**
+ * 检测草稿目录权限。授权弹窗会高频轮询，这里用只读探测，
+ * 避免反复往剪映草稿根目录写入临时文件；下载前另有真实写入预检。
+ */
+async function checkDraftDirectoryPermission(targetDirectory) {
+  if (!targetDirectory) {
+    return {
+      ok: false,
+      permissionDenied: false,
+      code: "NO_TARGET_DIRECTORY",
+      platform: process.platform,
+      targetDirectory: "",
+      protectedFolder: "",
+    };
+  }
+  let probe = await probeReadAccess(targetDirectory);
+  // 目录还不存在时只读探测会返回 ENOENT；改用写探针，
+  // 授权完成后顺带把目录建出来，避免引导页一直停在「等待授权」。
+  if (!probe.ok && probe.code === "ENOENT") {
+    probe = await probeWriteAccess(targetDirectory);
+  }
+  return {
+    ...probe,
+    platform: process.platform,
+    protectedFolder: getMacProtectedFolderName(targetDirectory),
+  };
+}
+
+/**
+ * 目录选择场景的权限提示：macOS 上直接提供「打开系统设置」按钮。
+ */
+async function showDirectoryPermissionDialog(parentWindow, { message, detail }) {
+  const isMac = process.platform === "darwin";
+  const options = {
+    type: "error",
+    title: "需要文件夹访问权限",
+    message,
+    detail,
+    buttons: isMac ? ["打开系统设置", "取消"] : ["确定"],
+    defaultId: 0,
+    cancelId: isMac ? 1 : 0,
+    noLink: true,
+  };
+  const result = parentWindow
+    ? await dialog.showMessageBox(parentWindow, options)
+    : await dialog.showMessageBox(options);
+  if (isMac && result.response === 0) {
+    try {
+      await shell.openExternal(getMacPrivacySettingsUrl("files"));
+    } catch (error) {
+      logger.warn("打开系统设置失败:", error.message);
+    }
+  }
+  return result;
+}
+
 async function updateDraftPath(parentWindow) {
   const targetDir = await getTargetDirectory(parentWindow, true);
   if (!targetDir) {
     return { success: false, error: "用户取消了目录选择" };
   }
   try {
-    // 验证目录权限
-    try {
-      await fs.access(targetDir, fs.constants.R_OK | fs.constants.W_OK);
-    } catch (accessError) {
-      logger.error('所选目录无读写权限:', accessError);
-      // 尝试使用 dialog 显示错误消息
-      if (parentWindow) {
-        const { dialog } = require('electron');
-        await dialog.showMessageBox(parentWindow, {
-          type: 'error',
-          title: '权限不足',
-          message: '所选目录没有足够的读写权限，请选择其他目录。',
-          buttons: ['确定']
-        });
-      }
+    // macOS TCC 下 fs.access 可能返回成功但实际写入被拒绝，这里用真实写入验证
+    const writeCheck = await probeWriteAccess(targetDir);
+    if (!writeCheck.ok) {
+      logger.error('所选目录无读写权限:', writeCheck.message);
+      await showDirectoryPermissionDialog(parentWindow, {
+        message: '所选目录无法写入，草稿将无法保存。',
+        detail: writeCheck.permissionDenied && process.platform === 'darwin'
+          ? 'macOS 尚未允许本应用访问该文件夹。请在「系统设置 → 隐私与安全性 → 文件与文件夹」中允许本应用访问后重试。'
+          : `错误信息：${writeCheck.message}`,
+      });
       return { success: false, error: '所选目录没有足够的读写权限' };
     }
 
@@ -923,6 +1009,15 @@ async function getTargetDirectory(parentWindow = null, isUpdate = false) {
       await fs.access(config.targetDirectory, fs.constants.R_OK | fs.constants.W_OK);
       return config.targetDirectory;
     } catch (accessErr) {
+      // macOS TCC 拒绝访问时目录本身仍然存在：
+      // 保留已配置路径，交给下载前预检弹出授权引导，避免把用户打回目录选择框。
+      if (isPermissionError(accessErr)) {
+        logger.warn(
+          "配置的草稿目录被系统拒绝访问，保留路径并等待用户授权:",
+          accessErr.message
+        );
+        return config.targetDirectory;
+      }
       logger.warn(
         "配置的目录已不存在或无访问权限，将清除并尝试自动识别或手动选择。",
         accessErr.message
@@ -939,6 +1034,13 @@ async function getTargetDirectory(parentWindow = null, isUpdate = false) {
         await fs.access(config.targetDirectory, fs.constants.R_OK | fs.constants.W_OK);
         return config.targetDirectory;
       } catch (e) {
+        if (isPermissionError(e)) {
+          logger.warn(
+            "自动识别的草稿目录被系统拒绝访问，保留路径并等待用户授权:",
+            e.message
+          );
+          return config.targetDirectory;
+        }
         logger.warn("自动识别的草稿目录不可读写，将打开目录选择:", e.message);
         delete config.targetDirectory;
         await writeConfig(config);
@@ -962,21 +1064,17 @@ async function getTargetDirectory(parentWindow = null, isUpdate = false) {
 
   if (!result.canceled && result.filePaths.length > 0) {
     const selectedDir = result.filePaths[0];
-    
-    // 再次验证目录权限
-    try {
-      await fs.access(selectedDir, fs.constants.R_OK | fs.constants.W_OK);
-    } catch (accessErr) {
-      logger.error('所选目录无读写权限:', accessErr);
-      if (parentWindow) {
-        const { dialog } = require('electron');
-        await dialog.showMessageBox(parentWindow, {
-          type: 'error',
-          title: '权限不足',
-          message: '所选目录没有足够的读写权限，请重新选择。',
-          buttons: ['确定']
-        });
-      }
+
+    // 再次验证目录权限（真实写入，避免 macOS TCC 下 fs.access 的误判）
+    const writeCheck = await probeWriteAccess(selectedDir);
+    if (!writeCheck.ok) {
+      logger.error('所选目录无读写权限:', writeCheck.message);
+      await showDirectoryPermissionDialog(parentWindow, {
+        message: '所选目录无法写入，草稿将无法保存。',
+        detail: writeCheck.permissionDenied && process.platform === 'darwin'
+          ? 'macOS 尚未允许本应用访问该文件夹。请在「系统设置 → 隐私与安全性 → 文件与文件夹」中允许本应用访问后重试。'
+          : `错误信息：${writeCheck.message}`,
+      });
       return ''; // 返回空字符串表示失败
     }
     
@@ -1282,9 +1380,11 @@ async function downloadFileWithRetry(config, parentWindow, tracker) {
     tracker.recordSuccess();
     logger.info(`[log] file saved to : ${config.filePath}`);
     return true;
-  } catch {
+  } catch (error) {
     await logFileDownloadStatus(parentWindow, logMeta, "error");
     tracker.recordFailure();
+    // 权限错误上抛给批量下载主流程，触发授权引导
+    if (isPermissionError(error)) throw error;
     return false;
   }
 }
@@ -1313,13 +1413,55 @@ async function downloadFiles(
         { level: "error", message: `获取目录失败` },
         parentWindow
       );
-      return;
+      return {
+        success: false,
+        code: "NO_TARGET_DIRECTORY",
+        platform: process.platform,
+        targetDirectory: "",
+        message: "未选择剪映草稿目录，草稿无法保存",
+      };
     }
 
     logger.info("[log] get target dir:", baseTargetDir);
 
     const draftLogId = `draft-${targetId}`;
     const tracker = createDownloadProgressTracker(targetId);
+
+    // 下载前用真实写入预检目录权限：macOS TCC 拦截下 fs.access 可能误报成功
+    const writeCheck = await probeWriteAccess(baseTargetDir);
+    if (!writeCheck.ok) {
+      logger.error(`[perm] 草稿目录不可写: ${baseTargetDir}`, writeCheck.message);
+      if (writeCheck.permissionDenied) {
+        const result = buildDraftPermissionResult(baseTargetDir);
+        const hint =
+          process.platform === "darwin"
+            ? "请在「系统设置 → 隐私与安全性 → 文件与文件夹」中允许本应用访问后重试。"
+            : "请检查目录权限后重试。";
+        await upsertDownloadLog(
+          { id: draftLogId, level: "error", message: `${result.message}，下载已取消` },
+          parentWindow
+        );
+        await appendDownloadLog(
+          { level: "error", message: `${result.message}。${hint}` },
+          parentWindow
+        );
+        return result;
+      }
+
+      const message = `无法写入草稿目录：${writeCheck.message || baseTargetDir}`;
+      await upsertDownloadLog(
+        { id: draftLogId, level: "error", message },
+        parentWindow
+      );
+      await appendDownloadLog({ level: "error", message }, parentWindow);
+      return {
+        success: false,
+        code: "DRAFT_DIRECTORY_UNWRITABLE",
+        platform: process.platform,
+        targetDirectory: baseTargetDir,
+        message,
+      };
+    }
 
     await upsertDownloadLog(
       {
@@ -1331,6 +1473,7 @@ async function downloadFiles(
     );
 
     const materialDownloadCache = new Map();
+    let permissionError = null;
 
     // 2. 遍历远程文件URL数组
     for (let i = 0; i < remoteFileUrls.length; i++) {
@@ -1361,9 +1504,32 @@ async function downloadFiles(
           tracker
         );
       } catch (error) {
+        if (isPermissionError(error)) {
+          permissionError = error;
+          break;
+        }
         logger.error(`[error] 处理文件时发生错误:`, error);
         await markFileDownloadFailed(parentWindow, tracker, fileUrl);
       }
+    }
+
+    // 写入权限在下载过程中丢失（例如用户在系统弹窗里点了「不允许」）：立即中止
+    if (permissionError) {
+      logger.error("[perm] 下载过程中写入被拒绝:", permissionError.message);
+      const result = buildDraftPermissionResult(baseTargetDir);
+      const hint =
+        process.platform === "darwin"
+          ? "请在「系统设置 → 隐私与安全性 → 文件与文件夹」中允许本应用访问后重试。"
+          : "请检查目录权限后重试。";
+      await upsertDownloadLog(
+        { id: draftLogId, level: "error", message: `${result.message}，下载已中止` },
+        parentWindow
+      );
+      await appendDownloadLog(
+        { level: "error", message: `${result.message}。${hint}` },
+        parentWindow
+      );
+      return result;
     }
 
     // 等待渲染进程处理已发送的资源日志，再标记草稿完成，避免 UI 仍显示「下载中」
@@ -1421,10 +1587,32 @@ async function downloadFiles(
     
     return {
       success: failureCount === 0,
+      targetDirectory: baseTargetDir,
       message: `文件批量保存完成，保存至目录: ${jointPath}，${tracker.buildSummaryMessage()}`,
     };
   } catch (error) {
     logger.error(`[error] 批量保存过程发生错误:`, error);
+
+    if (isPermissionError(error)) {
+      const config = await readConfig().catch(() => ({}));
+      const result = buildDraftPermissionResult(config.targetDirectory || "");
+      await upsertDownloadLog(
+        {
+          id: `draft-${targetId}`,
+          level: "error",
+          message: `${result.message}，下载已中止`,
+        },
+        parentWindow
+      );
+      await appendDownloadLog(
+        {
+          level: "error",
+          message: `${result.message}。请在系统设置中授权后重试。`,
+        },
+        parentWindow
+      );
+      return result;
+    }
 
     await upsertDownloadLog(
       {
@@ -1475,9 +1663,13 @@ module.exports = {
 
   downloadFiles,
 
+  checkDraftDirectoryPermission,
+
   checkUrlAccessRight,
 
   readHistoryRecord,
 
   inferExtFromContentType,
+
+  DRAFT_PERMISSION_DENIED,
 };

@@ -43,7 +43,18 @@ contextBridge.exposeInMainWorld('electronAPI', {
     
     // 检测URL是否可访问
     checkUrlAccess: (url) => ipcRenderer.invoke('check-url-access', url),
-    
+
+    // 检测草稿目录写入权限（macOS 授权引导用）
+    checkDraftPermission: (targetDirectory) =>
+        ipcRenderer.invoke('check-draft-permission', targetDirectory),
+
+    // 打开 macOS 隐私设置页：files = 文件与文件夹，full-disk = 完全磁盘访问权限
+    openPrivacySettings: (panel) =>
+        ipcRenderer.invoke('open-privacy-settings', panel),
+
+    // 在访达中显示应用本体
+    revealAppInFinder: () => ipcRenderer.invoke('reveal-app-in-finder'),
+
     getHistoryRecord: () => ipcRenderer.invoke('get-history-record'),
 
     getAppVersion: () => ipcRenderer.invoke('get-app-version'),

@@ -71,6 +71,18 @@ const mockElectronAPI = {
       return { accessible: false };
     }
   },
+  checkDraftPermission: async () => {
+    console.warn('Electron API not available in browser: checkDraftPermission');
+    return { ok: false, permissionDenied: false, code: 'NOT_AVAILABLE', platform: 'browser' };
+  },
+  openPrivacySettings: async () => {
+    console.warn('Electron API not available in browser: openPrivacySettings');
+    return { success: false, error: '隐私设置仅在 macOS 客户端中可用' };
+  },
+  revealAppInFinder: async () => {
+    console.warn('Electron API not available in browser: revealAppInFinder');
+    return { success: false, error: '仅在 macOS 客户端中可用' };
+  },
   getHistoryRecord: async () => {
     console.warn('Electron API not available in browser: getHistoryRecord');
     return [];
@@ -116,6 +128,15 @@ const electronAPI = {
   },
   checkUrlAccess: async (url) => {
     return await window.electronAPI.checkUrlAccess(url);
+  },
+  checkDraftPermission: async (targetDirectory) => {
+    return await window.electronAPI.checkDraftPermission(targetDirectory);
+  },
+  openPrivacySettings: async (panel) => {
+    return await window.electronAPI.openPrivacySettings(panel);
+  },
+  revealAppInFinder: async () => {
+    return await window.electronAPI.revealAppInFinder();
   },
   openExternalUrl: (url) => {
     window.electronAPI.openExternalUrl(url);
