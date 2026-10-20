@@ -157,7 +157,7 @@ POST /openapi/capcut-mate/v1/add_captions
 - **草稿结构**：套用模板的字幕，其片段 `material_id` 指向 `materials.text_templates` 中的模板素材，文本素材仍写入 `materials.texts`，由模板的 `text_info_resources[].text_material_id` 反向关联。接口返回的 `text_ids` 仍是**文本素材** id。
 - **重名如何处理**：清单里有 498 条重名模板（如「我的水印」重名 41 条），按名称调用时固定命中配置中**靠前的一条**。需要精确定位某个模板时请直接传 `effect_id`。
 - **VIP 模板**：5166 个模板中 4735 个为 VIP（`is_vip: true`）。未购买的 VIP 模板在剪映侧可能无法渲染，调用方应自行确保账号有权限；清单中的 `is_vip` 字段可用于筛选。
-- **入场动画与资源清单**：模板自带的入场动画不会仅凭 `effect_id` 自动出现。需要在配置项里补录 `resources`（至少包含 `panel: "text"` 的动画资源）和 `animation`（`type`/`duration`/`resource_id`），生成时才会写入片段的 `sticker_animation` 素材；`path` 可留空，由剪映按 `resource_id` 拉取。仅补录文字样式的模板仍可正常显示文字，但没有模板动画。目前每个字幕只支持模板的**单个文本槽**。
+- **入场动画与资源清单**：模板自带的入场动画不会仅凭 `effect_id` 自动出现。需要在配置项里补录 `resources`（至少包含 `panel: "text"` 的动画资源）和 `animation`（`type`/`duration`/`resource_id`），生成时才会写入片段的 `sticker_animation` 素材；`path` 可留空，由剪映按 `resource_id` 拉取。仅补录文字样式的模板仍可正常显示文字，但没有模板动画。本机已有剪映缓存时，可用 `tools/extract_text_template_cache.py` 从 `artistEffect` 缓存批量补录这两个字段。目前每个字幕只支持模板的**单个文本槽**。
 
 #### 气泡
 
