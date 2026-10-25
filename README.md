@@ -274,7 +274,7 @@ npm start
 | Type | Method | Description |
 |------|--------|-------------|
 | 📱 WeChat Group | <div align="center"><img src="./assets/wechat-q.jpg" width="200" alt="Jianying Assistant"></div> | Open Source Community Discussion Group |
-| 💬 WeChat | <div align="center"><img src="./assets/wechat.jpg" width="120" alt="WeChat QR code"></div> | Business Cooperation |
+| 💬 WeChat | <div align="center"><img src="./assets/wechat.png" width="120" alt="WeChat QR code"></div> | Business Cooperation |
 | 📧 Email | taohongmin51@gmail.com | Technical Support |
 
 ---
