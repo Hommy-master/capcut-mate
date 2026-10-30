@@ -134,6 +134,8 @@ def add_captions(
     captions: str,
     text_color: str = "#ffffff",
     border_color: Optional[str] = None,
+    border_alpha: float = 1.0,
+    border_width: float = 40.0,
     alignment: int = 1,
     alpha: float = 1.0,
     font: Optional[str] = None,
@@ -187,6 +189,8 @@ def add_captions(
             ]
         text_color: 文本颜色（十六进制），默认"#ffffff"
         border_color: 边框颜色（十六进制），默认 None
+        border_alpha: 描边不透明度（0.0-1.0），默认 1.0
+        border_width: 描边宽度，与剪映中一致，取值范围[0, 100]，默认 40.0
         alignment: 文本对齐方式，0左/1中/2右（横排），3垂直居中/4垂直左/5垂直右（竖排），默认 1
         alpha: 文本透明度（0.0-1.0），默认 1.0
         font: 字体名称，默认 None
@@ -231,6 +235,7 @@ def add_captions(
     # 记录函数入口参数，便于调试
     logger.info(f"add_captions started, draft_url: {draft_url}")
     logger.debug(f"Function parameters - text_color: {text_color}, border_color: {border_color}, "
+                 f"border_alpha: {border_alpha}, border_width: {border_width}, "
                  f"alignment: {alignment}, alpha: {alpha}, font: {font}, font_size: {font_size}, "
                  f"line_max_width: {line_max_width}, "
                  f"scale_x: {scale_x}, scale_y: {scale_y}, transform_x: {transform_x}, transform_y: {transform_y}, "
@@ -273,6 +278,8 @@ def add_captions(
                     caption=caption,
                     text_color=text_color,
                     border_color=border_color,
+                    border_alpha=border_alpha,
+                    border_width=border_width,
                     alignment=alignment,
                     alpha=alpha,
                     font=font,
@@ -335,6 +342,8 @@ async def add_captions_async(
     captions: str,
     text_color: str = "#ffffff",
     border_color: Optional[str] = None,
+    border_alpha: float = 1.0,
+    border_width: float = 40.0,
     alignment: int = 1,
     alpha: float = 1.0,
     font: Optional[str] = None,
@@ -373,6 +382,8 @@ async def add_captions_async(
         captions: JSON 字符串，包含字幕信息列表，详见 add_captions 函数
         text_color: 文本颜色（十六进制），默认"#ffffff"
         border_color: 边框颜色（十六进制），默认 None
+        border_alpha: 描边不透明度（0.0-1.0），默认 1.0
+        border_width: 描边宽度，与剪映中一致，取值范围[0, 100]，默认 40.0
         alignment: 文本对齐方式，0左/1中/2右（横排），3垂直居中/4垂直左/5垂直右（竖排），默认 1
         alpha: 文本透明度（0.0-1.0），默认 1.0
         font: 字体名称，默认 None
@@ -439,6 +450,8 @@ async def add_captions_async(
             captions=captions,
             text_color=text_color,
             border_color=border_color,
+            border_alpha=border_alpha,
+            border_width=border_width,
             alignment=alignment,
             alpha=alpha,
             font=font,
@@ -475,6 +488,8 @@ def add_caption_to_draft(
     caption: dict,
     text_color: str = "#ffffff",
     border_color: Optional[str] = None,
+    border_alpha: float = 1.0,
+    border_width: float = 40.0,
     alignment: int = 1,
     alpha: float = 1.0,
     font: Optional[str] = None,
@@ -525,6 +540,8 @@ def add_caption_to_draft(
             loop_animation_duration: 循环动画时长，可选
         text_color: 文本颜色（十六进制），默认"#ffffff"
         border_color: 边框颜色（十六进制），默认 None
+        border_alpha: 描边不透明度（0.0-1.0），默认 1.0
+        border_width: 描边宽度，与剪映中一致，取值范围[0, 100]，默认 40.0
         alignment: 文本对齐方式，0左/1中/2右（横排），3垂直居中/4垂直左/5垂直右（竖排），默认 1
         alpha: 文本透明度（0.0-1.0），默认 1.0
         font: 字体名称，默认 None
@@ -702,7 +719,11 @@ def add_caption_to_draft(
         text_border = None
         if border_color:
             border_rgb_color = hex_to_rgb(border_color)
-            text_border = TextBorder(color=border_rgb_color)
+            text_border = TextBorder(
+                alpha=border_alpha,
+                color=border_rgb_color,
+                width=border_width,
+            )
         
         # 5. 创建字体（如果提供了font）
         font_type = None
@@ -908,6 +929,8 @@ def add_caption_to_draft(
                         hex_to_rgb(border_color) if border_color else None
                     ),
                     keyword_font_meta=keyword_font_meta,
+                    border_alpha=border_alpha,
+                    border_width=border_width,
                 )
             else:
                 apply_keyword_highlight(
@@ -917,6 +940,8 @@ def add_caption_to_draft(
                     keyword_font_size,
                     keyword_border_rgb_color,
                     keyword_font_meta=keyword_font_meta,
+                    border_alpha=border_alpha,
+                    border_width=border_width,
                 )
 
             logger.info(
@@ -1033,6 +1058,11 @@ def _font_style_json(font_meta) -> Optional[dict]:
     }
 
 
+def _border_width_to_draft(width: float) -> float:
+    """剪映 UI 描边宽度（0-100）→ 草稿 strokes[].width（0-0.2），与 TextBorder 内部换算保持一致。"""
+    return width / 100.0 * 0.2
+
+
 def _build_style_partition(
     start: int,
     end: int,
@@ -1043,6 +1073,8 @@ def _build_style_partition(
     italic: bool,
     underline: bool,
     border_rgb: Optional[tuple] = None,
+    border_alpha: float = 1.0,
+    border_width: float = 40.0,
     shadows: Optional[List[dict]] = None,
     include_shadow_field: bool = False,
     font_meta=None,
@@ -1069,11 +1101,11 @@ def _build_style_partition(
         style["strokes"] = [{
             "content": {
                 "solid": {
-                    "alpha": 1.0,
+                    "alpha": border_alpha,
                     "color": list(border_rgb),
                 }
             },
-            "width": 0.08,
+            "width": _border_width_to_draft(border_width),
         }]
     if include_shadow_field:
         style["shadows"] = list(shadows) if shadows else []
@@ -1093,6 +1125,8 @@ def apply_keyword_partitioned_styles(
     normal_shadows: Optional[List[dict]] = None,
     normal_border_rgb: Optional[tuple] = None,
     keyword_font_meta=None,
+    border_alpha: float = 1.0,
+    border_width: float = 40.0,
 ):
     """
     用互不重叠的 styles 分区表达关键词样式（含可选局部阴影）。
@@ -1122,6 +1156,8 @@ def apply_keyword_partitioned_styles(
                 italic=text_segment.style.italic,
                 underline=text_segment.style.underline,
                 border_rgb=normal_border_rgb,
+                border_alpha=border_alpha,
+                border_width=border_width,
                 shadows=normal_shadows,
                 include_shadow_field=include_shadow_field,
                 font_meta=normal_font,
@@ -1135,6 +1171,8 @@ def apply_keyword_partitioned_styles(
             italic=text_segment.style.italic,
             underline=text_segment.style.underline,
             border_rgb=keyword_border_color,
+            border_alpha=border_alpha,
+            border_width=border_width,
             shadows=keyword_shadows,
             include_shadow_field=include_shadow_field,
             font_meta=keyword_font,
@@ -1151,6 +1189,8 @@ def apply_keyword_partitioned_styles(
             italic=text_segment.style.italic,
             underline=text_segment.style.underline,
             border_rgb=normal_border_rgb,
+            border_alpha=border_alpha,
+            border_width=border_width,
             shadows=normal_shadows,
             include_shadow_field=include_shadow_field,
             font_meta=normal_font,
@@ -1166,6 +1206,8 @@ def apply_keyword_partitioned_styles(
             italic=text_segment.style.italic,
             underline=text_segment.style.underline,
             border_rgb=normal_border_rgb,
+            border_alpha=border_alpha,
+            border_width=border_width,
             shadows=normal_shadows,
             include_shadow_field=include_shadow_field,
             font_meta=normal_font,
@@ -1203,6 +1245,8 @@ def apply_keyword_highlight(
     keyword_has_shadow: bool = False,
     keyword_shadow_info: Optional[dict] = None,
     keyword_font_meta=None,
+    border_alpha: float = 1.0,
+    border_width: float = 40.0,
 ):
     """
     应用关键词高亮到文本片段（颜色 / 字号 / 描边 / 字体）。
@@ -1251,11 +1295,11 @@ def apply_keyword_highlight(
                 highlight_style["strokes"] = [{
                     "content": {
                         "solid": {
-                            "alpha": 1.0,
+                            "alpha": border_alpha,
                             "color": list(keyword_border_color)
                         }
                     },
-                    "width": 0.08
+                    "width": _border_width_to_draft(border_width)
                 }]
 
             if keyword_font_json is not None:

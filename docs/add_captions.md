@@ -11,7 +11,7 @@ POST /openapi/capcut-mate/v1/add_captions
 
 ## Function Description
 
-Batch-add captions to an existing CapCut/Jianying draft. Supports text color, border, alignment, opacity, font, size, letter/line spacing, scale, position, underline/italic/bold, full-text shadow, keyword highlight and keyword shadow, text animations, and text effects (花字).
+Batch-add captions to an existing CapCut/Jianying draft. Supports text color, stroke color/opacity/width, alignment, opacity, font, size, letter/line spacing, scale, position, underline/italic/bold, full-text shadow, keyword highlight and keyword shadow, text animations, and text effects (花字).
 
 ## Request Parameters
 
@@ -23,6 +23,8 @@ Batch-add captions to an existing CapCut/Jianying draft. Supports text color, bo
 | captions | string | ✅ | - | Caption list as a **JSON string** (not a raw JSON array) |
 | text_color | string | ❌ | `"#ffffff"` | Normal text color (hex) |
 | border_color | string | ❌ | `null` | Normal text stroke color (hex); `null` means no stroke |
+| border_alpha | number | ❌ | `1.0` | Stroke opacity in `[0.0, 1.0]`; only takes effect when a stroke color is present, and keyword strokes use it too |
+| border_width | number | ❌ | `40.0` | Stroke width matching the JianYing UI, in `[0.0, 100.0]`; only takes effect when a stroke color is present, and keyword strokes use it too |
 | alignment | integer | ❌ | `1` | Alignment: `0` left, `1` center, `2` right (horizontal); `3` vertical center, `4` vertical left, `5` vertical right (vertical typesetting) |
 | alpha | number | ❌ | `1.0` | Opacity in `[0.0, 1.0]` |
 | font | string | ❌ | `null` | Font name from Supported Fonts below (enum/display/alias also ok); `null` uses default |
@@ -138,6 +140,14 @@ Default background when `has_background=true` without `background_info`:
 | 5 | Vertical right (vertical typesetting + right) |
 
 `alignment` controls in-box typesetting and line alignment, not canvas position. Use `transform_x` / `transform_y` to move captions on screen. Values `3`/`4`/`5` set the draft material `typesetting` to vertical.
+
+### Notes on stroke
+
+`border_color` is the stroke switch: without a color there is no stroke, and `border_alpha` / `border_width` have no effect.
+
+- **Value semantics**: `border_alpha` is opacity in `[0.0, 1.0]`; `border_width` matches the JianYing UI stroke width in `[0.0, 100.0]` (default `40.0`). The service converts it to the draft's `strokes[].width` (`0.0-0.2`) internally — no manual conversion needed.
+- **Keyword strokes**: a stroke drawn from `keyword_border_color` also uses the top-level `border_alpha` / `border_width`. There are currently no per-keyword width/opacity parameters.
+- **With text effects**: a valid text effect resets `border_color` to `null`, so the normal stroke disappears; if a caption still passes `keyword_border_color`, its keyword stroke is drawn with `border_alpha` / `border_width`.
 
 ### Notes on text_effect vs shadow
 
@@ -1429,6 +1439,8 @@ VHS
 
   "text_color": "#ffffff",                     // [Optional] normal text color
   "border_color": "#333333",                   // [Optional] normal stroke color
+  "border_alpha": 1.0,                         // [Optional] stroke opacity [0,1]
+  "border_width": 40.0,                        // [Optional] stroke width matching the JianYing UI [0,100]
   "alignment": 1,                              // [Optional] 0 left / 1 center / 2 right (horizontal); 3/4/5 vertical center/left/right
   "alpha": 1.0,                                // [Optional] opacity [0,1]
   "font": "得意黑",                           // [Optional] font name
@@ -1531,6 +1543,8 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_captions \
     "captions": "[{\"start\":0,\"end\":3000000,\"text\":\"Hello, CapCut captions\",\"keyword\":\"CapCut|captions\",\"keyword_color\":\"#ff7100\",\"keyword_border_color\":\"#000000\",\"keyword_font\":\"思源中宋\",\"keyword_font_size\":22,\"keyword_has_shadow\":true,\"keyword_shadow_info\":{\"shadow_alpha\":0.85,\"shadow_color\":\"#000000\",\"shadow_diffuse\":18.0,\"shadow_distance\":6.0,\"shadow_angle\":-45.0},\"font_size\":18,\"in_animation\":\"向上滑动\",\"out_animation\":\"向下滑动\",\"loop_animation\":\"弹幕滚动\",\"in_animation_duration\":500000,\"out_animation_duration\":500000,\"loop_animation_duration\":1000000},{\"start\":3000000,\"end\":6000000,\"text\":\"Welcome to caption features\",\"keyword\":\"caption\",\"keyword_color\":\"#457616\",\"keyword_border_color\":\"#111111\",\"keyword_font_size\":20,\"keyword_has_shadow\":true,\"keyword_shadow_info\":{\"shadow_alpha\":0.9,\"shadow_color\":\"#000000\",\"shadow_diffuse\":15.0,\"shadow_distance\":5.0,\"shadow_angle\":-45.0},\"font_size\":16,\"in_animation\":\"右上弹入\",\"out_animation\":\"右上弹出\",\"loop_animation\":\"VHS\",\"in_animation_duration\":400000,\"out_animation_duration\":400000,\"loop_animation_duration\":800000}]",
     "text_color": "#ffffff",
     "border_color": "#333333",
+    "border_alpha": 1.0,
+    "border_width": 40.0,
     "alignment": 1,
     "alpha": 1.0,
     "font": "得意黑",
@@ -1568,6 +1582,8 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_captions \
 | captions | JSON string with 2 captions | [Required] Caption content + per-item style/animation/keyword config |
 | text_color | `#ffffff` | [Optional] Normal text color |
 | border_color | `#333333` | [Optional] Normal stroke color |
+| border_alpha | `1.0` | [Optional] Fully opaque stroke |
+| border_width | `40.0` | [Optional] Stroke width (JianYing UI 0-100) |
 | alignment | `1` | [Optional] Center align |
 | alpha | `1.0` | [Optional] Fully opaque |
 | font | `得意黑` | [Optional] Font name |

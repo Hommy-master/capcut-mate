@@ -45,6 +45,12 @@ class AddCaptionsRequest(BaseModel):
     captions: str = Field(default="", description="字幕信息列表, 用JSON字符串表示")
     text_color: str = Field(default="#ffffff", description="文本颜色（十六进制）")
     border_color: Optional[str] = Field(default=None, description="边框颜色（十六进制）")
+    border_alpha: float = Field(
+        default=1.0, ge=0.0, le=1.0, description="描边不透明度（0.0-1.0），仅在传入描边颜色时生效"
+    )
+    border_width: float = Field(
+        default=40.0, ge=0.0, le=100.0, description="描边宽度，与剪映中一致，取值范围为[0, 100]，仅在传入描边颜色时生效"
+    )
     alignment: int = Field(
         default=1,
         ge=0,

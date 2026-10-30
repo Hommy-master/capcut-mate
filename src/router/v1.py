@@ -231,6 +231,8 @@ async def add_captions(acr: AddCaptionsRequest) -> AddCaptionsResponse:
         captions=acr.captions,
         text_color=acr.text_color,
         border_color=acr.border_color,
+        border_alpha=acr.border_alpha,
+        border_width=acr.border_width,
         alignment=acr.alignment,
         alpha=acr.alpha,
         font=acr.font,

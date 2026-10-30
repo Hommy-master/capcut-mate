@@ -11,7 +11,7 @@ POST /openapi/capcut-mate/v1/add_captions
 
 ## 功能描述
 
-向现有草稿中批量添加字幕。该接口用于在指定的时间段内添加字幕到剪映草稿中，支持丰富的字幕样式设置，包括文本颜色、边框颜色、对齐方式、透明度、字体、字体大小、字间距、行间距、缩放、位置、下划线/斜体/加粗、文本阴影、关键词高亮与关键词阴影、文字动画、花字效果等。
+向现有草稿中批量添加字幕。该接口用于在指定的时间段内添加字幕到剪映草稿中，支持丰富的字幕样式设置，包括文本颜色、描边颜色/不透明度/宽度、对齐方式、透明度、字体、字体大小、字间距、行间距、缩放、位置、下划线/斜体/加粗、文本阴影、关键词高亮与关键词阴影、文字动画、花字效果等。
 
 ## 请求参数
 
@@ -23,6 +23,8 @@ POST /openapi/capcut-mate/v1/add_captions
 | captions | string | ✅ | - | 字幕信息列表的 **JSON 字符串**（不是 JSON 数组本身） |
 | text_color | string | ❌ | `"#ffffff"` | 普通字幕文本颜色，十六进制，如 `#ffffff` |
 | border_color | string | ❌ | `null` | 普通字幕描边颜色，十六进制；`null` 表示无描边 |
+| border_alpha | number | ❌ | `1.0` | 描边不透明度，取值范围 `[0.0, 1.0]`；仅在存在描边颜色时生效，关键词描边同样沿用该值 |
+| border_width | number | ❌ | `40.0` | 描边宽度，与剪映 UI 一致，取值范围 `[0.0, 100.0]`；仅在存在描边颜色时生效，关键词描边同样沿用该值 |
 | alignment | integer | ❌ | `1` | 文本对齐方式：`0` 左对齐，`1` 居中，`2` 右对齐（横排）；`3` 垂直居中，`4` 垂直左对齐，`5` 垂直右对齐（竖排） |
 | alpha | number | ❌ | `1.0` | 文本透明度，取值范围 `[0.0, 1.0]`，`1.0` 为不透明 |
 | font | string | ❌ | `null` | 字体名称，须为下方「支持的字体」中的展示名（也支持枚举名/别名）；`null` 使用默认字体 |
@@ -140,6 +142,14 @@ POST /openapi/capcut-mate/v1/add_captions
 | 5 | 垂直右对齐（竖排 + 右对齐） |
 
 `alignment` 控制文本框内的排版方向与行对齐，不会改变字幕在画布上的位置。画面位置请使用 `transform_x` / `transform_y`。`3`/`4`/`5` 会将草稿素材的 `typesetting` 设为竖排。
+
+#### 描边
+
+`border_color` 是描边的开关：不传颜色就不会产生描边，此时 `border_alpha` / `border_width` 不生效。
+
+- **取值语义**：`border_alpha` 为不透明度 `[0.0, 1.0]`；`border_width` 与剪映 UI 的描边宽度一致，取值 `[0.0, 100.0]`，默认 `40.0`。服务内部会把它换算成草稿的 `strokes[].width`（`0.0-0.2`），调用方无需自行换算。
+- **关键词描边**：`keyword_border_color` 画出的关键词描边同样使用接口级 `border_alpha` / `border_width`；关键词目前没有单独的宽度/不透明度参数。
+- **与花字**：有效花字会把 `border_color` 重置为 `null`，普通描边随之消失；若某条字幕另传了 `keyword_border_color`，关键词描边仍会按 `border_alpha` / `border_width` 绘制。
 
 #### 花字与阴影的关系
 
@@ -1459,6 +1469,8 @@ VHS
 
   "text_color": "#ffffff",                     // 【可选】普通文本颜色
   "border_color": "#333333",                   // 【可选】普通文本描边颜色
+  "border_alpha": 1.0,                         // 【可选】描边不透明度 [0,1]
+  "border_width": 40.0,                        // 【可选】描边宽度，与剪映 UI 一致 [0,100]
   "alignment": 1,                              // 【可选】对齐：0左/1中/2右（横排），3垂直居中/4垂直左/5垂直右（竖排）
   "alpha": 1.0,                                // 【可选】透明度 [0,1]
   "font": "得意黑",                           // 【可选】字体名称
@@ -1566,6 +1578,8 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_captions \
     "captions": "[{\"start\":0,\"end\":3000000,\"text\":\"你好，剪映字幕\",\"keyword\":\"剪映|字幕\",\"keyword_color\":\"#ff7100\",\"keyword_border_color\":\"#000000\",\"keyword_font\":\"思源中宋\",\"keyword_font_size\":22,\"keyword_has_shadow\":true,\"keyword_shadow_info\":{\"shadow_alpha\":0.85,\"shadow_color\":\"#000000\",\"shadow_diffuse\":18.0,\"shadow_distance\":6.0,\"shadow_angle\":-45.0},\"font_size\":18,\"in_animation\":\"向上滑动\",\"out_animation\":\"向下滑动\",\"loop_animation\":\"弹幕滚动\",\"in_animation_duration\":500000,\"out_animation_duration\":500000,\"loop_animation_duration\":1000000},{\"start\":3000000,\"end\":6000000,\"text\":\"欢迎使用字幕功能\",\"keyword\":\"字幕\",\"keyword_color\":\"#457616\",\"keyword_border_color\":\"#111111\",\"keyword_font_size\":20,\"keyword_has_shadow\":true,\"keyword_shadow_info\":{\"shadow_alpha\":0.9,\"shadow_color\":\"#000000\",\"shadow_diffuse\":15.0,\"shadow_distance\":5.0,\"shadow_angle\":-45.0},\"font_size\":16,\"in_animation\":\"右上弹入\",\"out_animation\":\"右上弹出\",\"loop_animation\":\"VHS\",\"in_animation_duration\":400000,\"out_animation_duration\":400000,\"loop_animation_duration\":800000}]",
     "text_color": "#ffffff",
     "border_color": "#333333",
+    "border_alpha": 1.0,
+    "border_width": 40.0,
     "alignment": 1,
     "alpha": 1.0,
     "font": "得意黑",
@@ -1603,6 +1617,8 @@ curl -X POST https://capcut-mate.jcaigc.cn/openapi/capcut-mate/v1/add_captions \
 | captions | JSON 字符串（含 2 条字幕） | 【必填】字幕内容与每条字幕的样式/动画/关键词配置 |
 | text_color | `#ffffff` | 【可选】普通文本白色 |
 | border_color | `#333333` | 【可选】普通文本深灰描边 |
+| border_alpha | `1.0` | 【可选】描边完全不透明 |
+| border_width | `40.0` | 【可选】描边宽度（剪映 UI 0-100） |
 | alignment | `1` | 【可选】居中对齐 |
 | alpha | `1.0` | 【可选】完全不透明 |
 | font | `得意黑` | 【可选】字体名称 |
