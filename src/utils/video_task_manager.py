@@ -851,7 +851,7 @@ class VideoGenTaskManager:
                     charge_success = deduct_user_points(
                         api_key=task.api_key,
                         points=cost,
-                        desc=f"剪映草稿导出视频，时长{video_duration:.2f}秒，费用{cost:.2f}元"
+                        desc=f"云渲染，时长{video_duration:.2f}秒，费用{cost:.2f}元"
                     )
                     
                     if charge_success:
