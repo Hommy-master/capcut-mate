@@ -16,9 +16,9 @@ CapCut Mate API is a **completely open-source and free** Jianying draft automati
 Flexible project usage: Can be **independently deployed**, or combined with **Coze or n8n** to build **automated workflows**, and can also connect with Jianying to achieve **cloud rendering**, directly generating final videos from drafts.
 
 ## Project Resources
-- [⭐ Jianying Assistant](https://github.com/Hommy-master/capcut-mate)
+- [⭐ Jianying Assistant Skill](https://github.com/Hommy-master/capcut-mate-skill)
 - [🔌 Jianying Assistant - Coze Plugin](https://www.coze.cn/store/plugin/7576197869707722771)
-- [🔗 Workflow Examples](https://www.jcaigc.cn/cases)
+- [🔗 Cases](https://www.jcaigc.cn/cases)
 
 ⭐ If you find this project helpful, please give us a Star! Your support is the greatest motivation for me to continuously maintain and improve the project 😊
 
@@ -206,11 +206,11 @@ The following are the core interfaces provided by CapCut Mate API, supporting a 
 
 ## API Usage Examples
 
-### Workflow Examples
+### Cases
 
 Explore real-world workflow examples to learn how to integrate CapCut Mate with automation platforms like Coze and n8n:
 
-👉 [View Workflow Examples](https://www.jcaigc.cn/cases)
+👉 [View Cases](https://www.jcaigc.cn/cases)
 
 ### Create Draft
 ```bash

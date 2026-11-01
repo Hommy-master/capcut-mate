@@ -16,9 +16,9 @@ CapCut Mate API 是一款完全**开源免费**、基于 FastAPI构建的剪映�
 项目使用灵活：既可独立部署，也可**结合 Coze 或 n8n自动化工作流**，还能对接剪映实现**云渲染**，直接将草稿生成最终视频。
 
 ## 项目相关资源
-- [⭐ 剪映小助手](https://github.com/Hommy-master/capcut-mate)
+- [⭐ 剪映小助手 Skill](https://github.com/Hommy-master/capcut-mate-skill)
 - [🔌 剪映小助手-扣子插件](https://www.coze.cn/store/plugin/7576197869707722771)
-- [🔗 工作流案例](https://www.jcaigc.cn/cases)
+- [🔗 案例](https://www.jcaigc.cn/cases)
 
 ⭐ 如果您觉得这个项目对您有点帮助，麻烦点个 Star 支持一下！您的支持是我持续维护和改进项目的最大动力 😊
 
@@ -206,11 +206,11 @@ docker-compose pull && docker-compose up -d
 
 ## API 使用示例
 
-### 工作流案例
+### 案例
 
-查看完整的真实工作流案例，了解如何将 CapCut Mate 接口与 Coze、n8n 等自动化平台结合使用：
+查看完整的真实案例，了解如何将 CapCut Mate 接口与 Coze、n8n 等自动化平台结合使用：
 
-👉 [访问工作流案例](https://www.jcaigc.cn/cases)
+👉 [访问案例](https://www.jcaigc.cn/cases)
 
 ### 创建草稿
 ```bash
