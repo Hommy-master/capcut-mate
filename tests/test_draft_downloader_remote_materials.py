@@ -5,7 +5,7 @@ import json
 import os
 import tempfile
 import time
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 import requests
@@ -471,7 +471,7 @@ class TestLocalizeRemoteMaterialPaths:
             assert new_path.endswith(".png")
             assert not new_path.endswith(".image")
             m_dl.assert_called_once_with(
-                url, td, "images", "双行", ".mp4", deadline=None
+                url, td, "images", "双行", ".mp4", deadline=None, abort_event=ANY
             )
 
     @patch.object(
@@ -517,6 +517,30 @@ class TestLocalizeRemoteMaterialPaths:
             assert m_dl.call_args.args[0] == u1
             assert data["materials"]["videos"][0]["path"] == u1
             assert data["materials"]["videos"][1]["path"] == u2
+
+    @patch.object(dd, "_download_remote_material_raising")
+    def test_colliding_material_names_are_disambiguated(self, m_dl) -> None:
+        """不同 URL 使用相同 material_name 时，不能并发写同一个本地文件。"""
+        u1 = "https://cdn.example.com/a.mp4"
+        u2 = "https://cdn.example.com/b.mp4"
+        m_dl.side_effect = ["/tmp/a.mp4", "/tmp/b.mp4"]
+        data = {
+            "materials": {
+                "audios": [],
+                "videos": [
+                    {"path": u1, "material_name": "clip"},
+                    {"path": u2, "material_name": "clip"},
+                ],
+            }
+        }
+        with tempfile.TemporaryDirectory() as td:
+            assert dd.localize_remote_material_paths(data, td) is True
+
+        names = [call.args[3] for call in m_dl.call_args_list]
+        assert len(names) == 2
+        assert len(set(names)) == 2
+        assert "clip" in names
+        assert any(name.startswith("clip_") for name in names)
 
     @patch.object(dd, "_download_remote_material_raising")
     def test_same_url_shared_across_items(self, m_dl) -> None:

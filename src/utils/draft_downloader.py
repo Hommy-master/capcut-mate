@@ -6,14 +6,18 @@ import os
 import re
 import json
 import time
-import shutil
+import hashlib
+import tempfile
+import threading
 import mimetypes
 import requests
 import subprocess
+from concurrent.futures import FIRST_EXCEPTION, ThreadPoolExecutor, wait
+from contextlib import contextmanager
 from dataclasses import dataclass
 from enum import Enum
 from urllib.parse import urlparse, parse_qs
-from typing import Optional, Dict, Any, List, Tuple
+from typing import Callable, Generator, Optional, Dict, Any, List, Tuple
 from src.utils.logger import logger
 from src.utils.deferred_delete import dequeue_path
 from exceptions import CustomError
@@ -63,6 +67,130 @@ def _abort(
     http_status: Optional[int] = None,
 ) -> None:
     raise DraftDownloadAbort(kind, detail=detail, url=url, http_status=http_status)
+
+
+# 单个草稿内同时下载的文件数。草稿里通常只有 1 个视频文件较大，其余是音轨/图片/JSON，
+# 6 路并发能显著缩短总耗时，又不至于把本地磁盘和带宽打满。
+DRAFT_FILE_DOWNLOAD_MAX_CONCURRENT = 6
+
+# 同时下载的草稿数上限（与 VideoGenTaskManager 的下载线程池上限一致）。
+_MAX_CONCURRENT_DRAFT_DOWNLOADS = 3
+
+# 写 draft_content.json 的全局串行锁：远程素材本地化后需要整体重写该文件，
+# 多个草稿并发下载时宁可短暂排队，也不能让两次写入交错。
+_CONTENT_JSON_WRITE_LOCK = threading.RLock()
+
+
+class _DownloadCancelled(DraftDownloadAbort):
+    """同草稿内其它文件已失败，主动中止本次下载；真实失败原因由编排层汇总。"""
+
+    def __init__(self) -> None:
+        super().__init__(
+            DraftDownloadFailureKind.NETWORK_RETRY_EXHAUSTED,
+            detail="download cancelled by another failure",
+        )
+
+
+def _raise_if_cancelled(abort_event: Optional[threading.Event]) -> None:
+    if abort_event is not None and abort_event.is_set():
+        raise _DownloadCancelled()
+
+
+def _run_parallel_downloads(
+    tasks: List[Tuple[str, Callable[[], Any]]],
+    *,
+    max_workers: int,
+    abort_event: threading.Event,
+    thread_name_prefix: str,
+) -> Dict[str, Any]:
+    """
+    同一草稿内并行执行下载任务，key 为 URL（便于日志/去重）。
+
+    任一任务失败会置位 abort_event，让仍在传输的任务在下一个 chunk 处停止；
+    编排层只抛出第一个真实失败，避免把「被中止」误报成用户可见错误。
+    """
+    if not tasks:
+        return {}
+
+    results: Dict[str, Any] = {}
+    first_error: Optional[DraftDownloadAbort] = None
+
+    def _run(key: str, fn: Callable[[], Any]) -> Any:
+        _raise_if_cancelled(abort_event)
+        try:
+            return fn()
+        except _DownloadCancelled:
+            raise
+        except DraftDownloadAbort as exc:
+            abort_event.set()
+            raise
+        except Exception as exc:  # noqa: BLE001 - 统一归类，避免线程内异常丢失
+            abort_event.set()
+            raise DraftDownloadAbort(
+                DraftDownloadFailureKind.RESOURCE_UNAVAILABLE,
+                detail=f"Unexpected error: {exc}",
+                url=key,
+            ) from exc
+
+    with ThreadPoolExecutor(
+        max_workers=max_workers, thread_name_prefix=thread_name_prefix
+    ) as executor:
+        future_by_key = {
+            executor.submit(_run, key, fn): key for key, fn in tasks
+        }
+        done, not_done = wait(future_by_key, return_when=FIRST_EXCEPTION)
+        for future in not_done:
+            future.cancel()
+
+        for future in done:
+            exc = future.exception()
+            if exc is None:
+                results[future_by_key[future]] = future.result()
+            elif isinstance(exc, _DownloadCancelled):
+                continue
+            elif first_error is None:
+                first_error = exc
+
+    if first_error is not None:
+        raise first_error
+    if abort_event.is_set():
+        raise _DownloadCancelled()
+    return results
+
+
+class _DraftDownloadLockRegistry:
+    """按 draft_id 串行化同一草稿的并发下载；引用计数归零后回收，避免常驻增长。"""
+
+    def __init__(self) -> None:
+        self._guard = threading.Lock()
+        self._locks: Dict[str, threading.Lock] = {}
+        self._refs: Dict[str, int] = {}
+
+    @contextmanager
+    def hold(self, draft_id: str) -> Generator[None, None, None]:
+        with self._guard:
+            lock = self._locks.get(draft_id)
+            if lock is None:
+                lock = threading.Lock()
+                self._locks[draft_id] = lock
+            self._refs[draft_id] = self._refs.get(draft_id, 0) + 1
+
+        lock.acquire()
+        try:
+            yield
+        finally:
+            lock.release()
+            with self._guard:
+                remaining = self._refs.get(draft_id, 0) - 1
+                if remaining <= 0:
+                    self._refs.pop(draft_id, None)
+                    self._locks.pop(draft_id, None)
+                else:
+                    self._refs[draft_id] = remaining
+
+
+_DRAFT_DOWNLOAD_LOCKS = _DraftDownloadLockRegistry()
+_DRAFT_DOWNLOAD_SLOTS = threading.BoundedSemaphore(_MAX_CONCURRENT_DRAFT_DOWNLOADS)
 
 
 def format_draft_download_failure_message(
@@ -179,7 +307,9 @@ def _localize_draft_meta_info(target_dir: str, draft_id: str) -> None:
                 url=meta_path,
             )
 
-        root_path = os.path.normpath(config.DRAFT_SAVE_PATH)
+        # 目标目录是 <save_path>/<draft_id>，根目录取父级；
+        # 不依赖全局配置，save_path 由调用方覆盖时也能写对。
+        root_path = os.path.normpath(os.path.dirname(os.path.normpath(target_dir)))
         fold_path = os.path.normpath(target_dir)
         old_name = meta.get("draft_name")
         meta["draft_name"] = draft_id
@@ -584,6 +714,7 @@ def _write_http_body_to_file(
     append: bool,
     deadline: Optional[float] = None,
     url: str = "",
+    abort_event: Optional[threading.Event] = None,
 ) -> None:
     """
     将 HTTP 响应体写入本地文件。
@@ -593,6 +724,7 @@ def _write_http_body_to_file(
 
     这里按 chunk 检查总预算：读写超时只管单次 socket 读写，慢速滴流能无限续期，
     这是唯一能拦住它的地方。中断点落在 chunk 之间，最坏多等一个读超时（30s）。
+    同草稿其它文件失败时 abort_event 置位，同样在 chunk 之间退出，保留半成品供续传。
     """
     parent_dir = os.path.dirname(file_path)
     if parent_dir:
@@ -601,6 +733,7 @@ def _write_http_body_to_file(
     with open(file_path, mode) as out:
         for chunk in response.iter_content(chunk_size=8192):
             _check_download_deadline(deadline, url=url)
+            _raise_if_cancelled(abort_event)
             if chunk:
                 out.write(chunk)
 
@@ -631,13 +764,8 @@ def _resolve_download_target_path(
     return full_file_path, url_draft_id
 
 
-def _is_draft_info_target(file_url: str, target_dir: str) -> bool:
-    full_file_path, _ = _resolve_download_target_path(file_url, target_dir)
-    return os.path.basename(full_file_path) == "draft_info.json"
-
-
 def _sync_draft_info_from_content(target_dir: str) -> bool:
-    """draft_content.json 与 draft_info.json 内容一致，由前者复制生成后者。"""
+    """draft_content.json 与 draft_info.json 内容一致，由前者原子复制生成后者。"""
     content_path = os.path.join(target_dir, "draft_content.json")
     info_path = os.path.join(target_dir, "draft_info.json")
     if not os.path.isfile(content_path):
@@ -647,7 +775,10 @@ def _sync_draft_info_from_content(target_dir: str) -> bool:
         )
         return False
     try:
-        shutil.copy2(content_path, info_path)
+        with open(content_path, "rb") as f:
+            content = f.read()
+        with _CONTENT_JSON_WRITE_LOCK:
+            safe_write_file(info_path, content, is_binary=True)
         logger.info("draft_info.json copied from draft_content.json: %s", info_path)
         return True
     except OSError as e:
@@ -661,50 +792,47 @@ def _sync_draft_info_from_content(target_dir: str) -> bool:
 
 def safe_write_file(file_path: str, file_content: bytes, is_binary: bool = True):
     """
-    安全写入文件，使用 O_EXCL 标志确保原子创建
-    
+    原子写入文件：先写同目录临时文件，fsync 后用 os.replace 覆盖目标。
+
+    旧实现「O_EXCL 失败 -> 删除 -> 重建」在并发/崩溃场景下存在目标文件缺失或
+    只写了一半的窗口，剪映可能读到损坏的 draft_content.json。os.replace 在同一
+    文件系统内是原子的，读者只会看到旧内容或完整的新内容。
+
     Args:
         file_path: 文件路径
-        file_content: 文件内容
+        file_content: 文件内容（str 或 bytes）
         is_binary: 是否为二进制内容
     """
-    # 使用 O_EXCL 标志确保原子创建
-    if is_binary:
-        flags = os.O_CREAT | os.O_EXCL | os.O_RDWR | getattr(os, "O_BINARY", 0)
+    parent_dir = os.path.dirname(file_path) or "."
+    os.makedirs(parent_dir, exist_ok=True)
+
+    if isinstance(file_content, str):
+        payload = file_content.encode("utf-8")
     else:
-        flags = os.O_CREAT | os.O_EXCL | os.O_RDWR
-    
+        payload = file_content or b""
+
+    fd, tmp_path = tempfile.mkstemp(
+        prefix=f".{os.path.basename(file_path)}.", suffix=".tmp", dir=parent_dir
+    )
     try:
-        fd = os.open(file_path, flags)
-        
-        # 写入内容
-        if file_content:
-            if isinstance(file_content, str):
-                os.write(fd, file_content.encode('utf-8'))
-            else:
-                os.write(fd, file_content)
-        
-        # 强制同步到磁盘
-        os.fsync(fd)
-        
-        os.close(fd)
-    except FileExistsError:
-        # 如果文件已存在，先删除再重新创建
-        if os.path.exists(file_path):
-            os.remove(file_path)
-        fd = os.open(file_path, flags)
-        
-        # 写入内容
-        if file_content:
-            if isinstance(file_content, str):
-                os.write(fd, file_content.encode('utf-8'))
-            else:
-                os.write(fd, file_content)
-        
-        # 强制同步到磁盘
-        os.fsync(fd)
-        
-        os.close(fd)
+        with os.fdopen(fd, "wb") as tmp_file:
+            if payload:
+                tmp_file.write(payload)
+            tmp_file.flush()
+            os.fsync(tmp_file.fileno())
+        # mkstemp 固定 0600；恢复为常规可读写权限，避免剪映/其它进程读不到。
+        # Windows 上 chmod 只影响只读位，0o644 等价于可写。
+        try:
+            os.chmod(tmp_path, 0o644)
+        except OSError:
+            pass
+        os.replace(tmp_path, file_path)
+    except BaseException:
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+        raise
 
 
 def extract_draft_id_from_url(url: str) -> Optional[str]:
@@ -766,37 +894,57 @@ def download_draft_with_result(
     if save_path is None:
         save_path = config.DRAFT_SAVE_PATH
 
-    if deadline is None:
-        deadline = _deadline_from_budget()
+    target_dir = os.path.join(save_path, draft_id)
 
-    target_dir = prepare_target_directory(save_path, draft_id)
-    dequeue_path(target_dir)
+    # 同一草稿串行下载（不同 draft_url 可能指向同一 draft_id），
+    # 全局最多 3 个草稿同时进入下载阶段。
+    with _DRAFT_DOWNLOAD_LOCKS.hold(draft_id):
+        _DRAFT_DOWNLOAD_SLOTS.acquire()
+        try:
+            # 排队等待槽位的时间不计入下载预算，也不计入耗时统计。
+            if deadline is None:
+                deadline = _deadline_from_budget()
+            started_at = _now()
 
-    logger.info(f"Downloading draft {draft_id} to {target_dir}")
+            prepare_target_directory(save_path, draft_id)
+            dequeue_path(target_dir)
 
-    try:
-        files = _get_draft_files_list(draft_url, deadline=deadline)
-        if not files:
-            logger.error(f"Cannot get draft file list: {draft_id}")
-            _abort(
-                DraftDownloadFailureKind.RESOURCE_UNAVAILABLE,
-                detail=f"Empty draft file list: {draft_id}",
-                url=draft_url,
-            )
-        _download_all_files(files, target_dir, draft_id, deadline=deadline)
-        return DraftDownloadResult(ok=True)
-    except DraftDownloadAbort as exc:
-        if not exc.url:
-            exc.url = draft_url
-        logger.error(
-            "Draft download failed: draft_id=%s kind=%s detail=%s url=%s http_status=%s",
-            draft_id,
-            exc.kind.value,
-            exc.detail,
-            exc.url,
-            exc.http_status,
-        )
-        return _result_from_abort(exc)
+            logger.info(f"Downloading draft {draft_id} to {target_dir}")
+
+            download_ok = False
+            try:
+                files = _get_draft_files_list(draft_url, deadline=deadline)
+                if not files:
+                    logger.error(f"Cannot get draft file list: {draft_id}")
+                    _abort(
+                        DraftDownloadFailureKind.RESOURCE_UNAVAILABLE,
+                        detail=f"Empty draft file list: {draft_id}",
+                        url=draft_url,
+                    )
+                _download_all_files(files, target_dir, draft_id, deadline=deadline)
+                download_ok = True
+                return DraftDownloadResult(ok=True)
+            except DraftDownloadAbort as exc:
+                if not exc.url:
+                    exc.url = draft_url
+                logger.error(
+                    "Draft download failed: draft_id=%s kind=%s detail=%s url=%s http_status=%s",
+                    draft_id,
+                    exc.kind.value,
+                    exc.detail,
+                    exc.url,
+                    exc.http_status,
+                )
+                return _result_from_abort(exc)
+            finally:
+                logger.info(
+                    "Draft %s download %s in %.2fs",
+                    draft_id,
+                    "finished" if download_ok else "failed",
+                    _now() - started_at,
+                )
+        finally:
+            _DRAFT_DOWNLOAD_SLOTS.release()
 
 
 def get_draft_files_list(draft_url: str) -> list:
@@ -982,32 +1130,74 @@ def download_all_files(files: list, target_dir: str, draft_id: str) -> bool:
 def _download_all_files(
     files: list, target_dir: str, draft_id: str, *, deadline: Optional[float] = None
 ) -> None:
-    """下载所有草稿文件；任一失败立即抛出 DraftDownloadAbort（快速失败）。"""
-    success_count = 0
-    total_files = len(files)
+    """并发下载所有草稿文件（单草稿上限 6 路）；任一失败快速中止。
+
+    draft_content.json 先只落原始字节，等所有文件下载结束后再统一改写并
+    本地化远程素材，避免并发写把草稿文件写坏。
+    """
+    started_at = _now()
     skipped_draft_info = 0
+    download_urls: List[str] = []
+    content_targets: List[Tuple[str, Optional[str]]] = []
+    seen_targets = set()
 
     for file_url in files:
-        if _is_draft_info_target(file_url, target_dir):
+        full_path, url_draft_id = _resolve_download_target_path(file_url, target_dir)
+        if os.path.basename(full_path) == "draft_info.json":
             skipped_draft_info += 1
             logger.debug(
                 "Skip draft_info.json download (will copy from draft_content.json): %s",
                 file_url,
             )
             continue
-        _check_download_deadline(deadline, url=file_url)
-        try:
-            _download_single_file(file_url, target_dir, deadline=deadline)
-            success_count += 1
-        except DraftDownloadAbort:
-            logger.error(f"Failed to download file (fail fast): {file_url}")
-            raise
 
-    files_to_download = total_files - skipped_draft_info
-    if success_count != files_to_download:
-        _abort(
-            DraftDownloadFailureKind.RESOURCE_UNAVAILABLE,
-            detail=f"Draft {draft_id} incomplete download",
+        # 同一本地路径只下载一次：文件列表里出现重复条目时，两个线程同时写
+        # 同一个文件才是真正的损坏来源（尤其是 draft_content.json）。
+        target_key = os.path.normcase(os.path.abspath(full_path))
+        if target_key in seen_targets:
+            logger.warning(
+                "Duplicate draft file target skipped: url=%s path=%s",
+                file_url,
+                full_path,
+            )
+            continue
+        seen_targets.add(target_key)
+        download_urls.append(file_url)
+        if full_path.endswith("draft_content.json"):
+            content_targets.append((full_path, url_draft_id))
+
+    abort_event = threading.Event()
+    tasks: List[Tuple[str, Callable[[], Any]]] = [
+        (
+            file_url,
+            lambda url=file_url: _download_single_file(
+                url,
+                target_dir,
+                deadline=deadline,
+                abort_event=abort_event,
+                localize_json=False,
+            ),
+        )
+        for file_url in download_urls
+    ]
+    logger.info(
+        "Downloading %s draft file(s) with up to %s concurrent workers: draft_id=%s",
+        len(tasks),
+        DRAFT_FILE_DOWNLOAD_MAX_CONCURRENT,
+        draft_id,
+    )
+    _run_parallel_downloads(
+        tasks,
+        max_workers=DRAFT_FILE_DOWNLOAD_MAX_CONCURRENT,
+        abort_event=abort_event,
+        thread_name_prefix=f"draft_{draft_id[-8:]}_file",
+    )
+
+    # 所有文件已落盘，这里只剩单线程改写 content.json（写操作本身再加锁）。
+    for content_path, url_draft_id in content_targets:
+        _check_download_deadline(deadline, url=content_path)
+        _update_json_file_paths(
+            content_path, target_dir, url_draft_id, deadline=deadline
         )
 
     if skipped_draft_info > 0:
@@ -1016,21 +1206,19 @@ def _download_all_files(
                 DraftDownloadFailureKind.LOCAL_IO,
                 detail="Failed to sync draft_info.json from draft_content.json",
             )
-        success_count += skipped_draft_info
 
     # 必须在 robocopy 扫描前改写 meta，否则剪映可能按错误 draft_name 索引
     _localize_draft_meta_info(target_dir, draft_id)
     trigger_directory_scan_with_robocopy(target_dir)
 
+    elapsed = _now() - started_at
     logger.info(
-        f"Draft {draft_id} download finished: total={total_files}, "
-        f"ok={success_count}, failed={total_files - success_count}"
+        "Draft %s download finished in %.2fs: files=%s, skipped_draft_info=%s",
+        draft_id,
+        elapsed,
+        len(download_urls),
+        skipped_draft_info,
     )
-    if success_count != total_files:
-        _abort(
-            DraftDownloadFailureKind.RESOURCE_UNAVAILABLE,
-            detail=f"Draft {draft_id} incomplete download",
-        )
 
 
 def download_single_file(file_url: str, target_dir: str) -> bool:
@@ -1052,9 +1240,18 @@ def download_single_file(file_url: str, target_dir: str) -> bool:
 
 
 def _download_single_file(
-    file_url: str, target_dir: str, *, deadline: Optional[float] = None
+    file_url: str,
+    target_dir: str,
+    *,
+    deadline: Optional[float] = None,
+    abort_event: Optional[threading.Event] = None,
+    localize_json: bool = True,
 ) -> None:
-    """下载单个文件；失败时抛出 DraftDownloadAbort。"""
+    """下载单个文件；失败时抛出 DraftDownloadAbort。
+
+    重试沿用本地半成品做 Range 续传（媒体文件），每次重试都重新读取本地大小，
+    因此网络抖动中断后最多只回退到最后一个 chunk，而不是从头再来。
+    """
     retry_count = 0
     dns_retry_count = 0
 
@@ -1064,6 +1261,7 @@ def _download_single_file(
     bypass_cache = False
 
     while retry_count <= _MAX_RETRIES:
+        _raise_if_cancelled(abort_event)
         _check_download_deadline(deadline, url=file_url)
         try:
             extra_headers = None
@@ -1168,11 +1366,14 @@ def _download_single_file(
                     append=append,
                     deadline=deadline,
                     url=file_url,
+                    abort_event=abort_event,
                 )
             finally:
                 response.close()
 
-            if full_file_path.endswith("draft_content.json"):
+            # 并发下载时由 _download_all_files 在全部文件落盘后统一处理，
+            # 避免 content.json 的「下载 -> 改写」与其它文件的并发写交错。
+            if localize_json and full_file_path.endswith("draft_content.json"):
                 _update_json_file_paths(
                     full_file_path, target_dir, url_draft_id, deadline=deadline
                 )
@@ -1248,7 +1449,8 @@ def _update_json_file_paths(
             data = json.load(f)
 
         remote_prefix = f"/app/output/draft/{draft_id}/"
-        local_prefix = os.path.join(config.DRAFT_SAVE_PATH, draft_id).replace('/', os.sep) + os.sep
+        # 以实际目标目录为准（save_path 可被调用方覆盖），而不是全局配置。
+        local_prefix = os.path.normpath(target_dir).replace('/', os.sep) + os.sep
 
         updated_data = update_material_paths(data, remote_prefix, local_prefix)
 
@@ -1261,7 +1463,10 @@ def _update_json_file_paths(
             raise
 
         json_content = json.dumps(updated_data, ensure_ascii=False, indent=2)
-        safe_write_file(json_file_path, json_content, is_binary=False)
+        # 串行化 content.json 的最终写入；safe_write_file 内部用临时文件 + os.replace，
+        # 即使进程在写入中途退出，剪映也只会看到完整的旧文件或完整的新文件。
+        with _CONTENT_JSON_WRITE_LOCK:
+            safe_write_file(json_file_path, json_content, is_binary=False)
 
         logger.debug(f"Updated paths in JSON file: {json_file_path}")
     except DraftDownloadAbort:
@@ -1451,6 +1656,7 @@ def _download_remote_material_raising(
     fallback_ext: str,
     *,
     deadline: Optional[float] = None,
+    abort_event: Optional[threading.Event] = None,
 ) -> str:
     """下载 URL 素材；失败抛出 DraftDownloadAbort。"""
     # 本函数只拉取音视频/图片（含无扩展名的 CDN URL），始终允许断点续传。
@@ -1459,6 +1665,7 @@ def _download_remote_material_raising(
     dns_retry_count = 0
     for attempt in range(_MAX_RETRIES + 1):
         response = None
+        _raise_if_cancelled(abort_event)
         _check_download_deadline(deadline, url=file_url)
         try:
             extra_headers = None
@@ -1561,6 +1768,7 @@ def _download_remote_material_raising(
                 append=append,
                 deadline=deadline,
                 url=file_url,
+                abort_event=abort_event,
             )
             return local_path
         except DraftDownloadAbort:
@@ -1622,13 +1830,19 @@ def _download_remote_file(file_url: str, local_path: str) -> bool:
         return False
 
 
-def _download_remote_file_raising(file_url: str, local_path: str) -> None:
+def _download_remote_file_raising(
+    file_url: str,
+    local_path: str,
+    *,
+    abort_event: Optional[threading.Event] = None,
+) -> None:
     """下载单个 URL 素材；失败抛出 DraftDownloadAbort。"""
     enable_resume = _is_media_resource(file_url) or _is_media_resource(local_path)
     bypass_cache = False
     dns_retry_count = 0
     for attempt in range(_MAX_RETRIES + 1):
         response = None
+        _raise_if_cancelled(abort_event)
         try:
             extra_headers = None
             resume_from = 0
@@ -1719,7 +1933,9 @@ def _download_remote_file_raising(file_url: str, local_path: str) -> None:
                     "Server ignored Range, re-downloading from start: %s",
                     file_url,
                 )
-            _write_http_body_to_file(response, local_path, append=append)
+            _write_http_body_to_file(
+                response, local_path, append=append, abort_event=abort_event
+            )
             return
         except DraftDownloadAbort:
             raise
@@ -1787,16 +2003,22 @@ def localize_remote_material_paths(data: Dict[str, Any], target_dir: str) -> boo
 def _localize_remote_material_paths(
     data: Dict[str, Any], target_dir: str, *, deadline: Optional[float] = None
 ) -> None:
-    """本地化远程素材路径；任一失败立即抛出 DraftDownloadAbort（快速失败）。"""
+    """本地化远程素材路径；同一 URL 只下一次，不同 URL 最多 6 路并发（快速失败）。"""
     materials = data.get("materials", {}) if isinstance(data, dict) else {}
     if not isinstance(materials, dict):
         return
 
-    url_cache: Dict[str, str] = {}
     target_lists: Dict[str, List[Dict[str, Any]]] = {
         "audios": materials.get("audios", []),
         "videos": materials.get("videos", []),
     }
+
+    # url -> 引用该 URL 的所有 item；url -> (sub_dir, base_name, fallback_ext)
+    url_items: Dict[str, List[Dict[str, Any]]] = {}
+    url_meta: Dict[str, Tuple[str, str, str]] = {}
+    # (sub_dir, base_name) -> 首个占用它的 URL。不同 URL 撞名时给后来者加 URL 哈希后缀，
+    # 否则并发写同一个本地路径会互相覆盖/交错。
+    used_base_names: Dict[Tuple[str, str], str] = {}
 
     for material_type, items in target_lists.items():
         if not isinstance(items, list):
@@ -1816,33 +2038,69 @@ def _localize_remote_material_paths(
             if not _is_http_url(remote_path):
                 continue
 
-            if remote_path in url_cache:
-                item["path"] = url_cache[remote_path]
+            if remote_path in url_items:
+                url_items[remote_path].append(item)
                 continue
 
             sub_dir = _infer_local_subdir(material_type, item)
             fallback_ext = ".mp3" if material_type == "audios" else ".mp4"
-            base_name = _safe_name(str(item.get("material_name") or item.get("name") or item.get("id") or "material"))
+            base_name = _safe_name(
+                str(item.get("material_name") or item.get("name") or item.get("id") or "material")
+            )
+            name_key = (sub_dir, base_name)
+            if name_key in used_base_names and used_base_names[name_key] != remote_path:
+                digest = hashlib.sha1(remote_path.encode("utf-8")).hexdigest()[:8]
+                base_name = f"{base_name}_{digest}"
+                name_key = (sub_dir, base_name)
+            used_base_names[name_key] = remote_path
 
-            _check_download_deadline(deadline, url=remote_path)
-            try:
-                local_path = _download_remote_material_raising(
-                    remote_path,
-                    target_dir,
-                    sub_dir,
-                    base_name,
-                    fallback_ext,
-                    deadline=deadline,
-                )
-            except DraftDownloadAbort:
-                logger.error(
-                    f"Remote material localization failed (fail fast): {remote_path}"
-                )
-                raise
+            url_items[remote_path] = [item]
+            url_meta[remote_path] = (sub_dir, base_name, fallback_ext)
 
-            logger.info(f"Remote material saved and path updated: {remote_path} -> {local_path}")
+    if not url_items:
+        return
+
+    abort_event = threading.Event()
+    tasks: List[Tuple[str, Callable[[], Any]]] = []
+    for remote_path in url_items:
+        _check_download_deadline(deadline, url=remote_path)
+        sub_dir, base_name, fallback_ext = url_meta[remote_path]
+        tasks.append(
+            (
+                remote_path,
+                lambda url=remote_path, sd=sub_dir, bn=base_name, fe=fallback_ext: (
+                    _download_remote_material_raising(
+                        url,
+                        target_dir,
+                        sd,
+                        bn,
+                        fe,
+                        deadline=deadline,
+                        abort_event=abort_event,
+                    )
+                ),
+            )
+        )
+
+    logger.info(
+        "Localizing %s remote material URL(s) with up to %s concurrent workers",
+        len(tasks),
+        DRAFT_FILE_DOWNLOAD_MAX_CONCURRENT,
+    )
+    local_paths = _run_parallel_downloads(
+        tasks,
+        max_workers=DRAFT_FILE_DOWNLOAD_MAX_CONCURRENT,
+        abort_event=abort_event,
+        thread_name_prefix="draft_material",
+    )
+
+    for remote_path, items in url_items.items():
+        local_path = local_paths[remote_path]
+        logger.info(
+            f"Remote material saved and path updated: {remote_path} -> {local_path}"
+        )
+        for item in items:
             item["path"] = local_path
-            url_cache[remote_path] = local_path
 
 def trigger_directory_scan_with_robocopy(target_dir: str):
     """
