@@ -8,6 +8,10 @@ const { v4: uuidv4 } = require('uuid');
 const { downloadBinaryToFile } = require("./resumableDownload");
 const draftPaths = require("./draftPaths");
 const {
+  ROOT_META_INFO_FILENAME,
+  waitForDraftDiscovery,
+} = require("./draftDiscovery");
+const {
   isPermissionError,
   getMacProtectedFolderName,
   probeWriteAccess,
@@ -1441,6 +1445,61 @@ async function triggerDirectoryScan(targetDir) {
   }
 }
 
+/**
+ * 确认剪映是否已发现本次下载的草稿，并把结果写入下载日志。
+ *
+ * 触发目录扫描后，剪映会把发现的草稿登记到草稿根目录的 root_meta_info.json；
+ * 轮询该文件即可确认本次草稿是否被收录。这里只做确认，不影响下载本身的成败：
+ * 剪映未运行时，它会在下次启动扫描时重新发现草稿。
+ *
+ * @param {string} draftDir 草稿目录
+ * @param {string} draftRootDir 草稿根目录
+ * @param {string} targetId 草稿 ID
+ * @param {*} parentWindow 用于推送日志的窗口
+ * @returns {Promise<object|null>} 发现确认结果；确认过程异常时返回 null
+ */
+async function reportDraftDiscovery(draftDir, draftRootDir, targetId, parentWindow) {
+  let result;
+  try {
+    result = await waitForDraftDiscovery(draftDir, {
+      draftRootDir,
+      draftId: targetId,
+    });
+  } catch (error) {
+    logger.warn(`[scan] 确认剪映是否发现草稿失败: ${targetId}, ${error.message}`);
+    return null;
+  }
+
+  const elapsedSeconds = (result.elapsedMs / 1000).toFixed(1);
+
+  if (result.discovered) {
+    logger.info(`[scan] 剪映已发现草稿 ${targetId}（${elapsedSeconds}s）`);
+    await appendDownloadLog(
+      {
+        level: "success",
+        message: `剪映已发现草稿 ${targetId}（${elapsedSeconds}s）`,
+      },
+      parentWindow
+    );
+    return result;
+  }
+
+  if (result.reason === "root_meta_missing") {
+    const message = `未找到 ${ROOT_META_INFO_FILENAME}，无法确认剪映是否已发现草稿 ${targetId}`;
+    logger.warn(`[scan] ${message}`);
+    await appendDownloadLog({ level: "info", message }, parentWindow);
+    return result;
+  }
+
+  const message =
+    `草稿 ${targetId} 已下载，但剪映未发现该草稿` +
+    `（${elapsedSeconds}s 内 ${ROOT_META_INFO_FILENAME} 中无记录）；` +
+    `请打开或重启剪映后重试`;
+  logger.warn(`[scan] ${message}, reason=${result.reason}`);
+  await appendDownloadLog({ level: "error", message }, parentWindow);
+  return result;
+}
+
 // 打开目录
 async function openDraftDirectory(dirPath) {
   try {
@@ -1751,11 +1810,20 @@ async function downloadFiles(
     // 触发剪映目录扫描，使剪映无需重启即可识别新草稿
     await triggerDirectoryScan(jointPath);
 
+    // 通过 root_meta_info.json 确认剪映确实发现了本次草稿（未发现时写入错误日志）
+    const discovery = await reportDraftDiscovery(
+      jointPath,
+      baseTargetDir,
+      targetId,
+      parentWindow
+    );
+
     if (isOpenDir) await openDraftDirectory(jointPath);
-    
+
     return {
       success: failureCount === 0,
       targetDirectory: baseTargetDir,
+      jianyingDiscovered: Boolean(discovery?.discovered),
       message: `文件批量保存完成，保存至目录: ${jointPath}，${tracker.buildSummaryMessage()}`,
     };
   } catch (error) {
