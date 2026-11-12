@@ -357,6 +357,62 @@ class TestDownloadRemoteFile:
                 os.remove(out)
 
 
+class TestRemoteMaterialProgressRetries:
+    """慢速素材：本轮有新字节落盘的失败不应消耗重试预算。"""
+
+    def _progress_then_timeout(self, chunk: bytes, status: int) -> MagicMock:
+        r = MagicMock()
+        r.status_code = status
+        r.headers = {}
+        r.close = MagicMock()
+
+        def iter_content(chunk_size=8192):
+            yield chunk
+            raise requests.exceptions.ReadTimeout("slow connection")
+
+        r.iter_content = iter_content
+        return r
+
+    def test_retries_past_limit_while_making_progress(self, no_sleep) -> None:
+        responses = [
+            self._progress_then_timeout(b"x", 200),
+            self._progress_then_timeout(b"y", 206),
+            self._progress_then_timeout(b"z", 206),
+            self._progress_then_timeout(b"w", 206),
+        ]
+        final = MagicMock()
+        final.status_code = 206
+        final.headers = {}
+        final.iter_content = MagicMock(return_value=[b"END"])
+        final.close = MagicMock()
+        responses.append(final)
+
+        with tempfile.TemporaryDirectory() as td:
+            with patch.object(dd, "_MAX_RETRIES", 2):
+                with patch.object(dd, "requests") as m_req:
+                    m_req.get.side_effect = responses
+                    m_req.exceptions = requests.exceptions
+                    path = dd._download_remote_material_raising(
+                        "https://x.test/slow.mp4", td, "videos", "slow", ".mp4"
+                    )
+            with open(path, "rb") as f:
+                assert f.read() == b"xyzwEND"
+            assert m_req.get.call_count == 5
+
+    def test_no_progress_timeouts_still_exhaust_retries(self, no_sleep) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            with patch.object(dd, "_MAX_RETRIES", 2):
+                with patch.object(dd, "requests") as m_req:
+                    m_req.get.side_effect = requests.exceptions.ReadTimeout("no bytes")
+                    m_req.exceptions = requests.exceptions
+                    with pytest.raises(dd.DraftDownloadAbort) as ei:
+                        dd._download_remote_material_raising(
+                            "https://x.test/dead.mp4", td, "videos", "dead", ".mp4"
+                        )
+            assert ei.value.kind is dd.DraftDownloadFailureKind.NETWORK_RETRY_EXHAUSTED
+            assert m_req.get.call_count == 3
+
+
 class TestDownloadDeadline:
     """下载阶段总预算：降级网络必须在有界时间内失败，且归类为网络重试耗尽。"""
 

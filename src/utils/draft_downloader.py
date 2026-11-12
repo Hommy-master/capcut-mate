@@ -345,9 +345,9 @@ _REQUEST_READ_TIMEOUT = 10
 _MAX_RETRIES = 10
 
 # 整个下载阶段（文件列表 + 全部草稿文件 + 全部远程素材 + 其间的所有重试）共享的墙钟预算。
-# 单文件已有「无进度/低速」看门狗，这里是最后的安全网；大素材草稿需要比 300s 更宽松，
-# 否则慢速但仍在推进的下载会被整体误杀。
-_DOWNLOAD_PHASE_BUDGET_SECONDS = 600.0
+# 单文件已有「无进度/低速」看门狗，这里是最后的安全网。跨境 CDN（如 Cloudflare）
+# 实测只有 10~300KB/s，几十 MB 素材需要十几分钟，预算过紧会把仍在推进的下载整体误杀。
+_DOWNLOAD_PHASE_BUDGET_SECONDS = 1200.0
 
 # 单文件「无新字节」看门狗：连续这么久没有收到任何数据就中止本次尝试。
 # 与 _REQUEST_READ_TIMEOUT 配合，实际阻塞读最多 10s 就会抛 ReadTimeout。
@@ -357,10 +357,13 @@ _STALL_TIMEOUT_SECONDS = 10.0
 _PROGRESS_LOG_INTERVAL_SECONDS = 5.0
 _PROGRESS_LOG_INTERVAL_BYTES = 10 * 1024 * 1024
 
-# 单文件最低可接受吞吐与最短时限：按 Content-Length 计算该文件最多允许的下载时间，
-# 例如 33MB 文件至少给 33s；低于 1MB/s 持续 10s 就中止并换连接续传。
-_MIN_DOWNLOAD_SPEED_BYTES_PER_SEC = 1024 * 1024
-_FILE_MIN_TIMEOUT_SECONDS = 15.0
+# 低速看门狗改为「相对自身基线」的劣化检测，不再使用固定带宽阈值：
+# 快链路基线高、要求高；慢链路基线低、要求低；基线本身低于阈值时不做轮换，
+# 交给无数据看门狗和下载阶段总预算兜底。
+_DEGRADE_RATIO = 0.2
+_DEGRADE_CONSECUTIVE_WINDOWS = 2
+_DEGRADE_MIN_BASELINE_BYTES_PER_SEC = 64 * 1024
+_BASELINE_EWMA_ALPHA = 0.3
 _SPEED_CHECK_WINDOW_SECONDS = 10.0
 
 # robocopy 仅用于触发目录扫描/复制，卡住不应拖垮整个阶段。
@@ -840,9 +843,10 @@ def _write_http_body_to_file(
     append=False：覆盖写入（JSON 等非资源，或服务端忽略 Range 返回 200 时的整文件重下）。
 
     三层超时：
-    1. socket 读超时 10s：连接长时间没有新字节时由 requests 抛 ReadTimeout；
-    2. 本函数内的无进度/低速看门狗：慢速滴流（每个 chunk 都在 10s 内到达但总量很慢）
-       也会被中止，按 Range 续传重试；
+    1. socket 读超时 + 无新字节看门狗：10s 没有任何新字节就中止；
+    2. 相对劣化看门狗：以连接自身近期吞吐（EWMA）为基线，快链路掉到基线的
+       20% 以下并连续两个窗口确认才中止换连接；基线本身低于 64KiB/s 的慢链路
+       不轮换，避免把「本来就慢」误判成「连接变坏」；
     3. 下载阶段总预算：整个草稿的最后安全网。
     进度每 5s 或 10MB 打一条日志，便于区分「慢」和「卡死」。
     """
@@ -859,16 +863,9 @@ def _write_http_body_to_file(
     last_log_bytes = downloaded
     last_speed_check_at = started_at
     last_speed_check_bytes = downloaded
-
-    # 按本次尝试开始时剩余的字节数给一个固定的文件级时限；不能每收到一个 chunk
-    # 用「剩余字节 / 速度」重算，否则文件下载到一半就会因为 allowed 变小而误杀。
-    per_file_allowed: Optional[float] = None
-    if expected_total_size is not None:
-        initial_remaining = max(0, expected_total_size - initial_size)
-        per_file_allowed = max(
-            _FILE_MIN_TIMEOUT_SECONDS,
-            initial_remaining / _MIN_DOWNLOAD_SPEED_BYTES_PER_SEC,
-        )
+    baseline_speed = 0.0
+    speed_window_index = 0
+    slow_windows = 0
 
     with open(file_path, mode) as out:
         for chunk in response.iter_content(chunk_size=8192):
@@ -911,31 +908,50 @@ def _write_http_body_to_file(
                     elapsed=now - started_at,
                 )
 
-            # 低速看门狗：慢速滴流可以一直不触发读超时，但吞吐低于阈值就换连接续传。
+            # 相对劣化看门狗：基线取本次连接的吞吐 EWMA。慢链路（基线低于
+            # _DEGRADE_MIN_BASELINE_BYTES_PER_SEC）不轮换，避免把「本来就慢」
+            # 误判成「连接变坏」；快链路掉到基线 20% 以下且连续两个窗口确认，
+            # 才中止并换连接续传。
             if now - last_speed_check_at >= _SPEED_CHECK_WINDOW_SECONDS:
                 window_elapsed = max(now - last_speed_check_at, 0.001)
                 window_bytes = downloaded - last_speed_check_bytes
                 window_speed = window_bytes / window_elapsed
-                if window_speed < _MIN_DOWNLOAD_SPEED_BYTES_PER_SEC:
-                    _raise_progress_timeout(
-                        "too slow",
-                        url=url,
-                        downloaded=downloaded,
-                        expected_total_size=expected_total_size,
-                        elapsed=now - started_at,
+                speed_window_index += 1
+                update_baseline = True
+
+                if (
+                    speed_window_index > 1
+                    and baseline_speed >= _DEGRADE_MIN_BASELINE_BYTES_PER_SEC
+                ):
+                    if window_speed < baseline_speed * _DEGRADE_RATIO:
+                        slow_windows += 1
+                        # 疑似劣化期间冻结基线：否则基线会被劣化样本拉低，
+                        # 第二个慢窗口可能因基线跌破门槛而漏报。
+                        update_baseline = False
+                    else:
+                        slow_windows = 0
+                    if slow_windows >= _DEGRADE_CONSECUTIVE_WINDOWS:
+                        _raise_progress_timeout(
+                            "degraded below 20% of baseline",
+                            url=url,
+                            downloaded=downloaded,
+                            expected_total_size=expected_total_size,
+                            elapsed=now - started_at,
+                        )
+                else:
+                    slow_windows = 0
+
+                if update_baseline:
+                    baseline_speed = (
+                        window_speed
+                        if baseline_speed == 0
+                        else (
+                            _BASELINE_EWMA_ALPHA * window_speed
+                            + (1 - _BASELINE_EWMA_ALPHA) * baseline_speed
+                        )
                     )
                 last_speed_check_at = now
                 last_speed_check_bytes = downloaded
-
-            # 按文件大小自适应的总时限：大文件给更多时间，但不能无限慢。
-            if per_file_allowed is not None and now - started_at > per_file_allowed:
-                _raise_progress_timeout(
-                    "exceeded per-file time budget",
-                    url=url,
-                    downloaded=downloaded,
-                    expected_total_size=expected_total_size,
-                    elapsed=now - started_at,
-                )
 
 
 def _resolve_download_target_path(
@@ -1874,7 +1890,11 @@ def _download_remote_material_raising(
     local_path: Optional[str] = None
     bypass_cache = False
     dns_retry_count = 0
-    for attempt in range(_MAX_RETRIES + 1):
+    # 只统计「本轮没有新字节落盘」的失败。断点续传只要仍在推进就不消耗重试次数，
+    # 否则跨境慢速素材（实测 10~300KB/s）会在到达终点前把 10 次预算耗尽。
+    retry_count = 0
+    while retry_count <= _MAX_RETRIES:
+        retry_start_size = _local_file_size(local_path) if local_path else 0
         response = None
         _raise_if_cancelled(abort_event)
         _check_download_deadline(deadline, url=file_url)
@@ -1913,7 +1933,8 @@ def _download_remote_material_raising(
                 if range_action == "complete":
                     return local_path
                 if range_action == "restart":
-                    if attempt >= _MAX_RETRIES:
+                    retry_count += 1
+                    if retry_count > _MAX_RETRIES:
                         status = response.status_code
                         logger.error(
                             "HTTP 416 resume recovery failed after %s retries: %s",
@@ -1939,7 +1960,8 @@ def _download_remote_material_raising(
                         url=file_url,
                         http_status=status,
                     )
-                if attempt >= _MAX_RETRIES:
+                retry_count += 1
+                if retry_count > _MAX_RETRIES:
                     status = response.status_code
                     logger.error(
                         f"Remote material download failed (HTTP {status}) "
@@ -1951,7 +1973,7 @@ def _download_remote_material_raising(
                         url=file_url,
                         http_status=status,
                     )
-                retry_no = attempt + 1
+                retry_no = retry_count
                 logger.warning(
                     f"Remote material download transient HTTP {response.status_code}, "
                     f"retry ({retry_no}/{_MAX_RETRIES}): {file_url}"
@@ -2002,26 +2024,39 @@ def _download_remote_material_raising(
                     detail=str(e),
                     url=file_url,
                 )
-            if attempt >= _MAX_RETRIES:
-                logger.error(
-                    f"Remote material download failed after {_MAX_RETRIES} retries: {file_url}, error: {e}"
-                )
-                _abort(
-                    DraftDownloadFailureKind.NETWORK_RETRY_EXHAUSTED,
-                    detail=str(e),
-                    url=file_url,
-                )
-            retry_no = attempt + 1
             downloaded_bytes = _local_file_size(local_path) if local_path else 0
-            logger.warning(
-                "Remote material download network error, retry (%s/%s): "
-                "%s, downloaded=%s bytes, error=%s",
-                retry_no,
-                _MAX_RETRIES,
-                file_url,
-                downloaded_bytes,
-                e,
-            )
+            if downloaded_bytes > retry_start_size:
+                # 本轮有新字节落盘：断点续传继续，不消耗重试预算，
+                # 慢但有进展的下载由下载阶段总预算兜底。
+                retry_count = 0
+                logger.warning(
+                    "Remote material download interrupted after progress, resuming: "
+                    "%s, downloaded=%s bytes, error=%s",
+                    file_url,
+                    downloaded_bytes,
+                    e,
+                )
+            else:
+                retry_count += 1
+                if retry_count > _MAX_RETRIES:
+                    logger.error(
+                        f"Remote material download failed after {_MAX_RETRIES} retries: "
+                        f"{file_url}, error: {e}"
+                    )
+                    _abort(
+                        DraftDownloadFailureKind.NETWORK_RETRY_EXHAUSTED,
+                        detail=str(e),
+                        url=file_url,
+                    )
+                logger.warning(
+                    "Remote material download network error, retry (%s/%s): "
+                    "%s, downloaded=%s bytes, error=%s",
+                    retry_count,
+                    _MAX_RETRIES,
+                    file_url,
+                    downloaded_bytes,
+                    e,
+                )
             _sleep_network_retry_backoff()
         except OSError as e:
             logger.error(f"Failed to write remote material to disk: {file_url}, {e}")

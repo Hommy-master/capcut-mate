@@ -3,14 +3,19 @@ const axios = require("axios");
 const { createWriteStream } = require("fs");
 const fs = require("fs").promises;
 const logger = require("./logger");
+const { createDegradeDetector } = require("./downloadSpeedGuard");
 
 /** 等待响应头的时间；10s 没有响应头就中断，交由上层按 Range 续传重试 */
 const HEADER_TIMEOUT_MS = 10000;
 /** 传输过程中 10s 无数据则中断，便于上层重试续传；不限制总下载时长 */
 const STREAM_IDLE_TIMEOUT_MS = 10000;
-/** 低速看门狗：10s 窗口内平均速度低于 1MiB/s 就断开重连、从断点续传 */
+/**
+ * 相对劣化看门狗：以连接自身近期吞吐（EWMA）为基线，快链路掉到基线的 20%
+ * 以下并连续两个窗口确认才断开重连；基线本身低于 64KiB/s 的慢链路不轮换，
+ * 避免把「本来就慢」误判成「连接变坏」。判定逻辑见 downloadSpeedGuard.js，
+ * 与 Python 端策略保持一致。
+ */
 const SPEED_WINDOW_MS = 10000;
-const MIN_DOWNLOAD_BYTES_PER_SEC = 1024 * 1024;
 /** 小于该尺寸的半成品不值得发 Range，按整文件重下 */
 const MIN_PARTIAL_SIZE = 1024;
 
@@ -106,6 +111,7 @@ function writeStreamToFile(readable, filePath, { flags, startSize, expectedSize 
     let idleTimer;
     let windowStart = Date.now();
     let windowStartSize = startSize;
+    const detectDegrade = createDegradeDetector();
 
     const cleanup = () => {
       clearTimeout(idleTimer);
@@ -137,14 +143,18 @@ function writeStreamToFile(readable, filePath, { flags, startSize, expectedSize 
       if (now - windowStart >= SPEED_WINDOW_MS) {
         const elapsed = Math.max(now - windowStart, 1);
         const speed = ((received - windowStartSize) * 1000) / elapsed;
-        if (speed < MIN_DOWNLOAD_BYTES_PER_SEC) {
+        const verdict = detectDegrade(speed);
+
+        if (verdict.degraded) {
           fail(
             new Error(
-              `[error] download stream error: too slow (${(speed / 1024 / 1024).toFixed(2)}MB/s)`
+              `[error] download stream error: degraded below 20% of baseline ` +
+                `(${(speed / 1024).toFixed(1)}KB/s vs ${(verdict.baseline / 1024).toFixed(1)}KB/s)`
             )
           );
           return;
         }
+
         windowStart = now;
         windowStartSize = received;
       }

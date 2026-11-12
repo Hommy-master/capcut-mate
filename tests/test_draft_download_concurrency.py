@@ -171,7 +171,9 @@ class TestStallAndProgressWatchdog:
         # 中止前已落盘的 chunk 保留，下次可断点续传。
         assert target.read_bytes() == b"aa"
 
-    def test_slow_trickle_aborts_after_speed_window(self, tmp_path) -> None:
+    def test_slow_trickle_is_tolerated_when_baseline_is_low(self, tmp_path) -> None:
+        """基线低于 64KiB/s 的慢链路不轮换：慢但持续推进的下载应继续。"""
+
         def chunks():
             yield b"a" * 4
             yield b"b" * 4
@@ -181,32 +183,65 @@ class TestStallAndProgressWatchdog:
         target = tmp_path / "b.bin"
 
         with patch.object(dd, "_now", side_effect=[0.0, 0.0, 10.1]):
-            with pytest.raises(requests.exceptions.ReadTimeout):
-                dd._write_http_body_to_file(response, str(target), append=False)
+            dd._write_http_body_to_file(response, str(target), append=False)
 
         assert target.read_bytes() == b"aaaa" + b"bbbb"
 
-    def test_per_file_budget_does_not_shrink_as_bytes_arrive(self, tmp_path) -> None:
-        """20 字节 / 最低 1B·s⁻¹ → 允许 20s；下载到 15 字节时不能提前误杀。"""
+    def test_slow_link_steady_download_does_not_abort(self, tmp_path) -> None:
+        """基线低于 64KiB/s 的慢链路，连续多个窗口也不触发相对劣化轮换。"""
 
         def chunks():
-            yield b"x" * 15
-            yield b"y" * 5
+            for _ in range(6):
+                yield b"a" * (20 * 1024)  # 20KiB/10.1s ≈ 2KiB/s
 
         response = MagicMock()
         response.iter_content = lambda chunk_size=8192: chunks()
-        target = tmp_path / "d.bin"
+        target = tmp_path / "slow.bin"
 
-        with patch.object(dd, "_MIN_DOWNLOAD_SPEED_BYTES_PER_SEC", 1):
-            with patch.object(dd, "_now", side_effect=[0.0, 0.0, 16.0]):
-                dd._write_http_body_to_file(
-                    response,
-                    str(target),
-                    append=False,
-                    expected_total_size=20,
-                )
+        with patch.object(
+            dd, "_now", side_effect=[0.0, 10.1, 20.2, 30.3, 40.4, 50.5, 60.6]
+        ):
+            dd._write_http_body_to_file(response, str(target), append=False)
 
-        assert target.read_bytes() == b"x" * 15 + b"y" * 5
+        assert target.read_bytes() == b"a" * (20 * 1024) * 6
+
+    def test_fast_link_degradation_aborts_after_two_windows(self, tmp_path) -> None:
+        """快链路（基线 >= 64KiB/s）连续两个窗口低于基线 20% 才中止换连接。"""
+
+        def chunks():
+            yield b"x" * (1024 * 1024)  # 窗口 1：≈101KiB/s
+            yield b"y" * (1024 * 1024)  # 窗口 2：维持
+            yield b"z" * (100 * 1024)  # 窗口 3：≈9.9KiB/s，劣化 1/2
+            yield b"w" * (100 * 1024)  # 窗口 4：≈9.9KiB/s，劣化 2/2 → 中止
+
+        response = MagicMock()
+        response.iter_content = lambda chunk_size=8192: chunks()
+        target = tmp_path / "degrade.bin"
+
+        with patch.object(dd, "_now", side_effect=[0.0, 10.1, 20.2, 30.3, 40.4]):
+            with pytest.raises(requests.exceptions.ReadTimeout):
+                dd._write_http_body_to_file(response, str(target), append=False)
+
+        # 中止前已落盘的内容保留，可按 Range 续传。
+        assert target.stat().st_size == 2 * 1024 * 1024 + 2 * 100 * 1024
+
+    def test_single_slow_window_recovers_without_abort(self, tmp_path) -> None:
+        """只掉一个窗口、随后恢复时，劣化计数应清零，不应轮换。"""
+
+        def chunks():
+            yield b"x" * (1024 * 1024)
+            yield b"y" * (1024 * 1024)
+            yield b"z" * (100 * 1024)  # 劣化 1/2
+            yield b"w" * (1024 * 1024)  # 恢复 → 计数清零
+
+        response = MagicMock()
+        response.iter_content = lambda chunk_size=8192: chunks()
+        target = tmp_path / "recover.bin"
+
+        with patch.object(dd, "_now", side_effect=[0.0, 10.1, 20.2, 30.3, 40.4]):
+            dd._write_http_body_to_file(response, str(target), append=False)
+
+        assert target.stat().st_size == 3 * 1024 * 1024 + 100 * 1024
 
     def test_progress_log_emitted(self, tmp_path) -> None:
         def chunks():
