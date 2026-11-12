@@ -5,6 +5,7 @@
 import asyncio
 import queue
 import threading
+import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from enum import Enum
@@ -80,6 +81,18 @@ class VideoGenTask:
     api_key: Optional[str] = None  # 存储API密钥用于计费
     outfile: str = ""  # 导出目标路径，在下载阶段生成
     export_outfile_history: List[str] = field(default_factory=list)  # 含重试产生的历史路径
+
+    # 云渲染性能统计（单调时钟，单位秒）：
+    # download/upload_seconds 为下载、上传的实际耗时；*_phase_seconds 为对应阶段的整体耗时
+    # （含准备/重试/扣费等，不含 finally 清理）。export_seconds 为整个导出阶段耗时，
+    # 其中等待 export_video_lock 的部分单独记录在 export_lock_wait_seconds。
+    performance_started_at: Optional[float] = None
+    download_seconds: float = 0.0
+    download_phase_seconds: float = 0.0
+    export_seconds: float = 0.0
+    export_lock_wait_seconds: float = 0.0
+    upload_seconds: float = 0.0
+    upload_phase_seconds: float = 0.0
 
 
 class VideoGenTaskManager:
@@ -266,10 +279,35 @@ class VideoGenTaskManager:
         except Exception as e:
             logger.exception(f"Async task finished with error: {e}")
 
+    def _log_task_timing(self, task: VideoGenTask) -> None:
+        """输出云渲染三阶段性能统计；成功和失败任务都输出，便于统计各阶段耗时。"""
+        total_seconds = (
+            time.monotonic() - task.performance_started_at
+            if task.performance_started_at is not None
+            else 0.0
+        )
+        logger.info(
+            "Render total timing: draft_id=%s status=%s download_seconds=%.3f "
+            "download_phase_seconds=%.3f export_seconds=%.3f "
+            "export_lock_wait_seconds=%.3f upload_seconds=%.3f "
+            "upload_phase_seconds=%.3f total_seconds=%.3f error=%s",
+            task.draft_id,
+            task.status.value,
+            task.download_seconds,
+            task.download_phase_seconds,
+            task.export_seconds,
+            task.export_lock_wait_seconds,
+            task.upload_seconds,
+            task.upload_phase_seconds,
+            total_seconds,
+            task.error_message or "",
+        )
+
     def _persist_terminal_task(self, task: VideoGenTask) -> None:
         """将已完成或失败的任务写入 SQLite（仅终态）。"""
         if task.status not in (TaskStatus.COMPLETED, TaskStatus.FAILED):
             return
+        self._log_task_timing(task)
         task.completed_at = datetime.now()
         try:
             save_completed_result(
@@ -323,6 +361,7 @@ class VideoGenTaskManager:
         """
         logger.info(f"Processing task: {task.draft_url}")
 
+        task.performance_started_at = time.monotonic()
         task.status = TaskStatus.PROCESSING
         task.started_at = datetime.now()
         task.progress = 10
@@ -490,6 +529,8 @@ class VideoGenTaskManager:
         Returns:
             错误信息，成功时返回空字符串。
         """
+        phase_started = time.monotonic()
+        task.download_seconds = 0.0
         try:
             task.progress = 20
             self._assign_export_outfile(task)
@@ -499,7 +540,11 @@ class VideoGenTaskManager:
 
             task.progress = 30
 
-            download_error = self._download_draft(task)
+            download_started = time.monotonic()
+            try:
+                download_error = self._download_draft(task)
+            finally:
+                task.download_seconds = time.monotonic() - download_started
             if download_error:
                 logger.error(
                     "draft download failed: draft_url=%s error=%s",
@@ -543,6 +588,15 @@ class VideoGenTaskManager:
                 exc,
             )
             return f"草稿下载失败: {exc}"
+        finally:
+            task.download_phase_seconds = time.monotonic() - phase_started
+            logger.info(
+                "Render phase timing: draft_id=%s phase=download "
+                "download_seconds=%.3f phase_seconds=%.3f",
+                task.draft_id,
+                task.download_seconds,
+                task.download_phase_seconds,
+            )
 
     @staticmethod
     def _is_export_rename_src_none_error(error_message: str) -> bool:
@@ -588,6 +642,9 @@ class VideoGenTaskManager:
         Returns:
             错误信息，成功时返回空字符串。
         """
+        phase_started = time.monotonic()
+        task.export_seconds = 0.0
+        task.export_lock_wait_seconds = 0.0
         with self._export_metrics_lock:
             self._export_phase_active += 1
             export_phase_concurrent = self._export_phase_active
@@ -643,6 +700,14 @@ class VideoGenTaskManager:
 
             return last_error
         finally:
+            task.export_seconds = time.monotonic() - phase_started
+            logger.info(
+                "Render phase timing: draft_id=%s phase=export "
+                "export_seconds=%.3f lock_wait_seconds=%.3f",
+                task.draft_id,
+                task.export_seconds,
+                task.export_lock_wait_seconds,
+            )
             with self._export_metrics_lock:
                 self._export_phase_active -= 1
                 export_phase_concurrent = self._export_phase_active
@@ -657,9 +722,15 @@ class VideoGenTaskManager:
         COS 上传、扣费与清理（与其它任务的上传共享线程池，最多 2 路并发）。
         草稿目录与本地导出 mp4 在 finally 中清理，避免上传/扣费任一环节抛错导致残留。
         """
+        phase_started = time.monotonic()
+        task.upload_seconds = 0.0
         try:
             task.progress = 95
-            upload_url, upload_failed = self._upload_video_to_cos(task.outfile)
+            upload_started = time.monotonic()
+            try:
+                upload_url, upload_failed = self._upload_video_to_cos(task.outfile)
+            finally:
+                task.upload_seconds = time.monotonic() - upload_started
             self._calculate_and_charge(task, task.outfile)
             return self._handle_result(upload_url, upload_failed)
         except Exception as exc:
@@ -668,6 +739,14 @@ class VideoGenTaskManager:
             )
             return "", f"导出草稿失败: {exc}"
         finally:
+            task.upload_phase_seconds = time.monotonic() - phase_started
+            logger.info(
+                "Render phase timing: draft_id=%s phase=upload "
+                "upload_seconds=%.3f phase_seconds=%.3f",
+                task.draft_id,
+                task.upload_seconds,
+                task.upload_phase_seconds,
+            )
             self._cleanup_files(task)
     
     def _download_draft(self, task: VideoGenTask) -> str:
@@ -738,7 +817,9 @@ class VideoGenTaskManager:
             "Waiting for export_video_lock: draft_id=%s",
             task.draft_id,
         )
+        lock_wait_started = time.monotonic()
         with self.export_video_lock:
+            task.export_lock_wait_seconds += time.monotonic() - lock_wait_started
             logger.info(f"Begin to export draft: {task.draft_id} -> {outfile}")
             
             # 更新进度
