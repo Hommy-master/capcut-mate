@@ -367,12 +367,22 @@ _SPEED_CHECK_WINDOW_SECONDS = 10.0
 _ROBOCOPY_TIMEOUT_SECONDS = 120
 
 _REQUEST_HEADERS = {
+    # 标准 Chrome 120 (Windows) 请求头指纹，降低 CDN 按 UA/客户端提示限流的概率。
     "User-Agent": (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
         "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     ),
+    "Accept": "*/*",
+    "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
     # 禁用压缩：Range 偏移必须对应原始字节，且 Content-Length 校验才准确。
+    # 这是与真实 Chrome 唯一的刻意差异（Chrome 默认 gzip, deflate, br, zstd）。
     "Accept-Encoding": "identity",
+    "sec-ch-ua": '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+    "sec-ch-ua-mobile": "?0",
+    "sec-ch-ua-platform": '"Windows"',
+    "Sec-Fetch-Dest": "empty",
+    "Sec-Fetch-Mode": "cors",
+    "Sec-Fetch-Site": "cross-site",
 }
 
 # 网关/限流等暂时不可用，退避重试有效；500 多为 OSS/Nginx 的瞬时内部错误，与 desktop-client 一致。
