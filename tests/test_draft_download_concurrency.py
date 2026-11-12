@@ -182,7 +182,7 @@ class TestStallAndProgressWatchdog:
         response.iter_content = lambda chunk_size=8192: chunks()
         target = tmp_path / "b.bin"
 
-        with patch.object(dd, "_now", side_effect=[0.0, 0.0, 10.1]):
+        with patch.object(dd, "_now", side_effect=[0.0, 0.0, 5.1]):
             dd._write_http_body_to_file(response, str(target), append=False)
 
         assert target.read_bytes() == b"aaaa" + b"bbbb"
@@ -192,33 +192,33 @@ class TestStallAndProgressWatchdog:
 
         def chunks():
             for _ in range(6):
-                yield b"a" * (20 * 1024)  # 20KiB/10.1s ≈ 2KiB/s
+                yield b"a" * (20 * 1024)  # 20KiB/5.1s ≈ 3.9KiB/s
 
         response = MagicMock()
         response.iter_content = lambda chunk_size=8192: chunks()
         target = tmp_path / "slow.bin"
 
         with patch.object(
-            dd, "_now", side_effect=[0.0, 10.1, 20.2, 30.3, 40.4, 50.5, 60.6]
+            dd, "_now", side_effect=[0.0, 5.1, 10.2, 15.3, 20.4, 25.5, 30.6]
         ):
             dd._write_http_body_to_file(response, str(target), append=False)
 
         assert target.read_bytes() == b"a" * (20 * 1024) * 6
 
     def test_fast_link_degradation_aborts_after_two_windows(self, tmp_path) -> None:
-        """快链路（基线 >= 64KiB/s）连续两个窗口低于基线 20% 才中止换连接。"""
+        """快链路（基线 >= 64KiB/s）连续两个 5s 窗口低于基线 20% 才中止换连接。"""
 
         def chunks():
-            yield b"x" * (1024 * 1024)  # 窗口 1：≈101KiB/s
+            yield b"x" * (1024 * 1024)  # 窗口 1：≈205KiB/s
             yield b"y" * (1024 * 1024)  # 窗口 2：维持
-            yield b"z" * (100 * 1024)  # 窗口 3：≈9.9KiB/s，劣化 1/2
-            yield b"w" * (100 * 1024)  # 窗口 4：≈9.9KiB/s，劣化 2/2 → 中止
+            yield b"z" * (100 * 1024)  # 窗口 3：≈19.6KiB/s，劣化 1/2
+            yield b"w" * (100 * 1024)  # 窗口 4：≈19.6KiB/s，劣化 2/2 → 中止
 
         response = MagicMock()
         response.iter_content = lambda chunk_size=8192: chunks()
         target = tmp_path / "degrade.bin"
 
-        with patch.object(dd, "_now", side_effect=[0.0, 10.1, 20.2, 30.3, 40.4]):
+        with patch.object(dd, "_now", side_effect=[0.0, 5.1, 10.2, 15.3, 20.4]):
             with pytest.raises(requests.exceptions.ReadTimeout):
                 dd._write_http_body_to_file(response, str(target), append=False)
 
@@ -238,7 +238,7 @@ class TestStallAndProgressWatchdog:
         response.iter_content = lambda chunk_size=8192: chunks()
         target = tmp_path / "recover.bin"
 
-        with patch.object(dd, "_now", side_effect=[0.0, 10.1, 20.2, 30.3, 40.4]):
+        with patch.object(dd, "_now", side_effect=[0.0, 5.1, 10.2, 15.3, 20.4]):
             dd._write_http_body_to_file(response, str(target), append=False)
 
         assert target.stat().st_size == 3 * 1024 * 1024 + 100 * 1024

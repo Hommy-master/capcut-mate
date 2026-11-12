@@ -364,7 +364,7 @@ _DEGRADE_RATIO = 0.2
 _DEGRADE_CONSECUTIVE_WINDOWS = 2
 _DEGRADE_MIN_BASELINE_BYTES_PER_SEC = 64 * 1024
 _BASELINE_EWMA_ALPHA = 0.3
-_SPEED_CHECK_WINDOW_SECONDS = 10.0
+_SPEED_CHECK_WINDOW_SECONDS = 5.0
 
 # robocopy 仅用于触发目录扫描/复制，卡住不应拖垮整个阶段。
 _ROBOCOPY_TIMEOUT_SECONDS = 120
@@ -845,8 +845,8 @@ def _write_http_body_to_file(
     三层超时：
     1. socket 读超时 + 无新字节看门狗：10s 没有任何新字节就中止；
     2. 相对劣化看门狗：以连接自身近期吞吐（EWMA）为基线，快链路掉到基线的
-       20% 以下并连续两个窗口确认才中止换连接；基线本身低于 64KiB/s 的慢链路
-       不轮换，避免把「本来就慢」误判成「连接变坏」；
+       20% 以下并连续两个 5s 窗口确认才中止换连接；基线本身低于 64KiB/s 的
+       慢链路不轮换，避免把「本来就慢」误判成「连接变坏」；
     3. 下载阶段总预算：整个草稿的最后安全网。
     进度每 5s 或 10MB 打一条日志，便于区分「慢」和「卡死」。
     """
@@ -910,8 +910,8 @@ def _write_http_body_to_file(
 
             # 相对劣化看门狗：基线取本次连接的吞吐 EWMA。慢链路（基线低于
             # _DEGRADE_MIN_BASELINE_BYTES_PER_SEC）不轮换，避免把「本来就慢」
-            # 误判成「连接变坏」；快链路掉到基线 20% 以下且连续两个窗口确认，
-            # 才中止并换连接续传。
+            # 误判成「连接变坏」；快链路掉到基线 20% 以下且连续两个 5s 窗口
+            # 确认，才中止并换连接续传。
             if now - last_speed_check_at >= _SPEED_CHECK_WINDOW_SECONDS:
                 window_elapsed = max(now - last_speed_check_at, 0.001)
                 window_bytes = downloaded - last_speed_check_bytes
