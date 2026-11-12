@@ -6,6 +6,7 @@ import pytest
 
 from src.utils.video_task_manager import (
     EXPORT_COM_UIA_MAX_RETRIES,
+    EXPORT_OUTPUT_MISSING_ERROR_MARKER,
     EXPORT_RENAME_SRC_NONE_ERROR_MARKER,
     EXPORT_RENAME_SRC_NONE_MAX_RETRIES,
     TaskStatus,
@@ -42,6 +43,30 @@ class TestExportRenameSrcNoneRetry:
         mgr = VideoGenTaskManager()
         assert mgr._is_export_com_uia_error(COM_UIA_ERROR) is True
         assert mgr._is_export_com_uia_error("导出草稿失败: 导出超时") is False
+
+    def test_is_export_output_missing_error(self) -> None:
+        mgr = VideoGenTaskManager()
+        msg = f"导出草稿失败: {EXPORT_OUTPUT_MISSING_ERROR_MARKER}: C:/x.mp4"
+        assert mgr._is_export_output_missing_error(msg) is True
+        assert mgr._is_export_retryable_error(msg) is True
+        assert mgr._is_export_output_missing_error("导出草稿失败: 导出超时") is False
+
+    @patch.object(VideoGenTaskManager, "_export_video")
+    def test_output_missing_retries_then_succeeds(self, m_export: MagicMock) -> None:
+        missing_exc = Exception(
+            f"{EXPORT_OUTPUT_MISSING_ERROR_MARKER}: C:/Users/x/Videos/a.mp4"
+        )
+        m_export.side_effect = [missing_exc, True]
+        task = _task()
+
+        with patch.object(
+            VideoGenTaskManager, "_prepare_export_retry_outfile"
+        ) as m_prepare:
+            err = VideoGenTaskManager()._phase_export_only(task)
+
+        assert err == ""
+        assert m_export.call_count == 2
+        m_prepare.assert_called_once()
 
     @patch.object(VideoGenTaskManager, "_export_video")
     def test_retries_twice_then_succeeds(self, m_export: MagicMock) -> None:

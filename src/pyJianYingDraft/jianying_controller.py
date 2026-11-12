@@ -36,7 +36,11 @@ from enum import Enum
 from typing import Optional, Literal, Callable
 
 from . import exceptions
-from .exceptions import AutomationError
+from .exceptions import (
+    EXPORT_OUTPUT_MISSING_ERROR_MARKER,
+    AutomationError,
+    ExportOutputMissingError,
+)
 
 # 添加logger导入
 from src.utils.logger import logger
@@ -49,6 +53,15 @@ COM_E_FAIL_HRESULT = -2147467259
 COM_E_FAIL_MARKER = "未指定的错误"
 UIA_CLICK_MAX_RETRIES = 4
 UIA_CLICK_RETRY_INTERVAL = 1.0
+
+# UI 就绪轮询：替代点击后的固定 sleep。超时上限与原固定等待保持一致，
+# 典型机器上条件很快成立即可继续，慢机器/RDP 仍按原上限兜底。
+UI_READY_POLL_INTERVAL = 0.5
+DRAFT_OPEN_TIMEOUT_SECONDS = 10.0
+EXPORT_PANEL_TIMEOUT_SECONDS = 10.0
+EXPORT_START_TIMEOUT_SECONDS = 5.0
+EXPORT_HANDOFF_TIMEOUT_SECONDS = 2.0
+FOCUS_SETTLE_SECONDS = 0.1
 
 
 def is_com_uia_error(exc: BaseException) -> bool:
@@ -304,7 +317,11 @@ class JianyingController:
             self._require_export_succeed_close_btn,
             "dismiss_export_success_dialog",
         )
-        time.sleep(2)
+        self._wait_until(
+            lambda: self._find_export_succeed_close_btn() is None,
+            timeout=EXPORT_HANDOFF_TIMEOUT_SECONDS,
+            description="export success dialog closed",
+        )
         self.get_window()
         return True
 
@@ -339,8 +356,16 @@ class JianyingController:
                 draft_btn = draft_name_text.GetParentControl()
                 assert draft_btn is not None
                 draft_btn.Click(simulateMove=False)
-                time.sleep(10)
-                self.get_window()
+                if not self._wait_until(
+                    self._edit_ready,
+                    timeout=DRAFT_OPEN_TIMEOUT_SECONDS,
+                    description=f"draft edit page ({draft_name})",
+                ):
+                    logger.warning(
+                        "Draft clicked but edit page not ready within %.1fs: %s",
+                        DRAFT_OPEN_TIMEOUT_SECONDS,
+                        draft_name,
+                    )
                 return  # 成功则返回
             except exceptions.DraftNotFound as e:
                 last_exception = e
@@ -358,7 +383,12 @@ class JianyingController:
                             draft_dir,
                         )
                         trigger_directory_scan_with_robocopy(draft_dir)
-                    time.sleep(retry_interval)
+                    # 草稿列表可能提前刷新出来；不必盲等满 retry_interval
+                    self._wait_until(
+                        lambda: self._draft_title_exists(draft_name),
+                        timeout=retry_interval,
+                        description=f"draft visible ({draft_name})",
+                    )
         
         # 所有重试都失败，抛出异常
         raise last_exception
@@ -373,8 +403,16 @@ class JianyingController:
         if not export_btn.Exists(0):
             raise AutomationError("未在编辑窗口中找到导出按钮")
         export_btn.Click(simulateMove=False)
-        time.sleep(10)
-        self.get_window()
+        if not self._wait_for_status(
+            "pre_export",
+            sub_status="export_start",
+            timeout=EXPORT_PANEL_TIMEOUT_SECONDS,
+            description="export panel ready",
+        ):
+            logger.warning(
+                "Export button clicked but export panel not ready within %.1fs",
+                EXPORT_PANEL_TIMEOUT_SECONDS,
+            )
 
     def get_original_export_path(self) -> str:
         """获取原始导出路径
@@ -458,24 +496,122 @@ class JianyingController:
         if not export_btn.Exists(0):
             raise AutomationError("未在导出窗口中找到导出按钮")
         export_btn.Click(simulateMove=False)
-        time.sleep(5)
+        if not self._wait_for_status(
+            "pre_export",
+            sub_status="exporting",
+            timeout=EXPORT_START_TIMEOUT_SECONDS,
+            description="export started",
+        ):
+            logger.warning(
+                "Final export clicked but exporting state not detected within %.1fs",
+                EXPORT_START_TIMEOUT_SECONDS,
+            )
+
+    def _wait_until(
+        self,
+        predicate: Callable[[], bool],
+        *,
+        timeout: float,
+        interval: float = UI_READY_POLL_INTERVAL,
+        description: str = "",
+    ) -> bool:
+        """轮询等待 UI 条件成立，替代固定 sleep；超时返回 False。
+
+        COM 瞬时错误会刷新窗口后继续轮询，非 COM 错误照常抛出。
+        """
+        started = time.monotonic()
+        deadline = started + timeout
+        while True:
+            try:
+                if predicate():
+                    logger.info(
+                        "UI ready: %s after %.2fs",
+                        description or "condition",
+                        time.monotonic() - started,
+                    )
+                    return True
+            except Exception as exc:
+                if not is_com_uia_error(exc):
+                    raise
+                logger.warning(
+                    "UIA COM error while waiting for %s: %r",
+                    description or "UI ready",
+                    exc,
+                )
+                self.get_window(log_status=False)
+            if time.monotonic() >= deadline:
+                logger.warning(
+                    "UI wait timed out after %.1fs: %s",
+                    timeout,
+                    description or "condition",
+                )
+                return False
+            time.sleep(interval)
+
+    def _app_status_is(self, status: str) -> bool:
+        self.get_window(log_status=False)
+        return self.app_status == status
+
+    def _wait_for_status(
+        self,
+        status: str,
+        *,
+        sub_status: Optional[str] = None,
+        timeout: float,
+        description: str = "",
+    ) -> bool:
+        """等待窗口进入指定状态（可指定导出子状态）。"""
+
+        def ready() -> bool:
+            self.get_window(log_status=False)
+            if self.app_status != status:
+                return False
+            return sub_status is None or self.app_sub_status == sub_status
+
+        return self._wait_until(ready, timeout=timeout, description=description)
+
+    def _wait_for_status_not(
+        self, status: str, *, timeout: float, description: str = ""
+    ) -> bool:
+        """等待窗口离开指定状态。"""
+
+        def ready() -> bool:
+            self.get_window(log_status=False)
+            return self.app_status != status
+
+        return self._wait_until(ready, timeout=timeout, description=description)
+
+    def _draft_title_exists(self, draft_name: str) -> bool:
+        self.get_window(log_status=False)
+        draft_name_text = self.app.TextControl(
+            searchDepth=2,
+            Compare=ControlFinder.desc_matcher(
+                f"HomePageDraftTitle:{draft_name}", exact=True
+            ),
+        )
+        return draft_name_text.Exists(0)
+
+    def _edit_ready(self) -> bool:
+        """编辑页就绪：不只是状态切到 edit，导出按钮也要已经出现。"""
+        self.get_window(log_status=False)
+        if self.app_status != "edit":
+            return False
+        export_btn = self.app.TextControl(
+            searchDepth=2,
+            Compare=ControlFinder.desc_matcher("MainWindowTitleBarExportBtn"),
+        )
+        return export_btn.Exists(0)
 
     def __ensure_window_focus(self) -> None:
-        """在点击前确保窗口有焦点"""
-        # 1. 确保窗口激活
+        """在点击前确保窗口有焦点；去掉固定 3×1s 等待，只保留极短 settle。"""
         self.app.SetActive()
-        time.sleep(1)
-        
-        # 2. 确保窗口置顶
         self.app.SetTopmost()
-        time.sleep(1)
-        
-        # 3. 强制获取焦点
         try:
             self.app.SetFocus()
-        except:
-            pass  # 某些情况下可能失败，但继续执行
-        time.sleep(1)
+        except Exception:
+            # 某些情况下 SetFocus 会失败，但激活/置顶后通常仍可点击
+            pass
+        time.sleep(FOCUS_SETTLE_SECONDS)
 
     def wait_for_export_completion(self, timeout: float) -> bool:
         """等待导出完成
@@ -506,7 +642,6 @@ class JianyingController:
                     self._require_export_succeed_close_btn,
                     "wait_for_export_completion.close_success",
                 )
-                time.sleep(2)
                 export_succeeded = True
                 break
 
@@ -520,25 +655,37 @@ class JianyingController:
                 continue_export_click_count += 1
 
             time.sleep(1)
-        time.sleep(2)
+
+        if export_succeeded:
+            # 成功弹窗已关闭，等窗口真正离开导出页即可返回；由 return_to_home 继续收尾
+            self._wait_for_status_not(
+                "pre_export",
+                timeout=EXPORT_HANDOFF_TIMEOUT_SECONDS,
+                description="leave export window",
+            )
         return export_succeeded
 
     def return_to_home(self) -> None:
-        """回到目录页并稍作延迟"""
+        """回到目录页；switch_to_home 已确认到达首页，不再额外盲等。"""
         self.get_window()
         self._dismiss_export_success_dialog()
         self.switch_to_home()
-        time.sleep(2)
 
     def move_exported_file(self, original_path: str, output_path: Optional[str]) -> None:
         """移动导出的文件到指定位置
-        
+
         Args:
             original_path (str): 原始导出路径
             output_path (Optional[str]): 目标输出路径，如果为None则不移动
         """
         logger.info(f"move {original_path} to {output_path}")
         if output_path is not None:
+            # original_path 为 None 时保持原有 TypeError，由 rename-src-none 重试兜底；
+            # 非 None 但文件不存在时给出明确标记，供 video_task_manager 归类为可重试。
+            if original_path is not None and not os.path.isfile(original_path):
+                raise ExportOutputMissingError(
+                    f"{EXPORT_OUTPUT_MISSING_ERROR_MARKER}: {original_path}"
+                )
             shutil.move(original_path, output_path)
 
     def export_draft(self, draft_name: str, output_path: Optional[str] = None, *,
@@ -572,10 +719,10 @@ class JianyingController:
         export_completed = False
 
         for i in range(16):
-            # 确保窗口有焦点
-            self.__ensure_window_focus()
             if self.app_status == "home":
                 logger.info("[%d]app is already in home page", i)
+                # 只在真正点击前确保焦点；纯等待/轮询分支不再做 3×1s 固定等待
+                self.__ensure_window_focus()
                 self.find_and_click_draft(draft_name, draft_dir=draft_dir)
             elif self.app_status == "edit":
                 if export_completed or (
@@ -589,16 +736,18 @@ class JianyingController:
                     break
                 logger.info("[%d]app is already in edit page", i)
                 # 点击导出按钮进入导出界面
+                self.__ensure_window_focus()
                 self.click_export_button()
-            elif self.app_status == "pre_export":                
+            elif self.app_status == "pre_export":
                 if self.app_sub_status == "export_start":
                     logger.info("[%d]app is already in pre_export[export_start] page", i)
+                    self.__ensure_window_focus()
                     # 获取原始导出路径
                     original_path = self.get_original_export_path()
                     # 设置分辨率（如果指定）
-                    self.set_export_resolution(resolution)                    
+                    self.set_export_resolution(resolution)
                     # 设置帧率（如果指定）
-                    self.set_export_framerate(framerate)                    
+                    self.set_export_framerate(framerate)
                     # 点击最终导出按钮
                     self.click_final_export_button()
                     # 获取窗口状态
@@ -651,7 +800,11 @@ class JianyingController:
                             self._require_export_succeed_close_btn,
                             f"switch_to_home.pre_export_close[{i}]",
                         )
-                        time.sleep(2)
+                        self._wait_for_status_not(
+                            "pre_export",
+                            timeout=EXPORT_HANDOFF_TIMEOUT_SECONDS,
+                            description="leave export window",
+                        )
                         continue
                 logger.warning(
                     "switch_to_home: stuck in pre_export sub_status=%s, attempt=%d",
@@ -682,7 +835,11 @@ class JianyingController:
                     ),
                     f"switch_to_home.edit_close[{i}]",
                 )
-                time.sleep(2)
+                self._wait_until(
+                    lambda: self._app_status_is("home"),
+                    timeout=EXPORT_HANDOFF_TIMEOUT_SECONDS,
+                    description="return to home",
+                )
                 continue
 
             raise AutomationError("invalid app status: %s" % self.app_status)
@@ -693,6 +850,8 @@ class JianyingController:
         self,
         max_retries: Optional[int] = None,
         retry_interval: Optional[float] = None,
+        *,
+        log_status: bool = True,
     ) -> None:
         """寻找剪映窗口并置顶；未找到时按间隔重试以提高容错。"""
         if max_retries is None:
@@ -761,7 +920,8 @@ class JianyingController:
         # 初始化导出子状态
         self.init_export_sub_status()
 
-        logger.info("app_status: %s, app_sub_status: %s", self.app_status, self.app_sub_status)
+        if log_status:
+            logger.info("app_status: %s, app_sub_status: %s", self.app_status, self.app_sub_status)
 
         self.app.SetActive()
         self.app.SetTopmost()

@@ -21,3 +21,9 @@ class AutomationError(Exception):
     """自动化操作失败"""
 class ExportTimeout(Exception):
     """导出超时"""
+
+# 剪映显示导出成功、但源文件不存在时的错误标记；供 video_task_manager 归类为可重试
+EXPORT_OUTPUT_MISSING_ERROR_MARKER = "export output missing"
+
+class ExportOutputMissingError(AutomationError):
+    """剪映显示导出成功，但导出文件不存在。"""

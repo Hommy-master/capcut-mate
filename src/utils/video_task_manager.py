@@ -20,6 +20,10 @@ from src.utils.video_task_store import (
     save_completed_result,
 )
 import src.pyJianYingDraft as draft
+from src.pyJianYingDraft.exceptions import (
+    EXPORT_OUTPUT_MISSING_ERROR_MARKER,
+    ExportOutputMissingError,
+)
 import config
 import os
 import sys
@@ -606,14 +610,25 @@ class VideoGenTaskManager:
     @staticmethod
     def _is_export_com_uia_error(error_message: str) -> bool:
         """是否为 Windows UI Automation 的瞬时 COM 错误（可重试）。"""
-        from src.pyJianYingDraft.jianying_controller import is_com_uia_error
+        try:
+            from src.pyJianYingDraft.jianying_controller import is_com_uia_error
+        except ImportError:
+            # 非 Windows 平台没有 UIA；不要让归类逻辑把测试/降级路径打挂
+            return False
 
         return is_com_uia_error(Exception(error_message))
 
     @staticmethod
+    def _is_export_output_missing_error(error_message: str) -> bool:
+        """剪映显示导出成功、但输出文件不存在；可换 outfile 重试导出。"""
+        return EXPORT_OUTPUT_MISSING_ERROR_MARKER in error_message
+
+    @staticmethod
     def _is_export_retryable_error(error_message: str) -> bool:
+        # 先做纯字符串判定，避免为明确错误去导入 Windows-only 的 UI 自动化模块
         return (
             VideoGenTaskManager._is_export_rename_src_none_error(error_message)
+            or VideoGenTaskManager._is_export_output_missing_error(error_message)
             or VideoGenTaskManager._is_export_com_uia_error(error_message)
         )
 
@@ -687,6 +702,14 @@ class VideoGenTaskManager:
                             task.draft_id,
                             attempt,
                             EXPORT_COM_UIA_MAX_RETRIES,
+                        )
+                    elif self._is_export_output_missing_error(last_error):
+                        logger.warning(
+                            "Export output missing, retrying export without "
+                            "re-downloading draft: draft_id=%s retry=%d/%d",
+                            task.draft_id,
+                            attempt,
+                            EXPORT_RENAME_SRC_NONE_MAX_RETRIES,
                         )
                     else:
                         logger.warning(
@@ -870,7 +893,9 @@ class VideoGenTaskManager:
                     outfile,
                 )
                 recover_from_export_failure()
-                return False
+                raise ExportOutputMissingError(
+                    f"{EXPORT_OUTPUT_MISSING_ERROR_MARKER}: {outfile}"
+                )
 
             logger.info(f"Export draft success: {outfile}")
             return True
