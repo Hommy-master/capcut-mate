@@ -80,7 +80,7 @@ jobs:
   build-mac-arm64:
     needs: changes
     if: needs.changes.outputs.desktop == 'true'
-    runs-on: macos-14
+    runs-on: macos-15
     steps:
       - name: 准备代码
         uses: actions/checkout@v4
