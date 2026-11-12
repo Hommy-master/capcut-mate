@@ -8,8 +8,8 @@ const KB = 1024;
 test('fast link needs two consecutive slow windows to degrade', () => {
   const detect = createDegradeDetector();
 
-  assert.equal(detect(100 * KB).degraded, false); // 窗口 1：建立基线
-  assert.equal(detect(100 * KB).degraded, false); // 窗口 2：维持
+  assert.equal(detect(300 * KB).degraded, false); // 窗口 1：建立基线
+  assert.equal(detect(300 * KB).degraded, false); // 窗口 2：维持
   assert.equal(detect(10 * KB).degraded, false); // 窗口 3：劣化 1/2
   assert.equal(detect(10 * KB).degraded, true); // 窗口 4：劣化 2/2
 });
@@ -18,26 +18,35 @@ test('slow link below baseline floor never degrades', () => {
   const detect = createDegradeDetector();
 
   for (let i = 0; i < 10; i += 1) {
-    assert.equal(detect(2 * KB).degraded, false);
+    assert.equal(detect(200 * KB).degraded, false);
   }
+});
+
+test('link below 256KiB/s floor does not rotate even after a drop', () => {
+  const detect = createDegradeDetector();
+
+  assert.equal(detect(200 * KB).degraded, false); // 基线 200KiB/s（低于门槛）
+  assert.equal(detect(200 * KB).degraded, false);
+  assert.equal(detect(10 * KB).degraded, false); // 掉速也不判定劣化
+  assert.equal(detect(10 * KB).degraded, false);
 });
 
 test('baseline is frozen while degradation is suspected', () => {
   const detect = createDegradeDetector();
 
-  detect(70 * KB); // 基线 70KiB/s（略高于门槛）
+  detect(300 * KB); // 基线 300KiB/s（略高于 256KiB/s 门槛）
   assert.equal(detect(10 * KB).degraded, false); // 劣化 1/2，基线冻结
-  // 若基线被劣化样本拉低到 64KiB/s 以下，这里会漏报；冻结后必须触发。
+  // 若基线被劣化样本拉低到 256KiB/s 以下，这里会漏报；冻结后必须触发。
   assert.equal(detect(10 * KB).degraded, true);
 });
 
 test('recovery resets the slow window counter', () => {
   const detect = createDegradeDetector();
 
-  detect(100 * KB);
-  detect(100 * KB);
+  detect(300 * KB);
+  detect(300 * KB);
   assert.equal(detect(10 * KB).degraded, false); // 劣化 1/2
-  assert.equal(detect(100 * KB).degraded, false); // 恢复，计数清零
+  assert.equal(detect(300 * KB).degraded, false); // 恢复，计数清零
   assert.equal(detect(10 * KB).degraded, false); // 重新劣化 1/2
   assert.equal(detect(10 * KB).degraded, true); // 劣化 2/2
 });

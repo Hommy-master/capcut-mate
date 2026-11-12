@@ -11,7 +11,7 @@ const HEADER_TIMEOUT_MS = 10000;
 const STREAM_IDLE_TIMEOUT_MS = 10000;
 /**
  * 相对劣化看门狗：以连接自身近期吞吐（EWMA）为基线，快链路掉到基线的 20%
- * 以下并连续两个 5s 窗口确认才断开重连；基线本身低于 64KiB/s 的慢链路不轮换，
+ * 以下并连续两个 5s 窗口确认才断开重连；基线本身低于 256KiB/s 的慢链路不轮换，
  * 避免把「本来就慢」误判成「连接变坏」。判定逻辑见 downloadSpeedGuard.js，
  * 与 Python 端策略保持一致。
  */
