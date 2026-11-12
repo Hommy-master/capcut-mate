@@ -339,13 +339,29 @@ def _localize_draft_meta_info(target_dir: str, draft_id: str) -> None:
         )
 
 _REQUEST_CONNECT_TIMEOUT = 10
-_REQUEST_READ_TIMEOUT = 30
+# 单次 socket 读超时。草稿素材偶发「连接还在但长时间没有新字节」，
+# 30s 会让一个卡住的连接占用并发槽位很久；10s 无新字节即中止并断点续传。
+_REQUEST_READ_TIMEOUT = 10
 _MAX_RETRIES = 10
 
 # 整个下载阶段（文件列表 + 全部草稿文件 + 全部远程素材 + 其间的所有重试）共享的墙钟预算。
-# 读写超时是「每次 socket 读写」的，慢速滴流可以无限续期，重试预算又逐层相乘，
-# 因此必须另设总预算，让降级网络下有界失败而不是挂死（同 download.py 的 total_timeout 思路）。
-_DOWNLOAD_PHASE_BUDGET_SECONDS = 300.0
+# 单文件已有「无进度/低速」看门狗，这里是最后的安全网；大素材草稿需要比 300s 更宽松，
+# 否则慢速但仍在推进的下载会被整体误杀。
+_DOWNLOAD_PHASE_BUDGET_SECONDS = 600.0
+
+# 单文件「无新字节」看门狗：连续这么久没有收到任何数据就中止本次尝试。
+# 与 _REQUEST_READ_TIMEOUT 配合，实际阻塞读最多 10s 就会抛 ReadTimeout。
+_STALL_TIMEOUT_SECONDS = 10.0
+
+# 下载进度日志：每 5s 或每 10MB 输出一次，便于区分「慢」与「卡死」。
+_PROGRESS_LOG_INTERVAL_SECONDS = 5.0
+_PROGRESS_LOG_INTERVAL_BYTES = 10 * 1024 * 1024
+
+# 单文件最低可接受吞吐与最短时限：按 Content-Length 计算该文件最多允许的下载时间，
+# 例如 33MB 文件至少给 33s；低于 1MB/s 持续 10s 就中止并换连接续传。
+_MIN_DOWNLOAD_SPEED_BYTES_PER_SEC = 1024 * 1024
+_FILE_MIN_TIMEOUT_SECONDS = 15.0
+_SPEED_CHECK_WINDOW_SECONDS = 10.0
 
 # robocopy 仅用于触发目录扫描/复制，卡住不应拖垮整个阶段。
 _ROBOCOPY_TIMEOUT_SECONDS = 120
@@ -355,6 +371,8 @@ _REQUEST_HEADERS = {
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
         "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     ),
+    # 禁用压缩：Range 偏移必须对应原始字节，且 Content-Length 校验才准确。
+    "Accept-Encoding": "identity",
 }
 
 # 网关/限流等暂时不可用，退避重试有效；500 多为 OSS/Nginx 的瞬时内部错误，与 desktop-client 一致。
@@ -657,6 +675,71 @@ def _parse_unsatisfied_range_total(headers) -> Optional[int]:
     return int(match.group(1))
 
 
+def _parse_int_header(headers, name: str) -> Optional[int]:
+    if not headers:
+        return None
+    raw = headers.get(name)
+    if raw is None:
+        raw = headers.get(name.lower())
+    if raw is None or raw == "":
+        return None
+    # 只接受真实响应头类型；测试里的 MagicMock 属性 int() 会返回 1，必须排除。
+    if not isinstance(raw, (str, bytes, int)) or isinstance(raw, bool):
+        return None
+    try:
+        value = int(raw)
+    except (TypeError, ValueError):
+        return None
+    return value if value >= 0 else None
+
+
+def _parse_content_range_total(headers) -> Optional[int]:
+    """从 206 的 Content-Range: bytes 0-99/1234 解析远程文件总大小。"""
+    if not headers:
+        return None
+    raw = headers.get("Content-Range") or headers.get("content-range") or ""
+    match = re.match(
+        r"bytes\s+\d+-\d+/(\d+)\s*$", str(raw).strip(), flags=re.IGNORECASE
+    )
+    return int(match.group(1)) if match else None
+
+
+def _expected_total_size(response, resume_from: int) -> Optional[int]:
+    """根据响应头推断下载完成后的文件总大小；无法判断时返回 None。"""
+    status = getattr(response, "status_code", 0)
+    headers = getattr(response, "headers", None) or {}
+    if status == 206:
+        total = _parse_content_range_total(headers)
+        if total is not None:
+            return total
+        length = _parse_int_header(headers, "Content-Length")
+        if length is not None and resume_from > 0:
+            return resume_from + length
+        return length
+    if status == 200:
+        return _parse_int_header(headers, "Content-Length")
+    return None
+
+
+def _validate_downloaded_size(
+    file_path: str, expected_total_size: Optional[int], url: str
+) -> None:
+    """校验落地文件大小；不完整时抛可重试异常，由调用方断点续传。"""
+    if expected_total_size is None or expected_total_size <= 0:
+        return
+    actual = _local_file_size(file_path)
+    if actual != expected_total_size:
+        logger.warning(
+            "Downloaded size mismatch: url=%s expected=%s actual=%s",
+            url,
+            expected_total_size,
+            actual,
+        )
+        raise requests.exceptions.ChunkedEncodingError(
+            f"incomplete download: {actual}/{expected_total_size}"
+        )
+
+
 def _remove_local_file(path: str) -> None:
     """删除续传残留文件；失败只记日志，由后续重试继续处理。"""
     try:
@@ -707,6 +790,29 @@ def _is_download_success_status(status_code: int, resume_from: int) -> bool:
     return status_code == 206 and resume_from > 0
 
 
+def _raise_progress_timeout(
+    reason: str,
+    *,
+    url: str,
+    downloaded: int,
+    expected_total_size: Optional[int],
+    elapsed: float,
+) -> None:
+    speed = downloaded / elapsed if elapsed > 0 else 0.0
+    logger.warning(
+        "Download %s: url=%s downloaded=%s/%s bytes elapsed=%.1fs speed=%.2fMB/s",
+        reason,
+        url,
+        downloaded,
+        expected_total_size if expected_total_size is not None else "?",
+        elapsed,
+        speed / 1024 / 1024,
+    )
+    raise requests.exceptions.ReadTimeout(
+        f"download {reason}: {downloaded} bytes in {elapsed:.1f}s"
+    )
+
+
 def _write_http_body_to_file(
     response: requests.Response,
     file_path: str,
@@ -715,6 +821,7 @@ def _write_http_body_to_file(
     deadline: Optional[float] = None,
     url: str = "",
     abort_event: Optional[threading.Event] = None,
+    expected_total_size: Optional[int] = None,
 ) -> None:
     """
     将 HTTP 响应体写入本地文件。
@@ -722,20 +829,103 @@ def _write_http_body_to_file(
     append=True：断点续传，在已有内容后追加（配合 206）。
     append=False：覆盖写入（JSON 等非资源，或服务端忽略 Range 返回 200 时的整文件重下）。
 
-    这里按 chunk 检查总预算：读写超时只管单次 socket 读写，慢速滴流能无限续期，
-    这是唯一能拦住它的地方。中断点落在 chunk 之间，最坏多等一个读超时（30s）。
-    同草稿其它文件失败时 abort_event 置位，同样在 chunk 之间退出，保留半成品供续传。
+    三层超时：
+    1. socket 读超时 10s：连接长时间没有新字节时由 requests 抛 ReadTimeout；
+    2. 本函数内的无进度/低速看门狗：慢速滴流（每个 chunk 都在 10s 内到达但总量很慢）
+       也会被中止，按 Range 续传重试；
+    3. 下载阶段总预算：整个草稿的最后安全网。
+    进度每 5s 或 10MB 打一条日志，便于区分「慢」和「卡死」。
     """
     parent_dir = os.path.dirname(file_path)
     if parent_dir:
         os.makedirs(parent_dir, exist_ok=True)
     mode = "ab" if append else "wb"
+
+    started_at = _now()
+    initial_size = _local_file_size(file_path) if append else 0
+    downloaded = initial_size
+    last_progress_at = started_at
+    last_log_at = started_at
+    last_log_bytes = downloaded
+    last_speed_check_at = started_at
+    last_speed_check_bytes = downloaded
+
+    # 按本次尝试开始时剩余的字节数给一个固定的文件级时限；不能每收到一个 chunk
+    # 用「剩余字节 / 速度」重算，否则文件下载到一半就会因为 allowed 变小而误杀。
+    per_file_allowed: Optional[float] = None
+    if expected_total_size is not None:
+        initial_remaining = max(0, expected_total_size - initial_size)
+        per_file_allowed = max(
+            _FILE_MIN_TIMEOUT_SECONDS,
+            initial_remaining / _MIN_DOWNLOAD_SPEED_BYTES_PER_SEC,
+        )
+
     with open(file_path, mode) as out:
         for chunk in response.iter_content(chunk_size=8192):
+            now = _now()
             _check_download_deadline(deadline, url=url)
             _raise_if_cancelled(abort_event)
+
             if chunk:
                 out.write(chunk)
+                downloaded += len(chunk)
+                last_progress_at = now
+
+                if (
+                    now - last_log_at >= _PROGRESS_LOG_INTERVAL_SECONDS
+                    or downloaded - last_log_bytes >= _PROGRESS_LOG_INTERVAL_BYTES
+                ):
+                    log_elapsed = max(now - last_log_at, 0.001)
+                    log_speed = (downloaded - last_log_bytes) / log_elapsed
+                    if expected_total_size:
+                        percent = min(100.0, downloaded / expected_total_size * 100)
+                        size_text = f"{downloaded}/{expected_total_size}B ({percent:.0f}%)"
+                    else:
+                        size_text = f"{downloaded}B"
+                    logger.info(
+                        "Download progress: %s %s %.2fMB/s",
+                        url,
+                        size_text,
+                        log_speed / 1024 / 1024,
+                    )
+                    last_log_at = now
+                    last_log_bytes = downloaded
+
+            # 无新字节看门狗（读超时通常先触发；这里兜住 iter_content 持续返回空 chunk 的情况）。
+            if now - last_progress_at > _STALL_TIMEOUT_SECONDS:
+                _raise_progress_timeout(
+                    "stalled (no new bytes)",
+                    url=url,
+                    downloaded=downloaded,
+                    expected_total_size=expected_total_size,
+                    elapsed=now - started_at,
+                )
+
+            # 低速看门狗：慢速滴流可以一直不触发读超时，但吞吐低于阈值就换连接续传。
+            if now - last_speed_check_at >= _SPEED_CHECK_WINDOW_SECONDS:
+                window_elapsed = max(now - last_speed_check_at, 0.001)
+                window_bytes = downloaded - last_speed_check_bytes
+                window_speed = window_bytes / window_elapsed
+                if window_speed < _MIN_DOWNLOAD_SPEED_BYTES_PER_SEC:
+                    _raise_progress_timeout(
+                        "too slow",
+                        url=url,
+                        downloaded=downloaded,
+                        expected_total_size=expected_total_size,
+                        elapsed=now - started_at,
+                    )
+                last_speed_check_at = now
+                last_speed_check_bytes = downloaded
+
+            # 按文件大小自适应的总时限：大文件给更多时间，但不能无限慢。
+            if per_file_allowed is not None and now - started_at > per_file_allowed:
+                _raise_progress_timeout(
+                    "exceeded per-file time budget",
+                    url=url,
+                    downloaded=downloaded,
+                    expected_total_size=expected_total_size,
+                    elapsed=now - started_at,
+                )
 
 
 def _resolve_download_target_path(
@@ -1360,6 +1550,7 @@ def _download_single_file(
                         "Server ignored Range, re-downloading from start: %s",
                         file_url,
                     )
+                expected_total_size = _expected_total_size(response, resume_from)
                 _write_http_body_to_file(
                     response,
                     full_file_path,
@@ -1367,9 +1558,14 @@ def _download_single_file(
                     deadline=deadline,
                     url=file_url,
                     abort_event=abort_event,
+                    expected_total_size=expected_total_size,
                 )
             finally:
                 response.close()
+
+            # 服务端提前正常关闭连接时 iter_content 可能不报错，必须按 Content-Length
+            # 再校验一次，避免把截断文件当成功。
+            _validate_downloaded_size(full_file_path, expected_total_size, file_url)
 
             # 并发下载时由 _download_all_files 在全部文件落盘后统一处理，
             # 避免 content.json 的「下载 -> 改写」与其它文件的并发写交错。
@@ -1408,7 +1604,12 @@ def _download_single_file(
                     url=file_url,
                 )
             logger.warning(
-                f"Network error, retry ({retry_count}/{_MAX_RETRIES}): {e}, URL: {file_url}"
+                "Network error, retry (%s/%s): %s, downloaded=%s bytes, URL: %s",
+                retry_count,
+                _MAX_RETRIES,
+                e,
+                _local_file_size(full_file_path),
+                file_url,
             )
             _sleep_network_retry_backoff()
         except OSError as e:
@@ -1762,6 +1963,7 @@ def _download_remote_material_raising(
                     "Server ignored Range, re-downloading from start: %s",
                     file_url,
                 )
+            expected_total_size = _expected_total_size(response, resume_from)
             _write_http_body_to_file(
                 response,
                 local_path,
@@ -1769,7 +1971,9 @@ def _download_remote_material_raising(
                 deadline=deadline,
                 url=file_url,
                 abort_event=abort_event,
+                expected_total_size=expected_total_size,
             )
+            _validate_downloaded_size(local_path, expected_total_size, file_url)
             return local_path
         except DraftDownloadAbort:
             raise
@@ -1798,9 +2002,15 @@ def _download_remote_material_raising(
                     url=file_url,
                 )
             retry_no = attempt + 1
+            downloaded_bytes = _local_file_size(local_path) if local_path else 0
             logger.warning(
-                f"Remote material download network error, retry ({retry_no}/{_MAX_RETRIES}): "
-                f"{file_url}, {e}"
+                "Remote material download network error, retry (%s/%s): "
+                "%s, downloaded=%s bytes, error=%s",
+                retry_no,
+                _MAX_RETRIES,
+                file_url,
+                downloaded_bytes,
+                e,
             )
             _sleep_network_retry_backoff()
         except OSError as e:
@@ -1933,9 +2143,16 @@ def _download_remote_file_raising(
                     "Server ignored Range, re-downloading from start: %s",
                     file_url,
                 )
+            expected_total_size = _expected_total_size(response, resume_from)
             _write_http_body_to_file(
-                response, local_path, append=append, abort_event=abort_event
+                response,
+                local_path,
+                append=append,
+                abort_event=abort_event,
+                expected_total_size=expected_total_size,
+                url=file_url,
             )
+            _validate_downloaded_size(local_path, expected_total_size, file_url)
             return
         except DraftDownloadAbort:
             raise
@@ -1964,9 +2181,15 @@ def _download_remote_file_raising(
                     url=file_url,
                 )
             retry_no = attempt + 1
+            downloaded_bytes = _local_file_size(local_path) if local_path else 0
             logger.warning(
-                f"Remote material download network error, retry ({retry_no}/{_MAX_RETRIES}): "
-                f"{file_url}, {e}"
+                "Remote material download network error, retry (%s/%s): "
+                "%s, downloaded=%s bytes, error=%s",
+                retry_no,
+                _MAX_RETRIES,
+                file_url,
+                downloaded_bytes,
+                e,
             )
             _sleep_network_retry_backoff()
         except OSError as e:

@@ -381,8 +381,10 @@ class TestDownloadDeadline:
         resp.close = MagicMock()
 
         target = tempfile.mkdtemp()
-        # 第 1 次：循环开头检查（未超）；第 2 次：第 1 个 chunk（未超，写入）；第 3 次：已超
-        with patch.object(dd, "_now", side_effect=[100.0, 100.0, 400.0]):
+        # 尝试入口、写入起点、chunk1 取值/预算检查均未超；chunk2 取值/预算检查时已超。
+        with patch.object(
+            dd, "_now", side_effect=[100.0, 100.0, 100.0, 100.0, 400.0, 400.0]
+        ):
             with patch.object(dd, "requests") as m_req:
                 m_req.get.return_value = resp
                 m_req.exceptions = requests.exceptions

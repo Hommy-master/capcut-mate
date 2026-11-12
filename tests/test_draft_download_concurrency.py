@@ -154,6 +154,106 @@ class TestDraftConcurrencyLimit:
         assert peak == dd._MAX_CONCURRENT_DRAFT_DOWNLOADS == 3
 
 
+class TestStallAndProgressWatchdog:
+    def test_no_new_bytes_for_ten_seconds_aborts(self, tmp_path) -> None:
+        def chunks():
+            yield b"aa"
+            yield b""
+
+        response = MagicMock()
+        response.iter_content = lambda chunk_size=8192: chunks()
+        target = tmp_path / "a.bin"
+
+        with patch.object(dd, "_now", side_effect=[0.0, 0.0, 11.0]):
+            with pytest.raises(requests.exceptions.ReadTimeout):
+                dd._write_http_body_to_file(response, str(target), append=False)
+
+        # 中止前已落盘的 chunk 保留，下次可断点续传。
+        assert target.read_bytes() == b"aa"
+
+    def test_slow_trickle_aborts_after_speed_window(self, tmp_path) -> None:
+        def chunks():
+            yield b"a" * 4
+            yield b"b" * 4
+
+        response = MagicMock()
+        response.iter_content = lambda chunk_size=8192: chunks()
+        target = tmp_path / "b.bin"
+
+        with patch.object(dd, "_now", side_effect=[0.0, 0.0, 10.1]):
+            with pytest.raises(requests.exceptions.ReadTimeout):
+                dd._write_http_body_to_file(response, str(target), append=False)
+
+        assert target.read_bytes() == b"aaaa" + b"bbbb"
+
+    def test_per_file_budget_does_not_shrink_as_bytes_arrive(self, tmp_path) -> None:
+        """20 字节 / 最低 1B·s⁻¹ → 允许 20s；下载到 15 字节时不能提前误杀。"""
+
+        def chunks():
+            yield b"x" * 15
+            yield b"y" * 5
+
+        response = MagicMock()
+        response.iter_content = lambda chunk_size=8192: chunks()
+        target = tmp_path / "d.bin"
+
+        with patch.object(dd, "_MIN_DOWNLOAD_SPEED_BYTES_PER_SEC", 1):
+            with patch.object(dd, "_now", side_effect=[0.0, 0.0, 16.0]):
+                dd._write_http_body_to_file(
+                    response,
+                    str(target),
+                    append=False,
+                    expected_total_size=20,
+                )
+
+        assert target.read_bytes() == b"x" * 15 + b"y" * 5
+
+    def test_progress_log_emitted(self, tmp_path) -> None:
+        def chunks():
+            yield b"x" * 1024
+            yield b"y" * 1024
+
+        response = MagicMock()
+        response.iter_content = lambda chunk_size=8192: chunks()
+        target = tmp_path / "c.bin"
+        fake_logger = MagicMock()
+
+        with patch.object(dd, "logger", fake_logger):
+            with patch.object(dd, "_now", side_effect=[0.0, 0.0, 6.0]):
+                dd._write_http_body_to_file(response, str(target), append=False)
+
+        messages = [str(call.args[0]) for call in fake_logger.info.call_args_list]
+        assert any("Download progress" in message for message in messages)
+
+
+class TestContentLengthValidation:
+    def test_size_mismatch_is_retryable(self, tmp_path) -> None:
+        path = tmp_path / "a.bin"
+        path.write_bytes(b"abc")
+
+        with pytest.raises(requests.exceptions.ChunkedEncodingError):
+            dd._validate_downloaded_size(str(path), 10, "https://x/a.bin")
+
+    def test_expected_total_size_from_200_and_206(self) -> None:
+        response = MagicMock()
+        response.status_code = 200
+        response.headers = {"Content-Length": "10"}
+        assert dd._expected_total_size(response, 0) == 10
+
+        response.status_code = 206
+        response.headers = {"Content-Range": "bytes 5-9/10"}
+        assert dd._expected_total_size(response, 5) == 10
+
+        response.headers = {"Content-Length": "5"}
+        assert dd._expected_total_size(response, 5) == 10
+
+    def test_missing_content_length_returns_none(self) -> None:
+        response = MagicMock()
+        response.status_code = 200
+        response.headers = {}
+        assert dd._expected_total_size(response, 0) is None
+
+
 class TestContentJsonWriteSafety:
     def test_safe_write_file_keeps_old_file_when_replace_fails(self, tmp_path) -> None:
         path = tmp_path / "draft_content.json"
