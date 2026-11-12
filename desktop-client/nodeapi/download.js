@@ -22,14 +22,26 @@ const DRAFT_PERMISSION_DENIED = "DRAFT_PERMISSION_DENIED";
 
 const LOG_MAX = 2000;
 
+/** 标准 Chrome 120 (Windows) 请求头指纹，降低 CDN 按 UA/客户端提示限流的概率。 */
+const CHROME_BROWSER_HEADERS = {
+  "User-Agent":
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+  Accept: "*/*",
+  "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
+  // 禁用压缩：Range 偏移必须对应原始字节，且 Content-Length 校验才准确。
+  "Accept-Encoding": "identity",
+  "sec-ch-ua": '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+  "sec-ch-ua-mobile": "?0",
+  "sec-ch-ua-platform": '"Windows"',
+  "Sec-Fetch-Dest": "empty",
+  "Sec-Fetch-Mode": "cors",
+  "Sec-Fetch-Site": "cross-site",
+};
+
 const axiosConfig = {
   method: "GET",
   timeout: 30000, // 30秒超时
-  headers: {
-    // 添加常见的浏览器User-Agent
-    "User-Agent":
-      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-  },
+  headers: CHROME_BROWSER_HEADERS,
 };
 
 function isHttpUrl(value) {
@@ -191,14 +203,16 @@ async function downloadRemoteMaterial(fileUrl, draftRootDir, subDir, baseName, f
   const destDir = draftPaths.materialLocalDir(draftRootDir, subDir);
   const fallbackPath = path.join(destDir, buildMaterialFilename(baseName, fallbackExt));
 
-  return downloadBinaryToFile(fileUrl, {
-    destPath: fallbackPath,
-    resolveDestPath: (headers) => {
-      const ext = inferExtFromContentType(headers["content-type"], fallbackExt);
-      return path.join(destDir, buildMaterialFilename(baseName, ext));
-    },
-    requestHeaders: axiosConfig.headers,
-  });
+  return withDownloadSlot(() =>
+    downloadBinaryToFile(fileUrl, {
+      destPath: fallbackPath,
+      resolveDestPath: (headers) => {
+        const ext = inferExtFromContentType(headers["content-type"], fallbackExt);
+        return path.join(destDir, buildMaterialFilename(baseName, ext));
+      },
+      requestHeaders: axiosConfig.headers,
+    })
+  );
 }
 
 function sanitizeFilename(value) {
@@ -237,7 +251,74 @@ async function ensureWindowsDraftFilesWritable(rootDir) {
   }
 }
 
-const MAX_DOWNLOAD_ATTEMPTS = 10;
+/** 单个草稿最多同时下载的文件数 */
+const MAX_CONCURRENT_DOWNLOADS = 10;
+/** 单个文件首次尝试 + 最多 10 次重试（与服务端 _MAX_RETRIES 语义一致） */
+const MAX_DOWNLOAD_RETRIES = 10;
+const MAX_DOWNLOAD_ATTEMPTS = MAX_DOWNLOAD_RETRIES + 1;
+
+/**
+ * 简单并发限流器：任务只有在拿到槽位后才开始。
+ * 用于把「文件列表下载」和「草稿内远程素材下载」统一限制在 10 路以内。
+ */
+function createConcurrencyLimiter(limit) {
+  let active = 0;
+  const queue = [];
+
+  const pump = () => {
+    while (active < limit && queue.length > 0) {
+      const job = queue.shift();
+      active += 1;
+      Promise.resolve()
+        .then(job.task)
+        .then(job.resolve, job.reject)
+        .finally(() => {
+          active -= 1;
+          pump();
+        });
+    }
+  };
+
+  return (task) =>
+    new Promise((resolve, reject) => {
+      queue.push({ task, resolve, reject });
+      pump();
+    });
+}
+
+const withDownloadSlot = createConcurrencyLimiter(MAX_CONCURRENT_DOWNLOADS);
+
+/**
+ * 并发执行 worker，最多 limit 个同时运行；任一项抛错后不再启动新任务，
+ * 等在跑的任务结束后抛出第一个错误（用于权限错误时快速中止整批下载）。
+ */
+async function mapLimit(items, limit, worker) {
+  if (!items.length) return [];
+  const results = new Array(items.length);
+  let nextIndex = 0;
+  let stopped = false;
+  let firstError = null;
+
+  async function runner() {
+    while (!stopped) {
+      const index = nextIndex++;
+      if (index >= items.length) return;
+      try {
+        results[index] = await worker(items[index], index);
+      } catch (error) {
+        stopped = true;
+        if (firstError == null) firstError = error;
+        return;
+      }
+    }
+  }
+
+  await Promise.all(
+    Array.from({ length: Math.min(limit, items.length) }, () => runner())
+  );
+  if (firstError != null) throw firstError;
+  return results;
+}
 
 /**
  * 拉取 get_draft：最多 3 次。
@@ -726,11 +807,29 @@ async function readDownloadLog() {
   }
 }
 
+let logWriteChain = Promise.resolve();
+
+/**
+ * 串行化日志文件的 read-modify-write。
+ * 10 路并发下载会同时调用 upsert/append，若不加锁会互相覆盖日志条目。
+ */
+function runSerializedLogWrite(task) {
+  const result = logWriteChain.then(task, task);
+  logWriteChain = result.catch(() => {});
+  return result;
+}
+
 /**
  *
  * @param {*} entry {time: Date, level: 'error', message: '日志内容' }
  */
 async function appendDownloadLog(entry, parentWindow) {
+  return runSerializedLogWrite(() =>
+    appendDownloadLogUnlocked(entry, parentWindow)
+  );
+}
+
+async function appendDownloadLogUnlocked(entry, parentWindow) {
   const logPath = getDownloadLogPath();
   let logs = [];
   try {
@@ -765,7 +864,12 @@ async function upsertDownloadLog(entry, parentWindow) {
   if (!entry?.id) {
     return appendDownloadLog(entry, parentWindow);
   }
+  return runSerializedLogWrite(() =>
+    upsertDownloadLogUnlocked(entry, parentWindow)
+  );
+}
 
+async function upsertDownloadLogUnlocked(entry, parentWindow) {
   const logPath = getDownloadLogPath();
   let logs = [];
   try {
@@ -805,14 +909,16 @@ async function upsertDownloadLog(entry, parentWindow) {
 }
 
 async function clearDownloadLog() {
-  const logPath = getDownloadLogPath();
-  try {
-    await fs.writeFile(logPath, JSON.stringify([], null, 2), "utf8");
-    return true;
-  } catch (error) {
-    logger.error("清空日志文件失败:", error);
-    return false;
-  }
+  return runSerializedLogWrite(async () => {
+    const logPath = getDownloadLogPath();
+    try {
+      await fs.writeFile(logPath, JSON.stringify([], null, 2), "utf8");
+      return true;
+    } catch (error) {
+      logger.error("清空日志文件失败:", error);
+      return false;
+    }
+  });
 }
 
 function getHistoryRecordPath() {
@@ -1129,6 +1235,35 @@ function recursivelyUpdatePaths(obj, targetDir, targetId) {
   }
 }
 
+function makeTempPath(filePath) {
+  return `${filePath}.${process.pid}.${Date.now()}.${Math.random()
+    .toString(16)
+    .slice(2)}.tmp`;
+}
+
+/** 先写同目录临时文件再 rename，避免并发下载时剪映/其它任务读到半截 JSON。 */
+async function writeFileAtomic(filePath, data, options = {}) {
+  const tmpPath = makeTempPath(filePath);
+  try {
+    await fs.writeFile(tmpPath, data, options);
+    await fs.rename(tmpPath, filePath);
+  } catch (error) {
+    await fs.rm(tmpPath, { force: true }).catch(() => {});
+    throw error;
+  }
+}
+
+async function copyFileAtomic(fromPath, toPath) {
+  const tmpPath = makeTempPath(toPath);
+  try {
+    await fs.copyFile(fromPath, tmpPath);
+    await fs.rename(tmpPath, toPath);
+  } catch (error) {
+    await fs.rm(tmpPath, { force: true }).catch(() => {});
+    throw error;
+  }
+}
+
 // 带错误处理的JSON文件下载
 async function downloadJsonFile(
   { fileUrl, filePath, targetDir, targetId, materialDownloadCache, tracker },
@@ -1136,11 +1271,15 @@ async function downloadJsonFile(
 ) {
   // 1. 使用 Axios 下载 JSON 文件
   try {
-    const response = await axios({
-      method: "GET",
-      url: fileUrl,
-      responseType: "json", // 直接告诉 Axios 解析 JSON
-    });
+    const response = await withDownloadSlot(() =>
+      axios({
+        method: "GET",
+        url: fileUrl,
+        responseType: "json", // 直接告诉 Axios 解析 JSON
+        timeout: axiosConfig.timeout,
+        headers: axiosConfig.headers,
+      })
+    );
 
     // 检查HTTP状态码
     if (response.status !== 200) {
@@ -1174,9 +1313,9 @@ async function downloadJsonFile(
       draftPaths.localizeDraftMeta(jsonData, targetDir, targetId);
     }
 
-    // 4. 将修改后的 JSON 对象转换为格式化的字符串并写入本地文件
+    // 4. 将修改后的 JSON 对象转换为格式化的字符串并原子写入本地文件
     const jsonString = JSON.stringify(jsonData, null, 2); // 使用 2 个空格进行缩进，美化输出
-    await fs.writeFile(filePath, jsonString, { encoding: "utf8", mode: 0o666 });
+    await writeFileAtomic(filePath, jsonString, { encoding: "utf8", mode: 0o666 });
   } catch (error) {
     logger.error(`下载JSON文件失败: ${fileUrl}`, error);
     throw error;
@@ -1188,10 +1327,12 @@ async function downloadNotJsonFile(
   parentWindow
 ) {
   try {
-    await downloadBinaryToFile(fileUrl, {
-      destPath: filePath,
-      requestHeaders: axiosConfig.headers,
-    });
+    await withDownloadSlot(() =>
+      downloadBinaryToFile(fileUrl, {
+        destPath: filePath,
+        requestHeaders: axiosConfig.headers,
+      })
+    );
   } catch (error) {
     logger.error(`下载非JSON文件失败: ${fileUrl}`, error);
     throw error;
@@ -1213,7 +1354,7 @@ async function downloadSingleFile(config, parentWindow) {
     const contentFilePath = path.join(path.dirname(filePath), "draft_content.json");
     try {
       await fs.access(contentFilePath, fs.constants.R_OK);
-      await fs.copyFile(contentFilePath, filePath);
+      await copyFileAtomic(contentFilePath, filePath);
       logger.info(`[log] draft_info.json 直接复用 draft_content.json: ${filePath}`);
       return;
     } catch {
@@ -1393,6 +1534,13 @@ function yieldToRenderer() {
   return new Promise((resolve) => setImmediate(resolve));
 }
 
+/** draft_info.json 需要等 draft_content.json 完全本地化后再复制，避免复制到半成品。 */
+function isDraftInfoUrl(fileUrl) {
+  if (typeof fileUrl !== "string") return false;
+  const name = fileUrl.split("?")[0].split("/").pop();
+  return name === "draft_info.json";
+}
+
 // 批量下载文件主函数
 async function downloadFiles(
   { sourceUrl, remoteFileUrls, targetId, isOpenDir },
@@ -1475,9 +1623,14 @@ async function downloadFiles(
     const materialDownloadCache = new Map();
     let permissionError = null;
 
-    // 2. 遍历远程文件URL数组
-    for (let i = 0; i < remoteFileUrls.length; i++) {
-      const fileUrl = remoteFileUrls[i];
+    logger.info(
+      `[log] download concurrency=${MAX_CONCURRENT_DOWNLOADS}, per-file retries=${MAX_DOWNLOAD_RETRIES}, draft=${targetId}`
+    );
+
+    // 2. 并发下载远程文件列表：最多 10 个任务同时进行；
+    //    draft_content.json 内的远程素材也共用同一个 10 路网络限流器。
+    const downloadOneFile = async (fileUrl) => {
+      if (permissionError) return;
 
       try {
         // 获取目标文件路径
@@ -1486,7 +1639,7 @@ async function downloadFiles(
         if (!targetPaths) {
           logger.error(`[error] 无法获取文件的目标路径: ${fileUrl}`);
           await markFileDownloadFailed(parentWindow, tracker, fileUrl);
-          continue;
+          return;
         }
 
         const { fullTargetPath, targetDir } = targetPaths;
@@ -1506,11 +1659,26 @@ async function downloadFiles(
       } catch (error) {
         if (isPermissionError(error)) {
           permissionError = error;
-          break;
+          throw error;
         }
         logger.error(`[error] 处理文件时发生错误:`, error);
         await markFileDownloadFailed(parentWindow, tracker, fileUrl);
       }
+    };
+
+    // draft_info.json 延后到所有文件下载完再处理：此时 draft_content.json 已完成
+    // 素材本地化与原子写入，可以安全复制，避免复制到半成品或重复下载素材。
+    const deferredInfoUrls = remoteFileUrls.filter(isDraftInfoUrl);
+    const regularFileUrls = remoteFileUrls.filter((url) => !isDraftInfoUrl(url));
+
+    try {
+      await mapLimit(regularFileUrls, MAX_CONCURRENT_DOWNLOADS, downloadOneFile);
+      if (!permissionError) {
+        await mapLimit(deferredInfoUrls, MAX_CONCURRENT_DOWNLOADS, downloadOneFile);
+      }
+    } catch (error) {
+      if (!isPermissionError(error)) throw error;
+      permissionError = error;
     }
 
     // 写入权限在下载过程中丢失（例如用户在系统弹窗里点了「不允许」）：立即中止

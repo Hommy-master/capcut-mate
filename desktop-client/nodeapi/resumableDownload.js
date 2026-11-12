@@ -4,19 +4,31 @@ const { createWriteStream } = require("fs");
 const fs = require("fs").promises;
 const logger = require("./logger");
 
-/** 等待响应头的时间，与原 axios timeout 对齐 */
-const HEADER_TIMEOUT_MS = 30000;
-/** 传输过程中无数据则中断，便于上层重试续传；不限制总下载时长 */
-const STREAM_IDLE_TIMEOUT_MS = 60000;
+/** 等待响应头的时间；10s 没有响应头就中断，交由上层按 Range 续传重试 */
+const HEADER_TIMEOUT_MS = 10000;
+/** 传输过程中 10s 无数据则中断，便于上层重试续传；不限制总下载时长 */
+const STREAM_IDLE_TIMEOUT_MS = 10000;
+/** 低速看门狗：10s 窗口内平均速度低于 1MiB/s 就断开重连、从断点续传 */
+const SPEED_WINDOW_MS = 10000;
+const MIN_DOWNLOAD_BYTES_PER_SEC = 1024 * 1024;
 /** 小于该尺寸的半成品不值得发 Range，按整文件重下 */
 const MIN_PARTIAL_SIZE = 1024;
 
 const DEFAULT_HEADERS = {
+  // 标准 Chrome 120 (Windows) 请求头指纹，降低 CDN 按 UA/客户端提示限流的概率。
   "User-Agent":
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
   Accept: "*/*",
+  "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
+  // 禁用压缩：Range 偏移必须对应原始字节，且 Content-Length 校验才准确。
   "Accept-Encoding": "identity",
   "Cache-Control": "no-cache",
+  "sec-ch-ua": '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+  "sec-ch-ua-mobile": "?0",
+  "sec-ch-ua-platform": '"Windows"',
+  "Sec-Fetch-Dest": "empty",
+  "Sec-Fetch-Mode": "cors",
+  "Sec-Fetch-Site": "cross-site",
 };
 
 async function getLocalFileSize(filePath) {
@@ -92,6 +104,8 @@ function writeStreamToFile(readable, filePath, { flags, startSize, expectedSize 
     let received = startSize;
     let settled = false;
     let idleTimer;
+    let windowStart = Date.now();
+    let windowStartSize = startSize;
 
     const cleanup = () => {
       clearTimeout(idleTimer);
@@ -118,6 +132,22 @@ function writeStreamToFile(readable, filePath, { flags, startSize, expectedSize 
     readable.on("data", (chunk) => {
       received += chunk.length;
       resetIdle();
+
+      const now = Date.now();
+      if (now - windowStart >= SPEED_WINDOW_MS) {
+        const elapsed = Math.max(now - windowStart, 1);
+        const speed = ((received - windowStartSize) * 1000) / elapsed;
+        if (speed < MIN_DOWNLOAD_BYTES_PER_SEC) {
+          fail(
+            new Error(
+              `[error] download stream error: too slow (${(speed / 1024 / 1024).toFixed(2)}MB/s)`
+            )
+          );
+          return;
+        }
+        windowStart = now;
+        windowStartSize = received;
+      }
     });
 
     writer.on("close", () => {
