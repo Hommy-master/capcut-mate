@@ -225,6 +225,56 @@ class TestStallAndProgressWatchdog:
         # 中止前已落盘的内容保留，可按 Range 续传。
         assert target.stat().st_size == 2 * (2 * 1024 * 1024) + 2 * 100 * 1024
 
+    def test_gradual_decay_aborts_before_baseline_drops_below_floor(
+        self, tmp_path
+    ) -> None:
+        """逐窗口慢慢劣化也要轮换：旧 EWMA 基线会跟着沉下去，跌破门槛后看门狗失效。
+
+        线上 82MB 素材就是这种形态：0.5MB/s → 0.27 → 0.15 → 0.07 → 0.05，
+        每窗口都只比上一窗口低一点，最终以 20KB/s 爬了 17 分钟。
+        """
+
+        def chunks():
+            yield b"x" * (3 * 1024 * 1024)  # 窗口 1：≈588KiB/s，建立峰值基线
+            yield b"y" * (2 * 1024 * 1024)  # 窗口 2：≈392KiB/s
+            yield b"z" * (1024 * 1024)  # 窗口 3：≈196KiB/s
+            yield b"u" * (512 * 1024)  # 窗口 4：≈98KiB/s，劣化 1/2
+            yield b"v" * (200 * 1024)  # 窗口 5：≈38KiB/s，劣化 2/2 → 中止
+            yield b"w" * (200 * 1024)
+
+        response = MagicMock()
+        response.iter_content = lambda chunk_size=8192: chunks()
+        target = tmp_path / "gradual-degrade.bin"
+
+        with patch.object(
+            dd, "_now", side_effect=[0.0, 5.1, 10.2, 15.3, 20.4, 25.5, 30.6]
+        ):
+            with pytest.raises(requests.exceptions.ReadTimeout):
+                dd._write_http_body_to_file(response, str(target), append=False)
+
+        assert target.stat().st_size == 3 * 1024 * 1024 + 2 * 1024 * 1024 + (
+            1024 * 1024
+        ) + 512 * 1024 + 200 * 1024
+
+    def test_fast_to_medium_drop_does_not_rotate(self, tmp_path) -> None:
+        """峰值 2MB/s 掉到 294KiB/s 仍是可用吞吐，不因不足峰值 20% 就重连。"""
+
+        def chunks():
+            yield b"x" * (10 * 1024 * 1024)  # 窗口 1：≈1.9MiB/s，建立峰值基线
+            for _ in range(4):
+                yield b"y" * (1536 * 1024)  # 后续窗口：≈294KiB/s，高于 256KiB/s
+
+        response = MagicMock()
+        response.iter_content = lambda chunk_size=8192: chunks()
+        target = tmp_path / "fast-to-medium.bin"
+
+        with patch.object(
+            dd, "_now", side_effect=[0.0, 5.1, 10.2, 15.3, 20.4, 25.5]
+        ):
+            dd._write_http_body_to_file(response, str(target), append=False)
+
+        assert target.stat().st_size == 10 * 1024 * 1024 + 4 * 1536 * 1024
+
     def test_link_below_256kib_floor_does_not_rotate(self, tmp_path) -> None:
         """基线约 205KiB/s（低于 256KiB/s 门槛）时，掉速也不触发轮换。"""
 

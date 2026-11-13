@@ -50,3 +50,24 @@ test('recovery resets the slow window counter', () => {
   assert.equal(detect(10 * KB).degraded, false); // 重新劣化 1/2
   assert.equal(detect(10 * KB).degraded, true); // 劣化 2/2
 });
+
+test('gradual decay still degrades before baseline sinks below the floor', () => {
+  const detect = createDegradeDetector();
+
+  detect(588 * KB); // 窗口 1：峰值基线
+  detect(392 * KB);
+  detect(196 * KB);
+  assert.equal(detect(98 * KB).degraded, false); // 劣化 1/2
+  // 旧 EWMA 基线已沉到 256KiB/s 以下；快升慢降基线仍保持高位 → 必须触发。
+  assert.equal(detect(38 * KB).degraded, true); // 劣化 2/2
+});
+
+test('drop from peak to a still-usable speed does not rotate', () => {
+  const detect = createDegradeDetector();
+
+  detect(2 * 1024 * KB); // 峰值约 2MiB/s
+  for (let i = 0; i < 4; i += 1) {
+    // 不足峰值 20%，但仍高于 256KiB/s，重连只会打断传输。
+    assert.equal(detect(294 * KB).degraded, false);
+  }
+});

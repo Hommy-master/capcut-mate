@@ -363,8 +363,19 @@ _PROGRESS_LOG_INTERVAL_BYTES = 10 * 1024 * 1024
 _DEGRADE_RATIO = 0.2
 _DEGRADE_CONSECUTIVE_WINDOWS = 2
 _DEGRADE_MIN_BASELINE_BYTES_PER_SEC = 256 * 1024
-_BASELINE_EWMA_ALPHA = 0.3
+# 仅当当前窗口也低于该值才轮换：峰值 30MB/s 掉到 3MB/s 虽不足峰值 20%，但仍是
+# 可用吞吐，频繁重连只会打断传输；真正掉到几十 KB/s 才值得换连接。
+_DEGRADE_MAX_CURRENT_BYTES_PER_SEC = 256 * 1024
+# 基线采用「快升慢降」：高于基线的窗口立即抬升基线，低于基线时每 5s 只衰减 2%。
+# 旧 EWMA(0.3) 会跟随劣化样本一起下降，跌破 256KiB/s 门槛后看门狗永久失效。
+# 2026-11-13 线上日志：82MB 素材以 20KB/s 逐窗口劣化爬了 17 分钟，重连后 2s 下完。
+_BASELINE_DECAY_PER_WINDOW = 0.98
 _SPEED_CHECK_WINDOW_SECONDS = 5.0
+
+# 单次 socket 读取的块大小。不要为了吞吐盲目调大：iter_content 会攒满整块才返回，
+# 块越大「无新字节/劣化」看门狗的检查间隔越长（实测 64KB 块在 50KB/s 链路首块要
+# 1.7s，1KB/s 病态链路上要 64s）。8KB 在高吞吐下的额外循环开销可接受。
+_READ_CHUNK_SIZE = 8 * 1024
 
 # robocopy 仅用于触发目录扫描/复制，卡住不应拖垮整个阶段。
 _ROBOCOPY_TIMEOUT_SECONDS = 120
@@ -844,9 +855,9 @@ def _write_http_body_to_file(
 
     三层超时：
     1. socket 读超时 + 无新字节看门狗：10s 没有任何新字节就中止；
-    2. 相对劣化看门狗：以连接自身近期吞吐（EWMA）为基线，快链路掉到基线的
-       20% 以下并连续两个 5s 窗口确认才中止换连接；基线本身低于 256KiB/s 的
-       慢链路不轮换，避免把「本来就慢」误判成「连接变坏」；
+    2. 相对劣化看门狗：以连接自身的峰值吞吐为基线（快升慢降），掉到基线的
+       20% 以下、当前速度也低于 256KiB/s，并连续两个 5s 窗口确认才中止换连接；
+       基线本身低于 256KiB/s 的慢链路不轮换，避免把「本来就慢」误判成「连接变坏」；
     3. 下载阶段总预算：整个草稿的最后安全网。
     进度每 5s 或 10MB 打一条日志，便于区分「慢」和「卡死」。
     """
@@ -868,7 +879,7 @@ def _write_http_body_to_file(
     slow_windows = 0
 
     with open(file_path, mode) as out:
-        for chunk in response.iter_content(chunk_size=8192):
+        for chunk in response.iter_content(chunk_size=_READ_CHUNK_SIZE):
             now = _now()
             _check_download_deadline(deadline, url=url)
             _raise_if_cancelled(abort_event)
@@ -908,9 +919,10 @@ def _write_http_body_to_file(
                     elapsed=now - started_at,
                 )
 
-            # 相对劣化看门狗：基线取本次连接的吞吐 EWMA。慢链路（基线低于
-            # _DEGRADE_MIN_BASELINE_BYTES_PER_SEC）不轮换，避免把「本来就慢」
-            # 误判成「连接变坏」；快链路掉到基线 20% 以下且连续两个 5s 窗口
+            # 相对劣化看门狗：基线取本次连接的峰值吞吐（快升慢降）。慢链路
+            # （基线低于 _DEGRADE_MIN_BASELINE_BYTES_PER_SEC）不轮换，避免把
+            # 「本来就慢」误判成「连接变坏」；快链路掉到基线 20% 以下、当前速度
+            # 也低于 _DEGRADE_MAX_CURRENT_BYTES_PER_SEC，且连续两个 5s 窗口
             # 确认，才中止并换连接续传。
             if now - last_speed_check_at >= _SPEED_CHECK_WINDOW_SECONDS:
                 window_elapsed = max(now - last_speed_check_at, 0.001)
@@ -923,7 +935,10 @@ def _write_http_body_to_file(
                     speed_window_index > 1
                     and baseline_speed >= _DEGRADE_MIN_BASELINE_BYTES_PER_SEC
                 ):
-                    if window_speed < baseline_speed * _DEGRADE_RATIO:
+                    if (
+                        window_speed < baseline_speed * _DEGRADE_RATIO
+                        and window_speed < _DEGRADE_MAX_CURRENT_BYTES_PER_SEC
+                    ):
                         slow_windows += 1
                         # 疑似劣化期间冻结基线：否则基线会被劣化样本拉低，
                         # 第二个慢窗口可能因基线跌破门槛而漏报。
@@ -932,7 +947,8 @@ def _write_http_body_to_file(
                         slow_windows = 0
                     if slow_windows >= _DEGRADE_CONSECUTIVE_WINDOWS:
                         _raise_progress_timeout(
-                            "degraded below 20% of baseline",
+                            f"degraded below 20% of baseline "
+                            f"({baseline_speed / 1024:.0f}KB/s)",
                             url=url,
                             downloaded=downloaded,
                             expected_total_size=expected_total_size,
@@ -942,14 +958,15 @@ def _write_http_body_to_file(
                     slow_windows = 0
 
                 if update_baseline:
-                    baseline_speed = (
-                        window_speed
-                        if baseline_speed == 0
-                        else (
-                            _BASELINE_EWMA_ALPHA * window_speed
-                            + (1 - _BASELINE_EWMA_ALPHA) * baseline_speed
+                    # 快升慢降：峰值窗口立即抬高基线；低于基线时只做 2%/窗口
+                    # 的衰减，避免基线跟着逐窗口劣化一起沉下去直到看门狗失效。
+                    if window_speed > baseline_speed:
+                        baseline_speed = window_speed
+                    else:
+                        baseline_speed = max(
+                            window_speed,
+                            baseline_speed * _BASELINE_DECAY_PER_WINDOW,
                         )
-                    )
                 last_speed_check_at = now
                 last_speed_check_bytes = downloaded
 
@@ -2571,7 +2588,7 @@ def execute_download(draft_url: str, target_dir: str, draft_id: str) -> bool:
             if parent_dir:
                 os.makedirs(parent_dir, exist_ok=True)
             with open(file_path, "wb") as out:
-                for chunk in response.iter_content(chunk_size=8192):
+                for chunk in response.iter_content(chunk_size=_READ_CHUNK_SIZE):
                     if chunk:
                         out.write(chunk)
 
