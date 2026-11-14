@@ -11,3 +11,4 @@
 /.pytest_cache
 /__pycache__
 draft.md
+/zipit.sh

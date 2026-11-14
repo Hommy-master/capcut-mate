@@ -75,6 +75,70 @@ function destroyStream(stream) {
   }
 }
 
+/**
+ * 探测远端文件大小，用于判断本地半成品是否已经完整。
+ *
+ * 优先 HEAD；部分 CDN 不支持 HEAD，退化为 Range: bytes=0-0（只读响应头，
+ * 拿到 Content-Range 后立即断开）。探测失败返回 null，调用方保持原有续传逻辑。
+ *
+ * 背景：x02.me 对「从 EOF 开始的 Range」返回 HTTP 500 而不是标准 416，
+ * 若客户端在本地文件已完整时仍发 Range，会不断重试同一个必败请求。
+ *
+ * @returns {Promise<{size: number, headers: object}|null>}
+ */
+async function probeRemoteFile(fileUrl, requestHeaders) {
+  const probeHeaders = { ...requestHeaders };
+  delete probeHeaders.Range;
+
+  try {
+    const response = await axios({
+      method: "HEAD",
+      url: fileUrl,
+      timeout: HEADER_TIMEOUT_MS,
+      maxRedirects: 5,
+      headers: probeHeaders,
+      validateStatus: (status) => status >= 200 && status < 400,
+    });
+    const contentRange = parseContentRange(response.headers["content-range"]);
+    const size = contentRange.total ?? parseContentLength(response.headers);
+    if (size != null) {
+      return { size, headers: response.headers };
+    }
+  } catch {
+    // HEAD 不被支持或失败，继续尝试 1 字节 Range 探测
+  }
+
+  const controller = new AbortController();
+  const headerTimer = setTimeout(() => controller.abort(), HEADER_TIMEOUT_MS);
+  try {
+    const response = await axios({
+      method: "GET",
+      url: fileUrl,
+      responseType: "stream",
+      timeout: 0,
+      maxRedirects: 5,
+      decompress: false,
+      signal: controller.signal,
+      headers: { ...probeHeaders, Range: "bytes=0-0" },
+      validateStatus: (status) => status === 200 || status === 206,
+    });
+    const contentRange = parseContentRange(response.headers["content-range"]);
+    const size = contentRange.total ?? parseContentLength(response.headers);
+    // 提前断开探测响应，避免后续 socket 错误变成未处理的 error 事件。
+    response.data?.on?.("error", () => {});
+    destroyStream(response.data);
+    if (size != null) {
+      return { size, headers: response.headers };
+    }
+  } catch {
+    // 探测失败，保持原有逻辑
+  } finally {
+    clearTimeout(headerTimer);
+  }
+
+  return null;
+}
+
 async function requestDownloadStream(fileUrl, headers) {
   const controller = new AbortController();
   const headerTimer = setTimeout(() => controller.abort(), HEADER_TIMEOUT_MS);
@@ -222,7 +286,7 @@ async function downloadBinaryToFile(fileUrl, options = {}) {
 
   const targetPath = destPath;
   const existingSize = await getLocalFileSize(targetPath);
-  const canResume = existingSize >= MIN_PARTIAL_SIZE;
+  let canResume = existingSize >= MIN_PARTIAL_SIZE;
 
   const headers = {
     ...DEFAULT_HEADERS,
@@ -232,12 +296,50 @@ async function downloadBinaryToFile(fileUrl, options = {}) {
     "Cache-Control": "no-cache",
   };
 
+  // 先确认本地文件是否其实已经完整。x02.me 对 bytes=<total>- 返回 500
+  // （标准应为 416），若直接续传会重试一个永远失败的请求。
+  if (canResume) {
+    const remote = await probeRemoteFile(fileUrl, headers);
+    if (remote) {
+      if (existingSize === remote.size) {
+        logger.info(`[log] local file already complete: ${targetPath}`);
+        return finalizeDestPath(targetPath, remote.headers, resolveDestPath);
+      }
+      if (existingSize > remote.size) {
+        logger.warn(
+          `[warn] local file larger than remote (${existingSize} > ${remote.size}), restart: ${targetPath}`
+        );
+        await fs.unlink(targetPath).catch(() => {});
+        canResume = false;
+      }
+    }
+  }
+
   if (canResume) {
     headers.Range = `bytes=${existingSize}-`;
     logger.info(`[log] resume download from byte ${existingSize}: ${fileUrl}`);
   }
 
-  const response = await requestDownloadStream(fileUrl, headers);
+  let response;
+  try {
+    response = await requestDownloadStream(fileUrl, headers);
+  } catch (error) {
+    // 个别 CDN 对 EOF Range 返回 500 或直接挂住连接（不是 416）。
+    // 若本地文件其实已经完整，这里直接判定成功，避免外层重试同一个必败请求。
+    if (canResume) {
+      const remote = await probeRemoteFile(fileUrl, headers);
+      if (remote && existingSize === remote.size) {
+        logger.info(
+          `[log] local file already complete after range error: ${targetPath}`
+        );
+        return finalizeDestPath(targetPath, remote.headers, resolveDestPath);
+      }
+      if (remote && existingSize > remote.size) {
+        await fs.unlink(targetPath).catch(() => {});
+      }
+    }
+    throw error;
+  }
 
   await fs.mkdir(path.dirname(targetPath), { recursive: true });
 
