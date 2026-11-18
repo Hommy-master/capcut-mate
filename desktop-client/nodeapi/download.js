@@ -8,6 +8,11 @@ const { v4: uuidv4 } = require('uuid');
 const { downloadBinaryToFile } = require("./resumableDownload");
 const draftPaths = require("./draftPaths");
 const {
+  getStagingRootDir,
+  getStagingDraftDir,
+  publishStagedDraft,
+} = require("./draftStaging");
+const {
   ROOT_META_INFO_FILENAME,
   waitForDraftDiscovery,
 } = require("./draftDiscovery");
@@ -1270,7 +1275,15 @@ async function copyFileAtomic(fromPath, toPath) {
 
 // 带错误处理的JSON文件下载
 async function downloadJsonFile(
-  { fileUrl, filePath, targetDir, targetId, materialDownloadCache, tracker },
+  {
+    fileUrl,
+    filePath,
+    targetDir,
+    targetId,
+    draftFinalDir,
+    materialDownloadCache,
+    tracker,
+  },
   parentWindow
 ) {
   // 1. 使用 Axios 下载 JSON 文件
@@ -1312,9 +1325,15 @@ async function downloadJsonFile(
       const mode = draftPaths.normalizeDraftContent(jsonData, targetDir);
       logger.info(`[log] normalized draft paths, material_save_mode=${mode}`);
     } else if (path.basename(filePath) === "draft_meta_info.json") {
-      // 服务端写的是它自己的草稿目录绝对路径，需改写为本地路径
+      // 服务端写的是它自己的草稿目录绝对路径，需改写为本地路径。
+      // 这里必须写正式目录：文件虽然先落在暂存目录，发布时会整体改名过去，
+      // 若写成暂存路径，剪映会把草稿索引到隐藏的暂存目录里。
       logger.info(`[log] localize draft_meta_info: ${filePath}`);
-      draftPaths.localizeDraftMeta(jsonData, targetDir, targetId);
+      draftPaths.localizeDraftMeta(
+        jsonData,
+        draftFinalDir || targetDir,
+        targetId
+      );
     }
 
     // 4. 将修改后的 JSON 对象转换为格式化的字符串并原子写入本地文件
@@ -1376,14 +1395,16 @@ async function downloadSingleFile(config, parentWindow) {
 }
 
 /**
- * 触发目录扫描，激活剪映的目录发现机制
- * 原理：将草稿目录复制到临时目录，触发文件系统变更通知，让剪映无需重启即可感知到新草稿
- * - Windows：使用 robocopy（内置工具，返回码 0-7 均为成功）
- * - macOS：使用 rsync（触发 FSEvents 变更通知）
+ * 触发目录扫描，激活剪映的目录发现机制（仅 Windows 使用）。
+ * 原理：用 robocopy 把草稿目录复制到临时目录再删除，触发
+ * ReadDirectoryChangesW 变更通知，让剪映无需重启即可感知到新草稿。
+ * macOS 不走这里：改由 draftStaging 的「暂存目录 + 原子改名」发布草稿，
+ * 剪映看到完整新目录后会直接收录（rsync 复制对 macOS 剪映无效）。
  * @param {string} targetDir 草稿目录路径
  */
 async function triggerDirectoryScan(targetDir) {
   if (!targetDir) return;
+  if (process.platform !== "win32") return;
 
   try {
     await fs.access(targetDir);
@@ -1394,47 +1415,30 @@ async function triggerDirectoryScan(targetDir) {
 
   const tmpDir = targetDir + ".tmp";
   const { execFile } = require("child_process");
-  const platform = process.platform;
 
   await new Promise((resolve) => {
-    if (platform === "win32") {
-      // Windows：使用 robocopy 触发 ReadDirectoryChangesW 通知
-      const args = [
-        targetDir,
-        tmpDir,
-        "/E",        // 递归复制所有子目录
-        "/COPY:DAT", // 复制数据、属性和时间戳（无需管理员权限）
-        "/R:1",      // 失败重试1次
-        "/W:1",      // 重试等待1秒
-        "/NP",       // 不显示进度百分比
-        "/NJH",      // 不显示作业头
-        "/NJS",      // 不显示作业摘要
-      ];
-      execFile("robocopy", args, { windowsHide: true }, (err) => {
-        // robocopy 返回码 0-7 均表示成功或正常状态，8+ 才是错误
-        const code = err ? err.code : 0;
-        if (typeof code === "number" && code >= 8) {
-          logger.warn(`[scan] Windows 触发目录扫描失败，robocopy 返回码: ${code}`);
-        } else {
-          logger.info(`[scan] Windows 触发目录扫描完成，robocopy 返回码: ${code}`);
-        }
-        resolve();
-      });
-    } else if (platform === "darwin") {
-      // macOS：使用 rsync 触发 FSEvents 变更通知
-      // -a: 归档模式（递归+保留属性），触发目录写入事件
-      execFile("rsync", ["-a", targetDir + "/", tmpDir], (err) => {
-        if (err) {
-          logger.warn(`[scan] macOS 触发目录扫描失败: ${err.message}`);
-        } else {
-          logger.info(`[scan] macOS 触发目录扫描完成`);
-        }
-        resolve();
-      });
-    } else {
-      logger.info(`[scan] 当前平台 ${platform} 不支持触发目录扫描，跳过`);
+    // Windows：使用 robocopy 触发 ReadDirectoryChangesW 通知
+    const args = [
+      targetDir,
+      tmpDir,
+      "/E",        // 递归复制所有子目录
+      "/COPY:DAT", // 复制数据、属性和时间戳（无需管理员权限）
+      "/R:1",      // 失败重试1次
+      "/W:1",      // 重试等待1秒
+      "/NP",       // 不显示进度百分比
+      "/NJH",      // 不显示作业头
+      "/NJS",      // 不显示作业摘要
+    ];
+    execFile("robocopy", args, { windowsHide: true }, (err) => {
+      // robocopy 返回码 0-7 均表示成功或正常状态，8+ 才是错误
+      const code = err ? err.code : 0;
+      if (typeof code === "number" && code >= 8) {
+        logger.warn(`[scan] Windows 触发目录扫描失败，robocopy 返回码: ${code}`);
+      } else {
+        logger.info(`[scan] Windows 触发目录扫描完成，robocopy 返回码: ${code}`);
+      }
       resolve();
-    }
+    });
   });
 
   // 清理临时目录
@@ -1448,9 +1452,10 @@ async function triggerDirectoryScan(targetDir) {
 /**
  * 确认剪映是否已发现本次下载的草稿，并把结果写入下载日志。
  *
- * 触发目录扫描后，剪映会把发现的草稿登记到草稿根目录的 root_meta_info.json；
- * 轮询该文件即可确认本次草稿是否被收录。这里只做确认，不影响下载本身的成败：
- * 剪映未运行时，它会在下次启动扫描时重新发现草稿。
+ * 草稿目录发布后（macOS 为原子改名，Windows 为 robocopy 触发扫描），剪映会把
+ * 发现的草稿登记到草稿根目录的 root_meta_info.json；轮询该文件即可确认本次
+ * 草稿是否被收录。这里只做确认，不影响下载本身的成败：剪映未运行时，它会在
+ * 下次启动扫描时重新发现草稿。
  *
  * @param {string} draftDir 草稿目录
  * @param {string} draftRootDir 草稿根目录
@@ -1492,9 +1497,9 @@ async function reportDraftDiscovery(draftDir, draftRootDir, targetId, parentWind
   }
 
   const message =
-    `草稿 ${targetId} 已下载，但剪映未发现该草稿` +
-    `（${elapsedSeconds}s 内 ${ROOT_META_INFO_FILENAME} 中无记录）；` +
-    `请打开或重启剪映后重试`;
+    `草稿 ${targetId} 已下载，但剪映未在 ${elapsedSeconds}s 内收录该草稿` +
+    `（${ROOT_META_INFO_FILENAME} 中无记录）；` +
+    `剪映未运行时，打开剪映后会自动发现该草稿；若剪映已开启，请重启剪映`;
   logger.warn(`[scan] ${message}, reason=${result.reason}`);
   await appendDownloadLog({ level: "error", message }, parentWindow);
   return result;
@@ -1600,6 +1605,15 @@ function isDraftInfoUrl(fileUrl) {
   return name === "draft_info.json";
 }
 
+async function pathExists(targetPath) {
+  try {
+    await fs.access(targetPath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 // 批量下载文件主函数
 async function downloadFiles(
   { sourceUrl, remoteFileUrls, targetId, isOpenDir },
@@ -1682,6 +1696,21 @@ async function downloadFiles(
     const materialDownloadCache = new Map();
     let permissionError = null;
 
+    const draftFinalDir = path.join(baseTargetDir, targetId);
+
+    // macOS：剪映的目录监听只收录「一次出现就完整」的新草稿目录，直接往正式
+    // 目录里边下载边写会被跳过；因此先写隐藏暂存目录，全部就绪后再原子改名
+    // 发布（见 draftStaging.js）。暂存目录在失败时保留，重新下载可续传。
+    // Windows：「直接写正式目录 + robocopy 触发扫描」的现有流程已验证可用，
+    // 保持不动，避免发布时目录被剪映/杀软占用导致改名失败等新问题。
+    const useStaging = process.platform === "darwin";
+    const stagingRootDir = useStaging
+      ? getStagingRootDir(baseTargetDir)
+      : baseTargetDir;
+    const stagingDraftDir = useStaging
+      ? getStagingDraftDir(baseTargetDir, targetId)
+      : draftFinalDir;
+
     logger.info(
       `[log] download concurrency=${MAX_CONCURRENT_DOWNLOADS}, per-file retries=${MAX_DOWNLOAD_RETRIES}, draft=${targetId}`
     );
@@ -1692,8 +1721,12 @@ async function downloadFiles(
       if (permissionError) return;
 
       try {
-        // 获取目标文件路径
-        const targetPaths = await getTargetFilePath(fileUrl, baseTargetDir, targetId);
+        // 获取目标文件路径（写入暂存目录；正式目录只在发布时出现）
+        const targetPaths = await getTargetFilePath(
+          fileUrl,
+          stagingRootDir,
+          targetId
+        );
 
         if (!targetPaths) {
           logger.error(`[error] 无法获取文件的目标路径: ${fileUrl}`);
@@ -1709,6 +1742,7 @@ async function downloadFiles(
             filePath: fullTargetPath,
             targetDir,
             targetId,
+            draftFinalDir,
             materialDownloadCache,
             tracker,
           },
@@ -1802,29 +1836,58 @@ async function downloadFiles(
       draft_id: targetId,
       draft_url: sourceUrl,
     });
-    const jointPath = path.join(baseTargetDir, targetId);
-    logger.info(`[finish] all download: ${jointPath}`);
+    let discovery = null;
+    // 草稿是否已完整落到正式目录；Windows 直接写正式目录，恒为 true。
+    let published = true;
 
-    await ensureWindowsDraftFilesWritable(jointPath);
-
-    // 触发剪映目录扫描，使剪映无需重启即可识别新草稿
-    await triggerDirectoryScan(jointPath);
+    if (useStaging) {
+      // 只有全部文件成功才发布：剪映只收录一次新目录，半成品发布后再补齐
+      // 也不会被重新索引；失败时保留暂存目录，重新下载续传补齐后再发布。
+      published = failureCount === 0 && (await pathExists(stagingDraftDir));
+      if (published) {
+        const publishResult = await publishStagedDraft(
+          stagingDraftDir,
+          draftFinalDir
+        );
+        logger.info(`[finish] published draft: ${draftFinalDir}`);
+        if (publishResult.leftoverBackupDir) {
+          logger.warn(
+            `[finish] 旧草稿目录未能删除（已留在隐藏暂存目录）: ${publishResult.leftoverBackupDir}`
+          );
+        }
+      } else {
+        const message =
+          `草稿 ${targetId} 未完整下载（${failureCount} 个文件失败），` +
+          `已保留在暂存目录，重新下载会继续下载未完成的文件`;
+        logger.warn(`[finish] draft not published: ${stagingDraftDir}`);
+        await appendDownloadLog({ level: "error", message }, parentWindow);
+      }
+    } else {
+      // Windows：保持原有流程（直接写正式目录 + robocopy 触发扫描）
+      await ensureWindowsDraftFilesWritable(draftFinalDir);
+      await triggerDirectoryScan(draftFinalDir);
+    }
 
     // 通过 root_meta_info.json 确认剪映确实发现了本次草稿（未发现时写入错误日志）
-    const discovery = await reportDraftDiscovery(
-      jointPath,
-      baseTargetDir,
-      targetId,
-      parentWindow
-    );
+    if (published) {
+      discovery = await reportDraftDiscovery(
+        draftFinalDir,
+        baseTargetDir,
+        targetId,
+        parentWindow
+      );
+    }
 
-    if (isOpenDir) await openDraftDirectory(jointPath);
+    const resultPath = published ? draftFinalDir : stagingDraftDir;
+    if (isOpenDir) await openDraftDirectory(resultPath);
 
     return {
       success: failureCount === 0,
       targetDirectory: baseTargetDir,
       jianyingDiscovered: Boolean(discovery?.discovered),
-      message: `文件批量保存完成，保存至目录: ${jointPath}，${tracker.buildSummaryMessage()}`,
+      message: published
+        ? `文件批量保存完成，保存至目录: ${draftFinalDir}，${tracker.buildSummaryMessage()}`
+        : `草稿 ${targetId} 未完整下载，已保留在暂存目录: ${stagingDraftDir}，${tracker.buildSummaryMessage()}`,
     };
   } catch (error) {
     logger.error(`[error] 批量保存过程发生错误:`, error);
