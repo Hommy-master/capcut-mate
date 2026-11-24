@@ -13,6 +13,7 @@ const {
   getStagingDraftDir,
   publishStagedDraft,
 } = require("./draftStaging");
+const { writeDraftReadmeFile } = require("./draftReadme");
 const {
   ROOT_META_INFO_FILENAME,
   waitForDraftDiscovery,
@@ -1812,6 +1813,20 @@ async function downloadFiles(
         parentWindow
       );
       return result;
+    }
+
+    // 附带提示文件（参考 LiveMix）：用户直接打开草稿文件夹时，一眼知道这是
+    // 剪映草稿、不是可直接播放的成片。macOS 写进隐藏暂存目录，随原子改名
+    // 一起发布；Windows 直接写正式目录。提示文件不是草稿本体，写失败只记日志。
+    if (tracker.failureCount === 0) {
+      try {
+        await writeDraftReadmeFile(stagingDraftDir);
+      } catch (error) {
+        logger.warn(
+          `[finish] 写入草稿提示文件失败: ${stagingDraftDir}`,
+          error.message
+        );
+      }
     }
 
     // 等待渲染进程处理已发送的资源日志，再标记草稿完成，避免 UI 仍显示「下载中」
