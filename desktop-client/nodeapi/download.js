@@ -1,4 +1,5 @@
 const path = require("path");
+const { execFile } = require("child_process");
 const axios = require("axios");
 const { app, dialog, shell } = require("electron");
 const fs = require("fs").promises; // 使用 fs.promises 进行异步文件操作
@@ -1414,7 +1415,6 @@ async function triggerDirectoryScan(targetDir) {
   }
 
   const tmpDir = targetDir + ".tmp";
-  const { execFile } = require("child_process");
 
   await new Promise((resolve) => {
     // Windows：使用 robocopy 触发 ReadDirectoryChangesW 通知
@@ -1505,8 +1505,29 @@ async function reportDraftDiscovery(draftDir, draftRootDir, targetId, parentWind
   return result;
 }
 
-// 打开目录
+// 打开草稿目录：macOS 在访达中定位草稿文件夹，其它平台打开目录本身。
+//
+// macOS 不能直接用 shell.openPath(目录)：Electron 在 macOS 上走
+// NSWorkspace openURL，打开目录经常返回成功但访达毫无反应；即使打开了，
+// 也只是把窗口定位到目录本身，窄窗口下列视图右侧被裁掉，看起来像没打开。
+// 参考 live-mixer/LiveMix：用 `open -R` 让访达打开父目录并选中草稿文件夹，
+// 访达会被激活，目标文件夹一目了然。
 async function openDraftDirectory(dirPath) {
+  if (process.platform === "darwin") {
+    return new Promise((resolve) => {
+      execFile("/usr/bin/open", ["-R", dirPath], (error) => {
+        if (error) {
+          logger.error(
+            `[error] Failed to reveal draft folder in Finder: ${dirPath}`,
+            error.stderr || error.message
+          );
+          return resolve({ success: false, error: error.message });
+        }
+        return resolve({ success: true });
+      });
+    });
+  }
+
   try {
     const errorMsg = await shell.openPath(dirPath);
     if (errorMsg) {
