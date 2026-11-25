@@ -74,9 +74,9 @@ function createWindow() {
     mainWindow.show();
   });
 
-  // 只初始化一次IPC处理程序
+  // 只初始化一次IPC处理程序；处理器内部会动态获取当前窗口
   if (!ipcHandlersInitialized) {
-    setupIpcHandlers(mainWindow);
+    setupIpcHandlers();
     ipcHandlersInitialized = true;
   }
 

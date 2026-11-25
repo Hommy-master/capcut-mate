@@ -38,6 +38,40 @@ const DRAFT_PERMISSION_DENIED = "DRAFT_PERMISSION_DENIED";
 /** 尚未设置（或设置的目录无效）剪映草稿目录，渲染层据此弹出设置引导 */
 const DRAFT_DIRECTORY_REQUIRED = "DRAFT_DIRECTORY_REQUIRED";
 
+/**
+ * 下载过程中窗口可能被关闭（macOS 关窗不退出应用），
+ * 向渲染进程推送前必须确认窗口与 webContents 都仍然可用。
+ */
+function isWindowUsable(targetWindow) {
+  try {
+    if (!targetWindow || typeof targetWindow.isDestroyed !== "function") {
+      return false;
+    }
+    if (targetWindow.isDestroyed()) return false;
+    const contents = targetWindow.webContents;
+    return Boolean(
+      contents &&
+        typeof contents.isDestroyed === "function" &&
+        !contents.isDestroyed()
+    );
+  } catch {
+    // 销毁过程中访问属性也可能抛错，统一视为不可用
+    return false;
+  }
+}
+
+/** 向渲染层推送日志；窗口已销毁时跳过推送，本地日志仍会写入。 */
+function sendToRenderer(targetWindow, channel, payload) {
+  if (!isWindowUsable(targetWindow)) return false;
+  try {
+    targetWindow.webContents.send(channel, payload);
+    return true;
+  } catch (error) {
+    logger.warn(`[log] 推送 ${channel} 失败:`, error.message);
+    return false;
+  }
+}
+
 const LOG_MAX = 2000;
 
 /** 标准 Chrome 120 (Windows) 请求头指纹，降低 CDN 按 UA/客户端提示限流的概率。 */
@@ -1099,7 +1133,8 @@ async function appendDownloadLogUnlocked(entry, parentWindow) {
 
   entry.time = new Date();
   console.log(`appendDownloadLog: ${JSON.stringify(entry)}`);
-  await parentWindow.webContents.send("file-operation-log", {
+  // 窗口已关闭时跳过界面推送，日志仍写入本地文件
+  sendToRenderer(parentWindow, "file-operation-log", {
     ...entry,
     action: "append",
   });
@@ -1154,7 +1189,8 @@ async function upsertDownloadLogUnlocked(entry, parentWindow) {
   }
 
   console.log(`upsertDownloadLog: ${JSON.stringify(storedEntry)}`);
-  await parentWindow.webContents.send("file-operation-log", {
+  // 窗口已关闭时跳过界面推送，日志仍写入本地文件
+  sendToRenderer(parentWindow, "file-operation-log", {
     ...storedEntry,
     action: existingIndex >= 0 ? "update" : "append",
   });
@@ -1310,8 +1346,8 @@ async function showDraftDirectoryPicker(parentWindow = null) {
       config.targetDirectory || getDefaultDraftRootHint() || undefined,
   };
 
-  // 如果有父窗口，则附加到父窗口
-  if (parentWindow) {
+  // 如果有可用父窗口，则附加到父窗口；已销毁的窗口不能作为 dialog 父级
+  if (isWindowUsable(parentWindow)) {
     dialogOptions.window = parentWindow;
   }
 

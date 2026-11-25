@@ -1,4 +1,4 @@
-const { ipcMain, dialog, app, clipboard, shell } = require('electron');
+const { ipcMain, BrowserWindow, dialog, app, clipboard, shell } = require('electron');
 const path = require('path');
 
 // 引入logger模块
@@ -24,6 +24,33 @@ const {
 } = require('./download');
 const { getMacPrivacySettingsUrl } = require('./filePermission');
 
+/**
+ * 每次 IPC 调用时解析当前可用窗口。
+ *
+ * macOS 关闭窗口不会退出应用，重新打开会创建新的 BrowserWindow。
+ * 不能在注册 IPC 时把窗口捕获进闭包，否则后续调用会继续使用已销毁的窗口，
+ * 导致 Electron 抛出 "Object has been destroyed"。
+ */
+function getActiveWindow() {
+  const focused = BrowserWindow.getFocusedWindow();
+  if (focused && !focused.isDestroyed()) return focused;
+
+  return (
+    BrowserWindow.getAllWindows().find((win) => win && !win.isDestroyed()) || null
+  );
+}
+
+/** 优先返回发起本次 IPC 的窗口，取不到时回退到当前活动窗口。 */
+function getInvokingWindow(event) {
+  try {
+    const invoking = BrowserWindow.fromWebContents(event?.sender);
+    if (invoking && !invoking.isDestroyed()) return invoking;
+  } catch {
+    // 发送方 webContents 已销毁时回退到活动窗口
+  }
+  return getActiveWindow();
+}
+
 /** macOS 上 .app 包路径（用于引导用户拖入「完全磁盘访问权限」列表） */
 function getMacAppBundlePath() {
   const exePath = app.getPath('exe');
@@ -36,8 +63,8 @@ function getMacAppBundlePath() {
 console.log(process.versions.electron);
 console.log(process.versions.chrome);
 
-// 接收mainWindow作为参数
-function setupIpcHandlers(mainWindow) {
+// 注册一次 IPC 处理器；窗口在每次调用时动态解析，避免窗口重建后引用失效
+function setupIpcHandlers() {
 
   ipcMain.handle('get-download-log', async (event) => {
     return await readDownloadLog();
@@ -49,7 +76,7 @@ function setupIpcHandlers(mainWindow) {
 
   ipcMain.handle('get-url-json-data', async (event, remoteUrl) => {
     try {
-      return await getDraftUrls(remoteUrl, mainWindow);
+      return await getDraftUrls(remoteUrl, getInvokingWindow(event));
     } catch (error) {
       logger.error(`[error] get draft url:`, error);
       return { code: -1, message: error.message || "获取草稿地址失败" };
@@ -58,7 +85,7 @@ function setupIpcHandlers(mainWindow) {
 
   ipcMain.handle('save-file', async (event, config) => {
     // 必须把结果回传给渲染层：保存失败（尤其是权限问题）需要据此弹出引导
-    return await downloadFiles(config, mainWindow);
+    return await downloadFiles(config, getInvokingWindow(event));
   });
 
   // 真实写入探针，供授权引导弹窗轮询/手动重试
@@ -116,14 +143,18 @@ function setupIpcHandlers(mainWindow) {
   });
 
   ipcMain.handle('show-message-box', async (event, options) => {
-    return await dialog.showMessageBox(mainWindow, {
+    const messageBoxOptions = {
       type: options.type || 'info',
       title: options.title || '提示',
       message: options.message || '',
       buttons: ['确定'],
       noLink: true, // 防止按钮以链接样式显示，这通常会使按钮更小更紧凑
       normalizeAccessKeys: true // 标准化访问键，确保按钮文本格式一致
-    });
+    };
+    const parentWindow = getInvokingWindow(event);
+    return parentWindow
+      ? await dialog.showMessageBox(parentWindow, messageBoxOptions)
+      : await dialog.showMessageBox(messageBoxOptions);
   });
 
   ipcMain.handle('get-config-data', async (event) => {
@@ -160,7 +191,7 @@ function setupIpcHandlers(mainWindow) {
 
   // 设置默认草稿路径（选择后校验是否为剪映草稿目录）
   ipcMain.handle('update-draft-path', async (event) => {
-    return await updateDraftPath(mainWindow);
+    return await updateDraftPath(getInvokingWindow(event));
   });
 
   // 在默认浏览器中打开URL
