@@ -78,7 +78,6 @@ async function detectWindowsDraftPath() {
 async function detectMacDraftPath() {
   const home = os.homedir();
   const candidates = [
-    path.join(home, "Movies", "CapCut", "User Data", "Projects", "com.lveditor.draft"),
     path.join(home, "Movies", "JianyingPro", "User Data", "Projects", "com.lveditor.draft"),
   ];
   for (const dir of candidates) {
