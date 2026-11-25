@@ -16,6 +16,22 @@ const mockElectronAPI = {
     console.warn('Electron API not available in browser: getConfigData');
     return { targetDirectory: '' };
   },
+  getDraftDirectoryStatus: async () => {
+    console.warn('Electron API not available in browser: getDraftDirectoryStatus');
+    return {
+      configured: false,
+      ready: false,
+      reason: 'not_configured',
+      targetDirectory: '',
+      verified: false,
+      platform: 'browser',
+      defaultPath: '',
+    };
+  },
+  autoDetectDraftPath: async () => {
+    console.warn('Electron API not available in browser: autoDetectDraftPath');
+    return { success: false, code: 'NOT_AVAILABLE', message: '自动检测仅在桌面应用中可用' };
+  },
   getDownloadLog: async () => {
     console.warn('Electron API not available in browser: getDownloadLog');
     return [];
@@ -107,6 +123,12 @@ const mockElectronAPI = {
 const electronAPI = {
   getConfigData: async () => {
     return await window.electronAPI.getConfigData();
+  },
+  getDraftDirectoryStatus: async () => {
+    return await window.electronAPI.getDraftDirectoryStatus();
+  },
+  autoDetectDraftPath: async () => {
+    return await window.electronAPI.autoDetectDraftPath();
   },
   getDownloadLog: async () => {
     return await window.electronAPI.getDownloadLog();

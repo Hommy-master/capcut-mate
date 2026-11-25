@@ -4,7 +4,12 @@ const axios = require("axios");
 const { app, dialog, shell } = require("electron");
 const fs = require("fs").promises; // 使用 fs.promises 进行异步文件操作
 const logger = require("./logger");
-const { detectJianyingDraftRoot } = require("./draftPathDetect");
+const {
+  detectJianyingDraftRoot,
+  getDefaultDraftRootHint,
+  hasJianyingDraftMarkers,
+  resolveDraftRootFromSelection,
+} = require("./draftPathDetect");
 const { v4: uuidv4 } = require('uuid');
 const { downloadBinaryToFile } = require("./resumableDownload");
 const draftPaths = require("./draftPaths");
@@ -23,13 +28,15 @@ const {
   getMacProtectedFolderName,
   probeWriteAccess,
   probeReadAccess,
-  getMacPrivacySettingsUrl,
 } = require("./filePermission");
 
 const RECORD_MAX = 500;
 
 /** 下载失败是因为没有目标目录写入权限（macOS TCC 或文件系统 ACL） */
 const DRAFT_PERMISSION_DENIED = "DRAFT_PERMISSION_DENIED";
+
+/** 尚未设置（或设置的目录无效）剪映草稿目录，渲染层据此弹出设置引导 */
+const DRAFT_DIRECTORY_REQUIRED = "DRAFT_DIRECTORY_REQUIRED";
 
 const LOG_MAX = 2000;
 
@@ -803,6 +810,246 @@ async function ensureAutoDetectedDraftPathInConfig() {
   return config;
 }
 
+/** 持久化草稿目录配置。 */
+async function saveDraftPathToConfig(targetDir) {
+  const config = await readConfig();
+  config.targetDirectory = targetDir;
+  await writeConfig(config);
+  return config;
+}
+
+/**
+ * 当前草稿目录的完整状态，供渲染层展示设置引导。
+ *
+ * ready 表示可以继续下载。needs_permission 也算 ready：目录存在但系统
+ * 拒绝读取时无法校验结构，交给下载前的真实写入预检与授权引导处理，
+ * 避免把已经授权过的用户反复打回设置流程。
+ *
+ * @returns {Promise<{
+ *   configured: boolean,
+ *   ready: boolean,
+ *   reason: 'ready'|'not_configured'|'missing'|'not_draft_root'|'needs_permission',
+ *   targetDirectory: string,
+ *   verified: boolean,
+ *   corrected?: boolean,
+ *   platform: NodeJS.Platform,
+ *   defaultPath: string,
+ * }>}
+ */
+async function getDraftDirectoryStatus() {
+  const platform = process.platform;
+  const defaultPath = getDefaultDraftRootHint();
+
+  let config = {};
+  try {
+    config = await ensureAutoDetectedDraftPathInConfig();
+  } catch (error) {
+    logger.warn("[draft-detect] 读取草稿目录配置失败:", error.message);
+    config = await readConfig().catch(() => ({}));
+  }
+
+  const dir = config.targetDirectory || "";
+  if (!dir) {
+    return {
+      configured: false,
+      ready: false,
+      reason: "not_configured",
+      targetDirectory: "",
+      verified: false,
+      platform,
+      defaultPath,
+    };
+  }
+
+  const access = await probeReadAccess(dir);
+  if (!access.ok) {
+    if (access.permissionDenied) {
+      return {
+        configured: true,
+        ready: true,
+        reason: "needs_permission",
+        targetDirectory: dir,
+        verified: false,
+        platform,
+        defaultPath,
+      };
+    }
+
+    // 配置的目录可能只是上一级（历史版本误选），尝试自动定位到真正的根目录
+    const resolved = await resolveDraftRootFromSelection(dir);
+    if (resolved) {
+      await saveDraftPathToConfig(resolved.path);
+      logger.info(`[draft-detect] 已自动修正草稿目录: ${dir} -> ${resolved.path}`);
+      return {
+        configured: true,
+        ready: true,
+        reason: "ready",
+        targetDirectory: resolved.path,
+        verified: true,
+        corrected: true,
+        platform,
+        defaultPath,
+      };
+    }
+
+    return {
+      configured: true,
+      ready: false,
+      reason: "missing",
+      targetDirectory: dir,
+      verified: false,
+      platform,
+      defaultPath,
+    };
+  }
+
+  const isDraftRoot = await hasJianyingDraftMarkers(dir);
+  if (!isDraftRoot) {
+    const resolved = await resolveDraftRootFromSelection(dir);
+    if (resolved) {
+      await saveDraftPathToConfig(resolved.path);
+      logger.info(`[draft-detect] 已自动修正草稿目录: ${dir} -> ${resolved.path}`);
+      return {
+        configured: true,
+        ready: true,
+        reason: "ready",
+        targetDirectory: resolved.path,
+        verified: true,
+        corrected: true,
+        platform,
+        defaultPath,
+      };
+    }
+
+    return {
+      configured: true,
+      ready: false,
+      reason: "not_draft_root",
+      targetDirectory: dir,
+      verified: true,
+      platform,
+      defaultPath,
+    };
+  }
+
+  return {
+    configured: true,
+    ready: true,
+    reason: "ready",
+    targetDirectory: dir,
+    verified: true,
+    platform,
+    defaultPath,
+  };
+}
+
+/**
+ * 用户主动触发自动检测：找到即写入配置。
+ */
+async function autoDetectDraftPath() {
+  const platform = process.platform;
+  const defaultPath = getDefaultDraftRootHint();
+
+  let detected = null;
+  try {
+    detected = await detectJianyingDraftRoot();
+  } catch (error) {
+    logger.warn("[draft-detect] 自动探测失败:", error.message);
+  }
+
+  if (!detected) {
+    return {
+      success: false,
+      code: "NOT_FOUND",
+      platform,
+      defaultPath,
+      message: "未找到剪映草稿目录",
+    };
+  }
+
+  await saveDraftPathToConfig(detected);
+  const writeCheck = await probeWriteAccess(detected);
+  logger.info("[draft-detect] 用户触发自动检测，已设置草稿目录:", detected);
+
+  return {
+    success: true,
+    targetDirectory: detected,
+    needsPermission: !writeCheck.ok && writeCheck.permissionDenied,
+    platform,
+    defaultPath,
+  };
+}
+
+/**
+ * 校验用户手动选择的目录并保存。
+ *
+ * 用户经常选中草稿根目录的上级或某份草稿的子目录，这里会自动定位到
+ * 真正的草稿根目录；完全无法识别时拒绝保存，避免剪映看不到下载的草稿。
+ */
+async function applySelectedDraftPath(selectedDir) {
+  if (!selectedDir || typeof selectedDir !== "string") {
+    return { success: false, code: "CANCELED", error: "用户取消了目录选择" };
+  }
+
+  const resolved = await resolveDraftRootFromSelection(selectedDir);
+  let candidate = "";
+  let corrected = false;
+
+  if (resolved) {
+    candidate = resolved.path;
+    corrected = resolved.corrected;
+  } else {
+    // 系统拒绝读取时无法校验目录结构；仅接受名字就是草稿根目录的路径，
+    // 避免把任意目录保存成草稿目录。
+    const readCheck = await probeReadAccess(selectedDir);
+    const looksLikeRoot =
+      path.basename(selectedDir).toLowerCase() === "com.lveditor.draft";
+    if (readCheck.permissionDenied && looksLikeRoot) {
+      candidate = selectedDir;
+    } else if (readCheck.permissionDenied) {
+      return {
+        success: false,
+        code: "NEEDS_PERMISSION",
+        selectedPath: selectedDir,
+        message:
+          "无法读取所选文件夹，可能尚未获得文件夹访问权限。请选择名为 com.lveditor.draft 的草稿目录，或先在系统设置中允许本应用访问。",
+      };
+    } else {
+      return {
+        success: false,
+        code: "NOT_DRAFT_ROOT",
+        selectedPath: selectedDir,
+        message:
+          "所选文件夹不是剪映草稿目录，请选择包含 root_meta_info.json 的 com.lveditor.draft 文件夹；若还没有该文件夹，请先打开一次剪映。",
+      };
+    }
+  }
+
+  const writeCheck = await probeWriteAccess(candidate);
+  if (!writeCheck.ok && !writeCheck.permissionDenied) {
+    return {
+      success: false,
+      code: "WRITE_FAILED",
+      selectedPath: candidate,
+      message: `所选目录无法写入：${writeCheck.message}`,
+    };
+  }
+
+  await saveDraftPathToConfig(candidate);
+  if (corrected) {
+    logger.info(
+      `[draft-detect] 已从所选位置定位到草稿目录: ${selectedDir} -> ${candidate}`
+    );
+  }
+
+  return {
+    success: true,
+    targetDirectory: candidate,
+    corrected,
+    needsPermission: !writeCheck.ok && writeCheck.permissionDenied,
+  };
+}
+
 function getDownloadLogPath() {
   return path.join(app.getPath("userData"), "download-log.json");
 }
@@ -1049,127 +1296,18 @@ async function checkDraftDirectoryPermission(targetDirectory) {
 }
 
 /**
- * 目录选择场景的权限提示：macOS 上直接提供「打开系统设置」按钮。
+ * 弹出系统目录选择框，返回用户选择的目录（取消时返回空字符串）。
+ * 目录合法性统一交给 applySelectedDraftPath 校验，避免这里只验证写入权限。
  */
-async function showDirectoryPermissionDialog(parentWindow, { message, detail }) {
-  const isMac = process.platform === "darwin";
-  const options = {
-    type: "error",
-    title: "需要文件夹访问权限",
-    message,
-    detail,
-    buttons: isMac ? ["打开系统设置", "取消"] : ["确定"],
-    defaultId: 0,
-    cancelId: isMac ? 1 : 0,
-    noLink: true,
-  };
-  const result = parentWindow
-    ? await dialog.showMessageBox(parentWindow, options)
-    : await dialog.showMessageBox(options);
-  if (isMac && result.response === 0) {
-    try {
-      await shell.openExternal(getMacPrivacySettingsUrl("files"));
-    } catch (error) {
-      logger.warn("打开系统设置失败:", error.message);
-    }
-  }
-  return result;
-}
-
-async function updateDraftPath(parentWindow) {
-  const targetDir = await getTargetDirectory(parentWindow, true);
-  if (!targetDir) {
-    return { success: false, error: "用户取消了目录选择" };
-  }
-  try {
-    // macOS TCC 下 fs.access 可能返回成功但实际写入被拒绝，这里用真实写入验证
-    const writeCheck = await probeWriteAccess(targetDir);
-    if (!writeCheck.ok) {
-      logger.error('所选目录无读写权限:', writeCheck.message);
-      await showDirectoryPermissionDialog(parentWindow, {
-        message: '所选目录无法写入，草稿将无法保存。',
-        detail: writeCheck.permissionDenied && process.platform === 'darwin'
-          ? 'macOS 尚未允许本应用访问该文件夹。请在「系统设置 → 隐私与安全性 → 文件与文件夹」中允许本应用访问后重试。'
-          : `错误信息：${writeCheck.message}`,
-      });
-      return { success: false, error: '所选目录没有足够的读写权限' };
-    }
-
-    const configPath = getConfigPath();
-    let config = {};
-
-    // 尝试读取现有配置
-    try {
-      const data = await fs.readFile(configPath, "utf8");
-      config = JSON.parse(data);
-    } catch (error) {
-      // 如果文件不存在，保持config为空对象
-    }
-
-    config.targetDirectory = targetDir;
-
-    // 写回配置文件
-    await fs.writeFile(configPath, JSON.stringify(config, null, 2), 'utf8');
-    logger.info('默认草稿路径已更新为:', targetDir);
-    return { success: true, targetDir };
-  } catch (error) {
-    logger.error('更新默认草稿路径失败:', error);
-    return { success: false, error: error.message };
-  }
-}
-
-// 提取出来的函数，可选参数parentWindow用于显示对话框时附加到对话框
-async function getTargetDirectory(parentWindow = null, isUpdate = false) {
-  let config = await readConfig();
-  if (!isUpdate && config.targetDirectory) {
-    try {
-      await fs.access(config.targetDirectory, fs.constants.R_OK | fs.constants.W_OK);
-      return config.targetDirectory;
-    } catch (accessErr) {
-      // macOS TCC 拒绝访问时目录本身仍然存在：
-      // 保留已配置路径，交给下载前预检弹出授权引导，避免把用户打回目录选择框。
-      if (isPermissionError(accessErr)) {
-        logger.warn(
-          "配置的草稿目录被系统拒绝访问，保留路径并等待用户授权:",
-          accessErr.message
-        );
-        return config.targetDirectory;
-      }
-      logger.warn(
-        "配置的目录已不存在或无访问权限，将清除并尝试自动识别或手动选择。",
-        accessErr.message
-      );
-      delete config.targetDirectory;
-      await writeConfig(config);
-    }
-  }
-
-  if (!isUpdate) {
-    config = await ensureAutoDetectedDraftPathInConfig();
-    if (config.targetDirectory) {
-      try {
-        await fs.access(config.targetDirectory, fs.constants.R_OK | fs.constants.W_OK);
-        return config.targetDirectory;
-      } catch (e) {
-        if (isPermissionError(e)) {
-          logger.warn(
-            "自动识别的草稿目录被系统拒绝访问，保留路径并等待用户授权:",
-            e.message
-          );
-          return config.targetDirectory;
-        }
-        logger.warn("自动识别的草稿目录不可读写，将打开目录选择:", e.message);
-        delete config.targetDirectory;
-        await writeConfig(config);
-      }
-    }
-  }
-
+async function showDraftDirectoryPicker(parentWindow = null) {
+  const config = await readConfig();
   const dialogOptions = {
-    properties: ["openDirectory", "createDirectory"], // 允许创建新目录
-    title: "请选择目标目录",
+    properties: ["openDirectory"],
+    title: "选择剪映草稿目录",
+    message: "请选择剪映草稿根目录（com.lveditor.draft）",
     buttonLabel: "选择此目录",
-    defaultPath: isUpdate ? config.targetDirectory : undefined
+    defaultPath:
+      config.targetDirectory || getDefaultDraftRootHint() || undefined,
   };
 
   // 如果有父窗口，则附加到父窗口
@@ -1178,28 +1316,20 @@ async function getTargetDirectory(parentWindow = null, isUpdate = false) {
   }
 
   const result = await dialog.showOpenDialog(dialogOptions);
+  if (result.canceled || result.filePaths.length === 0) return "";
+  return result.filePaths[0];
+}
 
-  if (!result.canceled && result.filePaths.length > 0) {
-    const selectedDir = result.filePaths[0];
-
-    // 再次验证目录权限（真实写入，避免 macOS TCC 下 fs.access 的误判）
-    const writeCheck = await probeWriteAccess(selectedDir);
-    if (!writeCheck.ok) {
-      logger.error('所选目录无读写权限:', writeCheck.message);
-      await showDirectoryPermissionDialog(parentWindow, {
-        message: '所选目录无法写入，草稿将无法保存。',
-        detail: writeCheck.permissionDenied && process.platform === 'darwin'
-          ? 'macOS 尚未允许本应用访问该文件夹。请在「系统设置 → 隐私与安全性 → 文件与文件夹」中允许本应用访问后重试。'
-          : `错误信息：${writeCheck.message}`,
-      });
-      return ''; // 返回空字符串表示失败
-    }
-    
-    config.targetDirectory = selectedDir;
-    await writeConfig(config);
-    return selectedDir;
-  } else {
-    return '';
+async function updateDraftPath(parentWindow) {
+  const selectedDir = await showDraftDirectoryPicker(parentWindow);
+  if (!selectedDir) {
+    return { success: false, code: "CANCELED", error: "用户取消了目录选择" };
+  }
+  try {
+    return await applySelectedDraftPath(selectedDir);
+  } catch (error) {
+    logger.error("更新默认草稿路径失败:", error);
+    return { success: false, code: "UPDATE_FAILED", error: error.message };
   }
 }
 
@@ -1643,28 +1773,47 @@ async function downloadFiles(
 ) {
   try {
     let baseTargetDir = "";
-    // 然后获取目标目录，将主窗口作为父窗口传递
+    // 不再从下载流程里弹系统目录框：目录未设置时返回结构化错误，
+    // 由渲染层展示友好的设置引导，设置完成后再继续下载。
+    let draftDirectoryStatus = null;
     try {
-      baseTargetDir = await getTargetDirectory(parentWindow);
+      draftDirectoryStatus = await getDraftDirectoryStatus();
     } catch (error) {
       logger.error("[log] get target dir fail:", error);
-      baseTargetDir = '';
     }
 
-    if (!baseTargetDir) {
+    if (!draftDirectoryStatus?.ready) {
+      const reason = draftDirectoryStatus?.reason || "not_configured";
+      const configuredDir = draftDirectoryStatus?.targetDirectory || "";
+      const message =
+        reason === "not_draft_root"
+          ? `当前设置的目录不是剪映草稿目录：${configuredDir}。请重新设置后再下载。`
+          : reason === "missing"
+            ? `剪映草稿目录不存在：${configuredDir || "未设置"}。请重新设置后再下载。`
+            : "尚未设置剪映草稿目录，草稿无法保存";
+
       await appendDownloadLog(
-        { level: "error", message: `获取目录失败` },
+        {
+          level: "error",
+          message:
+            reason === "not_configured"
+              ? "尚未设置剪映草稿目录，请先完成设置"
+              : message,
+        },
         parentWindow
       );
       return {
         success: false,
-        code: "NO_TARGET_DIRECTORY",
+        code: DRAFT_DIRECTORY_REQUIRED,
+        reason,
         platform: process.platform,
-        targetDirectory: "",
-        message: "未选择剪映草稿目录，草稿无法保存",
+        targetDirectory: configuredDir,
+        defaultPath: draftDirectoryStatus?.defaultPath || getDefaultDraftRootHint(),
+        message,
       };
     }
 
+    baseTargetDir = draftDirectoryStatus.targetDirectory;
     logger.info("[log] get target dir:", baseTargetDir);
 
     const draftLogId = `draft-${targetId}`;
@@ -1994,6 +2143,9 @@ module.exports = {
   readConfig,
   ensureAutoDetectedDraftPathInConfig,
 
+  getDraftDirectoryStatus,
+  autoDetectDraftPath,
+
   getDraftUrls,
 
   downloadFiles,
@@ -2007,4 +2159,5 @@ module.exports = {
   inferExtFromContentType,
 
   DRAFT_PERMISSION_DENIED,
+  DRAFT_DIRECTORY_REQUIRED,
 };

@@ -37,7 +37,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
     
     // 获取草稿保存路径
     getConfigData: () => ipcRenderer.invoke('get-config-data'),
-    
+
+    // 草稿目录状态（是否已设置、是否为有效的剪映草稿目录）
+    getDraftDirectoryStatus: () => ipcRenderer.invoke('get-draft-directory-status'),
+
+    // 主动触发草稿目录自动检测
+    autoDetectDraftPath: () => ipcRenderer.invoke('auto-detect-draft-path'),
+
     // 设置草稿保存路径
     updateDraftPath: () => ipcRenderer.invoke('update-draft-path'),
     

@@ -1,22 +1,188 @@
+.set-page {
+  height: 100%;
+  overflow-y: auto;
+}
 
-.setting-path-input-group {
-    gap: 10px;
-    margin-bottom: 5px;
+.config-card {
+  border: 1px solid #e6ebf2;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
 }
-.setting-path-label {
-    font-size: 14px;
-    width: 70px;
+
+.config-card .card-body {
+  padding: 20px 22px;
 }
-.settings-hint {
-    font-size: 12px;
-    color: #7f8c8d;
-    margin-left: 80px;
+
+.config-status {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  border-radius: 10px;
 }
-.setting-draft-path-input {
-    flex: 1;
-    padding: 10px;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    font-size: 14px;
-    cursor: pointer;
+
+.config-status.is-ready {
+  border: 1px solid #c6f0d6;
+  background: #ecfdf3;
+}
+
+.config-status.is-warning {
+  border: 1px solid #fde7c3;
+  background: #fff8eb;
+}
+
+.config-status-icon {
+  flex: 0 0 34px;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+}
+
+.config-status.is-ready .config-status-icon {
+  color: #0f7b3e;
+  background: #d9f7e4;
+}
+
+.config-status.is-warning .config-status-icon {
+  color: #b45309;
+  background: #fef0d5;
+}
+
+.config-status-icon i.fas {
+  color: inherit;
+}
+
+.config-status-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.config-status-text strong {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #1f2d3d;
+}
+
+.config-status-text span {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: #667085;
+}
+
+.config-status-badge {
+  flex-shrink: 0;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.config-status.is-ready .config-status-badge {
+  color: #0f7b3e;
+  background: #d9f7e4;
+}
+
+.config-status.is-warning .config-status-badge {
+  color: #b45309;
+  background: #fef0d5;
+}
+
+.config-path-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.config-path-label {
+  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #475467;
+}
+
+.config-path-value {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 10px 12px;
+  border: 1px solid #e6ebf2;
+  border-radius: 8px;
+  background: #f8fafc;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 12.5px;
+  color: #2c3e50;
+}
+
+.config-path-value.is-empty {
+  color: #98a2b3;
+}
+
+.config-path-action {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.config-hint {
+  margin: 10px 2px 0;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: #7f8c8d;
+}
+
+.config-tip {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px dashed #cfe0ff;
+  border-radius: 10px;
+  background: #f6f9ff;
+}
+
+.config-tip > i.fas {
+  margin-top: 2px;
+  color: var(--secondary-color);
+}
+
+.config-tip-body {
+  min-width: 0;
+}
+
+.config-tip-body strong {
+  font-size: 13px;
+  font-weight: 600;
+  color: #344054;
+}
+
+.config-tip-body p {
+  margin: 4px 0 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: #667085;
+}
+
+.config-tip-body code {
+  display: block;
+  margin-top: 6px;
+  padding: 8px 10px;
+  border: 1px solid #e6ebf2;
+  border-radius: 8px;
+  background: #fff;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 12px;
+  color: #2c3e50;
+  word-break: break-all;
 }

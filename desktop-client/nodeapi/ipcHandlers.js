@@ -15,6 +15,8 @@ const {
   updateDraftPath,
   downloadFiles,
   ensureAutoDetectedDraftPathInConfig,
+  getDraftDirectoryStatus,
+  autoDetectDraftPath,
   checkDraftDirectoryPermission,
   checkUrlAccessRight,
   readHistoryRecord,
@@ -128,7 +130,35 @@ function setupIpcHandlers(mainWindow) {
     return await ensureAutoDetectedDraftPathInConfig();
   });
 
-  // 设置默认草稿路径
+  // 草稿目录状态：渲染层据此展示设置引导
+  ipcMain.handle('get-draft-directory-status', async () => {
+    try {
+      return await getDraftDirectoryStatus();
+    } catch (error) {
+      logger.error('获取草稿目录状态失败:', error);
+      return {
+        configured: false,
+        ready: false,
+        reason: 'error',
+        targetDirectory: '',
+        platform: process.platform,
+        defaultPath: '',
+        message: error.message || '获取草稿目录状态失败',
+      };
+    }
+  });
+
+  // 用户主动触发自动检测
+  ipcMain.handle('auto-detect-draft-path', async () => {
+    try {
+      return await autoDetectDraftPath();
+    } catch (error) {
+      logger.error('自动检测草稿目录失败:', error);
+      return { success: false, code: 'DETECT_FAILED', message: error.message };
+    }
+  });
+
+  // 设置默认草稿路径（选择后校验是否为剪映草稿目录）
   ipcMain.handle('update-draft-path', async (event) => {
     return await updateDraftPath(mainWindow);
   });

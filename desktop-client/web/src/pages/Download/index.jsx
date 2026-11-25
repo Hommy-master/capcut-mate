@@ -10,11 +10,15 @@ import LogModule from "../../components/LogModule";
 import PermissionGuide, {
   PermissionBanner,
 } from "../../components/PermissionGuide";
+import DraftPathGuide, {
+  DraftPathBanner,
+} from "../../components/DraftPathGuide";
 import { applyLogBatch } from "../../utils/downloadLog";
 
 import "./index.less";
 
 const PERMISSION_DENIED = "DRAFT_PERMISSION_DENIED";
+const DRAFT_DIRECTORY_REQUIRED = "DRAFT_DIRECTORY_REQUIRED";
 
 function MainPage() {
   const [textareaValue, setTextareaValue] = useState("");
@@ -28,6 +32,10 @@ function MainPage() {
   const [permissionGuideKey, setPermissionGuideKey] = useState(0);
   // 授权完成后需要继续下载的草稿地址
   const pendingDownloadsRef = useRef([]);
+  // 草稿目录设置状态：未就绪时在页面顶部提示并拦截下载
+  const [draftStatus, setDraftStatus] = useState(null);
+  const [draftGuideOpen, setDraftGuideOpen] = useState(false);
+  const [pendingDraftUrls, setPendingDraftUrls] = useState([]);
 
   // 外层容器的ref，用于实现自动滚动
   const downloadPageRef = useRef(null);
@@ -74,6 +82,52 @@ function MainPage() {
     };
   }, [enqueueLogEntry]);
 
+  const refreshDraftStatus = useCallback(async () => {
+    try {
+      const status = await electronService.getDraftDirectoryStatus();
+      setDraftStatus(status || null);
+      return status;
+    } catch (error) {
+      console.error("获取草稿目录状态失败:", error);
+      return null;
+    }
+  }, []);
+
+  // 启动时检测草稿目录；用户去打开剪映创建目录后回到窗口，也会重新检测
+  useEffect(() => {
+    refreshDraftStatus();
+    const handleFocus = () => refreshDraftStatus();
+    window.addEventListener("focus", handleFocus);
+    return () => window.removeEventListener("focus", handleFocus);
+  }, [refreshDraftStatus]);
+
+  const openDraftGuide = (urls = []) => {
+    setPendingDraftUrls(urls);
+    setDraftGuideOpen(true);
+  };
+
+  const handleDraftStatusChange = (nextStatus) => {
+    if (nextStatus) setDraftStatus(nextStatus);
+  };
+
+  const handleDraftGuideClose = () => {
+    setDraftGuideOpen(false);
+    setPendingDraftUrls([]);
+  };
+
+  const handleDraftContinue = async () => {
+    const urls = pendingDraftUrls;
+    setPendingDraftUrls([]);
+    setDraftGuideOpen(false);
+    if (urls.length === 0) return;
+    setIsLoading(true);
+    try {
+      await runDownloads(urls);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // 当日志更新时，将外层容器滚动到底部
   useEffect(() => {
     if (downloadPageRef.current) {
@@ -93,7 +147,7 @@ function MainPage() {
     setPermissionOpen(true);
   };
 
-  // 顺序下载；遇到权限问题时停下，把剩余地址留到授权后继续
+  // 顺序下载；遇到权限/目录问题时停下，把剩余地址留到设置完成后继续
   const runDownloads = async (urls) => {
     const list = urls.filter(Boolean);
     for (let i = 0; i < list.length; i++) {
@@ -103,6 +157,10 @@ function MainPage() {
           ...result,
           _pendingUrls: list.slice(i),
         });
+        return false;
+      }
+      if (result?.code === DRAFT_DIRECTORY_REQUIRED) {
+        openDraftGuide(list.slice(i));
         return false;
       }
     }
@@ -121,6 +179,13 @@ function MainPage() {
       .split("\n")
       .map((line) => line.trim())
       .filter(Boolean);
+
+    // 草稿目录未设置或无效时先引导设置，避免草稿下载到剪映看不到的位置
+    if (draftStatus && !draftStatus.ready) {
+      openDraftGuide(valArray);
+      return;
+    }
+
     setLogs([]);
     setPermissionIssue(null);
     setPermissionOpen(false);
@@ -167,8 +232,11 @@ function MainPage() {
         isOpenDir: isDownloadOpen,
       });
 
-      // 权限问题由引导弹窗接管，不再弹普通 toast
-      if (result?.code === PERMISSION_DENIED) {
+      // 权限/目录问题由引导弹窗接管，不再弹普通 toast
+      if (
+        result?.code === PERMISSION_DENIED ||
+        result?.code === DRAFT_DIRECTORY_REQUIRED
+      ) {
         return result;
       }
 
@@ -212,6 +280,12 @@ function MainPage() {
     <div className="download-page" ref={downloadPageRef}>
       <div className="container">
         <ExternalWebpage />
+
+        <DraftPathBanner
+          visible={Boolean(draftStatus && !draftStatus.ready)}
+          status={draftStatus}
+          onOpen={() => openDraftGuide([])}
+        />
 
         <PermissionBanner
           visible={Boolean(permissionIssue) && !permissionOpen}
@@ -257,6 +331,15 @@ function MainPage() {
         platform={permissionIssue?.platform || "darwin"}
         onClose={() => setPermissionOpen(false)}
         onContinue={handlePermissionContinue}
+      />
+
+      <DraftPathGuide
+        open={draftGuideOpen}
+        status={draftStatus}
+        hasPendingDownloads={pendingDraftUrls.length > 0}
+        onClose={handleDraftGuideClose}
+        onStatusChange={handleDraftStatusChange}
+        onContinue={handleDraftContinue}
       />
     </div>
   );
