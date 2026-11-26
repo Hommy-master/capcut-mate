@@ -30,7 +30,7 @@ class TestJianyingExportCleanup(unittest.TestCase):
 
             self.assertFalse(os.path.exists(meta_path))
 
-    def test_removes_draft_when_draft_content_is_older_than_24h(self) -> None:
+    def test_removes_draft_when_draft_content_is_older_than_12h(self) -> None:
         with tempfile.TemporaryDirectory() as base:
             draft_dir = self._make_draft(base, "20250101120000abcdef01")
             old_ts = time.time() - cleanup.DRAFT_CONTENT_MIN_AGE_SECONDS - 60
@@ -43,7 +43,7 @@ class TestJianyingExportCleanup(unittest.TestCase):
 
             self.assertFalse(os.path.exists(draft_dir))
 
-    def test_keeps_draft_when_draft_content_is_within_24h(self) -> None:
+    def test_keeps_draft_when_draft_content_is_within_12h(self) -> None:
         with tempfile.TemporaryDirectory() as base:
             draft_dir = self._make_draft(base, "20250101120000abcdef01")
             recent_ts = time.time() - 3600
@@ -107,6 +107,88 @@ class TestJianyingExportCleanup(unittest.TestCase):
         cleanup.recover_from_export_failure()
         mock_kill.assert_called_once()
         mock_clear.assert_called_once()
+
+
+class TestStaleDraftSweep(unittest.TestCase):
+    def _make_draft(self, base: str, draft_id: str) -> str:
+        draft_dir = os.path.join(base, draft_id)
+        os.makedirs(draft_dir, exist_ok=True)
+        with open(
+            os.path.join(draft_dir, cleanup.DRAFT_CONTENT_FILE), "w", encoding="utf-8"
+        ) as f:
+            f.write("{}")
+        return draft_dir
+
+    def test_threshold_is_12_hours(self) -> None:
+        self.assertEqual(cleanup.DRAFT_CONTENT_MIN_AGE_SECONDS, 12 * 3600)
+
+    def test_removes_stale_draft_and_keeps_fresh(self) -> None:
+        with tempfile.TemporaryDirectory() as base:
+            stale = self._make_draft(base, "20250101120000abcdef01")
+            fresh = self._make_draft(base, "20250101120000abcdef02")
+            old_ts = time.time() - cleanup.DRAFT_CONTENT_MIN_AGE_SECONDS - 60
+            recent_ts = time.time() - 3600
+
+            def fake_created(path: str) -> float:
+                return old_ts if os.path.dirname(path) == stale else recent_ts
+
+            with (
+                patch.object(cleanup.config, "DRAFT_SAVE_PATH", base),
+                patch.object(
+                    cleanup, "_file_creation_timestamp", side_effect=fake_created
+                ),
+            ):
+                removed = cleanup.sweep_stale_draft_directories()
+
+            self.assertEqual(removed, 1)
+            self.assertFalse(os.path.exists(stale))
+            self.assertTrue(os.path.isdir(fresh))
+
+    def test_removes_stale_dir_without_draft_content(self) -> None:
+        with tempfile.TemporaryDirectory() as base:
+            draft_dir = os.path.join(base, "20250101120000abcdef03")
+            os.makedirs(draft_dir)
+            open(os.path.join(draft_dir, "partial.mp4"), "wb").close()
+            old_ts = time.time() - cleanup.DRAFT_CONTENT_MIN_AGE_SECONDS - 60
+            os.utime(draft_dir, (old_ts, old_ts))
+
+            with patch.object(cleanup.config, "DRAFT_SAVE_PATH", base):
+                removed = cleanup.sweep_stale_draft_directories()
+
+            self.assertEqual(removed, 1)
+            self.assertFalse(os.path.exists(draft_dir))
+
+    def test_keeps_fresh_dir_without_draft_content(self) -> None:
+        with tempfile.TemporaryDirectory() as base:
+            draft_dir = os.path.join(base, "20250101120000abcdef04")
+            os.makedirs(draft_dir)
+
+            with patch.object(cleanup.config, "DRAFT_SAVE_PATH", base):
+                removed = cleanup.sweep_stale_draft_directories()
+
+            self.assertEqual(removed, 0)
+            self.assertTrue(os.path.isdir(draft_dir))
+
+    def test_ignores_files_and_keeps_root_meta_info(self) -> None:
+        with tempfile.TemporaryDirectory() as base:
+            meta_path = os.path.join(base, cleanup.ROOT_META_INFO_FILE)
+            with open(meta_path, "w", encoding="utf-8") as f:
+                f.write("{}")
+            file_path = os.path.join(base, "some_file.txt")
+            with open(file_path, "w", encoding="utf-8") as f:
+                f.write("x")
+
+            with patch.object(cleanup.config, "DRAFT_SAVE_PATH", base):
+                removed = cleanup.sweep_stale_draft_directories()
+
+            self.assertEqual(removed, 0)
+            self.assertTrue(os.path.exists(meta_path))
+            self.assertTrue(os.path.exists(file_path))
+
+    def test_skips_when_draft_save_path_missing(self) -> None:
+        missing = os.path.join(tempfile.gettempdir(), "capcut_nonexistent_draft_path")
+        with patch.object(cleanup.config, "DRAFT_SAVE_PATH", missing):
+            self.assertEqual(cleanup.sweep_stale_draft_directories(), 0)
 
 
 if __name__ == "__main__":

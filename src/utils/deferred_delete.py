@@ -5,6 +5,7 @@ import asyncio
 import os
 import shutil
 import threading
+import time
 from typing import Dict, Iterable, Optional, Tuple
 
 from src.utils.logger import logger
@@ -14,6 +15,10 @@ DEFERRED_DELETE_INTERVAL_SECONDS = max(
     5,
     int(os.getenv("DEFERRED_DELETE_INTERVAL_SECONDS", "10")),
 )
+
+# 剪映草稿目录兜底扫描间隔（秒）：每 30 分钟执行一次，
+# 删除超过 DRAFT_CONTENT_MIN_AGE_SECONDS（12 小时）的草稿目录。
+STALE_DRAFT_SWEEP_INTERVAL_SECONDS = 30 * 60
 
 _lock = threading.Lock()
 # 规范化绝对路径 -> 是否为目录
@@ -129,16 +134,46 @@ def clear_pending_for_tests() -> None:
 
 async def deferred_delete_background_loop(
     interval: Optional[float] = None,
+    sweep_interval: Optional[float] = None,
 ) -> None:
-    """后台定时删除循环，直至进程退出。"""
+    """
+    后台定时删除循环，直至进程退出。
+
+    每 ``interval`` 秒清空一次延迟删除队列；另按 ``sweep_interval``（默认 30
+    分钟）兜底扫描剪映草稿目录，删除超过 12 小时的草稿。扫描与删除放到线程
+    中执行，避免阻塞事件循环；启动后先扫一次，兜住重启时丢失的待删除项。
+    """
     sleep_seconds = interval if interval is not None else DEFERRED_DELETE_INTERVAL_SECONDS
-    logger.info(
-        "Deferred delete background loop started: interval_seconds=%s",
-        sleep_seconds,
+    sweep_seconds = (
+        sweep_interval
+        if sweep_interval is not None
+        else STALE_DRAFT_SWEEP_INTERVAL_SECONDS
     )
+    sweep_seconds = max(1.0, sweep_seconds)
+    logger.info(
+        "Deferred delete background loop started: interval_seconds=%s "
+        "stale_draft_sweep_interval_seconds=%s",
+        sleep_seconds,
+        sweep_seconds,
+    )
+    # 启动后立即执行一次兜底扫描，之后按 sweep_seconds 周期执行
+    next_sweep_at = time.monotonic()
     while True:
         try:
             run_pending_deletes()
         except Exception:
             logger.exception("Deferred delete sweep failed")
+
+        if time.monotonic() >= next_sweep_at:
+            next_sweep_at = time.monotonic() + sweep_seconds
+            try:
+                from src.utils.jianying_export_cleanup import (
+                    sweep_stale_draft_directories,
+                )
+
+                removed = await asyncio.to_thread(sweep_stale_draft_directories)
+                logger.info("Stale draft sweep removed %s directory(ies)", removed)
+            except Exception:
+                logger.exception("Stale draft sweep failed")
+
         await asyncio.sleep(sleep_seconds)

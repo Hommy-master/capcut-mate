@@ -1,4 +1,5 @@
 """延迟删除队列与定时清扫。"""
+import asyncio
 import os
 import tempfile
 from unittest.mock import patch
@@ -132,3 +133,57 @@ class TestVideoTaskManagerDeferredCleanup:
             dd.run_pending_deletes()
             assert not os.path.exists(mp4)
             assert not os.path.exists(draft_dir)
+
+
+class TestStaleDraftSweepInBackgroundLoop:
+    def test_loop_runs_stale_draft_sweep(self) -> None:
+        calls: list[int] = []
+
+        def fake_sweep() -> int:
+            calls.append(1)
+            return 0
+
+        async def scenario() -> None:
+            with patch(
+                "src.utils.jianying_export_cleanup.sweep_stale_draft_directories",
+                side_effect=fake_sweep,
+            ):
+                task = asyncio.create_task(
+                    dd.deferred_delete_background_loop(
+                        interval=0.01, sweep_interval=0.02
+                    )
+                )
+                await asyncio.sleep(0.12)
+                task.cancel()
+                with pytest.raises(asyncio.CancelledError):
+                    await task
+
+        asyncio.run(scenario())
+        assert calls
+
+    def test_loop_survives_stale_draft_sweep_error(self) -> None:
+        calls: list[int] = []
+
+        def fake_sweep() -> int:
+            calls.append(1)
+            raise RuntimeError("boom")
+
+        async def scenario() -> None:
+            with patch(
+                "src.utils.jianying_export_cleanup.sweep_stale_draft_directories",
+                side_effect=fake_sweep,
+            ):
+                task = asyncio.create_task(
+                    dd.deferred_delete_background_loop(
+                        interval=0.01, sweep_interval=0.01
+                    )
+                )
+                await asyncio.sleep(0.08)
+                # 单次扫描失败不能终止后台循环
+                assert not task.done()
+                task.cancel()
+                with pytest.raises(asyncio.CancelledError):
+                    await task
+
+        asyncio.run(scenario())
+        assert calls

@@ -5,7 +5,7 @@ import os
 import shutil
 import subprocess
 import time
-from typing import Iterable
+from typing import Iterable, Optional
 
 import config
 from src.utils.logger import logger
@@ -19,7 +19,7 @@ ROOT_META_INFO_FILE = "root_meta_info.json"
 DRAFT_CONTENT_FILE = "draft_content.json"
 
 # 草稿目录删除阈值：draft_content.json 创建时间早于该秒数才删除整个草稿目录
-DRAFT_CONTENT_MIN_AGE_SECONDS = 24 * 3600
+DRAFT_CONTENT_MIN_AGE_SECONDS = 12 * 3600
 
 
 def draft_save_path_exists() -> bool:
@@ -100,8 +100,9 @@ def _draft_content_is_old_enough(
         return True
 
     logger.info(
-        "Skip draft directory (%s created within last 24h): path=%s age_hours=%.2f",
+        "Skip draft directory (%s created within last %.1fh): path=%s age_hours=%.2f",
         DRAFT_CONTENT_FILE,
+        min_age_seconds / 3600,
         draft_dir_path,
         age_seconds / 3600,
     )
@@ -144,7 +145,7 @@ def clear_draft_save_directory(
     清理规则：
     1. 根目录下的 ``root_meta_info.json``：直接删除。
     2. 子目录（草稿目录）：仅当其中 ``draft_content.json`` 的创建时间
-       早于 ``min_age_seconds``（默认 24 小时）时，删除整个草稿目录。
+       早于 ``min_age_seconds``（默认 12 小时）时，删除整个草稿目录。
     3. 其它根级条目：不处理。
 
     Returns:
@@ -190,6 +191,78 @@ def clear_draft_save_directory(
         skipped_drafts,
     )
     return True
+
+
+def _draft_directory_age_seconds(draft_dir_path: str) -> Optional[float]:
+    """
+    返回草稿目录年龄（秒）：优先使用 draft_content.json 的创建时间；
+    文件缺失（下载中断残留）时退回目录 mtime。
+    """
+    content_path = os.path.join(draft_dir_path, DRAFT_CONTENT_FILE)
+    if os.path.isfile(content_path):
+        created_at = _file_creation_timestamp(content_path)
+        if created_at is not None:
+            return time.time() - created_at
+
+    try:
+        return time.time() - os.path.getmtime(draft_dir_path)
+    except OSError as exc:
+        logger.warning(
+            "Failed to read draft directory mtime: path=%s error=%s",
+            draft_dir_path,
+            exc,
+        )
+        return None
+
+
+def sweep_stale_draft_directories(
+    min_age_seconds: float = DRAFT_CONTENT_MIN_AGE_SECONDS,
+) -> int:
+    """
+    删除 ``config.DRAFT_SAVE_PATH`` 下所有超过 ``min_age_seconds`` 的草稿目录，
+    返回删除的目录数量。供后台定时兜底调用，不依赖导出失败触发。
+
+    专用机器上该目录内的草稿均由本服务下载产生；``draft_content.json`` 缺失
+    （下载中断残留）时按目录 mtime 计龄。``root_meta_info.json`` 不在此处理，
+    避免每次扫描都触发剪映重扫。
+    """
+    if not draft_save_path_exists():
+        logger.info(
+            "Skip stale draft sweep: DRAFT_SAVE_PATH does not exist (%s)",
+            config.DRAFT_SAVE_PATH,
+        )
+        return 0
+
+    base = config.DRAFT_SAVE_PATH
+    try:
+        with os.scandir(base) as entries:
+            child_names = [entry.name for entry in entries]
+    except OSError as exc:
+        logger.warning("Failed to list draft save directory %s: %s", base, exc)
+        return 0
+
+    removed_drafts = 0
+    skipped_drafts = 0
+    for name in child_names:
+        path = os.path.join(base, name)
+        if not os.path.isdir(path):
+            continue
+        age_seconds = _draft_directory_age_seconds(path)
+        if age_seconds is None or age_seconds < min_age_seconds:
+            skipped_drafts += 1
+            continue
+        if _remove_draft_directory(path):
+            removed_drafts += 1
+
+    logger.info(
+        "Stale draft sweep finished: path=%s removed_draft_dirs=%s "
+        "skipped_draft_dirs=%s min_age_hours=%.2f",
+        base,
+        removed_drafts,
+        skipped_drafts,
+        min_age_seconds / 3600,
+    )
+    return removed_drafts
 
 
 def recover_from_export_failure() -> None:
