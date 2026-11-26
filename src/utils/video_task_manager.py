@@ -130,8 +130,10 @@ class VideoGenTaskManager:
             return
         self._initialized = True
         
-        # 任务存储：{draft_url: VideoGenTask}
+        # 任务存储：{draft_url: VideoGenTask}；终态任务落库后即移除。
+        # 字典的增删/遍历跨线程（HTTP 线程与 worker 线程），统一用 _tasks_lock 保护。
         self.tasks: Dict[str, VideoGenTask] = {}
+        self._tasks_lock = threading.Lock()
         # 跨线程任务队列（HTTP 线程 put、worker 线程 get）。不能用 asyncio.Queue：其在 __init__
         # 时绑定的 loop 与 worker 内 new_event_loop() 不一致，会触发 “bound to a different event loop”。
         self.task_queue: queue.Queue = queue.Queue()
@@ -183,13 +185,6 @@ class VideoGenTaskManager:
         if not draft_id:
             raise ValueError("无效的草稿URL")
         
-        # 检查是否已有相同草稿的任务在进行
-        if draft_url in self.tasks:
-            existing_task = self.tasks[draft_url]
-            if existing_task.status in [TaskStatus.PENDING, TaskStatus.PROCESSING]:
-                logger.info(f"Task already exists for draft_url: {draft_url}")
-                return
-        
         # 创建新任务
         task = VideoGenTask(
             draft_url=draft_url,
@@ -198,9 +193,18 @@ class VideoGenTaskManager:
             created_at=datetime.now(),
             api_key=api_key  # 存储API密钥用于计费
         )
-        
-        # 存储任务
-        self.tasks[draft_url] = task
+
+        # 检查是否已有相同草稿的任务在进行；终态任务可被覆盖。
+        # 用 get 避免与 _persist_terminal_task 的移除竞争 KeyError。
+        with self._tasks_lock:
+            existing_task = self.tasks.get(draft_url)
+            if existing_task and existing_task.status in [
+                TaskStatus.PENDING,
+                TaskStatus.PROCESSING,
+            ]:
+                logger.info(f"Task already exists for draft_url: {draft_url}")
+                return
+            self.tasks[draft_url] = task
         
         self._add_task_to_queue_sync(task)
         
@@ -224,7 +228,7 @@ class VideoGenTaskManager:
         Returns:
             任务状态信息，如果不存在返回None
         """
-        # 热路径：本进程内提交过的任务始终在内存，避免每次轮询都抢 SQLite 全局锁
+        # 热路径：进行中的任务与刚落库的终态任务在内存，避免每次轮询都抢 SQLite 全局锁
         task = self.tasks.get(draft_url)
         if task:
             return {
@@ -248,7 +252,8 @@ class VideoGenTaskManager:
         不含已完成(completed)、失败(failed)。
         """
         active = (TaskStatus.PENDING, TaskStatus.PROCESSING)
-        return sum(1 for t in self.tasks.values() if t.status in active)
+        with self._tasks_lock:
+            return sum(1 for t in self.tasks.values() if t.status in active)
 
     def _ensure_worker_running(self):
         """确保工作线程正在运行"""
@@ -318,7 +323,7 @@ class VideoGenTaskManager:
         )
 
     def _persist_terminal_task(self, task: VideoGenTask) -> None:
-        """将已完成或失败的任务写入 SQLite（仅终态）。"""
+        """将已完成或失败的任务写入 SQLite（仅终态）；落库成功后释放内存中的任务。"""
         if task.status not in (TaskStatus.COMPLETED, TaskStatus.FAILED):
             return
         self._log_task_timing(task)
@@ -336,9 +341,22 @@ class VideoGenTaskManager:
                 completed_at=task.completed_at,
             )
         except Exception as persist_err:
+            # 落库失败时保留内存任务，保证状态查询仍能命中，不能移除。
             logger.exception(
                 "Failed to persist video gen task result: %s", persist_err
             )
+            return
+
+        # 落库成功后才移除；用身份比较避免误删同名 draft_url 的新任务
+        # （终态任务与重新提交之间存在竞争，状态查询会回退到 SQLite）。
+        with self._tasks_lock:
+            if self.tasks.get(task.draft_url) is task:
+                self.tasks.pop(task.draft_url, None)
+                logger.info(
+                    "Removed terminal task from memory: draft_url=%s status=%s",
+                    task.draft_url,
+                    task.status.value,
+                )
 
     async def _run_upload_and_finalize(self, task: VideoGenTask) -> None:
         """导出成功后的上传与落库；上传受 _upload_executor 并发上限约束，绑定本 task 的 outfile/draft_id。"""
