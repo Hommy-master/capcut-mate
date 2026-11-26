@@ -42,6 +42,11 @@ DRAFT_DOWNLOAD_MAX_CONCURRENT = 3
 # gen_video：上传到对象存储的最大并发，超出部分在 _upload_executor 队列中排队
 OBJECT_STORAGE_UPLOAD_MAX_CONCURRENT = 2
 
+# gen_video：已下载、等待剪映导出的草稿数量上限。
+# 导出是全局串行的，下载阶段必须在拿到该名额后才能开始，导出结束后释放；
+# 否则导出慢或卡住时，3 路下载会持续把草稿落到本地目录无限积压。
+EXPORT_BACKLOG_MAX_CONCURRENT = 3
+
 # original_path 为 None 导致 shutil.move 失败时，仅重试导出阶段（复用已下载草稿）的额外次数
 EXPORT_RENAME_SRC_NONE_MAX_RETRIES = 2
 EXPORT_RENAME_SRC_NONE_ERROR_MARKER = (
@@ -104,6 +109,8 @@ class VideoGenTaskManager:
 
     每个任务在独立协程中执行：草稿下载由专用线程池执行，并发上限为
     DRAFT_DOWNLOAD_MAX_CONCURRENT，超出部分在线程池队列中排队；
+    下载前必须先取得「已下载待导出」名额（EXPORT_BACKLOG_MAX_CONCURRENT），
+    导出阶段结束后释放，避免导出慢或卡住时草稿在本地无限积压；
     剪映 RPA 导出由 export_video_lock 全局串行；COS/OSS/TOS 上传在独立线程池中执行，
     并发上限为 OBJECT_STORAGE_UPLOAD_MAX_CONCURRENT。
     """
@@ -140,6 +147,9 @@ class VideoGenTaskManager:
         )
         # 导出视频专用锁（确保任何时候只有一个线程执行剪映 RPA 导出）
         self.export_video_lock = threading.Lock()
+        # 「已下载待导出」名额：下载前获取、导出阶段结束后释放。
+        # 导出全局串行，若不限制，导出慢/卡住时下载会把大量草稿持续落到本地。
+        self._export_backlog = asyncio.Semaphore(EXPORT_BACKLOG_MAX_CONCURRENT)
         # 有多少个线程已进入「仅导出」阶段（含在 export_video_lock 上阻塞等待），用于对照默认线程池挤占
         self._export_metrics_lock = threading.Lock()
         self._export_phase_active = 0
@@ -360,7 +370,8 @@ class VideoGenTaskManager:
 
     async def _process_task(self, task: VideoGenTask):
         """
-        单任务流水线：下载阶段受 _download_executor 并发上限约束；导出串行（export_video_lock）；
+        单任务流水线：先取得「已下载待导出」名额再下载（避免导出慢/卡住时本地无限积压），
+        下载阶段受 _download_executor 并发上限约束；导出串行（export_video_lock）；
         成功后上传统一异步且不阻塞本循环（上传受 _upload_executor 限制）。
         """
         logger.info(f"Processing task: {task.draft_url}")
@@ -372,49 +383,52 @@ class VideoGenTaskManager:
 
         loop = asyncio.get_running_loop()
 
-        try:
-            prep_error = await loop.run_in_executor(
-                self._download_executor,
-                self._phase_download_and_prepare,
-                task,
-            )
-            if prep_error:
-                task.status = TaskStatus.FAILED
-                task.error_message = prep_error
-                task.progress = 0
-                logger.error(f"Task failed: {task.draft_url}, error: {prep_error}")
-                self._cleanup_files(task)
-                self._persist_terminal_task(task)
-                return
-
-            export_error = await loop.run_in_executor(
-                None,
-                self._phase_export_only,
-                task,
-            )
-            if export_error:
-                task.status = TaskStatus.FAILED
-                task.error_message = export_error
-                task.progress = 0
-                logger.error(
-                    "Task failed: draft_id=%s, error=%s",
-                    task.draft_id,
-                    export_error,
+        # 名额在下载前获取、导出阶段结束后释放：磁盘上等待导出的草稿数量
+        # 因此不会超过 EXPORT_BACKLOG_MAX_CONCURRENT。
+        async with self._export_backlog:
+            try:
+                prep_error = await loop.run_in_executor(
+                    self._download_executor,
+                    self._phase_download_and_prepare,
+                    task,
                 )
+                if prep_error:
+                    task.status = TaskStatus.FAILED
+                    task.error_message = prep_error
+                    task.progress = 0
+                    logger.error(f"Task failed: {task.draft_url}, error: {prep_error}")
+                    self._cleanup_files(task)
+                    self._persist_terminal_task(task)
+                    return
+
+                export_error = await loop.run_in_executor(
+                    None,
+                    self._phase_export_only,
+                    task,
+                )
+                if export_error:
+                    task.status = TaskStatus.FAILED
+                    task.error_message = export_error
+                    task.progress = 0
+                    logger.error(
+                        "Task failed: draft_id=%s, error=%s",
+                        task.draft_id,
+                        export_error,
+                    )
+                    self._cleanup_files(task)
+                    self._persist_terminal_task(task)
+                    return
+
+                ut = asyncio.create_task(self._run_upload_and_finalize(task))
+                ut.add_done_callback(self._log_async_task_done)
+
+            except Exception as e:
+                task.status = TaskStatus.FAILED
+                task.error_message = str(e)
+                task.progress = 0
+                logger.exception(f"Task exception: {task.draft_url}, error: {e}")
                 self._cleanup_files(task)
                 self._persist_terminal_task(task)
-                return
-
-            ut = asyncio.create_task(self._run_upload_and_finalize(task))
-            ut.add_done_callback(self._log_async_task_done)
-
-        except Exception as e:
-            task.status = TaskStatus.FAILED
-            task.error_message = str(e)
-            task.progress = 0
-            logger.exception(f"Task exception: {task.draft_url}, error: {e}")
-            self._cleanup_files(task)
-            self._persist_terminal_task(task)
     
     def _check_draft_duration(self, task: VideoGenTask) -> bool:
         """
